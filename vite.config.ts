@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// GitHub Pages sirve el sitio desde /Tecnopanel/ (nombre real del repo: https://github.com/ArielPint/Tecnopanel).
+// Vercel sirve el sitio desde la raíz del dominio, sin sub-path.
 export default defineConfig({
   plugins: [react()],
-  base: '/Tecnopanel/',
+  base: '/',
 })

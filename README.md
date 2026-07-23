@@ -25,13 +25,15 @@ cp .env.example .env   # ya viene precargado con la URL + anon key del hub
 npm run dev
 ```
 
-## Deploy (GitHub Pages)
+## Deploy (Vercel)
 
-```bash
-npm run deploy
-```
+El proyecto se despliega en Vercel, importando el repo
+[`ArielPint/Tecnopanel`](https://github.com/ArielPint/Tecnopanel) directamente desde su dashboard.
+Cada `git push` a `main` dispara un deploy automático. Ver instrucciones paso a paso en
+`VERCEL_DEPLOY.md`.
 
-Publica el contenido de `dist/` en la rama `gh-pages`. El repo real es
-[`ArielPint/Tecnopanel`](https://github.com/ArielPint/Tecnopanel), publicado en
-`https://arielpint.github.io/Tecnopanel` — el `base` en `vite.config.ts` y el `basename` del
-`BrowserRouter` en `src/App.tsx` ya están configurados como `/Tecnopanel/` para que coincida.
+`vite.config.ts` sirve desde la raíz (`base: '/'`) y `src/App.tsx` no usa `basename`, porque
+Vercel publica el sitio en la raíz de su propio dominio (no en un sub-path como GitHub Pages).
+
+> Nota: el proyecto estuvo publicado antes en GitHub Pages (`gh-pages` branch); ese deploy quedó
+> discontinuado al migrar a Vercel.

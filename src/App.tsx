@@ -18,7 +18,7 @@ export default function App() {
   }, [init])
 
   return (
-    <BrowserRouter basename="/Tecnopanel">
+    <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
