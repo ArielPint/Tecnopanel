@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-50 text-gray-900 font-sans dark:bg-neutral-900 dark:text-white transition-colors;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+}
