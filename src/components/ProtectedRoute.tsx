@@ -1,7 +1,13 @@
 import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 
-export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
+export default function ProtectedRoute({
+  children,
+  loginPath = '/login',
+}: {
+  children: React.ReactNode
+  loginPath?: string
+}) {
   const { session, loading } = useAuthStore()
 
   if (loading) {
@@ -13,7 +19,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   }
 
   if (!session) {
-    return <Navigate to="/login" replace />
+    return <Navigate to={loginPath} replace />
   }
 
   return <>{children}</>
