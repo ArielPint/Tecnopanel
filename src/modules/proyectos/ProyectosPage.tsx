@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Building2, ExternalLink } from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient'
 import type { Proyecto } from '../dashboard/types'
@@ -9,6 +10,13 @@ const estadoTone: Record<string, 'success' | 'warning' | 'secondary'> = {
   activo: 'success',
   pausada: 'warning',
   pausado: 'warning',
+}
+
+// Proyectos ya migrados adentro del hub — link interno en vez del url_app
+// externo (que apunta al sitio standalone viejo, pre-fusión).
+const SLUG_TO_INTERNAL_ROUTE: Record<string, string> = {
+  'la-chacra': '/proyectos/la-chacra/dashboard',
+  crm: '/crm',
 }
 
 export default function ProyectosPage() {
@@ -48,27 +56,43 @@ export default function ProyectosPage() {
         <p className="text-sm text-muted-foreground">Aún no hay proyectos cargados en el hub.</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {proyectos.map((p) => (
-            <a
-              key={p.id}
-              href={p.url_app ?? undefined}
-              target={p.url_app ? '_blank' : undefined}
-              rel={p.url_app ? 'noreferrer' : undefined}
-              className="group flex items-start gap-4 rounded-lg border border-border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-md"
-            >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-info/10 text-info">
-                <Building2 className="h-6 w-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="font-bold">{p.nombre}</h2>
-                  <Badge variant={estadoTone[p.estado?.toLowerCase()] ?? 'secondary'}>{p.estado}</Badge>
+          {proyectos.map((p) => {
+            const internalRoute = SLUG_TO_INTERNAL_ROUTE[p.slug]
+            const cardClass =
+              'group flex items-start gap-4 rounded-lg border border-border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-md'
+            const content = (
+              <>
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-info/10 text-info">
+                  <Building2 className="h-6 w-6" />
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">{p.descripcion}</p>
-              </div>
-              {p.url_app && <ExternalLink className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />}
-            </a>
-          ))}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-bold">{p.nombre}</h2>
+                    <Badge variant={estadoTone[p.estado?.toLowerCase()] ?? 'secondary'}>{p.estado}</Badge>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{p.descripcion}</p>
+                </div>
+                {!internalRoute && p.url_app && (
+                  <ExternalLink className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+                )}
+              </>
+            )
+            return internalRoute ? (
+              <Link key={p.id} to={internalRoute} className={cardClass}>
+                {content}
+              </Link>
+            ) : (
+              <a
+                key={p.id}
+                href={p.url_app ?? undefined}
+                target={p.url_app ? '_blank' : undefined}
+                rel={p.url_app ? 'noreferrer' : undefined}
+                className={cardClass}
+              >
+                {content}
+              </a>
+            )
+          })}
         </div>
       )}
     </div>
