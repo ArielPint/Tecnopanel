@@ -1,102 +1,170 @@
+import { Building2, CheckCircle2, Clock, LineChart, Receipt, Target, TrendingUp, Truck } from 'lucide-react'
 import { useDashboardData } from './useDashboardData'
 import { KPI_LABELS } from './types'
 import KpiCard from './KpiCard'
-import ProjectChart from './ProjectChart'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+
+function findKpi(kpis: { key: string; valor: number }[] | undefined, key: string): number | undefined {
+  return kpis?.find((k) => k.key === key)?.valor
+}
+
+function aggregate(
+  kpisPorProyecto: Record<string, { key: string; valor: number }[]>,
+  proyectoIds: string[],
+  key: string,
+  mode: 'sum' | 'avg'
+): number | undefined {
+  const values = proyectoIds.map((id) => findKpi(kpisPorProyecto[id], key)).filter((v): v is number => v != null)
+  if (values.length === 0) return undefined
+  const sum = values.reduce((a, b) => a + b, 0)
+  return mode === 'sum' ? sum : sum / values.length
+}
+
+function PercentBar({ value }: { value: number | undefined }) {
+  if (value == null) return <span className="text-sm text-muted-foreground">—</span>
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-[5px] w-14 overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-brand" style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />
+      </div>
+      <span className="font-mono-tabular text-[12.5px] text-muted-foreground">{Math.round(value)}%</span>
+    </div>
+  )
+}
 
 export default function DashboardPage() {
   const { proyectos, kpisPorProyecto, loading, error } = useDashboardData()
 
-  if (loading) {
-    return <p className="text-sm text-gray-500">Cargando dashboard…</p>
-  }
-
   if (error) {
     return (
-      <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
         Error al cargar datos: {error}
       </div>
     )
   }
 
-  // El CRM es un sistema de gestión interna (tipo Salesforce), no una obra de
-  // Tecnopanel, así que se muestra en su propia sección — igual que en el
-  // menú, donde vive bajo "Gestión" y no bajo "Proyectos".
   const proyectosConstruccion = proyectos.filter((p) => p.tipo?.toLowerCase() !== 'crm')
-  const sistemasGestion = proyectos.filter((p) => p.tipo?.toLowerCase() === 'crm')
+  const crmProyecto = proyectos.find((p) => p.tipo?.toLowerCase() === 'crm')
+  const construccionIds = proyectosConstruccion.map((p) => p.id)
 
-  function renderProyecto(proyecto: (typeof proyectos)[number]) {
-    const kpis = kpisPorProyecto[proyecto.id] ?? []
-    return (
-      <section key={proyecto.id} className="rounded-lg border bg-white p-5 shadow-sm dark:bg-neutral-800 dark:border-white/10">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">{proyecto.nombre}</h2>
-            <p className="text-xs uppercase tracking-wide text-gray-400 dark:text-white/40">{proyecto.tipo}</p>
-          </div>
-          {proyecto.url_app && (
-            <a
-              href={proyecto.url_app}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs font-medium text-tecnopanel hover:text-tecnopanel-hover hover:underline"
-            >
-              Abrir app →
-            </a>
-          )}
-        </div>
-
-        {kpis.length === 0 ? (
-          <p className="rounded-md bg-gray-50 p-3 text-sm text-gray-500 dark:bg-white/5 dark:text-white/50">
-            Sin datos aún — la sincronización automática de KPIs (Fase 3) todavía no está
-            implementada para este proyecto.
-          </p>
-        ) : (
-          <>
-            <div className="mb-4 grid grid-cols-2 gap-3">
-              {kpis.map((kpi) => (
-                <KpiCard key={kpi.id} label={KPI_LABELS[kpi.key] ?? kpi.key} value={kpi.valor} />
-              ))}
-            </div>
-            <ProjectChart kpis={kpis} />
-          </>
-        )}
-      </section>
-    )
+  const laChacraKpis = {
+    avance_fisico: aggregate(kpisPorProyecto, construccionIds, 'avance_fisico', 'avg'),
+    avance_economico: aggregate(kpisPorProyecto, construccionIds, 'avance_economico', 'avg'),
+    modulos_terminados: aggregate(kpisPorProyecto, construccionIds, 'modulos_terminados', 'sum'),
+    modulos_despachados: aggregate(kpisPorProyecto, construccionIds, 'modulos_despachados', 'sum'),
+    modulos_en_proceso: aggregate(kpisPorProyecto, construccionIds, 'modulos_en_proceso', 'sum'),
+    compras_total: aggregate(kpisPorProyecto, construccionIds, 'compras_total', 'sum'),
   }
 
+  const crmKpis = crmProyecto?.id ? kpisPorProyecto[crmProyecto.id] : undefined
+  const oportunidadesAbiertas = findKpi(crmKpis, 'oportunidades_abiertas')
+  const montoGanadoMes = findKpi(crmKpis, 'monto_ganado_mes')
+  const tasaConversion = findKpi(crmKpis, 'tasa_conversion')
+
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Dashboard Tecnopanel</h1>
-        <p className="text-sm text-gray-500 dark:text-white/50">
-          Vista consolidada de La Chacra y CRM. Todos los usuarios autenticados ven todos los
-          proyectos en esta versión (el filtrado por rol llega en la Fase 4 — Admin Panel).
-        </p>
+        <h1 className="text-xl font-extrabold">Dashboard Tecnopanel</h1>
+        <p className="text-sm text-muted-foreground">Vista consolidada de proyectos y CRM.</p>
       </div>
 
-      {proyectos.length === 0 && (
-        <p className="text-sm text-gray-500 dark:text-white/50">Aún no hay proyectos cargados en el hub.</p>
-      )}
-
-      {proyectosConstruccion.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-white/40">Proyectos</h2>
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {proyectosConstruccion.map(renderProyecto)}
-          </div>
+      <section aria-label="Indicadores Proyectos" className="space-y-2.5">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+          <span className="h-[7px] w-[7px] rounded-full bg-info" />
+          Indicadores Proyectos
         </div>
-      )}
-
-      {sistemasGestion.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-white/40">
-            Gestión interna
-          </h2>
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {sistemasGestion.map(renderProyecto)}
-          </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <KpiCard icon={Building2} tone="brand" label={KPI_LABELS.avance_fisico} value={laChacraKpis.avance_fisico} format="percent" loading={loading} />
+          <KpiCard icon={TrendingUp} tone="info" label={KPI_LABELS.avance_economico} value={laChacraKpis.avance_economico} format="percent" loading={loading} />
+          <KpiCard icon={CheckCircle2} tone="success" label={KPI_LABELS.modulos_terminados} value={laChacraKpis.modulos_terminados} loading={loading} />
+          <KpiCard icon={Truck} tone="purple" label={KPI_LABELS.modulos_despachados} value={laChacraKpis.modulos_despachados} loading={loading} />
+          <KpiCard icon={Clock} tone="warning" label={KPI_LABELS.modulos_en_proceso} value={laChacraKpis.modulos_en_proceso} loading={loading} />
+          <KpiCard icon={Receipt} tone="info" label={KPI_LABELS.compras_total} value={laChacraKpis.compras_total} format="currency" loading={loading} />
         </div>
-      )}
+      </section>
+
+      <section aria-label="Indicadores CRM" className="space-y-2.5">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+          <span className="h-[7px] w-[7px] rounded-full bg-brand" />
+          Indicadores CRM
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <KpiCard icon={Target} tone="warning" label={KPI_LABELS.oportunidades_abiertas} value={oportunidadesAbiertas} loading={loading} />
+          <KpiCard icon={TrendingUp} tone="success" label={KPI_LABELS.monto_ganado_mes} value={montoGanadoMes} format="currency" loading={loading} />
+          <KpiCard icon={LineChart} tone="brand" label={KPI_LABELS.tasa_conversion} value={tasaConversion} format="percent" loading={loading} />
+        </div>
+      </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Proyectos</CardTitle>
+          <CardDescription>Avance por proyecto</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {loading ? (
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-10 animate-pulse rounded bg-muted" />
+              ))}
+            </div>
+          ) : proyectosConstruccion.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aún no hay proyectos cargados en el hub.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Proyecto</TableHead>
+                  <TableHead>Avance físico</TableHead>
+                  <TableHead>Avance económico</TableHead>
+                  <TableHead className="text-right">Terminados</TableHead>
+                  <TableHead className="text-right">Despachados</TableHead>
+                  <TableHead className="text-right">En proceso</TableHead>
+                  <TableHead className="text-right">Compras</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {proyectosConstruccion.map((p) => {
+                  const kpis = kpisPorProyecto[p.id]
+                  const compras = findKpi(kpis, 'compras_total')
+                  return (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-bold">{p.nombre}</TableCell>
+                      <TableCell><PercentBar value={findKpi(kpis, 'avance_fisico')} /></TableCell>
+                      <TableCell><PercentBar value={findKpi(kpis, 'avance_economico')} /></TableCell>
+                      <TableCell className="text-right font-mono-tabular">{findKpi(kpis, 'modulos_terminados') ?? '—'}</TableCell>
+                      <TableCell className="text-right font-mono-tabular">{findKpi(kpis, 'modulos_despachados') ?? '—'}</TableCell>
+                      <TableCell className="text-right font-mono-tabular">{findKpi(kpis, 'modulos_en_proceso') ?? '—'}</TableCell>
+                      <TableCell className="text-right font-mono-tabular">
+                        {compras == null ? '—' : `$${(compras / 1_000_000).toLocaleString('es-CL', { maximumFractionDigits: 1 })}M`}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>CRM Tecnopanel</CardTitle>
+          <CardDescription>Pipeline de oportunidades</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <p className="rounded-md bg-muted/60 p-3 text-sm text-muted-foreground">
+            Sin datos aún — la sincronización con el CRM (Fase 3) todavía no está implementada.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -1,0 +1,79 @@
+import { LogOut } from 'lucide-react'
+import isologo from '@/modules/financiero/assets/tecnopanel-isologo-color.png'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/modules/financiero/components/ui/tabs'
+import { Button } from '@/modules/financiero/components/ui/button'
+import { Avatar, AvatarFallback } from '@/modules/financiero/components/ui/avatar'
+import { useAuth, type LogisticaTab } from '../hooks/useAuth'
+import DespachoGD from './DespachoGD'
+import RegistroGD from './RegistroGD'
+import StockIngreso from './StockIngreso'
+import Pedidos from './Pedidos'
+
+const TABS: { value: LogisticaTab; label: string; implementado: boolean }[] = [
+  { value: 'despacho-gd', label: 'Despacho GD', implementado: true },
+  { value: 'registro-gd', label: 'Registro GD', implementado: true },
+  { value: 'stock-ingreso', label: 'Stock Ingreso', implementado: true },
+  { value: 'pedidos', label: 'Pedidos', implementado: true },
+]
+
+function iniciales(nombre: string | undefined) {
+  if (!nombre) return '?'
+  return nombre.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('')
+}
+
+export default function LogisticaLayout() {
+  const { perfil, puedeVer, signOut } = useAuth()
+  const visibles = TABS.filter((t) => puedeVer(t.value))
+  const primerTab = visibles.find((t) => t.implementado)?.value ?? visibles[0]?.value ?? 'despacho-gd'
+
+  return (
+    <div className="flex min-h-svh flex-col">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4 md:px-6">
+        <img src={isologo} alt="" className="size-7 shrink-0" />
+        <div className="min-w-0">
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">LA CHACRA</p>
+          <p className="text-sm font-bold leading-none">Logística</p>
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          <Avatar className="size-8">
+            <AvatarFallback className="text-xs">{iniciales(perfil?.name)}</AvatarFallback>
+          </Avatar>
+          <Button variant="ghost" size="icon" onClick={signOut} title="Salir">
+            <LogOut className="size-4" />
+          </Button>
+        </div>
+      </header>
+
+      <main className="min-w-0 flex-1 overflow-x-auto p-4 md:p-6">
+        <Tabs defaultValue={primerTab}>
+          <TabsList variant="line" className="mb-4 flex-wrap border-b">
+            {visibles.map((t) => (
+              <TabsTrigger key={t.value} value={t.value} disabled={!t.implementado}>
+                {t.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          <TabsContent value="despacho-gd">
+            <DespachoGD />
+          </TabsContent>
+          <TabsContent value="registro-gd">
+            <RegistroGD />
+          </TabsContent>
+          <TabsContent value="stock-ingreso">
+            <StockIngreso />
+          </TabsContent>
+          <TabsContent value="pedidos">
+            <Pedidos />
+          </TabsContent>
+          {visibles
+            .filter((t) => !t.implementado)
+            .map((t) => (
+              <TabsContent key={t.value} value={t.value}>
+                <p className="py-10 text-center text-sm text-muted-foreground">Próximamente</p>
+              </TabsContent>
+            ))}
+        </Tabs>
+      </main>
+    </div>
+  )
+}

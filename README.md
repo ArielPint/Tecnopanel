@@ -29,8 +29,8 @@ npm run dev
 
 El proyecto se despliega en Vercel, importando el repo
 [`ArielPint/Tecnopanel`](https://github.com/ArielPint/Tecnopanel) directamente desde su dashboard.
-Cada `git push` a `main` dispara un deploy automático. Ver instrucciones paso a paso en
-`VERCEL_DEPLOY.md`.
+Publicado en **https://tecnopanel.vercel.app**. Cada `git push` a `main` dispara un deploy
+automático de producción. Ver instrucciones paso a paso en `VERCEL_DEPLOY.md`.
 
 `vite.config.ts` sirve desde la raíz (`base: '/'`) y `src/App.tsx` no usa `basename`, porque
 Vercel publica el sitio en la raíz de su propio dominio (no en un sub-path como GitHub Pages).

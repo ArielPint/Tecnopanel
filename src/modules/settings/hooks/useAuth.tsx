@@ -1,0 +1,81 @@
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { supabase } from '@/lib/supabaseClient'
+
+interface Perfil {
+  id: string
+  username: string
+  name: string
+  role: string
+  active: boolean
+  permissions: Record<string, unknown>
+}
+
+interface AuthValue {
+  perfil: Perfil | null
+  loading: boolean
+  isAdmin: boolean
+  signOut: () => Promise<void>
+}
+
+const AuthContext = createContext<AuthValue | null>(null)
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [loading, setLoading] = useState(true)
+  const [perfil, setPerfil] = useState<Perfil | null>(null)
+
+  useEffect(() => {
+    let cancelado = false
+
+    async function cargarPerfil() {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const userId = sessionData.session?.user.id
+      if (!userId) {
+        if (!cancelado) {
+          setPerfil(null)
+          setLoading(false)
+        }
+        return
+      }
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('id, username, name, role, active, permissions')
+        .eq('id', userId)
+        .single()
+      if (!cancelado) {
+        setPerfil((data as Perfil) ?? null)
+        setLoading(false)
+      }
+    }
+
+    cargarPerfil()
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      setLoading(true)
+      cargarPerfil()
+    })
+    return () => {
+      cancelado = true
+      sub.subscription.unsubscribe()
+    }
+  }, [])
+
+  return (
+    <AuthContext.Provider
+      value={{
+        perfil,
+        loading,
+        isAdmin: perfil?.role === 'admin',
+        signOut: async () => {
+          await supabase.auth.signOut()
+        },
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth debe usarse dentro de <AuthProvider>')
+  return ctx
+}
