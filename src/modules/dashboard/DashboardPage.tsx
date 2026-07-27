@@ -1,7 +1,9 @@
 import { Building2, CheckCircle2, Clock, LineChart, Receipt, Target, TrendingUp, Truck } from 'lucide-react'
 import { useDashboardData } from './useDashboardData'
+import { useCrmResumen } from './useCrmResumen'
 import { KPI_LABELS } from './types'
 import KpiCard from './KpiCard'
+import { fmtM } from '@/modules/planta/lib/format'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   Table,
@@ -42,6 +44,7 @@ function PercentBar({ value }: { value: number | undefined }) {
 
 export default function DashboardPage() {
   const { proyectos, kpisPorProyecto, loading, error } = useDashboardData()
+  const crmResumen = useCrmResumen()
 
   if (error) {
     return (
@@ -52,7 +55,6 @@ export default function DashboardPage() {
   }
 
   const proyectosConstruccion = proyectos.filter((p) => p.tipo?.toLowerCase() !== 'crm')
-  const crmProyecto = proyectos.find((p) => p.tipo?.toLowerCase() === 'crm')
   const construccionIds = proyectosConstruccion.map((p) => p.id)
 
   const laChacraKpis = {
@@ -63,11 +65,6 @@ export default function DashboardPage() {
     modulos_en_proceso: aggregate(kpisPorProyecto, construccionIds, 'modulos_en_proceso', 'sum'),
     compras_total: aggregate(kpisPorProyecto, construccionIds, 'compras_total', 'sum'),
   }
-
-  const crmKpis = crmProyecto?.id ? kpisPorProyecto[crmProyecto.id] : undefined
-  const oportunidadesAbiertas = findKpi(crmKpis, 'oportunidades_abiertas')
-  const montoGanadoMes = findKpi(crmKpis, 'monto_ganado_mes')
-  const tasaConversion = findKpi(crmKpis, 'tasa_conversion')
 
   return (
     <div className="space-y-8">
@@ -97,9 +94,9 @@ export default function DashboardPage() {
           Indicadores CRM
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <KpiCard icon={Target} tone="warning" label={KPI_LABELS.oportunidades_abiertas} value={oportunidadesAbiertas} loading={loading} />
-          <KpiCard icon={TrendingUp} tone="success" label={KPI_LABELS.monto_ganado_mes} value={montoGanadoMes} format="currency" loading={loading} />
-          <KpiCard icon={LineChart} tone="brand" label={KPI_LABELS.tasa_conversion} value={tasaConversion} format="percent" loading={loading} />
+          <KpiCard icon={Target} tone="warning" label={KPI_LABELS.oportunidades_abiertas} value={crmResumen.oportunidadesAbiertas} loading={crmResumen.loading} />
+          <KpiCard icon={TrendingUp} tone="success" label={KPI_LABELS.monto_ganado_mes} value={crmResumen.montoGanadoMes} format="currency" loading={crmResumen.loading} />
+          <KpiCard icon={LineChart} tone="brand" label={KPI_LABELS.tasa_conversion} value={crmResumen.tasaConversion} format="percent" loading={crmResumen.loading} />
         </div>
       </section>
 
@@ -160,9 +157,16 @@ export default function DashboardPage() {
           <CardDescription>Pipeline de oportunidades</CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
-          <p className="rounded-md bg-muted/60 p-3 text-sm text-muted-foreground">
-            Sin datos aún — la sincronización con el CRM (Fase 3) todavía no está implementada.
-          </p>
+          {crmResumen.loading ? (
+            <div className="h-10 animate-pulse rounded bg-muted" />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              <span className="font-bold text-foreground">{fmtM(crmResumen.pipelineMonto)}</span> en pipeline activo
+              {' · '}
+              <span className="font-bold text-foreground">{crmResumen.oportunidadesAbiertas}</span> oportunidad
+              {crmResumen.oportunidadesAbiertas !== 1 ? 'es' : ''} abierta{crmResumen.oportunidadesAbiertas !== 1 ? 's' : ''}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
