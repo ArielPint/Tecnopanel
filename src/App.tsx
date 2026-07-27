@@ -8,6 +8,7 @@ import UsuariosPage from './modules/usuarios/UsuariosPage'
 import DashboardPage from './modules/dashboard/DashboardPage'
 import ProyectosPage from './modules/proyectos/ProyectosPage'
 import CrmApp from './modules/crm/CrmApp'
+import CrmLoginPage from './modules/crm/pages/Login'
 import FinancieroApp from './modules/financiero/FinancieroApp'
 import DashboardPlantaApp from './modules/planta/DashboardPlantaApp'
 import LogisticaApp from './modules/logistica/LogisticaApp'
@@ -28,10 +29,11 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/crm/login" element={<CrmLoginPage />} />
         <Route
           path="/crm/*"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute loginPath="/crm/login">
               <CrmApp />
             </ProtectedRoute>
           }
