@@ -2,10 +2,97 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-gray-50 text-gray-900 font-sans dark:bg-neutral-900 dark:text-white transition-colors;
+@layer base {
+  :root {
+    --background: 240 29% 97%;
+    --foreground: 232 15% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 232 15% 11%;
+    --popover: 240 33% 99%;
+    --popover-foreground: 232 15% 11%;
+    --primary: 4 85% 54%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 17% 94%;
+    --secondary-foreground: 232 15% 11%;
+    --muted: 240 17% 94%;
+    --muted-foreground: 231 9% 46%;
+    --accent: 240 17% 94%;
+    --accent-foreground: 232 15% 11%;
+    --destructive: 4 68% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 19% 91%;
+    --input: 240 15% 85%;
+    --ring: 4 85% 54%;
+    --radius: 0.625rem;
+
+    --brand: 4 85% 54%;
+    --brand-hover: 4 75% 47%;
+    --info: 216 72% 56%;
+    --success: 157 76% 30%;
+    --warning: 37 88% 38%;
+
+    --chart-1: 218 91% 64%;
+    --chart-2: 4 85% 54%;
+    --chart-3: 153 60% 53%;
+    --chart-4: 31 91% 64%;
+    --chart-5: 265 100% 77%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 232 15% 11%;
+    --sidebar-border: 240 19% 91%;
+  }
+
+  .dark {
+    --background: 225 21% 7%;
+    --foreground: 233 26% 93%;
+    --card: 226 20% 13%;
+    --card-foreground: 233 26% 93%;
+    --popover: 227 18% 15%;
+    --popover-foreground: 233 26% 93%;
+    --primary: 4 85% 54%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 227 18% 10%;
+    --secondary-foreground: 233 26% 93%;
+    --muted: 227 18% 10%;
+    --muted-foreground: 230 13% 63%;
+    --accent: 227 18% 10%;
+    --accent-foreground: 233 26% 93%;
+    --destructive: 0 90% 67%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 231 18% 20%;
+    --input: 231 19% 27%;
+    --ring: 4 85% 54%;
+
+    --brand: 4 85% 54%;
+    --brand-hover: 4 87% 62%;
+    --info: 218 100% 72%;
+    --success: 153 60% 53%;
+    --warning: 31 91% 64%;
+
+    --chart-1: 218 91% 64%;
+    --chart-2: 4 85% 54%;
+    --chart-3: 153 60% 53%;
+    --chart-4: 31 91% 64%;
+    --chart-5: 265 100% 77%;
+
+    --sidebar-background: 226 20% 13%;
+    --sidebar-foreground: 233 26% 93%;
+    --sidebar-border: 231 18% 20%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased transition-colors;
+  }
+
+  h1, h2, h3 {
+    @apply font-bold tracking-tight;
+  }
 }
 
-h1, h2, h3, .font-display {
-  font-family: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+.font-mono-tabular {
+  font-variant-numeric: tabular-nums;
 }

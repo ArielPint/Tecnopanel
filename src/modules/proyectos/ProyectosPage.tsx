@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react'
+import { Building2, ExternalLink } from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient'
 import type { Proyecto } from '../dashboard/types'
+import { Badge } from '@/components/ui/badge'
+
+const estadoTone: Record<string, 'success' | 'warning' | 'secondary'> = {
+  activa: 'success',
+  activo: 'success',
+  pausada: 'warning',
+  pausado: 'warning',
+}
 
 export default function ProyectosPage() {
   const [proyectos, setProyectos] = useState<Proyecto[]>([])
@@ -19,41 +28,49 @@ export default function ProyectosPage() {
       })
   }, [])
 
-  if (loading) return <p className="text-sm text-gray-500 dark:text-white/50">Cargando…</p>
-
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Proyectos</h1>
-        <p className="text-sm text-gray-500 dark:text-white/50">
+        <h1 className="text-xl font-extrabold">Proyectos</h1>
+        <p className="text-sm text-muted-foreground">
           Gestión y creación de proyectos adicionales llega en la Fase 4 (Admin Panel). Por ahora,
           acceso rápido a los proyectos existentes.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {proyectos.map((p) => (
-          <div key={p.id} className="rounded-lg border bg-white p-4 shadow-sm dark:bg-neutral-800 dark:border-white/10">
-            <div className="flex items-center justify-between">
-              <h2 className="font-medium text-gray-900 dark:text-white">{p.nombre}</h2>
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-white/10 dark:text-white/60">
-                {p.estado}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-gray-500 dark:text-white/50">{p.descripcion}</p>
-            {p.url_app && (
-              <a
-                href={p.url_app}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-3 inline-block text-sm font-medium text-tecnopanel hover:text-tecnopanel-hover hover:underline"
-              >
-                Abrir app →
-              </a>
-            )}
-          </div>
-        ))}
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {[...Array(2)].map((_, i) => (
+            <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
+          ))}
+        </div>
+      ) : proyectos.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Aún no hay proyectos cargados en el hub.</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {proyectos.map((p) => (
+            <a
+              key={p.id}
+              href={p.url_app ?? undefined}
+              target={p.url_app ? '_blank' : undefined}
+              rel={p.url_app ? 'noreferrer' : undefined}
+              className="group flex items-start gap-4 rounded-lg border border-border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-md"
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-info/10 text-info">
+                <Building2 className="h-6 w-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-bold">{p.nombre}</h2>
+                  <Badge variant={estadoTone[p.estado?.toLowerCase()] ?? 'secondary'}>{p.estado}</Badge>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">{p.descripcion}</p>
+              </div>
+              {p.url_app && <ExternalLink className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />}
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

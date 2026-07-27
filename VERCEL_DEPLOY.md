@@ -23,9 +23,11 @@ compilación, tienen que estar configuradas en Vercel *antes* del primer deploy 
 buildear después de agregarlas).
 
 ## 3. Deploy
-Hacé clic en "Deploy". Vercel corre `npm install && npm run build` y publica `dist/` en un
-dominio tipo `tecnopanel-xxxx.vercel.app`. Podés renombrar el proyecto en Settings → General
-para conseguir un dominio más corto (ej. `tecnopanel-hub.vercel.app`, si está libre).
+Hacé clic en "Deploy". Vercel corre `npm install && npm run build` y publica `dist/`.
+
+**Ya hecho:** el proyecto quedó publicado en **https://tecnopanel.vercel.app** (dominio corto
+asignado automáticamente, además del `tecnopanel-xxxx-arielpints-projects.vercel.app` de
+deployment).
 
 ## 4. Deploys automáticos
 Con el repo importado, cada `git push` a `main` dispara un deploy de producción automático, y
