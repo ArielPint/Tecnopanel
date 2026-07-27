@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Target, Compass, Hammer, Ruler, Landmark, Users, Building2, LogOut, ChevronRight, X, ClipboardCheck, KeyRound, Trophy } from 'lucide-react'
+import { LayoutDashboard, Target, Compass, Hammer, Ruler, Landmark, Users, Building2, LogOut, ChevronRight, X, ClipboardCheck, KeyRound, Trophy, Home } from 'lucide-react'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import { usePermisos } from '@/modules/crm/contexts/PermisosContext'
 import { supabase } from '@/lib/supabaseClient'
+import { TecnopanelMark, TecnopanelWordmark } from '@/components/TecnopanelLogo'
 
 // Nota: se mantiene la ruta '/crm/cubicacion' para el modulo renombrado a "Costos y Presupuestos"
 // (antes "Cubicación") para no romper enlaces/bookmarks existentes; solo cambia el label visible.
@@ -67,8 +68,11 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
 
   const inner = (
     <aside className="w-64 flex-shrink-0 bg-[#1a1a1b] flex flex-col h-full">
-      <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between">
-        <img src="/logo-horizontal.png" alt="TECNOPANEL" className="w-full h-auto object-contain" />
+      <div className="px-5 py-5 border-b border-white/10 flex items-center gap-2.5 justify-between">
+        <div className="flex items-center gap-2.5">
+          <TecnopanelMark size={28} className="shrink-0" />
+          <TecnopanelWordmark variant="dark" className="text-base" />
+        </div>
         {onClose && (
           <button onClick={onClose} className="ml-3 p-1.5 rounded text-white/40 hover:text-white hover:bg-white/10 md:hidden">
             <X size={18} />
@@ -105,6 +109,18 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
                     <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
                   </NavLink>
                 ))}
+                {grupo.label === 'Sistema' && rol === 'admin' && (
+                  <NavLink
+                    to="/"
+                    className="group flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 text-white/60 hover:bg-white/10 hover:text-white"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Home size={16} />
+                      TecnoPanel Hub
+                    </span>
+                    <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+                  </NavLink>
+                )}
               </div>
             </div>
           )
