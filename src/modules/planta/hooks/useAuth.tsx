@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 
 interface Perfil {
   id: string
@@ -75,20 +76,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const isAdmin = perfil?.role === 'admin'
+  const acceso = usePermisosProyecto('la-chacra')
+  const isAdmin = acceso.isAdmin
 
-  const puedeVer = (tab: DashboardTab): boolean => {
-    if (isAdmin) return true
-    const pages = perfil?.permissions?.pages as Record<string, { access?: boolean; tabs?: string[] }> | undefined
-    const dashboard = pages?.dashboard
-    return dashboard?.access === true && Array.isArray(dashboard.tabs) && dashboard.tabs.includes(tab)
-  }
+  // ponytail: puedeVer ya no distingue por tab (ver nota en logistica/hooks/useAuth.tsx).
+  const puedeVer = (_tab: DashboardTab): boolean => acceso.tieneAccion('dashboard')
 
   return (
     <AuthContext.Provider
       value={{
         perfil,
-        loading,
+        loading: loading || acceso.loading,
         isAuthenticated: !!perfil,
         isAdmin,
         puedeVer,

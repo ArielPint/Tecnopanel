@@ -33,7 +33,7 @@ export default function App() {
         <Route
           path="/crm/*"
           element={
-            <ProtectedRoute loginPath="/crm/login">
+            <ProtectedRoute loginPath="/crm/login" requiere="crm">
               <CrmApp />
             </ProtectedRoute>
           }
@@ -41,7 +41,7 @@ export default function App() {
         <Route
           path="/proyectos/la-chacra/financiero/*"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiere="proyecto">
               <FinancieroApp />
             </ProtectedRoute>
           }
@@ -49,7 +49,7 @@ export default function App() {
         <Route
           path="/proyectos/la-chacra/dashboard/*"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiere="proyecto">
               <DashboardPlantaApp />
             </ProtectedRoute>
           }
@@ -57,7 +57,7 @@ export default function App() {
         <Route
           path="/proyectos/la-chacra/logistica/*"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiere="proyecto">
               <LogisticaApp />
             </ProtectedRoute>
           }
@@ -65,7 +65,7 @@ export default function App() {
         <Route
           path="/proyectos/la-chacra/solicitudes/*"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiere="proyecto">
               <SolicitudesApp />
             </ProtectedRoute>
           }
@@ -73,7 +73,7 @@ export default function App() {
         <Route
           path="/proyectos/la-chacra/settings/*"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiere="proyecto">
               <SettingsApp />
             </ProtectedRoute>
           }
@@ -86,9 +86,23 @@ export default function App() {
           }
         >
           <Route path="/" element={<DashboardPage />} />
-          <Route path="/proyectos" element={<ProyectosPage />} />
+          <Route
+            path="/proyectos"
+            element={
+              <ProtectedRoute requiere="proyecto">
+                <ProyectosPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/geovictoria" element={<GeoVictoriaPage />} />
-          <Route path="/usuarios" element={<UsuariosPage />} />
+          <Route
+            path="/usuarios"
+            element={
+              <ProtectedRoute requiere="admin">
+                <UsuariosPage />
+              </ProtectedRoute>
+            }
+          />
         </Route>
       </Routes>
     </BrowserRouter>

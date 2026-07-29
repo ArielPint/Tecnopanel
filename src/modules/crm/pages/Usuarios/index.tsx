@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Pencil, Check, X, UserCheck, UserX, ChevronDown, ChevronUp, Shield } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { syncPermisosCrm } from '@/lib/syncPermisos'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string
 
@@ -112,6 +113,7 @@ export default function Usuarios() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Error al crear usuario')
+      if (json.id) await syncPermisosCrm(json.id, form.modulos)
       setCreating(false); setForm({ nombre:'', apellido:'', email:'', password:'', rol:'vendedor', modulos: DEFAULT_MODULOS.vendedor }); await load()
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Error desconocido') }
     setSaving(false)
@@ -124,6 +126,7 @@ export default function Usuarios() {
       .update({ nombre: editing.nombre, apellido: editing.apellido, rol: editing.rol, modulos: editing.modulos })
       .eq('id', editing.id)
     if (err) { setError(err.message); setSaving(false); return }
+    await syncPermisosCrm(editing.id, editing.modulos)
     if (editing.nuevaPassword) {
       try {
         const { data: { session } } = await supabase.auth.refreshSession()

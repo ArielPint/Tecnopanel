@@ -1,6 +1,8 @@
-import { Building2, CheckCircle2, Clock, LineChart, Receipt, Target, TrendingUp, Truck } from 'lucide-react'
+import { Building2, CheckCircle2, Clock, LineChart, Receipt, Target, TrendingUp, Truck, Lock, ArrowRight } from 'lucide-react'
+import { Navigate, Link } from 'react-router-dom'
 import { useDashboardData } from './useDashboardData'
 import { useCrmResumen } from './useCrmResumen'
+import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
 import { KPI_LABELS } from './types'
 import KpiCard from './KpiCard'
 import { fmtM } from '@/modules/planta/lib/format'
@@ -43,8 +45,62 @@ function PercentBar({ value }: { value: number | undefined }) {
 }
 
 export default function DashboardPage() {
+  const acceso = useAccesoUsuario()
   const { proyectos, kpisPorProyecto, loading, error } = useDashboardData()
   const crmResumen = useCrmResumen()
+
+  if (acceso.loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
+        Cargando…
+      </div>
+    )
+  }
+
+  if (acceso.escenario === 'solo_crm') {
+    return <Navigate to="/crm" replace />
+  }
+
+  if (acceso.escenario === 'solo_proyecto') {
+    return <Navigate to="/proyectos/la-chacra/dashboard" replace />
+  }
+
+  if (acceso.escenario === 'sin_acceso') {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-center">
+        <Lock className="h-8 w-8 text-muted-foreground" />
+        <h1 className="text-lg font-bold">Sin acceso</h1>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Tu cuenta no tiene módulos ni proyectos asignados. Contacta a un administrador para que te habilite el acceso.
+        </p>
+      </div>
+    )
+  }
+
+  if (acceso.escenario === 'selector_portales') {
+    return (
+      <div className="mx-auto flex min-h-[50vh] max-w-md flex-col justify-center gap-4">
+        <div>
+          <h1 className="text-lg font-bold">¿A dónde quieres ingresar?</h1>
+          <p className="text-sm text-muted-foreground">Tienes acceso a más de un portal.</p>
+        </div>
+        <Link
+          to="/proyectos/la-chacra/dashboard"
+          className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
+        >
+          Proyecto La Chacra
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+        <Link
+          to="/crm"
+          className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
+        >
+          CRM Tecnopanel
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+    )
+  }
 
   if (error) {
     return (

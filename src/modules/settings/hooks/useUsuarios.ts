@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { syncPermisosLaChacra } from '@/lib/syncPermisos'
 import { defaultPagePerms, type PagePerms } from '../lib/pageMap'
 
 export interface Usuario {
@@ -94,6 +95,7 @@ export function useUsuarios() {
       })
       if (error) throw new Error(error.message)
       if (data?.error) throw new Error(data.error)
+      if (data?.id) await syncPermisosLaChacra(data.id, input.pages, input.financieroEdit)
       await refetch()
     },
     [refetch],
@@ -114,6 +116,7 @@ export function useUsuarios() {
         })
         .eq('id', id)
       if (error) throw new Error(error.message)
+      await syncPermisosLaChacra(id, input.pages, input.financieroEdit)
       if (input.password) {
         const { data, error: fnError } = await supabase.functions.invoke('manage-users', {
           body: { action: 'update_password', userId: id, password: input.password },

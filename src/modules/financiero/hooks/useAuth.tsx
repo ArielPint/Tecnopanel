@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 
 interface Perfil {
   id: string
@@ -75,19 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const isAdmin = perfil?.role === 'admin'
+  const acceso = usePermisosProyecto('la-chacra')
+  const isAdmin = acceso.isAdmin
 
-  const puedeVer = (tab: FinancieroTab): boolean => {
-    if (isAdmin) return true
-    const pages = perfil?.permissions?.pages as Record<string, { access?: boolean; tabs?: string[] }> | undefined
-    const financiero = pages?.financiero
-    return financiero?.access === true && Array.isArray(financiero.tabs) && financiero.tabs.includes(tab)
-  }
+  // ponytail: puedeVer ya no distingue por tab (ver nota en logistica/hooks/useAuth.tsx).
+  const puedeVer = (_tab: FinancieroTab): boolean => acceso.tieneAccion('financiero')
 
-  const puedeEditar = (seccion: FinancieroSeccionEditable): boolean => {
-    if (isAdmin) return true
-    return perfil?.permissions?.[`permiso_financiero_${seccion}`] === true
-  }
+  // Cada sección editable es su propio modulo_key ("financiero:<seccion>") para no
+  // perder la granularidad que ya existía en permiso_financiero_<seccion>.
+  const puedeEditar = (seccion: FinancieroSeccionEditable): boolean =>
+    acceso.tieneAccion(`financiero:${seccion}`, 'editar')
 
   const canEditOC = puedeEditar('oc')
 
@@ -95,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         perfil,
-        loading,
+        loading: loading || acceso.loading,
         isAuthenticated: !!perfil,
         isAdmin,
         canEditOC,

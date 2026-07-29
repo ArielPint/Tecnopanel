@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 
 interface Perfil {
   id: string
@@ -62,20 +63,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const isAdmin = perfil?.role === 'admin'
+  const acceso = usePermisosProyecto('la-chacra')
+  const isAdmin = acceso.isAdmin
 
-  const puedeVer = (tab: LogisticaTab): boolean => {
-    if (isAdmin) return true
-    const pages = perfil?.permissions?.pages as Record<string, { access?: boolean; tabs?: string[] }> | undefined
-    const logistica = pages?.logistica
-    return logistica?.access === true && Array.isArray(logistica.tabs) && logistica.tabs.includes(tab)
-  }
+  // ponytail: puedeVer ya no distingue por tab — nadie tiene hoy un subconjunto
+  // parcial de tabs (todo-o-nada por módulo), y permisos(modulo_key,accion) no
+  // modela tabs. El parámetro se mantiene para no tocar los call sites.
+  const puedeVer = (_tab: LogisticaTab): boolean => acceso.tieneAccion('logistica')
 
   return (
     <AuthContext.Provider
       value={{
         perfil,
-        loading,
+        loading: loading || acceso.loading,
         isAuthenticated: !!perfil,
         isAdmin,
         puedeVer,

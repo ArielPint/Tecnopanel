@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 
 interface Perfil {
   id: string
@@ -58,12 +59,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const acceso = usePermisosProyecto('la-chacra')
+
   return (
     <AuthContext.Provider
       value={{
         perfil,
-        loading,
-        isAdmin: perfil?.role === 'admin',
+        loading: loading || acceso.loading,
+        isAdmin: acceso.isAdmin,
         signOut: async () => {
           await supabase.auth.signOut()
         },

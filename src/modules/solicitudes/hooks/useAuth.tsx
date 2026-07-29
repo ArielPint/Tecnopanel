@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 
 interface Perfil {
   id: string
@@ -62,21 +63,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const isAdmin = perfil?.role === 'admin'
+  const acceso = usePermisosProyecto('la-chacra')
+  const isAdmin = acceso.isAdmin
 
+  // ponytail: 'catalogo' nunca estuvo en pageMap.ts (tabs de solicitudes = nueva/historial
+  // nomás) — hoy es admin-only, no algo que se pueda otorgar por acceso a "solicitudes".
+  // Se preserva explícito para no regalarlo al colapsar el resto a acceso por módulo.
   const puedeVer = (tab: SolicitudesTab): boolean => {
-    if (isAdmin) return true
-    if (tab === 'catalogo') return false
-    const pages = perfil?.permissions?.pages as Record<string, { access?: boolean; tabs?: string[] }> | undefined
-    const solicitudes = pages?.solicitudes
-    return solicitudes?.access === true && Array.isArray(solicitudes.tabs) && solicitudes.tabs.includes(tab)
+    if (tab === 'catalogo') return isAdmin
+    return acceso.tieneAccion('solicitudes')
   }
 
   return (
     <AuthContext.Provider
       value={{
         perfil,
-        loading,
+        loading: loading || acceso.loading,
         isAuthenticated: !!perfil,
         isAdmin,
         puedeVer,

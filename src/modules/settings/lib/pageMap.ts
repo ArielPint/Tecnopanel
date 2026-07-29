@@ -1,7 +1,7 @@
 // Mapa de páginas/pestañas del hub gateadas por user_profiles.permissions.pages.<id>.{access,tabs[]}.
 // Solo incluye módulos que hoy consumen ese permiso (ver useAuth.tsx de cada módulo) — crm y planta
 // quedan afuera porque usan `profiles` propia o no llegaron a esta fase (layout/producción/geovictoria).
-export type PageId = 'financiero' | 'planta' | 'logistica' | 'solicitudes'
+export type PageId = 'financiero' | 'dashboard' | 'logistica' | 'solicitudes'
 
 export interface PageDef {
   label: string
@@ -10,7 +10,10 @@ export interface PageDef {
 }
 
 export const PAGE_MAP: Record<PageId, PageDef> = {
-  planta: {
+  // ponytail: la clave real es 'dashboard' (coincide con planta/hooks/useAuth.tsx,
+  // que es lo que gatea de verdad, y con la ruta /proyectos/la-chacra/dashboard) —
+  // antes decía 'planta' acá y el toggle de Admin para este módulo nunca hacía nada.
+  dashboard: {
     label: 'Dashboard Planta',
     tabs: {
       resumen: 'Resumen',
