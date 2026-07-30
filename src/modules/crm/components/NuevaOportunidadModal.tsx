@@ -168,6 +168,11 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
           url: path, extension: ext, tamanio_bytes: archivo.size,
           subido_por: profile?.id, etapa: 'Clasificación',
         })
+      } else {
+        setSaving(false)
+        setError(`La oportunidad se creó, pero el archivo no se pudo subir: ${upErr.message}`)
+        onSuccess()
+        return
       }
     }
 
@@ -193,7 +198,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Nombre *</label>
             <input value={form.nombre} onChange={e => setForm(f=>({...f,nombre:e.target.value}))} required
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -205,12 +210,12 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             {showNuevoCliente ? (
               <div className="bg-gray-50 rounded-lg p-3 space-y-2 mb-2">
                 <input value={nuevoCliente.razon_social} onChange={e => setNuevoCliente(c=>({...c,razon_social:e.target.value}))}
-                  placeholder="Razón social *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs" />
+                  placeholder="Razón social *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
                 <div className="grid grid-cols-2 gap-2">
                   <input value={nuevoCliente.rut} onChange={e => setNuevoCliente(c=>({...c,rut:e.target.value}))}
-                    placeholder="RUT" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs" />
+                    placeholder="RUT" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
                   <input value={nuevoCliente.rubro} onChange={e => setNuevoCliente(c=>({...c,rubro:e.target.value}))}
-                    placeholder="Rubro" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs" />
+                    placeholder="Rubro" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
                 </div>
                 {errorCliente && <p className="text-xs text-red-600">{errorCliente}</p>}
                 <button type="button" onClick={crearClienteInline} disabled={creandoCliente}
@@ -220,7 +225,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
               </div>
             ) : null}
             <select value={form.cliente_id} onChange={e => setForm(f=>({...f,cliente_id:e.target.value}))}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red">
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
               <option value="">Sin cliente</option>
               {clientes.map(c => <option key={c.id} value={c.id}>{c.razon_social}</option>)}
             </select>
@@ -229,7 +234,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
               <select value={form.tipo_venta} onChange={e => setForm(f=>({...f,tipo_venta:e.target.value as TipoVenta}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red">
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
                 <option value="Proyecto">{TIPO_VENTA_LABELS.Proyecto}</option>
                 <option value="Producto">{TIPO_VENTA_LABELS.Producto}</option>
                 <option value="Kit">{TIPO_VENTA_LABELS.Kit}</option>
@@ -245,7 +250,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Nombre entidad patrocinante</label>
               <input value={form.nombre_entidad_patrocinante} onChange={e => setForm(f=>({...f,nombre_entidad_patrocinante:e.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
             </div>
           )}
 
@@ -253,12 +258,12 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Monto estimado (CLP)</label>
               <input type="number" value={form.monto_estimado} onChange={e => setForm(f=>({...f,monto_estimado:e.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Fecha de presentación</label>
               <input type="date" value={form.fecha_cierre_est} onChange={e => setForm(f=>({...f,fecha_cierre_est:e.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
             </div>
           </div>
 
@@ -266,7 +271,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Región</label>
               <select value={form.region} onChange={e => setForm(f=>({...f,region:e.target.value,comuna:''}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red">
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
                 <option value="">Sin región</option>
                 {REGIONES.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
@@ -274,7 +279,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Comuna</label>
               <select value={form.comuna} onChange={e => setForm(f=>({...f,comuna:e.target.value}))} disabled={!form.region}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red disabled:bg-gray-50 disabled:text-gray-400">
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red disabled:bg-gray-50 disabled:text-gray-400">
                 <option value="">{form.region ? 'Sin comuna' : 'Elige una región primero'}</option>
                 {comunasDisponibles.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -285,12 +290,12 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad de casas</label>
               <input type="number" min="0" value={form.cantidad_casas} onChange={e => setForm(f=>({...f,cantidad_casas:e.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad de tipos de casas</label>
               <input type="number" min="0" value={form.cantidad_tipos_casas} onChange={e => setForm(f=>({...f,cantidad_tipos_casas:e.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
             </div>
           </div>
 
@@ -298,19 +303,19 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Fecha estimada de adjudicación</label>
               <input type="date" value={form.fecha_adjudicacion_est} onChange={e => setForm(f=>({...f,fecha_adjudicacion_est:e.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Fecha estimada inicio despachos</label>
               <input type="date" value={form.fecha_inicio_despachos_est} onChange={e => setForm(f=>({...f,fecha_inicio_despachos_est:e.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Duración estimada del proyecto (meses)</label>
             <input type="number" min="0" value={form.duracion_meses_est} onChange={e => setForm(f=>({...f,duracion_meses_est:e.target.value}))}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
           </div>
 
           <div>
@@ -353,7 +358,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Descripción</label>
             <textarea value={form.descripcion} onChange={e => setForm(f=>({...f,descripcion:e.target.value}))} rows={2}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" />
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" />
           </div>
           {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg p-2">{error}</p>}
           <div className="flex gap-3 pt-1">

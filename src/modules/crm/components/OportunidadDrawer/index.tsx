@@ -566,14 +566,14 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       <div key={key}>
         <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
         <input type={type} value={etapaData[key] ?? ''} onChange={ev => setEtapaData(d => ({...d,[key]:ev.target.value}))} placeholder={placeholder}
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" />
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
       </div>
     )
     const ta = (key: string, label: string, placeholder = '') => (
       <div key={key}>
         <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
         <textarea value={etapaData[key] ?? ''} onChange={ev => setEtapaData(d => ({...d,[key]:ev.target.value}))} rows={3} placeholder={placeholder}
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" />
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" />
       </div>
     )
     if (e === 'Clasificación') return (
@@ -588,7 +588,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Tipo de documento entregado</label>
           <select value={etapaData['tipo_documento'] ?? ''} onChange={ev => setEtapaData(d => ({...d,tipo_documento:ev.target.value}))}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red">
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
             <option value="">Seleccionar...</option>
             <option value="Plano">Plano</option>
             <option value="Ficha">Ficha</option>
@@ -645,11 +645,11 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
           </button>
           {showItemManual && (
             <div className="bg-gray-50 rounded-lg p-3 space-y-2 mt-2">
-              <input value={itemManual.categoria} onChange={ev => setItemManual(m => ({...m, categoria: ev.target.value}))} placeholder="Categoría (ej. PANELES)" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs" />
-              <input value={itemManual.nombre} onChange={ev => setItemManual(m => ({...m, nombre: ev.target.value}))} placeholder="Descripción *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs" />
+              <input value={itemManual.categoria} onChange={ev => setItemManual(m => ({...m, categoria: ev.target.value}))} placeholder="Categoría (ej. PANELES)" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
+              <input value={itemManual.nombre} onChange={ev => setItemManual(m => ({...m, nombre: ev.target.value}))} placeholder="Descripción *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
               <div className="grid grid-cols-2 gap-2">
-                <input type="number" value={itemManual.costo_unitario} onChange={ev => setItemManual(m => ({...m, costo_unitario: ev.target.value}))} placeholder="Costo unitario *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs" />
-                <input type="number" value={itemManual.cantidad} onChange={ev => setItemManual(m => ({...m, cantidad: ev.target.value}))} placeholder="Cantidad" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs" />
+                <input type="number" value={itemManual.costo_unitario} onChange={ev => setItemManual(m => ({...m, costo_unitario: ev.target.value}))} placeholder="Costo unitario *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
+                <input type="number" value={itemManual.cantidad} onChange={ev => setItemManual(m => ({...m, cantidad: ev.target.value}))} placeholder="Cantidad" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
               </div>
               <button type="button" onClick={agregarItemManual} className="px-3 py-1 text-xs text-white rounded" style={{background:'#ed3224'}}>Agregar</button>
             </div>
@@ -669,7 +669,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
           <label className="block text-xs font-medium text-gray-600 mb-1">Condiciones técnicas (para el PDF)</label>
           <textarea value={etapaData['condiciones_tecnicas'] ?? CONDICIONES_TECNICAS_DEFAULT}
             onChange={ev => setEtapaData(d => ({ ...d, condiciones_tecnicas: ev.target.value }))} rows={5}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" />
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" />
         </div>
         <p className="text-xs text-gray-400">El PDF se genera en la etapa Revisión Vendedor, luego de revisar toda la información.</p>
 
@@ -689,7 +689,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
             <label className="block text-xs font-medium text-gray-600 mb-1">Margen (%)</label>
             <input type="number" defaultValue={opp.margen_porcentaje ?? ''}
               onBlur={ev => { const v = ev.target.value ? Number(ev.target.value) : null; if (v !== opp.margen_porcentaje) saveMargen(v) }}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
           </div>
           {ta('condiciones_comerciales','Condiciones comerciales','Formas de pago, garantias...')}{ta('notas_revision','Notas del vendedor','')}
           <div className="pt-3 border-t border-gray-200">
@@ -718,7 +718,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Necesita Piloto</label>
           <select value={etapaData['necesita_piloto'] ?? ''} onChange={ev => setEtapaData(d => ({...d, necesita_piloto: ev.target.value}))}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red">
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
             <option value="">Seleccionar...</option>
             <option value="Si">Si</option>
             <option value="No">No</option>
@@ -739,14 +739,14 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
           <div className="grid grid-cols-2 gap-3">
             <div><label className="block text-xs font-medium text-gray-600 mb-1">Número OC</label>
               <input value={ocForm.numero_oc} onChange={ev => setOcForm(f => ({...f, numero_oc: ev.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
             <div><label className="block text-xs font-medium text-gray-600 mb-1">Fecha Inicio despachos masivos</label>
               <input type="date" value={ocForm.fecha_oc} onChange={ev => setOcForm(f => ({...f, fecha_oc: ev.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
           </div>
           <div><label className="block text-xs font-medium text-gray-600 mb-1">Monto OC (CLP)</label>
             <input type="number" value={ocForm.monto_oc} onChange={ev => setOcForm(f => ({...f, monto_oc: ev.target.value}))}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
           <button onClick={guardarOc} disabled={savingOc} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
             {savingOc && <Loader2 size={14} className="animate-spin" />}{savingOc ? 'Guardando...' : 'Guardar OC'}
           </button>
@@ -812,39 +812,39 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
           ) : tab === 'general' ? (
             <div className="space-y-4">
               <div><label className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
-                <input value={opp.nombre} onChange={e => setOpp(o => ({...o,nombre:e.target.value}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                <input value={opp.nombre} onChange={e => setOpp(o => ({...o,nombre:e.target.value}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Tipo venta</label>
-                  <select value={opp.tipo_venta} onChange={e => setOpp(o => ({...o,tipo_venta:e.target.value as 'Proyecto'|'Producto'|'Kit'}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red">
+                  <select value={opp.tipo_venta} onChange={e => setOpp(o => ({...o,tipo_venta:e.target.value as 'Proyecto'|'Producto'|'Kit'}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
                     <option value="Proyecto">{TIPO_VENTA_LABELS.Proyecto}</option>
                     <option value="Producto">{TIPO_VENTA_LABELS.Producto}</option>
                     <option value="Kit">{TIPO_VENTA_LABELS.Kit}</option>
                   </select></div>
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Fecha de presentación</label>
-                  <input type="date" value={opp.fecha_cierre_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_cierre_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  <input type="date" value={opp.fecha_cierre_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_cierre_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Monto estimado (CLP)</label>
-                  <input type="number" value={opp.monto_estimado ?? ''} onChange={e => setOpp(o => ({...o,monto_estimado:e.target.value ? Number(e.target.value) : null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  <input type="number" value={opp.monto_estimado ?? ''} onChange={e => setOpp(o => ({...o,monto_estimado:e.target.value ? Number(e.target.value) : null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Probabilidad: {opp.probabilidad}%</label>
                   <input type="range" min="0" max="100" step="5" value={opp.probabilidad} onChange={e => setOpp(o => ({...o,probabilidad:Number(e.target.value)}))} className="w-full mt-2" /></div>
               </div>
               <div><label className="block text-xs font-medium text-gray-600 mb-1">Descripcion</label>
-                <textarea value={opp.descripcion ?? ''} onChange={e => setOpp(o => ({...o,descripcion:e.target.value||null}))} rows={3} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" /></div>
+                <textarea value={opp.descripcion ?? ''} onChange={e => setOpp(o => ({...o,descripcion:e.target.value||null}))} rows={3} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" /></div>
 
               {opp.tipo_venta === 'Kit' && (
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Entidad patrocinante</label>
-                  <input value={opp.nombre_entidad_patrocinante ?? ''} onChange={e => setOpp(o => ({...o,nombre_entidad_patrocinante:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  <input value={opp.nombre_entidad_patrocinante ?? ''} onChange={e => setOpp(o => ({...o,nombre_entidad_patrocinante:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
               )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Región</label>
-                  <select value={opp.region ?? ''} onChange={e => setOpp(o => ({...o,region:e.target.value||null,comuna:null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red">
+                  <select value={opp.region ?? ''} onChange={e => setOpp(o => ({...o,region:e.target.value||null,comuna:null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
                     <option value="">Sin región</option>
                     {REGIONES.map(r => <option key={r} value={r}>{r}</option>)}
                   </select></div>
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Comuna</label>
-                  <select value={opp.comuna ?? ''} onChange={e => setOpp(o => ({...o,comuna:e.target.value||null}))} disabled={!opp.region} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red disabled:bg-gray-50 disabled:text-gray-400">
+                  <select value={opp.comuna ?? ''} onChange={e => setOpp(o => ({...o,comuna:e.target.value||null}))} disabled={!opp.region} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red disabled:bg-gray-50 disabled:text-gray-400">
                     <option value="">{opp.region ? 'Sin comuna' : 'Elige una región primero'}</option>
                     {comunasDisponibles.map(c => <option key={c} value={c}>{c}</option>)}
                   </select></div>
@@ -852,20 +852,20 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
 
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de casas</label>
-                  <input type="number" min="0" value={opp.cantidad_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  <input type="number" min="0" value={opp.cantidad_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de tipos de casas</label>
-                  <input type="number" min="0" value={opp.cantidad_tipos_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_tipos_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  <input type="number" min="0" value={opp.cantidad_tipos_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_tipos_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Fecha estimada adjudicación</label>
-                  <input type="date" value={opp.fecha_adjudicacion_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_adjudicacion_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  <input type="date" value={opp.fecha_adjudicacion_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_adjudicacion_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Fecha estimada inicio despachos</label>
-                  <input type="date" value={opp.fecha_inicio_despachos_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_inicio_despachos_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  <input type="date" value={opp.fecha_inicio_despachos_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_inicio_despachos_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
               </div>
 
               <div><label className="block text-xs font-medium text-gray-600 mb-1">Duración estimada (meses)</label>
-                <input type="number" min="0" value={opp.duracion_meses_est ?? ''} onChange={e => setOpp(o => ({...o,duracion_meses_est:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                <input type="number" min="0" value={opp.duracion_meses_est ?? ''} onChange={e => setOpp(o => ({...o,duracion_meses_est:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
 
               <div><label className="block text-xs font-medium text-gray-600 mb-1.5">Familia de productos</label>
                 <div className="flex flex-wrap gap-3">
@@ -925,8 +925,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                   </div>
                   {showCrearTarea && (
                     <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                      <input value={nuevaTarea.titulo} onChange={e => setNuevaTarea(t=>({...t,titulo:e.target.value}))} placeholder="Título *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs" />
-                      <textarea value={nuevaTarea.descripcion} onChange={e => setNuevaTarea(t=>({...t,descripcion:e.target.value}))} placeholder="Descripción" rows={2} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs resize-none" />
+                      <input value={nuevaTarea.titulo} onChange={e => setNuevaTarea(t=>({...t,titulo:e.target.value}))} placeholder="Título *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
+                      <textarea value={nuevaTarea.descripcion} onChange={e => setNuevaTarea(t=>({...t,descripcion:e.target.value}))} placeholder="Descripción" rows={2} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900 resize-none" />
                       <div>
                         <label className="block text-xs text-gray-500 mb-1">Asignar a (múltiples ingenieros)</label>
                         <div className="space-y-1 max-h-28 overflow-y-auto border border-gray-200 rounded p-1.5">
@@ -941,7 +941,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                           ))}
                         </div>
                       </div>
-                      <input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea(t=>({...t,fecha_limite:e.target.value}))} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs" />
+                      <input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea(t=>({...t,fecha_limite:e.target.value}))} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
                       <button onClick={crearTarea} disabled={creandoTarea} className="px-3 py-1 text-xs text-white rounded disabled:opacity-60" style={{background:'#ed3224'}}>
                         {creandoTarea ? 'Creando...' : 'Crear'}
                       </button>
@@ -979,8 +979,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
               </div>
               {showLink && (
                 <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                  <input value={linkNombre} onChange={e => setLinkNombre(e.target.value)} placeholder="Nombre (opcional)" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs" />
-                  <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="URL https://..." className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs" />
+                  <input value={linkNombre} onChange={e => setLinkNombre(e.target.value)} placeholder="Nombre (opcional)" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
+                  <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="URL https://..." className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
                   <div className="flex gap-2">
                     <button onClick={addLink} className="px-3 py-1 text-xs text-white rounded" style={{background:'#ed3224'}}>Agregar</button>
                     <button onClick={() => {setShowLink(false);setLinkUrl('');setLinkNombre('')}} className="px-3 py-1 text-xs text-gray-500 border border-gray-200 rounded">Cancelar</button>
@@ -1019,7 +1019,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
               <div className="flex gap-2 pt-3 mt-2 border-t border-gray-200">
                 <input value={nuevoMensaje} onChange={e => setNuevoMensaje(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') enviarMensaje() }}
-                  placeholder="Escribe un mensaje..." className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                  placeholder="Escribe un mensaje..." className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
                 <button onClick={enviarMensaje} className="px-3 py-2 text-white rounded-lg" style={{background:'#ed3224'}}><Send size={14} /></button>
               </div>
             </div>
