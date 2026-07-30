@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useThemeStore } from '../store/themeStore'
+import GlobalSearch from './GlobalSearch'
 import { TecnopanelMark, TecnopanelWordmark } from './TecnopanelLogo'
 import { Avatar, AvatarFallback } from './ui/avatar'
 import { Sheet, SheetContent } from './ui/sheet'
@@ -178,6 +179,7 @@ export default function Layout() {
             </span>
           </div>
           <div className="flex items-center gap-1.5">
+            <GlobalSearch />
             <button
               onClick={toggleMode}
               className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
