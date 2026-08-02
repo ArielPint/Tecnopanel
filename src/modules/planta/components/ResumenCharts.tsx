@@ -28,14 +28,23 @@ export function DistribucionModulosChart({ data }: { data: ResumenData['distribu
 
 export function ComprasVsPresupuestoChart({ data }: { data: ResumenData['comprasVsPresupuesto'] }) {
   const config = {
-    real: { label: 'Compras reales', color: 'var(--info, #58a6ff)' },
-    presupuesto: { label: 'Presupuesto', color: 'var(--warning, #e3903e)' },
+    real: { label: 'Compras reales', color: 'hsl(var(--info))' },
+    presupuesto: { label: 'Presupuesto', color: 'hsl(var(--warning))' },
   } satisfies ChartConfig
   return (
-    <ChartContainer config={config} className="aspect-auto h-[280px] w-full">
-      <BarChart data={data} margin={{ left: 8, right: 8 }}>
+    <ChartContainer config={config} className="aspect-auto h-[300px] w-full">
+      <BarChart data={data} margin={{ left: 8, right: 8, bottom: 16 }}>
         <CartesianGrid vertical={false} />
-        <XAxis dataKey="mes" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+        <XAxis
+          dataKey="mes"
+          tick={{ fontSize: 11 }}
+          tickLine={false}
+          axisLine={false}
+          interval={0}
+          angle={-35}
+          textAnchor="end"
+          height={40}
+        />
         <YAxis tickFormatter={(v) => fmtM(v)} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={64} />
         <ChartTooltip
           content={
