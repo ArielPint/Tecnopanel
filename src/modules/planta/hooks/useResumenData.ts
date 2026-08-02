@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { getProyectoId } from '@/lib/proyectoIds'
 import { MESES_ORDER, parseDate } from '../lib/format'
 import type { DetalleGdRow, ParsedDashboardData } from '../lib/excelParser'
 import {
@@ -60,6 +62,7 @@ export function getHomeAvance(
 }
 
 export function useResumenData(excelData: ParsedDashboardData | null) {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [loadingSupa, setLoadingSupa] = useState(true)
   const [supaCompras, setSupaCompras] = useState<DetalleGdRow[]>([])
   const [presupuestoTotal, setPresupuestoTotal] = useState<number | null>(null)
@@ -70,11 +73,12 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
   useEffect(() => {
     let cancelado = false
     async function cargar() {
+      const proyectoId = await getProyectoId(proyectoSlug!)
       const [compras, ppto, catalogo, despachados, proy] = await Promise.all([
-        loadCompras(),
+        loadCompras(proyectoId),
         loadPresupuestoTotal(),
         loadPptoCatalogo(),
-        loadModulosDespachadosCount(),
+        loadModulosDespachadosCount(proyectoId),
         loadAvanceEconProy(new Date().getFullYear()),
       ])
       if (cancelado) return
@@ -89,7 +93,7 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
     return () => {
       cancelado = true
     }
-  }, [])
+  }, [proyectoSlug])
 
   return useMemo(() => {
     const modulos = excelData?.modulos ?? []

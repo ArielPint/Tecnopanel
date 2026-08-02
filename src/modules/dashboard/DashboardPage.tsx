@@ -62,7 +62,9 @@ export default function DashboardPage() {
   }
 
   if (acceso.escenario === 'solo_proyecto') {
-    return <Navigate to="/proyectos/la-chacra/dashboard" replace />
+    // Si tiene más de un proyecto obra (futuro, hoy siempre 1), manda al selector /proyectos en vez de adivinar cuál.
+    const destino = acceso.proyectosObra.length === 1 ? acceso.proyectosObra[0].slug : null
+    return <Navigate to={destino ? `/proyectos/${destino}/dashboard` : '/proyectos'} replace />
   }
 
   if (acceso.escenario === 'sin_acceso') {
@@ -84,13 +86,16 @@ export default function DashboardPage() {
           <h1 className="text-lg font-bold">¿A dónde quieres ingresar?</h1>
           <p className="text-sm text-muted-foreground">Tienes acceso a más de un portal.</p>
         </div>
-        <Link
-          to="/proyectos/la-chacra/dashboard"
-          className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
-        >
-          Proyecto La Chacra
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+        {acceso.proyectosObra.map((p) => (
+          <Link
+            key={p.id}
+            to={`/proyectos/${p.slug}/dashboard`}
+            className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
+          >
+            {p.nombre}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        ))}
         <Link
           to="/crm"
           className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { getProyectoId } from '@/lib/proyectoIds'
 import { loadPlantaModulosProdDiaria, type PlantaModuloProdRow } from '../lib/supaData'
 
 export const PD_CATS = {
@@ -57,19 +59,22 @@ function todayISO(offsetDays = 0) {
 }
 
 export function useProdDiariaData() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [mods, setMods] = useState<PlantaModuloProdRow[]>([])
   const [desde, setDesde] = useState(() => todayISO(-30))
   const [hasta, setHasta] = useState(() => todayISO())
 
   useEffect(() => {
     let cancelado = false
-    loadPlantaModulosProdDiaria().then((r) => {
-      if (!cancelado) setMods(r)
-    })
+    getProyectoId(proyectoSlug!).then((proyectoId) =>
+      loadPlantaModulosProdDiaria(proyectoId).then((r) => {
+        if (!cancelado) setMods(r)
+      }),
+    )
     return () => {
       cancelado = true
     }
-  }, [])
+  }, [proyectoSlug])
 
   return useMemo(() => {
     let rows = computeRows(mods)

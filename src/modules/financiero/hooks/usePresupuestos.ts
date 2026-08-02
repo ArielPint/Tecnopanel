@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getProyectoId } from '@/lib/proyectoIds'
 import type { Presupuesto } from '@/modules/financiero/types/financiero'
 
 type NuevoPresupuesto = Pick<
@@ -8,6 +10,7 @@ type NuevoPresupuesto = Pick<
 >
 
 export function usePresupuestos() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -15,14 +18,16 @@ export function usePresupuestos() {
   const refetch = useCallback(async () => {
     setLoading(true)
     setError(null)
+    const proyectoId = await getProyectoId(proyectoSlug!)
     const { data, error } = await supabase
       .from('financiero_presupuestos')
       .select('*')
+      .eq('proyecto_id', proyectoId)
       .order('codigo_articulo')
     if (error) setError(error.message)
     else setPresupuestos(data ?? [])
     setLoading(false)
-  }, [])
+  }, [proyectoSlug])
 
   useEffect(() => {
     refetch()
@@ -30,16 +35,17 @@ export function usePresupuestos() {
 
   const createPresupuesto = useCallback(
     async (input: NuevoPresupuesto) => {
+      const proyectoId = await getProyectoId(proyectoSlug!)
       const { data, error } = await supabase
         .from('financiero_presupuestos')
-        .insert(input)
+        .insert({ ...input, proyecto_id: proyectoId })
         .select()
         .single()
       if (error) throw new Error(error.message)
       await refetch()
       return data as Presupuesto
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   const updatePresupuesto = useCallback(

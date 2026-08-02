@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getProyectoId } from '@/lib/proyectoIds'
 import { PRODUCTOS_BASE } from '../lib/productosBase'
 import { calcCR, getVTI, normCod } from '../lib/calc'
 
@@ -21,6 +23,7 @@ export interface ProductoCustom extends Producto {
 }
 
 export function useCatalogoGD() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [allProducts, setAllProducts] = useState<Producto[]>([])
   const [customCodes, setCustomCodes] = useState<Set<string>>(new Set())
   const [pppMap, setPppMap] = useState<Record<string, { monto: number; cant: number }>>({})
@@ -31,10 +34,14 @@ export function useCatalogoGD() {
     setLoading(true)
     setError(null)
     try {
+      const proyectoId = await getProyectoId(proyectoSlug!)
       const [pptoRes, customRes, comprasRes] = await Promise.all([
         fetch(`${PROD_URL}?v=${Date.now()}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
         supabase.from('productos_custom').select('*').eq('activo', true),
-        supabase.from('registro_compras').select('codigo,cantidad_sol,devolucion,valor_und,valor_total_item'),
+        supabase
+          .from('registro_compras')
+          .select('codigo,cantidad_sol,devolucion,valor_und,valor_total_item')
+          .eq('proyecto_id', proyectoId),
       ])
       if (customRes.error) throw new Error(customRes.error.message)
       if (comprasRes.error) throw new Error(comprasRes.error.message)
@@ -85,7 +92,7 @@ export function useCatalogoGD() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [proyectoSlug])
 
   useEffect(() => {
     refetch()

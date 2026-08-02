@@ -21,11 +21,17 @@ export async function syncPermisosCrm(userId: string, modulos: string[]) {
   )
 }
 
-/** La Chacra: "ver" por página habilitada (pages.<pid>.access) + "editar" por sección financiera (financiero:<seccion>). */
+/**
+ * La Chacra: "ver" por página habilitada (pages.<pid>.access) + "editar" por sección
+ * financiera (financiero:<seccion>) + acciones extra de otros módulos (clave literal
+ * "modulo_key:accion", ej. "estados_pago:aprobar") — mismo mecanismo que financieroEdit,
+ * generalizado para no repetir el patrón por cada módulo nuevo con acciones granulares.
+ */
 export async function syncPermisosLaChacra(
   userId: string,
   pages: Record<string, { access: boolean }>,
   financieroEdit: Record<string, boolean>,
+  accionesExtra: Record<string, boolean> = {},
 ) {
   const filas: { modulo_key: string; accion: string }[] = []
   for (const [pid, def] of Object.entries(pages)) {
@@ -34,5 +40,20 @@ export async function syncPermisosLaChacra(
   for (const [seccion, on] of Object.entries(financieroEdit)) {
     if (on) filas.push({ modulo_key: `financiero:${seccion}`, accion: 'editar' })
   }
+  for (const [key, on] of Object.entries(accionesExtra)) {
+    if (!on) continue
+    const separador = key.lastIndexOf(':')
+    filas.push({ modulo_key: key.slice(0, separador), accion: key.slice(separador + 1) })
+  }
   await reemplazarPermisos(userId, 'la-chacra', filas)
+}
+
+/** Rol de negocio por proyecto (catálogo abierto, ver Fase E1) — reemplaza el 'full_access' decorativo. */
+export async function syncRolNegocio(userId: string, proyectoSlug: string, rolNegocio: string) {
+  const proyectoId = await getProyectoId(proyectoSlug)
+  const { error } = await supabase
+    .from('project_access')
+    // ponytail: 'rol' es legacy (NOT NULL, decorativo, nadie lo lee) — se rellena para no romper el INSERT
+    .upsert({ user_id: userId, proyecto_id: proyectoId, rol: 'full_access', rol_negocio: rolNegocio }, { onConflict: 'user_id,proyecto_id' })
+  if (error) throw new Error(error.message)
 }

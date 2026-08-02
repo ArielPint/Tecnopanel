@@ -18,6 +18,7 @@ import GlobalSearch from './GlobalSearch'
 import { TecnopanelMark, TecnopanelWordmark } from './TecnopanelLogo'
 import { Avatar, AvatarFallback } from './ui/avatar'
 import { Sheet, SheetContent } from './ui/sheet'
+import { Toaster } from '@/modules/financiero/components/ui/sonner'
 import { cn } from '@/lib/utils'
 
 const navSections = [
@@ -207,6 +208,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+      <Toaster />
     </div>
   )
 }

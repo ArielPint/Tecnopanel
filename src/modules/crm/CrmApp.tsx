@@ -8,7 +8,6 @@ import { supabase } from '@/lib/supabaseClient'
 import Dashboard from './pages/Dashboard'
 import Oportunidades from './pages/Oportunidades'
 import Clientes from './pages/Clientes'
-import Usuarios from './pages/Usuarios'
 import Ingenieria from './pages/Ingenieria'
 import GanadasPerdidas from './pages/GanadasPerdidas'
 import Desarrollo from './pages/Desarrollo'
@@ -78,7 +77,7 @@ function CrmRoutes() {
         <Route path="negociacion" element={<ProtectedModule modulo="Negociación"><Negociacion /></ProtectedModule>} />
         <Route path="revision-vendedor" element={<ProtectedModule modulo="Revisión Vendedor"><RevisionVendedor /></ProtectedModule>} />
         <Route path="clientes" element={<ProtectedModule modulo="Clientes"><Clientes /></ProtectedModule>} />
-        <Route path="usuarios" element={<ProtectedModule modulo="Usuarios"><Usuarios /></ProtectedModule>} />
+        <Route path="usuarios" element={<Navigate to="/usuarios" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>

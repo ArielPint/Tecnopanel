@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getProyectoId } from '@/lib/proyectoIds'
 
 export interface DespachoGD {
   id: number
@@ -23,6 +25,7 @@ export type NuevoDespachoGD = Pick<
 >
 
 export function useDespachosGD() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [despachos, setDespachos] = useState<DespachoGD[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,11 +33,17 @@ export function useDespachosGD() {
   const refetch = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const { data, error } = await supabase.from('despachos_gd').select('*').order('fecha_gd', { ascending: true }).order('id', { ascending: true })
+    const proyectoId = await getProyectoId(proyectoSlug!)
+    const { data, error } = await supabase
+      .from('despachos_gd')
+      .select('*')
+      .eq('proyecto_id', proyectoId)
+      .order('fecha_gd', { ascending: true })
+      .order('id', { ascending: true })
     if (error) setError(error.message)
     else setDespachos((data ?? []) as DespachoGD[])
     setLoading(false)
-  }, [])
+  }, [proyectoSlug])
 
   useEffect(() => {
     refetch()
@@ -49,11 +58,12 @@ export function useDespachosGD() {
 
   const crear = useCallback(
     async (input: NuevoDespachoGD, createdBy: string) => {
-      const { error } = await supabase.from('despachos_gd').insert({ ...input, created_by: createdBy })
+      const proyectoId = await getProyectoId(proyectoSlug!)
+      const { error } = await supabase.from('despachos_gd').insert({ ...input, proyecto_id: proyectoId, created_by: createdBy })
       if (error) throw new Error(error.message)
       await refetch()
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   const actualizar = useCallback(

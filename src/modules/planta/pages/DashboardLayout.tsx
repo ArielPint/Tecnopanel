@@ -5,6 +5,8 @@ import { Button } from '@/modules/financiero/components/ui/button'
 import { Card, CardContent } from '@/modules/financiero/components/ui/card'
 import { Skeleton } from '@/modules/financiero/components/ui/skeleton'
 import { Avatar, AvatarFallback } from '@/modules/financiero/components/ui/avatar'
+import PortalShell from '@/modules/financiero/components/PortalShell'
+import { useProyectoActual } from '@/hooks/useProyectoActual'
 import { useAuth, type DashboardTab } from '../hooks/useAuth'
 import { useExcelData } from '../hooks/useExcelData'
 import Resumen from './Resumen'
@@ -38,16 +40,18 @@ function iniciales(nombre: string | undefined) {
 
 export default function DashboardLayout() {
   const { perfil, puedeVer, puedeSubirExcel, signOut } = useAuth()
+  const { nombre: nombreProyecto } = useProyectoActual()
   const { excelData, autoLoading, uploading, error, handleFile } = useExcelData()
   const visibles = TABS.filter((t) => puedeVer(t.value))
   const primerTab = visibles.find((t) => t.implementado)?.value ?? visibles[0]?.value ?? 'resumen'
 
   return (
-    <div className="flex min-h-svh flex-col">
+    <PortalShell actual="dashboard">
+    <div className="flex flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4 md:px-6">
         <img src={isologo} alt="" className="size-7 shrink-0" />
         <div className="min-w-0">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">LA CHACRA</p>
+          <p className="truncate text-xs font-semibold tracking-wide text-muted-foreground uppercase">{nombreProyecto}</p>
           <p className="text-sm font-bold leading-none">Dashboard</p>
         </div>
         <div className="ml-auto flex items-center gap-3">
@@ -168,5 +172,6 @@ export default function DashboardLayout() {
         )}
       </main>
     </div>
+    </PortalShell>
   )
 }

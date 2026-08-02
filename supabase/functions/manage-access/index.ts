@@ -15,6 +15,12 @@ function json(body: unknown, status = 200) {
   })
 }
 
+// E4: única Edge Function de administración de cuentas (reemplaza create-user +
+// manage-users + reset-password). Solo cubre lo que exige service role — alta,
+// baja, password, patch de perfil. Permisos por módulo y rol_negocio por proyecto
+// se siguen escribiendo desde el cliente vía permisos_admin_all/project_access_admin_all
+// (mismo patrón que syncPermisosCrm/syncPermisosLaChacra ya existente), no hace falta
+// repetir esa lógica acá.
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
 
@@ -26,44 +32,49 @@ Deno.serve(async (req) => {
   if (callerErr || !callerUser.user) return json({ error: 'No autenticado' }, 401)
 
   const { data: callerProfile } = await admin
-    .from('user_profiles')
-    .select('role')
+    .from('profiles')
+    .select('is_super_admin')
     .eq('id', callerUser.user.id)
     .single()
-  if (callerProfile?.role !== 'admin') return json({ error: 'Requiere rol admin' }, 403)
+  if (!callerProfile?.is_super_admin) return json({ error: 'Requiere administrador' }, 403)
 
   const body = await req.json()
   const { action } = body
 
   try {
     if (action === 'create') {
-      const { username, password, name, email, role, permissions } = body
-      if (!username || !password || !email) return json({ error: 'Faltan campos requeridos' }, 400)
+      const { nombre, apellido, email, password } = body
+      if (!nombre || !email || !password) return json({ error: 'Faltan campos requeridos' }, 400)
 
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
+        user_metadata: { nombre, apellido: apellido ?? '' },
       })
       if (createErr) return json({ error: createErr.message }, 400)
 
-      const { error: insertErr } = await admin.from('user_profiles').insert({
-        id: created.user.id,
-        username,
-        name,
-        email,
-        role,
-        active: true,
-        permissions,
-      })
-      if (insertErr) {
-        await admin.auth.admin.deleteUser(created.user.id)
-        return json({ error: insertErr.message }, 400)
-      }
+      // El trigger on_auth_user_created ya insertó la fila en profiles (id, nombre, apellido, email).
       return json({ id: created.user.id })
     }
 
-    if (action === 'update_password') {
+    if (action === 'update') {
+      const { userId, nombre, apellido, email, activo, is_super_admin } = body
+      if (!userId) return json({ error: 'Falta userId' }, 400)
+
+      const patch: Record<string, unknown> = {}
+      if (nombre !== undefined) patch.nombre = nombre
+      if (apellido !== undefined) patch.apellido = apellido
+      if (email !== undefined) patch.email = email
+      if (activo !== undefined) patch.activo = activo
+      if (is_super_admin !== undefined) patch.is_super_admin = is_super_admin
+
+      const { error } = await admin.from('profiles').update(patch).eq('id', userId)
+      if (error) return json({ error: error.message }, 400)
+      return json({ ok: true })
+    }
+
+    if (action === 'reset_password') {
       const { userId, password } = body
       if (!userId || !password) return json({ error: 'Faltan campos requeridos' }, 400)
       const { error } = await admin.auth.admin.updateUserById(userId, { password })

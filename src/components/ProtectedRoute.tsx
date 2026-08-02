@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useParams } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useAccesoUsuario } from '../hooks/useAccesoUsuario'
 
@@ -14,6 +14,9 @@ export default function ProtectedRoute({
 }) {
   const { session, loading } = useAuthStore()
   const acceso = useAccesoUsuario()
+  // Fase F: rutas de proyecto son /proyectos/:proyectoSlug/* — el gate 'proyecto'
+  // ahora valida acceso a ESE proyecto puntual, no solo "tiene algún proyecto".
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
 
   if (loading || (requiere && session && acceso.loading)) {
     return (
@@ -29,7 +32,11 @@ export default function ProtectedRoute({
 
   if (requiere) {
     const autorizado =
-      requiere === 'admin' ? acceso.isAdmin : requiere === 'crm' ? acceso.tieneCrm : acceso.tieneProyecto
+      requiere === 'admin'
+        ? acceso.isAdmin
+        : requiere === 'crm'
+          ? acceso.tieneCrm
+          : acceso.isAdmin || acceso.proyectosObra.some((p) => p.slug === proyectoSlug)
     if (!autorizado) {
       return <Navigate to="/" replace />
     }

@@ -1,7 +1,7 @@
 // Mapa de páginas/pestañas del hub gateadas por user_profiles.permissions.pages.<id>.{access,tabs[]}.
 // Solo incluye módulos que hoy consumen ese permiso (ver useAuth.tsx de cada módulo) — crm y planta
 // quedan afuera porque usan `profiles` propia o no llegaron a esta fase (layout/producción/geovictoria).
-export type PageId = 'financiero' | 'dashboard' | 'logistica' | 'solicitudes'
+export type PageId = 'financiero' | 'dashboard' | 'logistica' | 'solicitudes' | 'estados_pago'
 
 export interface PageDef {
   label: string
@@ -59,6 +59,14 @@ export const PAGE_MAP: Record<PageId, PageDef> = {
       auditoria: 'Auditoría',
     },
   },
+  estados_pago: {
+    label: 'Estados de Pago',
+    restricted: true,
+    tabs: {
+      listado: 'Listado',
+      subcontratos: 'Subcontratos',
+    },
+  },
 }
 
 // Pestañas de Financiero con edición propia — un mismo flag habilita edición
@@ -69,6 +77,15 @@ export const FINANCIERO_EDIT_GROUPS: { key: string; label: string; tabs: string[
   { key: 'remuneraciones', label: 'Puede editar Remuneraciones', tabs: ['remuneraciones'] },
   { key: 'ingresos', label: 'Puede editar Ingreso del Proyecto', tabs: ['ingresos'] },
   { key: 'gastos-directos', label: 'Puede editar Gastos Directos', tabs: ['gastos-directos'] },
+]
+
+// Acciones granulares de Estados de Pago (mapeo confirmado por el usuario 2026-08-01,
+// §3.9.1 punto 5): solo-consulta ya cubierto por el checkbox de módulo (accion "ver").
+export const ESTADOS_PAGO_ACCION_GROUPS: { key: string; label: string }[] = [
+  { key: 'crear', label: 'Puede crear y cargar Estados de Pago' },
+  { key: 'editar', label: 'Puede revisar y observar Estados de Pago' },
+  { key: 'aprobar', label: 'Puede aprobar o rechazar Estados de Pago' },
+  { key: 'eliminar', label: 'Puede administrar (eliminar/exportar) Estados de Pago' },
 ]
 
 // 'readonly' es un valor de role literal (no un flag aparte) — logistica lo chequea

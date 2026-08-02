@@ -1,17 +1,25 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getProyectoId } from '@/lib/proyectoIds'
 import type { Proveedor } from '@/modules/financiero/types/financiero'
 
 export function useProveedores() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [loading, setLoading] = useState(true)
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from('financiero_proveedores').select('*').order('nombre')
+    const proyectoId = await getProyectoId(proyectoSlug!)
+    const { data } = await supabase
+      .from('financiero_proveedores')
+      .select('*')
+      .eq('proyecto_id', proyectoId)
+      .order('nombre')
     setProveedores(data ?? [])
     setLoading(false)
-  }, [])
+  }, [proyectoSlug])
 
   useEffect(() => {
     refetch()
@@ -19,16 +27,20 @@ export function useProveedores() {
 
   const crearProveedor = useCallback(
     async (rut: string, nombre: string) => {
+      const proyectoId = await getProyectoId(proyectoSlug!)
+      // ponytail: onConflict sigue en 'rut' solo — si `rut` tiene UNIQUE global
+      // (no compuesto con proyecto_id) esto puede pisar el proveedor de otro
+      // proyecto al hacer upsert. Verificar constraint real antes de un 2do proyecto.
       const { data, error } = await supabase
         .from('financiero_proveedores')
-        .upsert({ rut, nombre }, { onConflict: 'rut' })
+        .upsert({ rut, nombre, proyecto_id: proyectoId }, { onConflict: 'rut' })
         .select()
         .single()
       if (error) throw new Error(error.message)
       await refetch()
       return data as Proveedor
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   return { proveedores, loading, refetch, crearProveedor }

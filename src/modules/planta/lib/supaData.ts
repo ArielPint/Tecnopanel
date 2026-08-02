@@ -36,7 +36,7 @@ interface RegistroCompraRow {
 
 // Normaliza registro_compras + ajustes_compras al shape de DetalleGdRow (detalleGD del Excel),
 // para que getCompras() pueda tratar ambas fuentes igual — mismo criterio que dashboard.html.
-export async function loadCompras(): Promise<DetalleGdRow[]> {
+export async function loadCompras(proyectoId: string): Promise<DetalleGdRow[]> {
   const PAGE = 1000
   const all: RegistroCompraRow[] = []
   let from = 0
@@ -44,6 +44,7 @@ export async function loadCompras(): Promise<DetalleGdRow[]> {
     const { data, error } = await supabase
       .from('registro_compras')
       .select('fecha_guia, fecha_sol, mes, gd, codigo, descripcion, cantidad_sol, devolucion, valor_und, valor_ppto, valor_total_item, responsable, oc, tipo_producto')
+      .eq('proyecto_id', proyectoId)
       .order('fecha_guia', { ascending: false })
       .range(from, from + PAGE - 1)
     if (error || !data) break
@@ -88,7 +89,7 @@ export async function loadCompras(): Promise<DetalleGdRow[]> {
     }
   })
 
-  const { data: ajustes } = await supabase.from('ajustes_compras').select('anio, mes, valor, concepto')
+  const { data: ajustes } = await supabase.from('ajustes_compras').select('anio, mes, valor, concepto').eq('proyecto_id', proyectoId)
   for (const a of ajustes ?? []) {
     const valor = parseFloat(String(a.valor)) || 0
     if (!valor) continue
@@ -104,8 +105,8 @@ export async function loadCompras(): Promise<DetalleGdRow[]> {
   return filas
 }
 
-export async function loadModulosDespachadosCount(): Promise<number> {
-  const { data } = await supabase.from('despachos_gd').select('modulo')
+export async function loadModulosDespachadosCount(proyectoId: string): Promise<number> {
+  const { data } = await supabase.from('despachos_gd').select('modulo').eq('proyecto_id', proyectoId)
   return new Set((data ?? []).map((r) => r.modulo).filter(Boolean)).size
 }
 
@@ -120,10 +121,11 @@ export interface DespachoSupaRow {
   tipo: string | null
 }
 
-export async function loadDespachos(): Promise<DespachoSupaRow[]> {
+export async function loadDespachos(proyectoId: string): Promise<DespachoSupaRow[]> {
   const { data } = await supabase
     .from('despachos_gd')
     .select('fecha_despacho, gd_numero, modulo_nro_serie, cantidad, monto_neto, modulo, torre, tipo')
+    .eq('proyecto_id', proyectoId)
     .order('fecha_gd', { ascending: true })
   return (data ?? []).map((r) => ({
     fecha: r.fecha_despacho, gd: r.gd_numero, serie: r.modulo_nro_serie,
@@ -153,10 +155,11 @@ export interface RegistroStockRow {
   stock_fisico: string | number
 }
 
-export async function loadRegistroStock(): Promise<RegistroStockRow[]> {
+export async function loadRegistroStock(proyectoId: string): Promise<RegistroStockRow[]> {
   const { data } = await supabase
     .from('registro_stock')
     .select('fecha, semana_key, codigo, material, unidad, stock_fisico')
+    .eq('proyecto_id', proyectoId)
     .order('semana_key', { ascending: false })
     .order('material', { ascending: true })
   return (data ?? []) as RegistroStockRow[]
@@ -187,10 +190,11 @@ export interface PlantaModuloProdRow {
   tiempos: Record<string, { t3?: string }> | null
 }
 
-export async function loadPlantaModulosProdDiaria(): Promise<PlantaModuloProdRow[]> {
+export async function loadPlantaModulosProdDiaria(proyectoId: string): Promise<PlantaModuloProdRow[]> {
   const { data } = await supabase
     .from('planta_modulos')
     .select('nombre, torre, tipo, estados, tiempos')
+    .eq('proyecto_id', proyectoId)
     .order('orden', { ascending: true })
   return (data ?? []) as PlantaModuloProdRow[]
 }

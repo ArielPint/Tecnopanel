@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { getProyectoId } from '@/lib/proyectoIds'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { parseDate, weekKey, weekLabel } from '../lib/format'
 import { loadRegistroStock, type RegistroStockRow } from '../lib/supaData'
@@ -62,19 +64,22 @@ function enriquecer(rows: RegistroStockRow[], excelData: ParsedDashboardData | n
 }
 
 export function useStockData(excelData: ParsedDashboardData | null) {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [rows, setRows] = useState<RegistroStockRow[]>([])
   const [selectedWeekTs, setSelectedWeekTs] = useState<number | null>(null)
 
   useEffect(() => {
     let cancelado = false
-    loadRegistroStock().then((data) => {
-      if (cancelado) return
-      setRows(data)
-    })
+    getProyectoId(proyectoSlug!).then((proyectoId) =>
+      loadRegistroStock(proyectoId).then((data) => {
+        if (cancelado) return
+        setRows(data)
+      }),
+    )
     return () => {
       cancelado = true
     }
-  }, [])
+  }, [proyectoSlug])
 
   const enriquecidas = useMemo(() => enriquecer(rows, excelData), [rows, excelData])
 

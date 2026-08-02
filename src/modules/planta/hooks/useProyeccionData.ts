@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { getProyectoId } from '@/lib/proyectoIds'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { fmtDate, parseDate, weekKey, weekLabel } from '../lib/format'
 import { getCompras, getHomeAvance } from './useResumenData'
@@ -23,6 +25,7 @@ function torreNum(t: unknown): number | null {
 }
 
 export function useProyeccionData(excelData: ParsedDashboardData | null) {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [supaCompras, setSupaCompras] = useState<ReturnType<typeof getCompras>>([])
   const [pptoCatalogo, setPptoCatalogo] = useState<Record<string, number>>({})
   const [presupuestoTotal, setPresupuestoTotal] = useState<number | null>(null)
@@ -33,22 +36,24 @@ export function useProyeccionData(excelData: ParsedDashboardData | null) {
 
   useEffect(() => {
     let cancelado = false
-    Promise.all([
-      loadCompras(), loadPptoCatalogo(), loadPresupuestoTotal(),
-      loadAvanceEconProy(new Date().getFullYear()), loadRitmoProyeccion(),
-    ]).then(([compras, catalogo, ppto, proy, ritmo]) => {
-      if (cancelado) return
-      setSupaCompras(compras)
-      setPptoCatalogo(catalogo)
-      setPresupuestoTotal(ppto)
-      setAvanceProy(proy)
-      setRitmoTope(ritmo.ritmoTope)
-      setRitmoTorre3(ritmo.ritmoTorre3)
-    })
+    getProyectoId(proyectoSlug!).then((proyectoId) =>
+      Promise.all([
+        loadCompras(proyectoId), loadPptoCatalogo(), loadPresupuestoTotal(),
+        loadAvanceEconProy(new Date().getFullYear()), loadRitmoProyeccion(),
+      ]).then(([compras, catalogo, ppto, proy, ritmo]) => {
+        if (cancelado) return
+        setSupaCompras(compras)
+        setPptoCatalogo(catalogo)
+        setPresupuestoTotal(ppto)
+        setAvanceProy(proy)
+        setRitmoTope(ritmo.ritmoTope)
+        setRitmoTorre3(ritmo.ritmoTorre3)
+      }),
+    )
     return () => {
       cancelado = true
     }
-  }, [])
+  }, [proyectoSlug])
 
   return useMemo(() => {
     const m = excelData?.modulos ?? []

@@ -13,6 +13,7 @@ import FinancieroApp from './modules/financiero/FinancieroApp'
 import DashboardPlantaApp from './modules/planta/DashboardPlantaApp'
 import LogisticaApp from './modules/logistica/LogisticaApp'
 import SolicitudesApp from './modules/solicitudes/SolicitudesApp'
+import EstadosPagoApp from './modules/estados_pago/EstadosPagoApp'
 import SettingsApp from './modules/settings/SettingsApp'
 import GeoVictoriaPage from './modules/gestion/GeoVictoriaPage'
 import { useAuthStore } from './store/authStore'
@@ -39,7 +40,7 @@ export default function App() {
           }
         />
         <Route
-          path="/proyectos/la-chacra/financiero/*"
+          path="/proyectos/:proyectoSlug/financiero/*"
           element={
             <ProtectedRoute requiere="proyecto">
               <FinancieroApp />
@@ -47,7 +48,7 @@ export default function App() {
           }
         />
         <Route
-          path="/proyectos/la-chacra/dashboard/*"
+          path="/proyectos/:proyectoSlug/dashboard/*"
           element={
             <ProtectedRoute requiere="proyecto">
               <DashboardPlantaApp />
@@ -55,7 +56,7 @@ export default function App() {
           }
         />
         <Route
-          path="/proyectos/la-chacra/logistica/*"
+          path="/proyectos/:proyectoSlug/logistica/*"
           element={
             <ProtectedRoute requiere="proyecto">
               <LogisticaApp />
@@ -63,7 +64,7 @@ export default function App() {
           }
         />
         <Route
-          path="/proyectos/la-chacra/solicitudes/*"
+          path="/proyectos/:proyectoSlug/solicitudes/*"
           element={
             <ProtectedRoute requiere="proyecto">
               <SolicitudesApp />
@@ -71,7 +72,15 @@ export default function App() {
           }
         />
         <Route
-          path="/proyectos/la-chacra/settings/*"
+          path="/proyectos/:proyectoSlug/estados-pago/*"
+          element={
+            <ProtectedRoute requiere="proyecto">
+              <EstadosPagoApp />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/proyectos/:proyectoSlug/settings/*"
           element={
             <ProtectedRoute requiere="proyecto">
               <SettingsApp />

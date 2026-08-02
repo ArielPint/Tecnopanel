@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { getProyectoId } from '@/lib/proyectoIds'
 import { MESES_ORDER } from '../lib/format'
 import type { DetalleGdRow, ParsedDashboardData } from '../lib/excelParser'
 import { loadCompras, loadPptoCatalogo, loadPresupuestoTotal } from '../lib/supaData'
@@ -15,22 +17,25 @@ function aplicarCatalogo(compras: DetalleGdRow[], catalogo: Record<string, numbe
 }
 
 export function useComprasData(excelData: ParsedDashboardData | null) {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [supaCompras, setSupaCompras] = useState<DetalleGdRow[]>([])
   const [presupuestoTotal, setPresupuestoTotal] = useState<number | null>(null)
   const [pptoCatalogo, setPptoCatalogo] = useState<Record<string, number>>({})
 
   useEffect(() => {
     let cancelado = false
-    Promise.all([loadCompras(), loadPresupuestoTotal(), loadPptoCatalogo()]).then(([compras, ppto, catalogo]) => {
-      if (cancelado) return
-      setSupaCompras(compras)
-      setPresupuestoTotal(ppto)
-      setPptoCatalogo(catalogo)
-    })
+    getProyectoId(proyectoSlug!).then((proyectoId) =>
+      Promise.all([loadCompras(proyectoId), loadPresupuestoTotal(), loadPptoCatalogo()]).then(([compras, ppto, catalogo]) => {
+        if (cancelado) return
+        setSupaCompras(compras)
+        setPresupuestoTotal(ppto)
+        setPptoCatalogo(catalogo)
+      }),
+    )
     return () => {
       cancelado = true
     }
-  }, [])
+  }, [proyectoSlug])
 
   return useMemo(() => {
     const base = supaCompras.length ? supaCompras : (excelData?.detalleGD ?? [])

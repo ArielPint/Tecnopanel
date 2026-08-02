@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { getProyectoId } from '@/lib/proyectoIds'
 import type { ModuloRow, ParsedDashboardData } from '../lib/excelParser'
 import { weekKey, weekLabel } from '../lib/format'
 import { loadModulosDespachadosCount } from '../lib/supaData'
@@ -6,17 +8,20 @@ import { loadModulosDespachadosCount } from '../lib/supaData'
 const BUCKET_DEFS = ['10–19%', '20–29%', '30–39%', '40–49%', '50–59%', '60–69%', '70–79%', '80–89%', '90–99%']
 
 export function useModulosData(excelData: ParsedDashboardData | null) {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [despachadosCount, setDespachadosCount] = useState(0)
 
   useEffect(() => {
     let cancelado = false
-    loadModulosDespachadosCount().then((n) => {
-      if (!cancelado) setDespachadosCount(n)
-    })
+    getProyectoId(proyectoSlug!).then((proyectoId) =>
+      loadModulosDespachadosCount(proyectoId).then((n) => {
+        if (!cancelado) setDespachadosCount(n)
+      }),
+    )
     return () => {
       cancelado = true
     }
-  }, [])
+  }, [proyectoSlug])
 
   return useMemo(() => {
     const modulos: ModuloRow[] = excelData?.modulos ?? []

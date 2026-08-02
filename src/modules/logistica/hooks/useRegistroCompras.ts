@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getProyectoId } from '@/lib/proyectoIds'
 
 export interface RegistroCompra {
   id: string
@@ -67,6 +69,7 @@ function genId() {
 }
 
 export function useRegistroCompras() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [registros, setRegistros] = useState<RegistroCompra[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -79,10 +82,12 @@ export function useRegistroCompras() {
     let from = 0
     let done = false
     try {
+      const proyectoId = await getProyectoId(proyectoSlug!)
       while (!done) {
         const { data, error: qError } = await supabase
           .from('registro_compras')
           .select('*')
+          .eq('proyecto_id', proyectoId)
           .range(from, from + PAGE - 1)
         if (qError) throw new Error(qError.message)
         const rows = (data ?? []) as RegistroCompra[]
@@ -96,7 +101,7 @@ export function useRegistroCompras() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [proyectoSlug])
 
   useEffect(() => {
     refetch()
@@ -104,6 +109,7 @@ export function useRegistroCompras() {
 
   const crearMulti = useCallback(
     async (meta: MetaEntrada, lineas: LineaProducto[], createdBy: string, solicitudNumero: number | null) => {
+      const proyectoId = await getProyectoId(proyectoSlug!)
       const fechaMes = new Date(meta.fechaGuia + 'T12:00:00').getMonth() + 1
       const nowIso = new Date().toISOString()
       const records = lineas
@@ -113,6 +119,7 @@ export function useRegistroCompras() {
           const vu = cr ? l.valor_total_item / cr : 0
           return {
             id: genId(),
+            proyecto_id: proyectoId,
             fecha_guia: meta.fechaGuia || null,
             fecha_sol: meta.fechaSol || null,
             obs_modulo: meta.obs,
@@ -143,7 +150,7 @@ export function useRegistroCompras() {
       }
       await refetch()
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   const actualizarSingle = useCallback(

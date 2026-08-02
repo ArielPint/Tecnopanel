@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getProyectoId } from '@/lib/proyectoIds'
 
 export interface ItemSolicitud {
   codigo: string
@@ -39,15 +41,21 @@ export interface SolicitudInput {
 }
 
 export function useSolicitudes() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([])
   const [loading, setLoading] = useState(true)
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase.from('solicitudes').select('*').order('created_at', { ascending: false })
+    const proyectoId = await getProyectoId(proyectoSlug!)
+    const { data, error } = await supabase
+      .from('solicitudes')
+      .select('*')
+      .eq('proyecto_id', proyectoId)
+      .order('created_at', { ascending: false })
     if (!error) setSolicitudes((data ?? []) as Solicitud[])
     setLoading(false)
-  }, [])
+  }, [proyectoSlug])
 
   useEffect(() => {
     refetch()
@@ -55,12 +63,17 @@ export function useSolicitudes() {
 
   const crear = useCallback(
     async (input: SolicitudInput) => {
-      const { data, error } = await supabase.from('solicitudes').insert(input).select().single()
+      const proyectoId = await getProyectoId(proyectoSlug!)
+      const { data, error } = await supabase
+        .from('solicitudes')
+        .insert({ ...input, proyecto_id: proyectoId })
+        .select()
+        .single()
       if (error) throw new Error(error.message)
       await refetch()
       return data as Solicitud
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   const marcarUsada = useCallback(

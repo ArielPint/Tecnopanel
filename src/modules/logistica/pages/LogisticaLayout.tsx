@@ -3,6 +3,8 @@ import isologo from '@/modules/financiero/assets/tecnopanel-isologo-color.png'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/modules/financiero/components/ui/tabs'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Avatar, AvatarFallback } from '@/modules/financiero/components/ui/avatar'
+import PortalShell from '@/modules/financiero/components/PortalShell'
+import { useProyectoActual } from '@/hooks/useProyectoActual'
 import { useAuth, type LogisticaTab } from '../hooks/useAuth'
 import DespachoGD from './DespachoGD'
 import RegistroGD from './RegistroGD'
@@ -23,15 +25,17 @@ function iniciales(nombre: string | undefined) {
 
 export default function LogisticaLayout() {
   const { perfil, puedeVer, signOut } = useAuth()
+  const { nombre: nombreProyecto } = useProyectoActual()
   const visibles = TABS.filter((t) => puedeVer(t.value))
   const primerTab = visibles.find((t) => t.implementado)?.value ?? visibles[0]?.value ?? 'despacho-gd'
 
   return (
-    <div className="flex min-h-svh flex-col">
+    <PortalShell actual="logistica">
+    <div className="flex flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4 md:px-6">
         <img src={isologo} alt="" className="size-7 shrink-0" />
         <div className="min-w-0">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">LA CHACRA</p>
+          <p className="truncate text-xs font-semibold tracking-wide text-muted-foreground uppercase">{nombreProyecto}</p>
           <p className="text-sm font-bold leading-none">Logística</p>
         </div>
         <div className="ml-auto flex items-center gap-3">
@@ -75,5 +79,6 @@ export default function LogisticaLayout() {
         </Tabs>
       </main>
     </div>
+    </PortalShell>
   )
 }

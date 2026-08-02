@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getProyectoId } from '@/lib/proyectoIds'
 import type { AuditLogEntry } from '@/modules/financiero/types/financiero'
 
 interface AuditFiltros {
@@ -10,6 +12,7 @@ interface AuditFiltros {
 
 export function useAudit(filtros: AuditFiltros = {}) {
   const { tablaAfectada, registroId, usuarioId } = filtros
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -21,9 +24,11 @@ export function useAudit(filtros: AuditFiltros = {}) {
     const idDeEstaRequest = ++ultimaRequestId.current
     setLoading(true)
     setError(null)
+    const proyectoId = await getProyectoId(proyectoSlug!)
     let query = supabase
       .from('financiero_audit_log')
       .select('*')
+      .eq('proyecto_id', proyectoId)
       .order('fecha', { ascending: false })
     if (tablaAfectada) query = query.eq('tabla_afectada', tablaAfectada)
     if (registroId) query = query.eq('registro_id', registroId)
@@ -33,7 +38,7 @@ export function useAudit(filtros: AuditFiltros = {}) {
     if (error) setError(error.message)
     else setAuditLog(data ?? [])
     setLoading(false)
-  }, [tablaAfectada, registroId, usuarioId])
+  }, [tablaAfectada, registroId, usuarioId, proyectoSlug])
 
   useEffect(() => {
     refetch()

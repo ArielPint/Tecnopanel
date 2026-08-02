@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getProyectoId } from '@/lib/proyectoIds'
 import { asegurarProveedor } from '@/modules/financiero/services/proveedores'
 import type { OrdenCompra } from '@/modules/financiero/types/financiero'
 
@@ -16,6 +18,7 @@ type NuevaOrdenCompra = Pick<
 >
 
 export function useOrdenesCompra(presupuestoId?: string) {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [ordenesCompra, setOrdenesCompra] = useState<OrdenCompra[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -27,9 +30,11 @@ export function useOrdenesCompra(presupuestoId?: string) {
     const idDeEstaRequest = ++ultimaRequestId.current
     setLoading(true)
     setError(null)
+    const proyectoId = await getProyectoId(proyectoSlug!)
     let query = supabase
       .from('financiero_ordenes_compra')
       .select('*')
+      .eq('proyecto_id', proyectoId)
       .order('fecha', { ascending: false })
     if (presupuestoId) query = query.eq('presupuesto_id', presupuestoId)
     const { data, error } = await query
@@ -37,7 +42,7 @@ export function useOrdenesCompra(presupuestoId?: string) {
     if (error) setError(error.message)
     else setOrdenesCompra(data ?? [])
     setLoading(false)
-  }, [presupuestoId])
+  }, [presupuestoId, proyectoSlug])
 
   useEffect(() => {
     refetch()
@@ -59,17 +64,18 @@ export function useOrdenesCompra(presupuestoId?: string) {
   const createOrdenCompra = useCallback(
     async (input: NuevaOrdenCompra) => {
       await asegurarProveedor(input.proveedor_rut)
+      const proyectoId = await getProyectoId(proyectoSlug!)
       const { data: userData } = await supabase.auth.getUser()
       const { data, error } = await supabase
         .from('financiero_ordenes_compra')
-        .insert({ ...input, created_by: userData.user?.id ?? null })
+        .insert({ ...input, proyecto_id: proyectoId, created_by: userData.user?.id ?? null })
         .select()
         .single()
       if (error) throw new Error(error.message)
       await refetch()
       return data as OrdenCompra
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   const updateOrdenCompra = useCallback(

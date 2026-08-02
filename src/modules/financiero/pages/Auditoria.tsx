@@ -27,11 +27,11 @@ export default function Auditoria() {
 
   useEffect(() => {
     supabase
-      .from('user_profiles')
-      .select('id, name, username')
+      .from('profiles')
+      .select('id, nombre, apellido, username')
       .then(({ data }) => {
         const mapa: Record<string, string> = {}
-        for (const u of data ?? []) mapa[u.id] = u.name || u.username
+        for (const u of data ?? []) mapa[u.id] = [u.nombre, u.apellido].filter(Boolean).join(' ') || u.username
         setUsuarios(mapa)
       })
   }, [])

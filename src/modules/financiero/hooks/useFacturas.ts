@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getProyectoId } from '@/lib/proyectoIds'
 import { asegurarProveedor } from '@/modules/financiero/services/proveedores'
 import type { Factura } from '@/modules/financiero/types/financiero'
 
@@ -9,6 +11,7 @@ type NuevaFactura = Pick<
 >
 
 export function useFacturas(ordenesCompraId?: string) {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [facturas, setFacturas] = useState<Factura[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -20,9 +23,11 @@ export function useFacturas(ordenesCompraId?: string) {
     const idDeEstaRequest = ++ultimaRequestId.current
     setLoading(true)
     setError(null)
+    const proyectoId = await getProyectoId(proyectoSlug!)
     let query = supabase
       .from('financiero_facturas')
       .select('*')
+      .eq('proyecto_id', proyectoId)
       .order('fecha', { ascending: false })
     if (ordenesCompraId) query = query.eq('ordenes_compra_id', ordenesCompraId)
     const { data, error } = await query
@@ -30,7 +35,7 @@ export function useFacturas(ordenesCompraId?: string) {
     if (error) setError(error.message)
     else setFacturas(data ?? [])
     setLoading(false)
-  }, [ordenesCompraId])
+  }, [ordenesCompraId, proyectoSlug])
 
   useEffect(() => {
     refetch()
@@ -55,17 +60,18 @@ export function useFacturas(ordenesCompraId?: string) {
   const createFactura = useCallback(
     async (input: NuevaFactura) => {
       await asegurarProveedor(input.proveedor_rut)
+      const proyectoId = await getProyectoId(proyectoSlug!)
       const { data: userData } = await supabase.auth.getUser()
       const { data, error } = await supabase
         .from('financiero_facturas')
-        .insert({ ...input, created_by: userData.user?.id ?? null })
+        .insert({ ...input, proyecto_id: proyectoId, created_by: userData.user?.id ?? null })
         .select()
         .single()
       if (error) throw new Error(error.message)
       await refetch()
       return data as Factura
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   const updateFactura = useCallback(

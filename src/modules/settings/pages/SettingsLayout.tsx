@@ -1,11 +1,13 @@
 import { LogOut } from 'lucide-react'
+import { Navigate } from 'react-router-dom'
 import isologo from '@/modules/financiero/assets/tecnopanel-isologo-color.png'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/modules/financiero/components/ui/tabs'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Avatar, AvatarFallback } from '@/modules/financiero/components/ui/avatar'
+import PortalShell from '@/modules/financiero/components/PortalShell'
+import { useProyectoActual } from '@/hooks/useProyectoActual'
 import { useAuth } from '../hooks/useAuth'
 import Config from './Config'
-import Admin from './Admin'
 
 function iniciales(nombre: string | undefined) {
   if (!nombre) return '?'
@@ -14,13 +16,15 @@ function iniciales(nombre: string | undefined) {
 
 export default function SettingsLayout() {
   const { perfil, signOut } = useAuth()
+  const { nombre: nombreProyecto } = useProyectoActual()
 
   return (
-    <div className="flex min-h-svh flex-col">
+    <PortalShell actual="settings">
+    <div className="flex flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4 md:px-6">
         <img src={isologo} alt="" className="size-7 shrink-0" />
         <div className="min-w-0">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">LA CHACRA</p>
+          <p className="truncate text-xs font-semibold tracking-wide text-muted-foreground uppercase">{nombreProyecto}</p>
           <p className="text-sm font-bold leading-none">Configuración</p>
         </div>
         <div className="ml-auto flex items-center gap-3">
@@ -43,10 +47,11 @@ export default function SettingsLayout() {
             <Config />
           </TabsContent>
           <TabsContent value="admin">
-            <Admin />
+            <Navigate to="/usuarios" replace />
           </TabsContent>
         </Tabs>
       </main>
     </div>
+    </PortalShell>
   )
 }

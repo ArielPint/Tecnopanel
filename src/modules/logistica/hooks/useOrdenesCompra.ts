@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getProyectoId } from '@/lib/proyectoIds'
 import { getVTI } from '../lib/calc'
 
 export interface OrdenCompra {
@@ -31,6 +33,7 @@ function genId() {
 }
 
 export function useOrdenesCompra() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [ordenes, setOrdenes] = useState<OrdenCompra[]>([])
   const [guias, setGuias] = useState<OCGuia[]>([])
   const [montoPorOC, setMontoPorOC] = useState<Record<string, number>>({})
@@ -40,10 +43,14 @@ export function useOrdenesCompra() {
   const refetch = useCallback(async () => {
     setLoading(true)
     setError(null)
+    const proyectoId = await getProyectoId(proyectoSlug!)
     const [ocRes, ogRes, comprasRes] = await Promise.all([
-      supabase.from('ordenes_compra').select('*').order('fecha', { ascending: false }),
-      supabase.from('oc_guias').select('*'),
-      supabase.from('registro_compras').select('gd,cantidad_sol,devolucion,valor_und,valor_total_item'),
+      supabase.from('ordenes_compra').select('*').eq('proyecto_id', proyectoId).order('fecha', { ascending: false }),
+      supabase.from('oc_guias').select('*').eq('proyecto_id', proyectoId),
+      supabase
+        .from('registro_compras')
+        .select('gd,cantidad_sol,devolucion,valor_und,valor_total_item')
+        .eq('proyecto_id', proyectoId),
     ])
     if (ocRes.error) setError(ocRes.error.message)
     else if (ogRes.error) setError(ogRes.error.message)
@@ -67,7 +74,7 @@ export function useOrdenesCompra() {
       setMontoPorOC(montos)
     }
     setLoading(false)
-  }, [])
+  }, [proyectoSlug])
 
   useEffect(() => {
     refetch()
@@ -77,6 +84,7 @@ export function useOrdenesCompra() {
     async (input: NuevaOC, id: string | null, createdBy: string) => {
       const isNew = !id
       const ocId = id ?? genId()
+      const proyectoId = await getProyectoId(proyectoSlug!)
       const record = {
         id: ocId,
         numero: input.numero,
@@ -84,7 +92,7 @@ export function useOrdenesCompra() {
         fecha: input.fecha || null,
         notas: input.notas,
         created_by: createdBy,
-        ...(isNew ? { created_at: new Date().toISOString() } : {}),
+        ...(isNew ? { created_at: new Date().toISOString(), proyecto_id: proyectoId } : {}),
       }
       if (isNew) {
         const { error } = await supabase.from('ordenes_compra').insert(record)
@@ -96,12 +104,14 @@ export function useOrdenesCompra() {
       const { error: delError } = await supabase.from('oc_guias').delete().eq('oc_id', ocId)
       if (delError) throw new Error(delError.message)
       if (input.gds.length) {
-        const { error: insError } = await supabase.from('oc_guias').insert(input.gds.map((gd) => ({ oc_id: ocId, gd })))
+        const { error: insError } = await supabase
+          .from('oc_guias')
+          .insert(input.gds.map((gd) => ({ oc_id: ocId, gd, proyecto_id: proyectoId })))
         if (insError) throw new Error(insError.message)
       }
       await refetch()
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   const eliminar = useCallback(

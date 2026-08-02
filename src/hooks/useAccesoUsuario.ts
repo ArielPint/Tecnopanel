@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/store/authStore'
+import { getProyectoId } from '@/lib/proyectoIds'
 
 export type Escenario = 'hub_completo' | 'solo_proyecto' | 'solo_crm' | 'selector_portales' | 'sin_acceso'
+
+export interface ProyectoObra {
+  id: string
+  slug: string
+  nombre: string
+}
 
 interface AccesoUsuario {
   loading: boolean
@@ -10,6 +17,8 @@ interface AccesoUsuario {
   isAdmin: boolean
   tieneCrm: boolean
   tieneProyecto: boolean
+  /** Proyectos tipo obra con permiso real — Fase F: antes era un boolean fijo a La Chacra, ahora N proyectos. */
+  proyectosObra: ProyectoObra[]
 }
 
 const ESTADO_INICIAL: AccesoUsuario = {
@@ -18,6 +27,7 @@ const ESTADO_INICIAL: AccesoUsuario = {
   isAdmin: false,
   tieneCrm: false,
   tieneProyecto: false,
+  proyectosObra: [],
 }
 
 export function useAccesoUsuario(): AccesoUsuario {
@@ -33,7 +43,7 @@ export function useAccesoUsuario(): AccesoUsuario {
     if (authLoading) return
 
     if (!userId) {
-      setEstado({ loading: false, escenario: null, isAdmin: false, tieneCrm: false, tieneProyecto: false })
+      setEstado({ loading: false, escenario: null, isAdmin: false, tieneCrm: false, tieneProyecto: false, proyectosObra: [] })
       return
     }
 
@@ -41,26 +51,29 @@ export function useAccesoUsuario(): AccesoUsuario {
     setEstado((prev) => ({ ...prev, loading: true }))
 
     async function resolver() {
-      const [{ data: profile }, { data: userProfile }] = await Promise.all([
-        supabase.from('profiles').select('rol, activo, modulos').eq('id', userId).maybeSingle(),
-        // ponytail: project_access existe pero hoy es decorativa (full_access uniforme para
-        // los 23 usuarios x 2 proyectos, ver auditoría) — no sirve para gatear. La señal real
-        // de acceso a La Chacra es la fila en user_profiles, que es lo que el resto de módulos
-        // ya usa para autorizar. Normalizar esto es la Fase C del plan de identidad.
-        supabase.from('user_profiles').select('active').eq('id', userId).maybeSingle(),
+      const [{ data: profile }, { data: permisos }, crmId, { data: obras }] = await Promise.all([
+        supabase.from('profiles').select('rol, activo').eq('id', userId).maybeSingle(),
+        // Fase E5 prep: reemplaza profiles.modulos/user_profiles.active (decorativos post
+        // Fase D) por la señal real — cualquier fila en `permisos` para ese proyecto.
+        supabase.from('permisos').select('proyecto_id').eq('user_id', userId),
+        getProyectoId('crm'),
+        // Fase F: cualquier proyecto tipo obra, no solo La Chacra — habilita N proyectos.
+        supabase.from('proyectos').select('id, slug, nombre').neq('tipo', 'crm').order('nombre'),
       ])
       if (cancelado) return
 
       if (!profile || profile.activo === false) {
-        setEstado({ loading: false, escenario: 'sin_acceso', isAdmin: false, tieneCrm: false, tieneProyecto: false })
+        setEstado({ loading: false, escenario: 'sin_acceso', isAdmin: false, tieneCrm: false, tieneProyecto: false, proyectosObra: [] })
         return
       }
       const isAdmin = profile.rol === 'admin'
-      const tieneCrm = isAdmin || (profile.modulos?.length ?? 0) > 0
-      const tieneProyecto = isAdmin || (!!userProfile && userProfile.active !== false)
+      const proyectosConAcceso = new Set((permisos ?? []).map((p) => p.proyecto_id))
+      const tieneCrm = isAdmin || proyectosConAcceso.has(crmId)
+      const proyectosObra = (obras ?? []).filter((p) => isAdmin || proyectosConAcceso.has(p.id))
+      const tieneProyecto = proyectosObra.length > 0
 
       if (isAdmin) {
-        setEstado({ loading: false, escenario: 'hub_completo', isAdmin, tieneCrm, tieneProyecto })
+        setEstado({ loading: false, escenario: 'hub_completo', isAdmin, tieneCrm, tieneProyecto, proyectosObra })
         return
       }
 
@@ -70,7 +83,7 @@ export function useAccesoUsuario(): AccesoUsuario {
       else if (tieneProyecto) escenario = 'solo_proyecto'
       else escenario = 'sin_acceso'
 
-      setEstado({ loading: false, escenario, isAdmin, tieneCrm, tieneProyecto })
+      setEstado({ loading: false, escenario, isAdmin, tieneCrm, tieneProyecto, proyectosObra })
     }
 
     resolver()

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getProyectoId } from '@/lib/proyectoIds'
 import type { Producto } from './useCatalogoGD'
 import { normCod } from '../lib/calc'
 import { weekKey, weekLabel, dateFromWeekKey } from '../lib/week'
@@ -32,6 +34,7 @@ interface RegistroStockRow {
 }
 
 export function useIngresoStock(productos: Producto[]) {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [semanas, setSemanas] = useState<{ key: string; label: string }[]>([])
   const [semanaKey, setSemanaKey] = useState(String(weekKey(new Date())))
   const [rawItems, setRawItems] = useState<RawStockItem[]>([])
@@ -52,9 +55,11 @@ export function useIngresoStock(productos: Producto[]) {
 
   const cargarSemana = useCallback(async (key: string) => {
     setLoading(true)
+    const proyectoId = await getProyectoId(proyectoSlug!)
     const { data, error } = await supabase
       .from('registro_stock')
       .select('id, codigo, material, unidad, stock_fisico')
+      .eq('proyecto_id', proyectoId)
       .eq('semana_key', key)
       .order('material', { ascending: true })
     if (!error) {
@@ -71,12 +76,18 @@ export function useIngresoStock(productos: Producto[]) {
       )
     }
     setLoading(false)
-  }, [])
+  }, [proyectoSlug])
 
   useEffect(() => {
     let cancelado = false
     async function init() {
-      const { data } = await supabase.from('registro_stock').select('semana_key').order('semana_key', { ascending: false }).limit(1000)
+      const proyectoId = await getProyectoId(proyectoSlug!)
+      const { data } = await supabase
+        .from('registro_stock')
+        .select('semana_key')
+        .eq('proyecto_id', proyectoId)
+        .order('semana_key', { ascending: false })
+        .limit(1000)
       if (cancelado) return
       const vistas = new Set<string>((data ?? []).map((r: { semana_key: string }) => String(r.semana_key)))
       const actual = String(weekKey(new Date()))
@@ -143,8 +154,10 @@ export function useIngresoStock(productos: Producto[]) {
       if (!rawItems.length) return
       setSaving(true)
       try {
+        const proyectoId = await getProyectoId(proyectoSlug!)
         const fecha = dateFromWeekKey(+semanaKey)
         const payload = rawItems.map((it) => ({
+          proyecto_id: proyectoId,
           semana_key: semanaKey,
           fecha,
           codigo: it.codigo.trim(),
@@ -153,6 +166,8 @@ export function useIngresoStock(productos: Producto[]) {
           stock_fisico: it.stockFisico,
           created_by: creadoPor,
         }))
+        // ponytail: onConflict sigue en 'semana_key,codigo' — si esa UNIQUE no incluye
+        // proyecto_id, un 2do proyecto pisaría el stock del primero para el mismo codigo/semana.
         const { error } = await supabase.from('registro_stock').upsert(payload, { onConflict: 'semana_key,codigo' })
         if (error) throw new Error(error.message)
         // ponytail: refetch en vez de reconciliar ids localmente — mas simple y evita filas huerfanas si se borra un item recien guardado sin recargar
@@ -161,7 +176,7 @@ export function useIngresoStock(productos: Producto[]) {
         setSaving(false)
       }
     },
-    [rawItems, semanaKey, cargarSemana],
+    [rawItems, semanaKey, cargarSemana, proyectoSlug],
   )
 
   return { semanas, semanaKey, items, loading, saving, setSemana, goPrev, goNext, goHoy, agregar, editar, removeItem, guardarTodo }

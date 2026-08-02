@@ -7,6 +7,7 @@ interface PermisosProyecto {
   loading: boolean
   isAdmin: boolean
   activo: boolean
+  rolNegocio: string | null
   tieneAccion: (moduloKey: string, accion?: string) => boolean
 }
 
@@ -14,10 +15,11 @@ interface Estado {
   loading: boolean
   isAdmin: boolean
   activo: boolean
+  rolNegocio: string | null
   granted: Set<string>
 }
 
-const ESTADO_INICIAL: Estado = { loading: true, isAdmin: false, activo: false, granted: new Set() }
+const ESTADO_INICIAL: Estado = { loading: true, isAdmin: false, activo: false, rolNegocio: null, granted: new Set() }
 
 export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
   const userId = useAuthStore((s) => s.user?.id)
@@ -30,7 +32,7 @@ export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
     if (authLoading) return
 
     if (!userId) {
-      setEstado({ loading: false, isAdmin: false, activo: false, granted: new Set() })
+      setEstado({ loading: false, isAdmin: false, activo: false, rolNegocio: null, granted: new Set() })
       return
     }
 
@@ -39,10 +41,11 @@ export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
 
     async function resolver() {
       const proyectoId = await getProyectoId(proyectoSlug)
-      const [{ data: profile }, { data: permisos }, { data: modulos }] = await Promise.all([
+      const [{ data: profile }, { data: permisos }, { data: modulos }, { data: access }] = await Promise.all([
         supabase.from('profiles').select('rol, activo').eq('id', userId).maybeSingle(),
         supabase.from('permisos').select('modulo_key, accion').eq('user_id', userId).eq('proyecto_id', proyectoId),
         supabase.from('proyecto_modulos').select('modulo_key, habilitado').eq('proyecto_id', proyectoId),
+        supabase.from('project_access').select('rol_negocio').eq('user_id', userId).eq('proyecto_id', proyectoId).maybeSingle(),
       ])
       if (cancelado) return
 
@@ -55,7 +58,13 @@ export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
           .map((p) => `${p.modulo_key}:${p.accion}`),
       )
 
-      setEstado({ loading: false, isAdmin: profile?.rol === 'admin', activo: profile?.activo !== false, granted })
+      setEstado({
+        loading: false,
+        isAdmin: profile?.rol === 'admin',
+        activo: profile?.activo !== false,
+        rolNegocio: access?.rol_negocio ?? null,
+        granted,
+      })
     }
 
     resolver()
@@ -68,6 +77,7 @@ export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
     loading: estado.loading,
     isAdmin: estado.isAdmin,
     activo: estado.activo,
+    rolNegocio: estado.rolNegocio,
     tieneAccion: (moduloKey: string, accion = 'ver') => estado.isAdmin || estado.granted.has(`${moduloKey}:${accion}`),
   }
 }

@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Building2, ExternalLink } from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient'
 import type { Proyecto } from '../dashboard/types'
 import { Badge } from '@/components/ui/badge'
+import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
+import CrearProyectoDialog from './CrearProyectoDialog'
 
 const estadoTone: Record<string, 'success' | 'warning' | 'secondary'> = {
   activa: 'success',
@@ -13,18 +15,24 @@ const estadoTone: Record<string, 'success' | 'warning' | 'secondary'> = {
 }
 
 // Proyectos ya migrados adentro del hub — link interno en vez del url_app
-// externo (que apunta al sitio standalone viejo, pre-fusión).
-const SLUG_TO_INTERNAL_ROUTE: Record<string, string> = {
-  'la-chacra': '/proyectos/la-chacra/dashboard',
-  crm: '/crm',
+// externo (que apunta al sitio standalone viejo, pre-fusión). Fase F: derivado
+// de `tipo`, ya no hardcodeado a un slug fijo — cualquier proyecto tipo obra
+// entra por su propio /proyectos/:slug/dashboard.
+function rutaInterna(p: Proyecto): string | undefined {
+  if (p.tipo?.toLowerCase() === 'crm') return '/crm'
+  if (p.tipo?.toLowerCase() === 'construccion' || p.tipo?.toLowerCase() === 'custom') {
+    return `/proyectos/${p.slug}/dashboard`
+  }
+  return undefined
 }
 
 export default function ProyectosPage() {
   const [proyectos, setProyectos] = useState<Proyecto[]>([])
   const [loading, setLoading] = useState(true)
+  const { isAdmin } = useAccesoUsuario()
 
-  useEffect(() => {
-    supabase
+  const cargarProyectos = useCallback(() => {
+    return supabase
       .from('proyectos')
       .select('*')
       .order('nombre')
@@ -36,14 +44,18 @@ export default function ProyectosPage() {
       })
   }, [])
 
+  useEffect(() => {
+    cargarProyectos()
+  }, [cargarProyectos])
+
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-extrabold">Proyectos</h1>
-        <p className="text-sm text-muted-foreground">
-          Gestión y creación de proyectos adicionales llega en la Fase 4 (Admin Panel). Por ahora,
-          acceso rápido a los proyectos existentes.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-extrabold">Proyectos</h1>
+          <p className="text-sm text-muted-foreground">Acceso rápido a los proyectos existentes.</p>
+        </div>
+        {isAdmin && <CrearProyectoDialog onCreado={cargarProyectos} />}
       </div>
 
       {loading ? (
@@ -57,7 +69,7 @@ export default function ProyectosPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {proyectos.map((p) => {
-            const internalRoute = SLUG_TO_INTERNAL_ROUTE[p.slug]
+            const internalRoute = rutaInterna(p)
             const cardClass =
               'group flex items-start gap-4 rounded-lg border border-border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-md'
             const content = (

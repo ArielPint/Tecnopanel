@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 
@@ -42,12 +43,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
       const { data } = await supabase
-        .from('user_profiles')
-        .select('id, username, name, role, active, permissions')
+        .from('profiles')
+        .select('id, username, nombre, apellido, activo, permissions')
         .eq('id', userId)
         .single()
       if (!cancelado) {
-        setPerfil((data as Perfil) ?? null)
+        setPerfil(
+          data
+            ? {
+                id: data.id,
+                username: data.username ?? '',
+                name: [data.nombre, data.apellido].filter(Boolean).join(' '),
+                role: '',
+                active: data.activo,
+                permissions: data.permissions,
+              }
+            : null,
+        )
         setLoading(false)
       }
     }
@@ -63,18 +75,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const acceso = usePermisosProyecto('la-chacra')
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
+  const acceso = usePermisosProyecto(proyectoSlug!)
   const isAdmin = acceso.isAdmin
 
   // ponytail: puedeVer ya no distingue por tab — nadie tiene hoy un subconjunto
   // parcial de tabs (todo-o-nada por módulo), y permisos(modulo_key,accion) no
   // modela tabs. El parámetro se mantiene para no tocar los call sites.
   const puedeVer = (_tab: LogisticaTab): boolean => acceso.tieneAccion('logistica')
+  const perfilConRol = perfil ? { ...perfil, role: acceso.rolNegocio ?? '' } : null
 
   return (
     <AuthContext.Provider
       value={{
-        perfil,
+        perfil: perfilConRol,
         loading: loading || acceso.loading,
         isAuthenticated: !!perfil,
         isAdmin,

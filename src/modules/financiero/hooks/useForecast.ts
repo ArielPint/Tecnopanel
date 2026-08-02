@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getProyectoId } from '@/lib/proyectoIds'
 import type { ForecastPresupuesto } from '@/modules/financiero/types/financiero'
 
 type ForecastInput = Pick<ForecastPresupuesto, 'presupuesto_id' | 'mes' | 'anio' | 'monto_forecast'>
 
 export function useForecast(presupuestoId?: string) {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [forecast, setForecast] = useState<ForecastPresupuesto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -18,9 +21,11 @@ export function useForecast(presupuestoId?: string) {
     const idDeEstaRequest = ++ultimaRequestId.current
     setLoading(true)
     setError(null)
+    const proyectoId = await getProyectoId(proyectoSlug!)
     let query = supabase
       .from('financiero_forecast_presupuesto')
       .select('*')
+      .eq('proyecto_id', proyectoId)
       .order('anio')
       .order('mes')
     if (presupuestoId) query = query.eq('presupuesto_id', presupuestoId)
@@ -29,7 +34,7 @@ export function useForecast(presupuestoId?: string) {
     if (error) setError(error.message)
     else setForecast(data ?? [])
     setLoading(false)
-  }, [presupuestoId])
+  }, [presupuestoId, proyectoSlug])
 
   useEffect(() => {
     refetch()
@@ -39,16 +44,17 @@ export function useForecast(presupuestoId?: string) {
   // fila si ya existe (choca con la UNIQUE de la migración 007).
   const upsertForecast = useCallback(
     async (input: ForecastInput) => {
+      const proyectoId = await getProyectoId(proyectoSlug!)
       const { data, error } = await supabase
         .from('financiero_forecast_presupuesto')
-        .upsert(input, { onConflict: 'presupuesto_id,mes,anio' })
+        .upsert({ ...input, proyecto_id: proyectoId }, { onConflict: 'presupuesto_id,mes,anio' })
         .select()
         .single()
       if (error) throw new Error(error.message)
       await refetch()
       return data as ForecastPresupuesto
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   return { forecast, loading, error, refetch, upsertForecast }

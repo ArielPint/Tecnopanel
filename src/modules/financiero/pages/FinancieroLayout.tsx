@@ -18,10 +18,13 @@ import { Button } from '@/modules/financiero/components/ui/button'
 import { Avatar, AvatarFallback } from '@/modules/financiero/components/ui/avatar'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/modules/financiero/components/ui/sheet'
 import { Separator } from '@/modules/financiero/components/ui/separator'
+import PortalShell from '@/modules/financiero/components/PortalShell'
+import { useProyectoActual } from '@/hooks/useProyectoActual'
 import { cn } from '@/lib/utils'
 
 interface NavItem {
   to: string
+  segment: string
   label: string
   icon: typeof LayoutDashboard
   tab: FinancieroTab
@@ -31,32 +34,19 @@ interface NavItem {
   iconColorClase: string
 }
 
-// Base del módulo dentro del hub — todas las rutas de esta capa cuelgan de acá.
-export const FINANCIERO_BASE = '/proyectos/la-chacra/financiero'
-
+// Rutas relativas al proyecto activo (resuelven contra /proyectos/:proyectoSlug/financiero,
+// cualquiera sea el proyecto — antes hardcodeadas a /proyectos/la-chacra/financiero).
 const NAV_ITEMS: NavItem[] = [
-  { to: FINANCIERO_BASE, label: 'Dashboard', icon: LayoutDashboard, tab: 'dashboard', end: true, iconColorClase: 'text-primary' },
-  { to: `${FINANCIERO_BASE}/ordenes-compra`, label: 'Órdenes de Compra', icon: ShoppingCart, tab: 'ordenes-compra', iconColorClase: 'text-warning' },
-  { to: `${FINANCIERO_BASE}/facturas`, label: 'Facturas', icon: Receipt, tab: 'facturas', iconColorClase: 'text-cyan' },
-  { to: `${FINANCIERO_BASE}/presupuestos`, label: 'Presupuestos', icon: Wallet, tab: 'presupuestos', iconColorClase: 'text-purple' },
-  { to: `${FINANCIERO_BASE}/forecast`, label: 'Forecast', icon: TrendingUp, tab: 'forecast', iconColorClase: 'text-pink' },
-  { to: `${FINANCIERO_BASE}/remuneraciones`, label: 'Remuneraciones', icon: Users, tab: 'remuneraciones', iconColorClase: 'text-warning' },
-  { to: `${FINANCIERO_BASE}/ingresos`, label: 'Ingreso del Proyecto', icon: TrendingUp, tab: 'ingresos', iconColorClase: 'text-success' },
-  { to: `${FINANCIERO_BASE}/gastos-directos`, label: 'Gastos Directos', icon: Banknote, tab: 'gastos-directos', iconColorClase: 'text-warning' },
-  { to: `${FINANCIERO_BASE}/auditoria`, label: 'Auditoría', icon: History, tab: 'auditoria', iconColorClase: 'text-muted-foreground' },
+  { to: '.', segment: '', label: 'Dashboard', icon: LayoutDashboard, tab: 'dashboard', end: true, iconColorClase: 'text-primary' },
+  { to: 'ordenes-compra', segment: 'ordenes-compra', label: 'Órdenes de Compra', icon: ShoppingCart, tab: 'ordenes-compra', iconColorClase: 'text-warning' },
+  { to: 'facturas', segment: 'facturas', label: 'Facturas', icon: Receipt, tab: 'facturas', iconColorClase: 'text-cyan' },
+  { to: 'presupuestos', segment: 'presupuestos', label: 'Presupuestos', icon: Wallet, tab: 'presupuestos', iconColorClase: 'text-purple' },
+  { to: 'forecast', segment: 'forecast', label: 'Forecast', icon: TrendingUp, tab: 'forecast', iconColorClase: 'text-pink' },
+  { to: 'remuneraciones', segment: 'remuneraciones', label: 'Remuneraciones', icon: Users, tab: 'remuneraciones', iconColorClase: 'text-warning' },
+  { to: 'ingresos', segment: 'ingresos', label: 'Ingreso del Proyecto', icon: TrendingUp, tab: 'ingresos', iconColorClase: 'text-success' },
+  { to: 'gastos-directos', segment: 'gastos-directos', label: 'Gastos Directos', icon: Banknote, tab: 'gastos-directos', iconColorClase: 'text-warning' },
+  { to: 'auditoria', segment: 'auditoria', label: 'Auditoría', icon: History, tab: 'auditoria', iconColorClase: 'text-muted-foreground' },
 ]
-
-const PAGE_TITLES: Record<string, string> = {
-  [FINANCIERO_BASE]: 'Dashboard',
-  [`${FINANCIERO_BASE}/ordenes-compra`]: 'Órdenes de Compra',
-  [`${FINANCIERO_BASE}/facturas`]: 'Facturas',
-  [`${FINANCIERO_BASE}/presupuestos`]: 'Presupuestos',
-  [`${FINANCIERO_BASE}/forecast`]: 'Forecast',
-  [`${FINANCIERO_BASE}/remuneraciones`]: 'Remuneraciones',
-  [`${FINANCIERO_BASE}/ingresos`]: 'Ingreso del Proyecto',
-  [`${FINANCIERO_BASE}/gastos-directos`]: 'Gastos Directos',
-  [`${FINANCIERO_BASE}/auditoria`]: 'Auditoría',
-}
 
 function iniciales(nombre: string | undefined) {
   if (!nombre) return '?'
@@ -120,13 +110,16 @@ function SidebarFooter({ nombre, rol, onSignOut }: { nombre?: string; rol?: stri
 
 export default function FinancieroLayout() {
   const { perfil, puedeVer, signOut } = useAuth()
+  const { nombre } = useProyectoActual()
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [desktopCollapsed, setDesktopCollapsed] = useState(false)
-  const tituloPagina = PAGE_TITLES[location.pathname] ?? 'Financiero'
+  const ultimoSegmento = location.pathname.split('/').filter(Boolean).pop() ?? ''
+  const tituloPagina = NAV_ITEMS.find((item) => item.segment === ultimoSegmento)?.label ?? 'Dashboard'
 
   return (
-    <div className="flex min-h-svh">
+    <PortalShell actual="financiero">
+    <div className="flex flex-1">
       {/* Sidebar — visible desde md hacia arriba, ocultable con el botón de menú */}
       <aside
         className={cn(
@@ -137,7 +130,7 @@ export default function FinancieroLayout() {
         <div className="mb-2 flex items-center gap-2 px-4">
           <img src={isologo} alt="" className="size-7 shrink-0" />
           <div className="min-w-0">
-            <p className="text-xs font-semibold tracking-wide text-sidebar-foreground/50 uppercase">LA CHACRA</p>
+            <p className="truncate text-xs font-semibold tracking-wide text-sidebar-foreground/50 uppercase">{nombre}</p>
             <p className="text-lg font-bold text-sidebar-foreground">Financiero</p>
           </div>
         </div>
@@ -172,8 +165,8 @@ export default function FinancieroLayout() {
                 <div className="mb-2 flex items-center gap-2 px-4">
                   <img src={isologo} alt="" className="size-7 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold tracking-wide text-sidebar-foreground/50 uppercase">
-                      LA CHACRA
+                    <p className="truncate text-xs font-semibold tracking-wide text-sidebar-foreground/50 uppercase">
+                      {nombre}
                     </p>
                     <p className="text-lg font-bold text-sidebar-foreground">Financiero</p>
                   </div>
@@ -194,5 +187,6 @@ export default function FinancieroLayout() {
         </main>
       </div>
     </div>
+    </PortalShell>
   )
 }
