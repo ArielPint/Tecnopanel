@@ -3,12 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/c
 import { fmt, fmtPr } from '../lib/format'
 import { useProduccionModulos } from '../hooks/useProduccionModulos'
 import { ALL_PARTIDAS, CATEGORIAS, partidaAvg } from '../lib/partidas'
-import { VBarChart, GroupedVBarChart, HBarChart, colorPorAvance, COLOR_VERDE, COLOR_AZUL } from '../components/ProduccionCharts'
+import { VBarChart, GroupedVBarChart, HBarChart, DISTRIBUCION_COLORS, COLOR_VERDE, COLOR_AZUL, COLOR_NARANJA, COLOR_MORADO } from '../components/ProduccionCharts'
 import type { ParsedDashboardData } from '../lib/excelParser'
 
 const BUCKETS = ['10-19%', '20-29%', '30-39%', '40-49%', '50-59%', '60-69%', '70-79%', '80-89%', '90-99%', 'Completado']
 
-function Kpi({ label, value, sub, tono }: { label: string; value: string; sub?: string; tono?: 'success' | 'warning' | 'destructive' }) {
+type Tono = 'success' | 'warning' | 'destructive' | 'info' | 'purple'
+
+function Kpi({ label, value, sub, tono }: { label: string; value: string; sub?: string; tono?: Tono }) {
   return (
     <div className="rounded-lg border bg-card p-4">
       <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">{label}</p>
@@ -66,22 +68,22 @@ export default function ProduccionResumen({ excelData }: { excelData: ParsedDash
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        <Kpi label="Total módulos" value={fmt(stats.tot)} />
+        <Kpi label="Total módulos" value={fmt(stats.tot)} tono="info" />
         <Kpi label="Terminados" value={fmt(stats.term)} sub={stats.tot ? `${fmtPr((stats.term / stats.tot) * 100)} del total` : undefined} tono="success" />
         <Kpi label="En proceso" value={fmt(stats.proc)} tono="warning" />
         <Kpi label="Sin iniciar" value={fmt(stats.sinI)} />
-        <Kpi label="Avance promedio" value={fmtPr(stats.avP * 100)} />
+        <Kpi label="Avance promedio" value={fmtPr(stats.avP * 100)} tono="purple" />
         <Kpi label="Con retraso" value={fmt(stats.atras)} sub="días retraso > 0" tono="destructive" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader><CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Distribución por % avance</CardTitle></CardHeader>
-          <CardContent><VBarChart data={stats.distribucion} labelKey="bucket" valueKey="cantidad" colorFn={() => COLOR_AZUL} /></CardContent>
+          <CardContent><VBarChart data={stats.distribucion} labelKey="bucket" valueKey="cantidad" colors={DISTRIBUCION_COLORS} /></CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Avance por especialidad</CardTitle></CardHeader>
-          <CardContent><VBarChart data={stats.especialidad} labelKey="cat" valueKey="avance" pct colorFn={colorPorAvance} /></CardContent>
+          <CardContent><VBarChart data={stats.especialidad} labelKey="cat" valueKey="avance" pct colors={[COLOR_AZUL, COLOR_VERDE, COLOR_NARANJA, COLOR_MORADO]} /></CardContent>
         </Card>
       </div>
 

@@ -147,6 +147,36 @@ function allTiemposDe(m: ModuloLive, code: string): string[] {
   return [t.t1, t.t2, t.t3].filter((v): v is string => !!v)
 }
 
+export interface TiemposCategoria {
+  avg: number
+  min: number
+  max: number
+  n: number
+}
+
+// Días transcurridos (primer t1 → último t3) por categoría, solo en módulos donde esa
+// categoría está 100% aprobada — equivalente en vivo a "tiempos.xlsx" de produccion.html.
+export function tiemposCategoria(rows: ModuloLive[], cat: Categoria): TiemposCategoria {
+  const partidas = PARTIDAS[cat]
+  const dias: number[] = []
+  for (const r of rows) {
+    if (catProgress(r, cat) < 1) continue
+    let min: string | null = null
+    let max: string | null = null
+    for (const p of partidas) {
+      if (isNA(pS(r, p.c))) continue
+      for (const f of allTiemposDe(r, p.c)) {
+        if (!min || f < min) min = f
+        if (!max || f > max) max = f
+      }
+    }
+    if (min && max) dias.push((new Date(max).getTime() - new Date(min).getTime()) / 86400000)
+  }
+  const n = dias.length
+  if (!n) return { avg: 0, min: 0, max: 0, n: 0 }
+  return { avg: dias.reduce((s, d) => s + d, 0) / n, min: Math.min(...dias), max: Math.max(...dias), n }
+}
+
 // Fecha del primer movimiento registrado en cualquier partida relevante (proxy de "inicio real").
 export function fechaInicioReal(m: ModuloLive): string | null {
   let min: string | null = null

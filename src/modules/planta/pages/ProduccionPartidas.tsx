@@ -3,15 +3,38 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/c
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import { fmtPr } from '../lib/format'
 import { useProduccionModulos } from '../hooks/useProduccionModulos'
-import { ALL_PARTIDAS, CATEGORIAS, partidaAvg } from '../lib/partidas'
-import { VBarChart, HBarChart, GroupedVBarChart, colorPorAvance, COLOR_AZUL, COLOR_MORADO } from '../components/ProduccionCharts'
+import { ALL_PARTIDAS, CATEGORIAS, partidaAvg, tiemposCategoria } from '../lib/partidas'
+import { VBarChart, HBarChart, GroupedVBarChart, colorPorAvance, COLOR_AZUL, COLOR_VERDE, COLOR_NARANJA, COLOR_MORADO } from '../components/ProduccionCharts'
 import type { ParsedDashboardData } from '../lib/excelParser'
 
-function Kpi({ label, value }: { label: string; value: string }) {
+type Tono = 'success' | 'warning' | 'destructive' | 'info' | 'purple'
+
+function Kpi({ label, value, tono }: { label: string; value: string; tono?: Tono }) {
   return (
     <div className="rounded-lg border bg-card p-4">
       <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">{label}</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
+      <p className={'mt-1 text-2xl font-bold tabular-nums ' + (tono ? `text-${tono}` : '')}>{value}</p>
+    </div>
+  )
+}
+
+const CAT_COLORS = [COLOR_AZUL, COLOR_VERDE, COLOR_NARANJA, COLOR_MORADO]
+
+function TiempoCard({ label, color, t }: { label: string; color: string; t: { avg: number; min: number; max: number; n: number } }) {
+  return (
+    <div className="rounded-lg border p-4" style={{ background: `${color}26` }}>
+      <p className="text-[.68rem] font-semibold tracking-wide text-muted-foreground uppercase">{label}</p>
+      <p className="mt-1 text-[1.7rem] leading-none font-bold" style={{ color }}>
+        {t.avg.toFixed(1)}<span className="ml-1 text-sm font-normal text-muted-foreground">días prom.</span>
+      </p>
+      <div className="mt-2.5 h-[5px] overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full" style={{ width: `${t.max ? Math.min((t.avg / t.max) * 100, 100) : 0}%`, background: color }} />
+      </div>
+      <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+        <span>Mín <strong className="text-foreground">{t.min.toFixed(0)}d</strong></span>
+        <span>Máx <strong className="text-foreground">{t.max.toFixed(0)}d</strong></span>
+        <span><strong className="text-foreground">{t.n}</strong> mód. completados</span>
+      </div>
     </div>
   )
 }
@@ -52,7 +75,14 @@ export default function ProduccionPartidas({ excelData }: { excelData: ParsedDas
       }
     })
 
-    return { ogP, sanP, elP, trmP, avG, porPartida, porCategoria, ogVsTerm }
+    const tiempos = {
+      obra_gruesa: tiemposCategoria(rows, 'obra_gruesa'),
+      sanitario: tiemposCategoria(rows, 'sanitario'),
+      electrico: tiemposCategoria(rows, 'electrico'),
+      terminaciones: tiemposCategoria(rows, 'terminaciones'),
+    }
+
+    return { ogP, sanP, elP, trmP, avG, porPartida, porCategoria, ogVsTerm, tiempos }
   }, [modulos, rows])
 
   const pendientes = useMemo(() => {
@@ -71,12 +101,21 @@ export default function ProduccionPartidas({ excelData }: { excelData: ParsedDas
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <Kpi label="Obra Gruesa" value={fmtPr(data.ogP * 100)} />
-        <Kpi label="Sanitario" value={fmtPr(data.sanP * 100)} />
-        <Kpi label="Eléctrico" value={fmtPr(data.elP * 100)} />
-        <Kpi label="Terminaciones" value={fmtPr(data.trmP * 100)} />
-        <Kpi label="Avance global" value={fmtPr(data.avG * 100)} />
+        <Kpi label="Obra Gruesa" value={fmtPr(data.ogP * 100)} tono="info" />
+        <Kpi label="Sanitario" value={fmtPr(data.sanP * 100)} tono="success" />
+        <Kpi label="Eléctrico" value={fmtPr(data.elP * 100)} tono="warning" />
+        <Kpi label="Terminaciones" value={fmtPr(data.trmP * 100)} tono="purple" />
+        <Kpi label="Avance global" value={fmtPr(data.avG * 100)} tono="destructive" />
       </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Tiempo promedio de ejecución por categoría</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {CATEGORIAS.map((c, i) => <TiempoCard key={c.key} label={c.label} color={CAT_COLORS[i]} t={data.tiempos[c.key]} />)}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Avance por partida — % de módulos con la partida aprobada</CardTitle></CardHeader>
@@ -86,7 +125,7 @@ export default function ProduccionPartidas({ excelData }: { excelData: ParsedDas
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader><CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Avance por categoría</CardTitle></CardHeader>
-          <CardContent><VBarChart data={data.porCategoria} labelKey="cat" valueKey="avance" pct colorFn={colorPorAvance} /></CardContent>
+          <CardContent><VBarChart data={data.porCategoria} labelKey="cat" valueKey="avance" pct colors={CAT_COLORS} /></CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Obra Gruesa vs Terminaciones (torres activas)</CardTitle></CardHeader>

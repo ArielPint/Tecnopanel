@@ -5,11 +5,13 @@ import { useProduccionModulos } from '../hooks/useProduccionModulos'
 import { VBarChart, GroupedVBarChart, colorPorAvance, COLOR_VERDE, COLOR_AZUL } from '../components/ProduccionCharts'
 import type { ParsedDashboardData } from '../lib/excelParser'
 
-function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
+type Tono = 'success' | 'warning' | 'destructive' | 'info' | 'purple'
+
+function Kpi({ label, value, sub, tono }: { label: string; value: string; sub?: string; tono?: Tono }) {
   return (
     <div className="rounded-lg border bg-card p-4">
       <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">{label}</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
+      <p className={'mt-1 text-2xl font-bold tabular-nums ' + (tono ? `text-${tono}` : '')}>{value}</p>
       {sub && <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>}
     </div>
   )
@@ -44,10 +46,10 @@ export default function ProduccionTorres({ excelData }: { excelData: ParsedDashb
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi label="Torres activas" value={String(data.activas)} />
-        <Kpi label="Torres completadas" value={String(data.completas)} />
-        {data.mayor && <Kpi label="Mayor avance" value={data.mayor.torre} sub={fmtPr(data.mayor.avance)} />}
-        {data.menor && <Kpi label="Menor avance" value={data.menor.torre} sub={fmtPr(data.menor.avance)} />}
+        <Kpi label="Torres activas" value={String(data.activas)} tono="info" />
+        <Kpi label="Torres completadas" value={String(data.completas)} tono="success" />
+        {data.mayor && <Kpi label="Mayor avance" value={data.mayor.torre} sub={fmtPr(data.mayor.avance)} tono="purple" />}
+        {data.menor && <Kpi label="Menor avance" value={data.menor.torre} sub={fmtPr(data.menor.avance)} tono="destructive" />}
       </div>
 
       <Card>

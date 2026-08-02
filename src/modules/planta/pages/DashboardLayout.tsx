@@ -19,11 +19,6 @@ import Despachos from './Despachos'
 import Ejecutivo from './Ejecutivo'
 import Proyeccion from './Proyeccion'
 import ProdDiaria from './ProdDiaria'
-import ProduccionResumen from './ProduccionResumen'
-import ProduccionTorres from './ProduccionTorres'
-import ProduccionPartidas from './ProduccionPartidas'
-import ProduccionAlertas from './ProduccionAlertas'
-import ProduccionDetalle from './ProduccionDetalle'
 
 const TABS: { value: DashboardTab; label: string; implementado: boolean }[] = [
   { value: 'resumen', label: 'Resumen', implementado: true },
@@ -36,11 +31,6 @@ const TABS: { value: DashboardTab; label: string; implementado: boolean }[] = [
   { value: 'proyeccion', label: 'Proyección', implementado: true },
   { value: 'prod-diaria', label: 'Prod. diaria', implementado: true },
   { value: 'ejecutivo', label: 'Ejecutivo', implementado: true },
-  { value: 'prod-resumen', label: 'Producción · Resumen', implementado: true },
-  { value: 'prod-torres', label: 'Producción · Torres', implementado: true },
-  { value: 'prod-partidas', label: 'Producción · Partidas', implementado: true },
-  { value: 'prod-alertas', label: 'Producción · Alertas', implementado: true },
-  { value: 'prod-detalle', label: 'Producción · Detalle', implementado: true },
 ]
 
 function iniciales(nombre: string | undefined) {
@@ -176,25 +166,10 @@ export default function DashboardLayout() {
                 </TabsContent>
               ))
             )}
-            {/* Producción (Resumen/Torres/Partidas/Alertas/Detalle) lee planta_modulos en vivo — no depende
-                del xlsm subido, por eso queda fuera del gate de excelData de arriba (igual que Prod. diaria). */}
+            {/* Prod. diaria lee planta_modulos en vivo — no depende del xlsm subido,
+                por eso queda fuera del gate de excelData de arriba. */}
             <TabsContent value="prod-diaria">
               <ProdDiaria />
-            </TabsContent>
-            <TabsContent value="prod-resumen">
-              <ProduccionResumen excelData={excelData} />
-            </TabsContent>
-            <TabsContent value="prod-torres">
-              <ProduccionTorres excelData={excelData} />
-            </TabsContent>
-            <TabsContent value="prod-partidas">
-              <ProduccionPartidas excelData={excelData} />
-            </TabsContent>
-            <TabsContent value="prod-alertas">
-              <ProduccionAlertas excelData={excelData} />
-            </TabsContent>
-            <TabsContent value="prod-detalle">
-              <ProduccionDetalle excelData={excelData} />
             </TabsContent>
             {visibles
               .filter((t) => !t.implementado)

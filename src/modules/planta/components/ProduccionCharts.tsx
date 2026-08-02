@@ -14,15 +14,23 @@ export function colorPorAvance(pct: number): string {
   return COLOR_ROJO
 }
 
+// Paleta exacta del "Distribución por % avance" de produccion.html (naranja→verde, 10 buckets).
+export const DISTRIBUCION_COLORS = [
+  '#f06e3c', '#e3903e', '#d2af32', '#bec337', '#a3c83c',
+  '#82c846', '#64c850', '#4bc050', '#37b94b', '#28a03c',
+]
+
 // Barras verticales, una sola serie — distribución, torres, categorías.
+// `colors`: paleta fija por índice (ej. distribución). `colorFn`: color derivado del valor (ej. semáforo %).
 export function VBarChart({
-  data, labelKey, valueKey, pct, colorFn, height = 260,
+  data, labelKey, valueKey, pct, colorFn, colors, height = 260,
 }: {
   data: Record<string, unknown>[]
   labelKey: string
   valueKey: string
   pct?: boolean
   colorFn?: (v: number) => string
+  colors?: string[]
   height?: number
 }) {
   const config = { [valueKey]: { label: pct ? '% Avance' : 'Cantidad' } } satisfies ChartConfig
@@ -34,7 +42,9 @@ export function VBarChart({
         <YAxis tickFormatter={pct ? (v) => `${v}%` : undefined} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={40} />
         <ChartTooltip content={<ChartTooltipContent formatter={(value) => [pct ? `${value}%` : String(value), '']} />} />
         <Bar dataKey={valueKey} radius={4}>
-          {colorFn && data.map((entry, i) => <Cell key={i} fill={colorFn(Number(entry[valueKey]))} />)}
+          {colors
+            ? data.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)
+            : colorFn && data.map((entry, i) => <Cell key={i} fill={colorFn(Number(entry[valueKey]))} />)}
         </Bar>
       </BarChart>
     </ChartContainer>

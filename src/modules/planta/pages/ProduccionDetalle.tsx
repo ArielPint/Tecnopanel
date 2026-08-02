@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import { fmtDate, fmtPr } from '../lib/format'
@@ -67,11 +67,16 @@ export default function ProduccionDetalle({ excelData }: { excelData: ParsedDash
 
   if (loading) return <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
 
-  const columns: { key: SortKey; label: string }[] = [
-    { key: 'torre', label: 'Torre' }, { key: 'modulo', label: 'Módulo' }, { key: 'tipo', label: 'Tipo' },
-    { key: 'avance', label: '% Avance' }, { key: 'termPlan', label: 'Término plan' },
-    { key: 'diasRetraso', label: 'Días ret.' }, { key: 'nPendientes', label: 'Pendientes' },
-  ]
+  function Th({ sortKey, children }: { sortKey?: SortKey; children: ReactNode }) {
+    return (
+      <th
+        className={'px-2 py-1.5 text-left whitespace-nowrap select-none' + (sortKey ? ' cursor-pointer' : '')}
+        onClick={sortKey ? () => toggleSort(sortKey) : undefined}
+      >
+        {children}{sortKey && sort.key === sortKey ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}
+      </th>
+    )
+  }
 
   return (
     <div className="space-y-3">
@@ -98,13 +103,16 @@ export default function ProduccionDetalle({ excelData }: { excelData: ParsedDash
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/40 text-muted-foreground">
-              {columns.map((c) => (
-                <th key={c.key} className="cursor-pointer px-2 py-1.5 text-left whitespace-nowrap select-none" onClick={() => toggleSort(c.key)}>
-                  {c.label}{sort.key === c.key ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}
-                </th>
-              ))}
-              <th className="px-2 py-1.5 text-left">OG</th><th className="px-2 py-1.5 text-left">San</th><th className="px-2 py-1.5 text-left">Elec</th><th className="px-2 py-1.5 text-left">Term</th>
-              <th className="px-2 py-1.5 text-left">Inicio real</th><th className="px-2 py-1.5 text-left">Estado</th>
+              <Th sortKey="torre">Torre</Th>
+              <Th sortKey="modulo">Módulo</Th>
+              <Th sortKey="tipo">Tipo</Th>
+              <Th sortKey="avance">% Avance</Th>
+              <Th>OG</Th><Th>San</Th><Th>Elec</Th><Th>Term</Th>
+              <Th>Inicio real</Th>
+              <Th sortKey="termPlan">Término plan</Th>
+              <Th>Estado</Th>
+              <Th sortKey="diasRetraso">Días ret.</Th>
+              <Th sortKey="nPendientes">Pendientes</Th>
             </tr>
           </thead>
           <tbody>
@@ -114,15 +122,15 @@ export default function ProduccionDetalle({ excelData }: { excelData: ParsedDash
                 <td className="px-2 py-1.5">{m.modulo}</td>
                 <td className="px-2 py-1.5">{m.tipo || '—'}</td>
                 <td className="px-2 py-1.5 tabular-nums">{(m.avance * 100).toFixed(1)}%</td>
-                <td className="px-2 py-1.5">{fmtDate(m.termPlan)}</td>
-                <td className={'px-2 py-1.5 tabular-nums ' + (m.diasRetraso > 0 ? 'text-destructive' : '')}>{m.diasRetraso > 0 ? `${m.diasRetraso}d` : '—'}</td>
-                <td className="px-2 py-1.5 tabular-nums">{m.nPendientes || '—'}</td>
                 <td className="px-2 py-1.5 tabular-nums">{fmtPr(m.og * 100)}</td>
                 <td className="px-2 py-1.5 tabular-nums">{fmtPr(m.san * 100)}</td>
                 <td className="px-2 py-1.5 tabular-nums">{fmtPr(m.elec * 100)}</td>
                 <td className="px-2 py-1.5 tabular-nums">{fmtPr(m.term * 100)}</td>
                 <td className="px-2 py-1.5">{fmtDate(m.initReal)}</td>
+                <td className="px-2 py-1.5">{fmtDate(m.termPlan)}</td>
                 <td className="px-2 py-1.5"><EstadoBadge m={m} /></td>
+                <td className={'px-2 py-1.5 tabular-nums ' + (m.diasRetraso > 0 ? 'text-destructive' : '')}>{m.diasRetraso > 0 ? `${m.diasRetraso}d` : '—'}</td>
+                <td className="px-2 py-1.5 tabular-nums">{m.nPendientes || '—'}</td>
               </tr>
             ))}
           </tbody>

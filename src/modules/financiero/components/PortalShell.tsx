@@ -15,7 +15,8 @@ import { cn } from '@/lib/utils'
 // compartido en vez de repetirlo en cada Layout. Fase F: genérico por slug de
 // proyecto en vez de hardcodeado a La Chacra.
 const ITEMS = [
-  { key: 'dashboard', label: 'Producción' },
+  { key: 'dashboard', label: 'Principal' },
+  { key: 'produccion', label: 'Producción' },
   { key: 'logistica', label: 'Logística' },
   { key: 'solicitudes', label: 'Solicitudes' },
   { key: 'financiero', label: 'Financiero' },
@@ -82,7 +83,10 @@ export default function PortalShell({ actual, children }: { actual: ModuloKey; c
           <ItemLink to={`${base}/settings`} label="Configuración" activo={actual === 'settings'} onNavigate={onNavigate} />
         )}
       </nav>
-      <div className="px-3">
+      <div className="flex flex-col gap-1 px-3">
+        <Link to="/" className="text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground" onClick={onNavigate}>
+          ← Volver al Hub
+        </Link>
         <Link to="/proyectos" className="text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground" onClick={onNavigate}>
           ← Volver a Proyectos
         </Link>
