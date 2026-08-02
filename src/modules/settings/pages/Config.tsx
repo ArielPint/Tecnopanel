@@ -7,6 +7,7 @@ import { Button } from '@/modules/financiero/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 import { fmtM } from '@/modules/planta/lib/format'
+import { useExcelData } from '@/modules/planta/hooks/useExcelData'
 import { useConfigFinanciero, useRitmoProyeccion, useTablaAnual, MESES } from '../hooks/useConfig'
 
 const ANIOS = [2026, 2027, 2028]
@@ -18,6 +19,7 @@ export default function Config() {
         <h2 className="text-sm font-semibold">Configuración del proyecto</h2>
         <p className="text-xs text-muted-foreground">Parámetros y valores de referencia. Solo visible para administradores.</p>
       </div>
+      <ExcelUploadCard />
       <PresupuestoCard />
       <RitmoCard />
       <TablaAnualCard
@@ -37,6 +39,40 @@ export default function Config() {
         fromInput={(v) => parseFloat(v) || 0}
       />
     </div>
+  )
+}
+
+function ExcelUploadCard() {
+  const { excelData, autoLoading, uploading, error, handleFile } = useExcelData()
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>📄 Archivo Excel del proyecto</CardTitle>
+        <CardDescription>Sube LA CHACRA.xlsm para actualizar avance, módulos, compras y stock del dashboard</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        <p className="text-xs text-muted-foreground">
+          {autoLoading ? 'Cargando estado…' : excelData ? 'Archivo cargado — subir uno nuevo lo reemplaza para todo el equipo.' : 'Sin archivo cargado todavía.'}
+        </p>
+        <Button asChild disabled={uploading || autoLoading}>
+          <label className="cursor-pointer">
+            {uploading ? 'Procesando…' : 'Subir archivo .xlsm'}
+            <input
+              type="file"
+              accept=".xlsm,.xlsx"
+              className="hidden"
+              disabled={uploading || autoLoading}
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) handleFile(f)
+              }}
+            />
+          </label>
+        </Button>
+      </CardContent>
+    </Card>
   )
 }
 
