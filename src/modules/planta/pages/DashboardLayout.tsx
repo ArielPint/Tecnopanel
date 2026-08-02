@@ -19,6 +19,11 @@ import Despachos from './Despachos'
 import Ejecutivo from './Ejecutivo'
 import Proyeccion from './Proyeccion'
 import ProdDiaria from './ProdDiaria'
+import ProduccionResumen from './ProduccionResumen'
+import ProduccionTorres from './ProduccionTorres'
+import ProduccionPartidas from './ProduccionPartidas'
+import ProduccionAlertas from './ProduccionAlertas'
+import ProduccionDetalle from './ProduccionDetalle'
 
 const TABS: { value: DashboardTab; label: string; implementado: boolean }[] = [
   { value: 'resumen', label: 'Resumen', implementado: true },
@@ -31,6 +36,11 @@ const TABS: { value: DashboardTab; label: string; implementado: boolean }[] = [
   { value: 'proyeccion', label: 'Proyección', implementado: true },
   { value: 'prod-diaria', label: 'Prod. diaria', implementado: true },
   { value: 'ejecutivo', label: 'Ejecutivo', implementado: true },
+  { value: 'prod-resumen', label: 'Producción · Resumen', implementado: true },
+  { value: 'prod-torres', label: 'Producción · Torres', implementado: true },
+  { value: 'prod-partidas', label: 'Producción · Partidas', implementado: true },
+  { value: 'prod-alertas', label: 'Producción · Alertas', implementado: true },
+  { value: 'prod-detalle', label: 'Producción · Detalle', implementado: true },
 ]
 
 function iniciales(nombre: string | undefined) {
@@ -91,37 +101,6 @@ export default function DashboardLayout() {
             </div>
             <Skeleton className="h-[280px]" />
           </div>
-        ) : !excelData ? (
-          <Card>
-            <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-              <UploadCloud className="size-8 text-muted-foreground" />
-              <p className="text-sm font-medium">No hay datos de avance cargados</p>
-              {puedeSubirExcel ? (
-                <>
-                  <p className="max-w-md text-xs text-muted-foreground">
-                    Sube el archivo LA CHACRA.xlsm para calcular los KPIs y gráficos del dashboard. Queda guardado para el resto del equipo.
-                  </p>
-                  <Button asChild disabled={uploading}>
-                    <label className="cursor-pointer">
-                      {uploading ? 'Procesando…' : 'Subir archivo .xlsm'}
-                      <input
-                        type="file"
-                        accept=".xlsm,.xlsx"
-                        className="hidden"
-                        disabled={uploading}
-                        onChange={(e) => {
-                          const f = e.target.files?.[0]
-                          if (f) handleFile(f)
-                        }}
-                      />
-                    </label>
-                  </Button>
-                </>
-              ) : (
-                <p className="max-w-md text-xs text-muted-foreground">Pide a un administrador que suba el archivo LA CHACRA.xlsm.</p>
-              )}
-            </CardContent>
-          </Card>
         ) : (
           <Tabs defaultValue={primerTab}>
             <TabsList variant="line" className="mb-4 flex-wrap border-b">
@@ -131,35 +110,91 @@ export default function DashboardLayout() {
                 </TabsTrigger>
               ))}
             </TabsList>
-            <TabsContent value="resumen">
-              <Resumen excelData={excelData} />
-            </TabsContent>
-            <TabsContent value="curva">
-              <Curva excelData={excelData} />
-            </TabsContent>
-            <TabsContent value="modulos">
-              <Modulos excelData={excelData} />
-            </TabsContent>
-            <TabsContent value="compras">
-              <Compras excelData={excelData} />
-            </TabsContent>
-            <TabsContent value="productos">
-              <Productos excelData={excelData} />
-            </TabsContent>
-            <TabsContent value="stock">
-              <Stock excelData={excelData} />
-            </TabsContent>
-            <TabsContent value="despachos">
-              <Despachos excelData={excelData} />
-            </TabsContent>
-            <TabsContent value="proyeccion">
-              <Proyeccion excelData={excelData} />
-            </TabsContent>
+            {excelData ? (
+              <>
+                <TabsContent value="resumen">
+                  <Resumen excelData={excelData} />
+                </TabsContent>
+                <TabsContent value="curva">
+                  <Curva excelData={excelData} />
+                </TabsContent>
+                <TabsContent value="modulos">
+                  <Modulos excelData={excelData} />
+                </TabsContent>
+                <TabsContent value="compras">
+                  <Compras excelData={excelData} />
+                </TabsContent>
+                <TabsContent value="productos">
+                  <Productos excelData={excelData} />
+                </TabsContent>
+                <TabsContent value="stock">
+                  <Stock excelData={excelData} />
+                </TabsContent>
+                <TabsContent value="despachos">
+                  <Despachos excelData={excelData} />
+                </TabsContent>
+                <TabsContent value="proyeccion">
+                  <Proyeccion excelData={excelData} />
+                </TabsContent>
+                <TabsContent value="ejecutivo">
+                  <Ejecutivo excelData={excelData} />
+                </TabsContent>
+              </>
+            ) : (
+              ['resumen', 'curva', 'modulos', 'compras', 'productos', 'stock', 'despachos', 'proyeccion', 'ejecutivo'].map((tab) => (
+                <TabsContent key={tab} value={tab}>
+                  <Card>
+                    <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+                      <UploadCloud className="size-8 text-muted-foreground" />
+                      <p className="text-sm font-medium">No hay datos de avance cargados</p>
+                      {puedeSubirExcel ? (
+                        <>
+                          <p className="max-w-md text-xs text-muted-foreground">
+                            Sube el archivo LA CHACRA.xlsm para calcular los KPIs y gráficos del dashboard. Queda guardado para el resto del equipo.
+                          </p>
+                          <Button asChild disabled={uploading}>
+                            <label className="cursor-pointer">
+                              {uploading ? 'Procesando…' : 'Subir archivo .xlsm'}
+                              <input
+                                type="file"
+                                accept=".xlsm,.xlsx"
+                                className="hidden"
+                                disabled={uploading}
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0]
+                                  if (f) handleFile(f)
+                                }}
+                              />
+                            </label>
+                          </Button>
+                        </>
+                      ) : (
+                        <p className="max-w-md text-xs text-muted-foreground">Pide a un administrador que suba el archivo LA CHACRA.xlsm.</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              ))
+            )}
+            {/* Producción (Resumen/Torres/Partidas/Alertas/Detalle) lee planta_modulos en vivo — no depende
+                del xlsm subido, por eso queda fuera del gate de excelData de arriba (igual que Prod. diaria). */}
             <TabsContent value="prod-diaria">
               <ProdDiaria />
             </TabsContent>
-            <TabsContent value="ejecutivo">
-              <Ejecutivo excelData={excelData} />
+            <TabsContent value="prod-resumen">
+              <ProduccionResumen excelData={excelData} />
+            </TabsContent>
+            <TabsContent value="prod-torres">
+              <ProduccionTorres excelData={excelData} />
+            </TabsContent>
+            <TabsContent value="prod-partidas">
+              <ProduccionPartidas excelData={excelData} />
+            </TabsContent>
+            <TabsContent value="prod-alertas">
+              <ProduccionAlertas excelData={excelData} />
+            </TabsContent>
+            <TabsContent value="prod-detalle">
+              <ProduccionDetalle excelData={excelData} />
             </TabsContent>
             {visibles
               .filter((t) => !t.implementado)

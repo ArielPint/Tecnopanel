@@ -25,6 +25,11 @@ export type DashboardTab =
   | 'proyeccion'
   | 'prod-diaria'
   | 'ejecutivo'
+  | 'prod-resumen'
+  | 'prod-torres'
+  | 'prod-partidas'
+  | 'prod-alertas'
+  | 'prod-detalle'
 
 interface AuthValue {
   perfil: Perfil | null

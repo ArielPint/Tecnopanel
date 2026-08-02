@@ -198,3 +198,23 @@ export async function loadPlantaModulosProdDiaria(proyectoId: string): Promise<P
     .order('orden', { ascending: true })
   return (data ?? []) as PlantaModuloProdRow[]
 }
+
+export interface PlantaModuloRow {
+  nombre: string | null
+  torre: string | null
+  tipo: string | null
+  estado_modulo: string | null
+  estados: Record<string, unknown> | null
+  tiempos: Record<string, { t1?: string; t2?: string; t3?: string }> | null
+}
+
+// Set completo de columnas para el módulo Producción (Resumen/Torres/Partidas/Alertas/Detalle) —
+// separado de loadPlantaModulosProdDiaria (que solo necesita 5 columnas) para no cambiarle el shape.
+export async function loadPlantaModulos(proyectoId: string): Promise<PlantaModuloRow[]> {
+  const { data } = await supabase
+    .from('planta_modulos')
+    .select('nombre, torre, tipo, estado_modulo, estados, tiempos')
+    .eq('proyecto_id', proyectoId)
+    .order('orden', { ascending: true })
+  return (data ?? []) as PlantaModuloRow[]
+}

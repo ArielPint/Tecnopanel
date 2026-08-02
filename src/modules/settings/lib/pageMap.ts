@@ -26,6 +26,11 @@ export const PAGE_MAP: Record<PageId, PageDef> = {
       proyeccion: 'Proyección',
       'prod-diaria': 'Prod. diaria',
       ejecutivo: 'Ejecutivo',
+      'prod-resumen': 'Producción · Resumen',
+      'prod-torres': 'Producción · Torres',
+      'prod-partidas': 'Producción · Partidas',
+      'prod-alertas': 'Producción · Alertas',
+      'prod-detalle': 'Producción · Detalle',
     },
   },
   logistica: {
