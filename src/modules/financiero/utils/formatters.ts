@@ -28,7 +28,7 @@ export function formatCLPCompact(value: number | null | undefined) {
 
 export function formatFecha(value: string | null | undefined) {
   if (!value) return '—'
-  return new Date(value).toLocaleDateString('es-CL')
+  return new Date(value + 'T00:00:00').toLocaleDateString('es-CL')
 }
 
 export const MESES = [
