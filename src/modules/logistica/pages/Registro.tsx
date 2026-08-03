@@ -45,7 +45,7 @@ function calcularTotales(rows: RegistroCompra[], pptoMap: Record<string, number 
 }
 
 export default function Registro() {
-  const { perfil, isAdmin } = useAuth()
+  const { perfil, puedeEditar } = useAuth()
   const { allProducts, loading: loadingCatalogo } = useCatalogoGD()
   const { responsables, grupos, loading: loadingResp } = useResponsables()
   const { ordenes, guias, loading: loadingOC } = useOrdenesCompra()
@@ -63,8 +63,6 @@ export default function Registro() {
     for (const r of responsables) map[r.nombre] = r.grupo_id
     return map
   }, [responsables])
-
-  const puedeEditar = isAdmin || perfil?.role !== 'readonly'
 
   const gdOCMap = useMemo(() => {
     const numeroPorOC: Record<string, string> = {}

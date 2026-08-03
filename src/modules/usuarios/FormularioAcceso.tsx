@@ -32,6 +32,7 @@ function inputFromAcceso(acceso?: Acceso | null): AccesoInput {
     laChacraModulos: acceso?.laChacraModulos ?? [],
     laChacraFinancieroEdit: acceso?.laChacraFinancieroEdit ?? {},
     laChacraEstadosPagoAcciones: acceso?.laChacraEstadosPagoAcciones ?? {},
+    laChacraLogisticaEdit: acceso?.laChacraLogisticaEdit ?? false,
     crmRolNegocio: acceso?.crmRolNegocio ?? '',
     crmModulos: acceso?.crmModulos ?? [],
   }
@@ -167,6 +168,18 @@ export default function FormularioAcceso({ acceso, trigger, onGuardar }: Props) 
                       {g.label}
                     </label>
                   ))}
+                </div>
+              )}
+              {form.laChacraModulos.includes('logistica') && (
+                <div className="flex flex-col gap-1.5 rounded-md border p-3">
+                  <Label className="text-xs text-muted-foreground">Edición en Logística</Label>
+                  <label className="flex items-center gap-1.5 text-xs">
+                    <Checkbox
+                      checked={form.laChacraLogisticaEdit}
+                      onCheckedChange={(v) => setForm((f) => ({ ...f, laChacraLogisticaEdit: !!v }))}
+                    />
+                    Puede crear y editar despachos, registros y órdenes de compra
+                  </label>
                 </div>
               )}
               {form.laChacraModulos.includes('estados_pago') && (

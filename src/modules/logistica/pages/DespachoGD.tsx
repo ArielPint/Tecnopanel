@@ -19,7 +19,7 @@ type SortCol = 'fecha_gd' | 'fecha_despacho' | 'gd_numero' | 'cantidad' | 'monto
 const MES_ABBR = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 export default function DespachoGD() {
-  const { perfil, isAdmin } = useAuth()
+  const { perfil, puedeEditar } = useAuth()
   const { despachos, loading, error, crear, actualizar, eliminar } = useDespachosGD()
   const [catalogo, setCatalogo] = useState<CatalogoModulos>({ modulos: {}, torres: [] })
   const [search, setSearch] = useState('')
@@ -32,8 +32,6 @@ export default function DespachoGD() {
   useEffect(() => {
     loadCatalogoModulos().then(setCatalogo)
   }, [])
-
-  const puedeEditar = isAdmin || perfil?.role !== 'readonly'
 
   const conAcumulado = useMemo(() => {
     let acum = 0

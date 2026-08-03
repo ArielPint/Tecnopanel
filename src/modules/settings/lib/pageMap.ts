@@ -95,15 +95,12 @@ export const ESTADOS_PAGO_ACCION_GROUPS: { key: string; label: string }[] = [
   { key: 'eliminar', label: 'Puede administrar (eliminar/exportar) Estados de Pago' },
 ]
 
-// 'readonly' es un valor de role literal (no un flag aparte) — logistica lo chequea
-// directo como perfil.role !== 'readonly'. Se ofrece acá como una opción más de rol.
 export const ROLES: { value: string; label: string }[] = [
   { value: 'admin', label: 'Administrador' },
   { value: 'operador', label: 'Operador' },
   { value: 'viewer', label: 'Solo Lectura' },
   { value: 'editor', label: 'Editor' },
   { value: 'compras', label: 'Compras' },
-  { value: 'readonly', label: 'Readonly (bloquea edición en Logística)' },
 ]
 
 export type PagePerms = Record<string, { access: boolean; tabs: string[] }>

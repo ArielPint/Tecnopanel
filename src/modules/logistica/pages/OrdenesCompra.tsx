@@ -10,11 +10,9 @@ import { useOrdenesCompra } from '../hooks/useOrdenesCompra'
 import FormularioOC from '../components/FormularioOC'
 
 export default function OrdenesCompra() {
-  const { perfil, isAdmin } = useAuth()
+  const { perfil, puedeEditar } = useAuth()
   const { ordenes, guias, montoPorOC, loading, error, guardar, eliminar } = useOrdenesCompra()
   const [search, setSearch] = useState('')
-
-  const puedeEditar = isAdmin || perfil?.role !== 'readonly'
 
   const filtradas = useMemo(() => {
     const q = search.toLowerCase()

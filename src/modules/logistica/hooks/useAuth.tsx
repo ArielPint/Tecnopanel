@@ -20,6 +20,7 @@ interface AuthValue {
   isAuthenticated: boolean
   isAdmin: boolean
   puedeVer: (tab: LogisticaTab) => boolean
+  puedeEditar: boolean
   signOut: () => Promise<void>
 }
 
@@ -83,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // parcial de tabs (todo-o-nada por módulo), y permisos(modulo_key,accion) no
   // modela tabs. El parámetro se mantiene para no tocar los call sites.
   const puedeVer = (_tab: LogisticaTab): boolean => acceso.tieneAccion('logistica')
+  const puedeEditar = acceso.tieneAccion('logistica', 'editar')
   const perfilConRol = perfil ? { ...perfil, role: acceso.rolNegocio ?? '' } : null
 
   return (
@@ -93,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!perfil,
         isAdmin,
         puedeVer,
+        puedeEditar,
         signOut: async () => {
           await supabase.auth.signOut()
         },

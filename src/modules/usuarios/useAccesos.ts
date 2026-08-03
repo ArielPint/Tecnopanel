@@ -15,6 +15,7 @@ export interface Acceso {
   laChacraModulos: string[]
   laChacraFinancieroEdit: Record<string, boolean>
   laChacraEstadosPagoAcciones: Record<string, boolean>
+  laChacraLogisticaEdit: boolean
   crmRolNegocio: string
   crmModulos: string[]
 }
@@ -31,14 +32,16 @@ export interface AccesoInput {
   laChacraModulos: string[]
   laChacraFinancieroEdit: Record<string, boolean>
   laChacraEstadosPagoAcciones: Record<string, boolean>
+  laChacraLogisticaEdit: boolean
   crmRolNegocio: string
   crmModulos: string[]
 }
 
 async function syncAccesos(userId: string, input: AccesoInput) {
-  const accionesExtra = Object.fromEntries(
-    Object.entries(input.laChacraEstadosPagoAcciones).map(([accion, on]) => [`estados_pago:${accion}`, on]),
-  )
+  const accionesExtra = {
+    ...Object.fromEntries(Object.entries(input.laChacraEstadosPagoAcciones).map(([accion, on]) => [`estados_pago:${accion}`, on])),
+    'logistica:editar': input.laChacraLogisticaEdit,
+  }
   await Promise.all([
     syncPermisosLaChacra(
       userId,
@@ -79,6 +82,7 @@ export function useAccesos() {
       const laChacraModulos = misPermisos.filter((x) => x.proyecto_id === laChacraId && x.accion === 'ver').map((x) => x.modulo_key)
       const laChacraFinancieroEdit: Record<string, boolean> = {}
       const laChacraEstadosPagoAcciones: Record<string, boolean> = {}
+      let laChacraLogisticaEdit = false
       for (const x of misPermisos) {
         if (x.proyecto_id !== laChacraId) continue
         if (x.accion === 'editar' && x.modulo_key.startsWith('financiero:')) {
@@ -86,6 +90,9 @@ export function useAccesos() {
         }
         if (x.modulo_key === 'estados_pago' && x.accion !== 'ver') {
           laChacraEstadosPagoAcciones[x.accion] = true
+        }
+        if (x.modulo_key === 'logistica' && x.accion === 'editar') {
+          laChacraLogisticaEdit = true
         }
       }
       const crmModulos = misPermisos.filter((x) => x.proyecto_id === crmId && x.accion === 'ver').map((x) => x.modulo_key)
@@ -101,6 +108,7 @@ export function useAccesos() {
         laChacraModulos,
         laChacraFinancieroEdit,
         laChacraEstadosPagoAcciones,
+        laChacraLogisticaEdit,
         crmRolNegocio: miAcceso.find((x) => x.proyecto_id === crmId)?.rol_negocio ?? '',
         crmModulos,
       }
