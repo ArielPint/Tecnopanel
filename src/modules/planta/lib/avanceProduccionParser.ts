@@ -109,41 +109,37 @@ export interface SeedResult {
 // El Excel de avance es la única fuente de estados/torre/tipo de planta_modulos —
 // la app no tiene UI propia para editar el checklist a mano, así que cada
 // re-subida refresca todo sin riesgo de pisar progreso cargado manualmente.
+// Un solo upsert en lote (constraint única proyecto_id+nombre) en vez de un
+// insert/update por fila — 700+ requests secuenciales tardaban minutos.
+const LOTE = 500
+
 export async function seedPlantaModulos(proyectoId: string, rows: AvanceProduccionRow[]): Promise<SeedResult> {
   const { data: existentes, error: selError } = await supabase
     .from('planta_modulos')
-    .select('id, nombre')
+    .select('nombre')
     .eq('proyecto_id', proyectoId)
   if (selError) throw new Error(selError.message)
 
-  const idPorNombre = new Map((existentes ?? []).map((r) => [r.nombre, r.id as string]))
-  const nuevos = rows.filter((r) => !idPorNombre.has(r.nombre))
-  const paraActualizar = rows.filter((r) => idPorNombre.has(r.nombre))
+  const nombresExistentes = new Set((existentes ?? []).map((r) => r.nombre))
+  const nuevos = rows.filter((r) => !nombresExistentes.has(r.nombre)).length
+  const actualizados = rows.length - nuevos
 
-  if (nuevos.length) {
-    const { error } = await supabase.from('planta_modulos').insert(
-      nuevos.map((r) => ({
-        proyecto_id: proyectoId,
-        nombre: r.nombre,
-        torre: r.torre,
-        tipo: r.tipo,
-        estado_modulo: r.estadoModulo,
-        estados: r.estados,
-        tiempos: {},
-        observaciones: {},
-        activo: true,
-      })),
-    )
-    if (error) throw new Error(error.message)
-  }
+  const payload = rows.map((r) => ({
+    proyecto_id: proyectoId,
+    nombre: r.nombre,
+    torre: r.torre,
+    tipo: r.tipo,
+    estado_modulo: r.estadoModulo,
+    estados: r.estados,
+    activo: true,
+  }))
 
-  for (const r of paraActualizar) {
+  for (let i = 0; i < payload.length; i += LOTE) {
     const { error } = await supabase
       .from('planta_modulos')
-      .update({ torre: r.torre, tipo: r.tipo, estado_modulo: r.estadoModulo, estados: r.estados })
-      .eq('id', idPorNombre.get(r.nombre)!)
+      .upsert(payload.slice(i, i + LOTE), { onConflict: 'proyecto_id,nombre' })
     if (error) throw new Error(error.message)
   }
 
-  return { nuevos: nuevos.length, actualizados: paraActualizar.length }
+  return { nuevos, actualizados }
 }
