@@ -224,6 +224,49 @@ export function AvanceEconomicoAcumChart({ data }: { data: ResumenData['avanceEc
   )
 }
 
+function MesCantidadBarChart({ data, color, label }: { data: { mes: string; cantidad: number }[]; color: string; label: string }) {
+  const config = { cantidad: { label, color } } satisfies ChartConfig
+  if (!data.length) return <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">Sin datos</div>
+  return (
+    <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
+      <BarChart data={data} margin={{ left: 8, right: 8, bottom: 16 }}>
+        <CartesianGrid vertical={false} />
+        <XAxis
+          dataKey="mes"
+          tick={{ fontSize: 11 }}
+          tickLine={false}
+          axisLine={false}
+          interval={0}
+          angle={-35}
+          textAnchor="end"
+          height={40}
+        />
+        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Bar dataKey="cantidad" fill="var(--color-cantidad)" radius={4}>
+          <LabelList dataKey="cantidad" position="top" style={VALUE_LABEL_STYLE} />
+        </Bar>
+      </BarChart>
+    </ChartContainer>
+  )
+}
+
+export function DespachosPorMesChart({ data }: { data: { mes: string; cantidad: number }[] }) {
+  return <MesCantidadBarChart data={data} color="#a371f7" label="Módulos despachados" />
+}
+
+export function ModulosTerminadosPorMesChart({ data }: { data: ResumenData['modulosTerminadosPorMes'] }) {
+  return <MesCantidadBarChart data={data} color="#3fb950" label="Módulos terminados" />
+}
+
+export function ModulosIniciadosPorMesChart({ data }: { data: ResumenData['modulosIniciadosPorMes'] }) {
+  return <MesCantidadBarChart data={data} color="#e3903e" label="Módulos iniciados" />
+}
+
+export function SalidaGalponPorMesChart({ data }: { data: ResumenData['salidaGalponPorMes'] }) {
+  return <MesCantidadBarChart data={data} color="#58a6ff" label="Salida de galpón" />
+}
+
 export function M2AcumuladoChart({ data }: { data: ResumenData['m2Acumulado'] }) {
   if (!data.length) return null
   const config = {

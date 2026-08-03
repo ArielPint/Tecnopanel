@@ -223,6 +223,43 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
       return { mes: m.lbl, real: e.real, plan: e.plan }
     })
 
+    // Módulos terminados / iniciados por mes
+    const terminadosByMes: Record<string, number> = {}
+    const iniciadosByMes: Record<string, number> = {}
+    for (const m of modulos) {
+      const dTerm = parseDate(m.termReal)
+      if (dTerm && !isNaN(dTerm.getTime())) {
+        const key = `${dTerm.getMonth() + 1}-${dTerm.getFullYear()}`
+        terminadosByMes[key] = (terminadosByMes[key] || 0) + 1
+      }
+      const dInit = parseDate(m.initReal)
+      if (dInit && !isNaN(dInit.getTime())) {
+        const key = `${dInit.getMonth() + 1}-${dInit.getFullYear()}`
+        iniciadosByMes[key] = (iniciadosByMes[key] || 0) + 1
+      }
+    }
+    const modulosTerminadosPorMes = MESES_ORDER.filter((m) => terminadosByMes[`${m.n}-${m.y}`]).map((m) => ({
+      mes: m.lbl,
+      cantidad: terminadosByMes[`${m.n}-${m.y}`],
+    }))
+    const modulosIniciadosPorMes = MESES_ORDER.filter((m) => iniciadosByMes[`${m.n}-${m.y}`]).map((m) => ({
+      mes: m.lbl,
+      cantidad: iniciadosByMes[`${m.n}-${m.y}`],
+    }))
+
+    // Salida de galpón por mes (misma fuente que la curva S semanal, agrupada por mes)
+    const galponByMes: Record<string, number> = {}
+    for (const r of excelData?.membranaCielo ?? []) {
+      const d = parseDate(r.membranaFecha)
+      if (!d || isNaN(d.getTime())) continue
+      const key = `${d.getMonth() + 1}-${d.getFullYear()}`
+      galponByMes[key] = (galponByMes[key] || 0) + 1
+    }
+    const salidaGalponPorMes = MESES_ORDER.filter((m) => galponByMes[`${m.n}-${m.y}`]).map((m) => ({
+      mes: m.lbl,
+      cantidad: galponByMes[`${m.n}-${m.y}`],
+    }))
+
     return {
       loading: loadingSupa && !excelData,
       kpis,
@@ -232,6 +269,9 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
       avanceEconomico,
       avanceEconomicoAcumulado,
       m2Acumulado,
+      modulosTerminadosPorMes,
+      modulosIniciadosPorMes,
+      salidaGalponPorMes,
     }
   }, [excelData, supaCompras, presupuestoTotal, pptoCatalogo, despachadosCount, avanceProy, loadingSupa])
 }

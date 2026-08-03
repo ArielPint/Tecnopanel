@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/components/ui/card'
 import { useResumenData } from '../hooks/useResumenData'
+import { useDespachosData } from '../hooks/useDespachosData'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { fmt, fmtM, fmtPr } from '../lib/format'
 import {
@@ -7,8 +8,12 @@ import {
   AvanceEconomicoChart,
   ComprasVsPresupuestoChart,
   CrecimientoMensualTabla,
+  DespachosPorMesChart,
   DistribucionModulosChart,
   M2AcumuladoChart,
+  ModulosIniciadosPorMesChart,
+  ModulosTerminadosPorMesChart,
+  SalidaGalponPorMesChart,
 } from '../components/ResumenCharts'
 
 interface Kpi {
@@ -62,6 +67,7 @@ function KpiCards({ kpis }: { kpis: ReturnType<typeof useResumenData>['kpis'] })
 
 export default function Resumen({ excelData }: { excelData: ParsedDashboardData }) {
   const resumen = useResumenData(excelData)
+  const despachos = useDespachosData(excelData)
 
   return (
     <div className="space-y-4">
@@ -114,6 +120,44 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
           </CardHeader>
           <CardContent>
             <M2AcumuladoChart data={resumen.m2Acumulado} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Despachos por mes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DespachosPorMesChart data={despachos.mensual.map((d) => ({ mes: d.mes, cantidad: d.despachado }))} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Módulos terminados por mes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ModulosTerminadosPorMesChart data={resumen.modulosTerminadosPorMes} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Inicio de módulos por mes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ModulosIniciadosPorMesChart data={resumen.modulosIniciadosPorMes} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Salida de galpón por mes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SalidaGalponPorMesChart data={resumen.salidaGalponPorMes} />
           </CardContent>
         </Card>
       </div>
