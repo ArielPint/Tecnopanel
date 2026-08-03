@@ -166,9 +166,7 @@ export function useIngresoStock(productos: Producto[]) {
           stock_fisico: it.stockFisico,
           created_by: creadoPor,
         }))
-        // ponytail: onConflict sigue en 'semana_key,codigo' — si esa UNIQUE no incluye
-        // proyecto_id, un 2do proyecto pisaría el stock del primero para el mismo codigo/semana.
-        const { error } = await supabase.from('registro_stock').upsert(payload, { onConflict: 'semana_key,codigo' })
+        const { error } = await supabase.from('registro_stock').upsert(payload, { onConflict: 'proyecto_id,semana_key,codigo' })
         if (error) throw new Error(error.message)
         // ponytail: refetch en vez de reconciliar ids localmente — mas simple y evita filas huerfanas si se borra un item recien guardado sin recargar
         await cargarSemana(semanaKey)

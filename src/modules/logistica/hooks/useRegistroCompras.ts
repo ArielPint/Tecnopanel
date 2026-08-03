@@ -88,6 +88,7 @@ export function useRegistroCompras() {
           .from('registro_compras')
           .select('*')
           .eq('proyecto_id', proyectoId)
+          .order('fecha_guia', { ascending: false })
           .range(from, from + PAGE - 1)
         if (qError) throw new Error(qError.message)
         const rows = (data ?? []) as RegistroCompra[]

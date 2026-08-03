@@ -9,13 +9,11 @@ import { useAuth, type LogisticaTab } from '../hooks/useAuth'
 import DespachoGD from './DespachoGD'
 import RegistroGD from './RegistroGD'
 import StockIngreso from './StockIngreso'
-import Pedidos from './Pedidos'
 
 const TABS: { value: LogisticaTab; label: string; implementado: boolean }[] = [
   { value: 'despacho-gd', label: 'Despacho GD', implementado: true },
   { value: 'registro-gd', label: 'Registro GD', implementado: true },
   { value: 'stock-ingreso', label: 'Stock Ingreso', implementado: true },
-  { value: 'pedidos', label: 'Pedidos', implementado: true },
 ]
 
 function iniciales(nombre: string | undefined) {
@@ -65,9 +63,6 @@ export default function LogisticaLayout() {
           </TabsContent>
           <TabsContent value="stock-ingreso">
             <StockIngreso />
-          </TabsContent>
-          <TabsContent value="pedidos">
-            <Pedidos />
           </TabsContent>
           {visibles
             .filter((t) => !t.implementado)

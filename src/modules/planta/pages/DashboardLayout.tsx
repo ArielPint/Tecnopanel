@@ -17,8 +17,6 @@ import Stock from './Stock'
 import Curva from './Curva'
 import Despachos from './Despachos'
 import Ejecutivo from './Ejecutivo'
-import Proyeccion from './Proyeccion'
-import ProdDiaria from './ProdDiaria'
 
 const TABS: { value: DashboardTab; label: string; implementado: boolean }[] = [
   { value: 'resumen', label: 'Resumen', implementado: true },
@@ -28,8 +26,6 @@ const TABS: { value: DashboardTab; label: string; implementado: boolean }[] = [
   { value: 'productos', label: 'Productos', implementado: true },
   { value: 'stock', label: 'Stock', implementado: true },
   { value: 'despachos', label: 'Despachos', implementado: true },
-  { value: 'proyeccion', label: 'Proyección', implementado: true },
-  { value: 'prod-diaria', label: 'Prod. diaria', implementado: true },
   { value: 'ejecutivo', label: 'Ejecutivo', implementado: true },
 ]
 
@@ -123,15 +119,12 @@ export default function DashboardLayout() {
                 <TabsContent value="despachos">
                   <Despachos excelData={excelData} />
                 </TabsContent>
-                <TabsContent value="proyeccion">
-                  <Proyeccion excelData={excelData} />
-                </TabsContent>
                 <TabsContent value="ejecutivo">
                   <Ejecutivo excelData={excelData} />
                 </TabsContent>
               </>
             ) : (
-              ['resumen', 'curva', 'modulos', 'compras', 'productos', 'stock', 'despachos', 'proyeccion', 'ejecutivo'].map((tab) => (
+              ['resumen', 'curva', 'modulos', 'compras', 'productos', 'stock', 'despachos', 'ejecutivo'].map((tab) => (
                 <TabsContent key={tab} value={tab}>
                   <Card>
                     <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
@@ -166,11 +159,6 @@ export default function DashboardLayout() {
                 </TabsContent>
               ))
             )}
-            {/* Prod. diaria lee planta_modulos en vivo — no depende del xlsm subido,
-                por eso queda fuera del gate de excelData de arriba. */}
-            <TabsContent value="prod-diaria">
-              <ProdDiaria />
-            </TabsContent>
             {visibles
               .filter((t) => !t.implementado)
               .map((t) => (

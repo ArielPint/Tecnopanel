@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 import { fmtM } from '@/modules/planta/lib/format'
 import { useExcelData } from '@/modules/planta/hooks/useExcelData'
+import { useAvanceProduccionExcel } from '@/modules/planta/hooks/useAvanceProduccionExcel'
 import { useConfigFinanciero, useRitmoProyeccion, useTablaAnual, MESES } from '../hooks/useConfig'
 
 const ANIOS = [2026, 2027, 2028]
@@ -20,6 +21,7 @@ export default function Config() {
         <p className="text-xs text-muted-foreground">Parámetros y valores de referencia. Solo visible para administradores.</p>
       </div>
       <ExcelUploadCard />
+      <AvanceProduccionUploadCard />
       <PresupuestoCard />
       <RitmoCard />
       <TablaAnualCard
@@ -64,6 +66,40 @@ function ExcelUploadCard() {
               accept=".xlsm,.xlsx"
               className="hidden"
               disabled={uploading || autoLoading}
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) handleFile(f)
+              }}
+            />
+          </label>
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+function AvanceProduccionUploadCard() {
+  const { uploading, error, lastResult, handleFile } = useAvanceProduccionExcel()
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>🏗️ Excel de avance de producción (partidas)</CardTitle>
+        <CardDescription>Alimenta el módulo Producción — torre, módulo, tipo y, si el archivo trae columnas por partida (OG.01, EL.01, etc.), su checklist</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        {lastResult && !error && (
+          <p className="text-xs text-success">{lastResult.nuevos} módulo(s) nuevo(s), {lastResult.actualizados} actualizado(s).</p>
+        )}
+        <Button asChild disabled={uploading}>
+          <label className="cursor-pointer">
+            {uploading ? 'Procesando…' : 'Subir archivo de avance'}
+            <input
+              type="file"
+              accept=".xlsm,.xlsx"
+              className="hidden"
+              disabled={uploading}
               onChange={(e) => {
                 const f = e.target.files?.[0]
                 if (f) handleFile(f)

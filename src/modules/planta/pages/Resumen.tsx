@@ -71,20 +71,18 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">
-              Distribución de módulos por avance
-            </CardTitle>
+            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Avance económico mensual</CardTitle>
           </CardHeader>
           <CardContent>
-            <DistribucionModulosChart data={resumen.distribucionBuckets} />
+            <AvanceEconomicoChart data={resumen.avanceEconomico} />
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">M² acumulado real vs. programado</CardTitle>
+            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Avance económico acumulado</CardTitle>
           </CardHeader>
           <CardContent>
-            <M2AcumuladoChart data={resumen.m2Acumulado} />
+            <AvanceEconomicoAcumChart data={resumen.avanceEconomicoAcumulado} />
           </CardContent>
         </Card>
       </div>
@@ -102,18 +100,20 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Avance económico mensual</CardTitle>
+            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">
+              Distribución de módulos por avance
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <AvanceEconomicoChart data={resumen.avanceEconomico} />
+            <DistribucionModulosChart data={resumen.distribucionBuckets} />
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Avance económico acumulado</CardTitle>
+            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">M² acumulado real vs. programado</CardTitle>
           </CardHeader>
           <CardContent>
-            <AvanceEconomicoAcumChart data={resumen.avanceEconomicoAcumulado} />
+            <M2AcumuladoChart data={resumen.m2Acumulado} />
           </CardContent>
         </Card>
       </div>

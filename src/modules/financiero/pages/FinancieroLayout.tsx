@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import isologo from '@/modules/financiero/assets/tecnopanel-isologo-color.png'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
+  ArrowLeft,
   LayoutDashboard,
   ShoppingCart,
   Receipt,
@@ -110,7 +111,7 @@ function SidebarFooter({ nombre, rol, onSignOut }: { nombre?: string; rol?: stri
 
 export default function FinancieroLayout() {
   const { perfil, puedeVer, signOut } = useAuth()
-  const { nombre } = useProyectoActual()
+  const { nombre, slug } = useProyectoActual()
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [desktopCollapsed, setDesktopCollapsed] = useState(false)
@@ -118,7 +119,7 @@ export default function FinancieroLayout() {
   const tituloPagina = NAV_ITEMS.find((item) => item.segment === ultimoSegmento)?.label ?? 'Dashboard'
 
   return (
-    <PortalShell actual="financiero">
+    <PortalShell actual="financiero" hideAside>
     <div className="flex flex-1">
       {/* Sidebar — visible desde md hacia arriba, ocultable con el botón de menú */}
       <aside
@@ -134,6 +135,12 @@ export default function FinancieroLayout() {
             <p className="text-lg font-bold text-sidebar-foreground">Financiero</p>
           </div>
         </div>
+        <Link
+          to={`/proyectos/${slug}/dashboard`}
+          className="mx-3 mb-2 flex items-center gap-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground"
+        >
+          <ArrowLeft className="size-3.5" /> Volver al proyecto
+        </Link>
         <SidebarNav puedeVer={puedeVer} />
         <div className="mt-auto pt-4">
           <Separator className="mb-4 bg-sidebar-border" />
@@ -171,6 +178,13 @@ export default function FinancieroLayout() {
                     <p className="text-lg font-bold text-sidebar-foreground">Financiero</p>
                   </div>
                 </div>
+                <Link
+                  to={`/proyectos/${slug}/dashboard`}
+                  onClick={() => setMobileOpen(false)}
+                  className="mx-3 mb-2 flex items-center gap-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground"
+                >
+                  <ArrowLeft className="size-3.5" /> Volver al proyecto
+                </Link>
                 <SidebarNav puedeVer={puedeVer} onNavigate={() => setMobileOpen(false)} />
                 <div className="mt-auto pt-4">
                   <Separator className="mb-4 bg-sidebar-border" />

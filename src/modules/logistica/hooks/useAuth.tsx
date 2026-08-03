@@ -12,7 +12,7 @@ interface Perfil {
   permissions: Record<string, unknown>
 }
 
-export type LogisticaTab = 'despacho-gd' | 'registro-gd' | 'stock-ingreso' | 'pedidos'
+export type LogisticaTab = 'despacho-gd' | 'registro-gd' | 'stock-ingreso'
 
 interface AuthValue {
   perfil: Perfil | null

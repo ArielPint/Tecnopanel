@@ -22,8 +22,6 @@ export type DashboardTab =
   | 'productos'
   | 'stock'
   | 'despachos'
-  | 'proyeccion'
-  | 'prod-diaria'
   | 'ejecutivo'
 
 interface AuthValue {

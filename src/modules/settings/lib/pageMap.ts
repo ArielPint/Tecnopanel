@@ -23,8 +23,6 @@ export const PAGE_MAP: Record<PageId, PageDef> = {
       productos: 'Productos',
       stock: 'Stock',
       despachos: 'Despachos',
-      proyeccion: 'Proyección',
-      'prod-diaria': 'Prod. diaria',
       ejecutivo: 'Ejecutivo',
     },
   },
@@ -44,7 +42,6 @@ export const PAGE_MAP: Record<PageId, PageDef> = {
       'despacho-gd': 'Despacho GD',
       'registro-gd': 'Registro GD',
       'stock-ingreso': 'Stock Ingreso',
-      pedidos: 'Pedidos',
     },
   },
   solicitudes: {

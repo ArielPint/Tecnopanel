@@ -21,19 +21,48 @@ function getPPTO(r: RegistroCompra, allProductsPptoMap: Record<string, number | 
   return p ?? r.valor_ppto ?? 0
 }
 
+// Comparte la fórmula entre los totales filtrados y el total general (sin filtro) —
+// sumMontoGD suma el monto COMPLETO de cada GD presente en `rows`, no solo las líneas
+// que matchean el filtro (una guía es una unidad, aunque el filtro esconda alguna línea).
+function calcularTotales(rows: RegistroCompra[], pptoMap: Record<string, number | null>, montoPorGD: Record<string, number>) {
+  let sumCantSol = 0, sumDevol = 0, sumCantRec = 0, sumVTI = 0, sumPpto = 0, sumDifT = 0
+  for (const r of rows) {
+    const ppto = getPPTO(r, pptoMap)
+    const cr = calcCR(r)
+    sumCantSol += r.cantidad_sol || 0
+    sumDevol += r.devolucion || 0
+    sumCantRec += cr
+    sumVTI += getVTI(r)
+    sumPpto += ppto * cr
+    sumDifT += calcDifT(r, ppto)
+  }
+  const vundAvg = sumCantRec ? sumVTI / sumCantRec : 0
+  const pptoAvg = sumCantRec ? sumPpto / sumCantRec : 0
+  const pctAvg = sumPpto ? (sumDifT / sumPpto) * 100 : null
+  const gds = new Set(rows.map((r) => r.gd))
+  const sumMontoGD = [...gds].reduce((s, gd) => s + (montoPorGD[gd] || 0), 0)
+  return { sumCantSol, sumDevol, sumCantRec, sumVTI, vundAvg, pptoAvg, difUndAvg: vundAvg - pptoAvg, sumDifT, pctAvg, sumMontoGD, nGDs: gds.size }
+}
+
 export default function Registro() {
   const { perfil, isAdmin } = useAuth()
   const { allProducts, loading: loadingCatalogo } = useCatalogoGD()
-  const { responsables, loading: loadingResp } = useResponsables()
+  const { responsables, grupos, loading: loadingResp } = useResponsables()
   const { ordenes, guias, loading: loadingOC } = useOrdenesCompra()
   const { registros, loading, error, crearMulti, actualizarSingle, eliminar } = useRegistroCompras()
 
   const [search, setSearch] = useState('')
   const [gdFiltro, setGdFiltro] = useState('')
-  const [respFiltro, setRespFiltro] = useState('')
+  const [grupoFiltro, setGrupoFiltro] = useState<number | ''>('')
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
   const [tipo, setTipo] = useState('')
+
+  const grupoPorResponsable = useMemo(() => {
+    const map: Record<string, number | null> = {}
+    for (const r of responsables) map[r.nombre] = r.grupo_id
+    return map
+  }, [responsables])
 
   const puedeEditar = isAdmin || perfil?.role !== 'readonly'
 
@@ -56,9 +85,10 @@ export default function Registro() {
 
   const filtrados = useMemo(() => {
     const q = search.toLowerCase()
+    const gdQ = gdFiltro.trim().toLowerCase()
     return registros.filter((r) => {
-      if (gdFiltro && String(r.gd) !== gdFiltro) return false
-      if (respFiltro && r.responsable !== respFiltro) return false
+      if (gdQ && !String(r.gd).toLowerCase().includes(gdQ)) return false
+      if (grupoFiltro && grupoPorResponsable[r.responsable ?? ''] !== grupoFiltro) return false
       if (desde && r.fecha_guia && r.fecha_guia < desde) return false
       if (hasta && r.fecha_guia && r.fecha_guia > hasta) return false
       if (tipo && r.tipo_producto !== tipo) return false
@@ -68,7 +98,7 @@ export default function Registro() {
       }
       return true
     })
-  }, [registros, search, gdFiltro, respFiltro, desde, hasta, tipo])
+  }, [registros, search, gdFiltro, grupoFiltro, grupoPorResponsable, desde, hasta, tipo])
 
   const montoPorGD = useMemo(() => {
     const map: Record<string, number> = {}
@@ -76,50 +106,24 @@ export default function Registro() {
     return map
   }, [registros])
 
-  const totales = useMemo(() => {
-    let sumCantSol = 0, sumDevol = 0, sumCantRec = 0, sumVTI = 0, sumPpto = 0, sumDifT = 0
-    for (const r of filtrados) {
-      const ppto = getPPTO(r, pptoMap)
-      const cr = calcCR(r)
-      sumCantSol += r.cantidad_sol || 0
-      sumDevol += r.devolucion || 0
-      sumCantRec += cr
-      sumVTI += getVTI(r)
-      sumPpto += ppto * cr
-      sumDifT += calcDifT(r, ppto)
-    }
-    const vundAvg = sumCantRec ? sumVTI / sumCantRec : 0
-    const pptoAvg = sumCantRec ? sumPpto / sumCantRec : 0
-    const pctAvg = sumPpto ? (sumDifT / sumPpto) * 100 : null
-    const gdsFiltradas = new Set(filtrados.map((r) => r.gd))
-    const sumMontoGD = [...gdsFiltradas].reduce((s, gd) => s + (montoPorGD[gd] || 0), 0)
-    return { sumCantSol, sumDevol, sumCantRec, sumVTI, vundAvg, pptoAvg, difUndAvg: vundAvg - pptoAvg, sumDifT, pctAvg, sumMontoGD, nGDs: gdsFiltradas.size }
-  }, [filtrados, pptoMap, montoPorGD])
-
-  const gdsDisponibles = useMemo(() => [...new Set(registros.map((r) => r.gd))].sort(), [registros])
-  const respDisponibles = useMemo(() => [...new Set(registros.map((r) => r.responsable).filter(Boolean))].sort() as string[], [registros])
+  const totales = useMemo(() => calcularTotales(filtrados, pptoMap, montoPorGD), [filtrados, pptoMap, montoPorGD])
+  const totalesGeneral = useMemo(() => calcularTotales(registros, pptoMap, montoPorGD), [registros, pptoMap, montoPorGD])
 
   const cargandoDeps = loadingCatalogo || loadingResp || loadingOC
   if (error) return <p className="text-destructive">{error}</p>
 
-  const hayFiltros = !!search || !!gdFiltro || !!respFiltro || !!desde || !!hasta || !!tipo
+  const hayFiltros = !!search || !!gdFiltro || !!grupoFiltro || !!desde || !!hasta || !!tipo
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <Input placeholder="🔍  Código, descripción, obs…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-56" />
-        <Select value={gdFiltro || '__all'} onValueChange={(v) => setGdFiltro(v === '__all' ? '' : v)}>
-          <SelectTrigger className="h-9 w-32"><SelectValue placeholder="Todas las GD" /></SelectTrigger>
+        <Input placeholder="🔍  GD…" value={gdFiltro} onChange={(e) => setGdFiltro(e.target.value)} className="h-9 w-28" />
+        <Select value={grupoFiltro === '' ? '__all' : String(grupoFiltro)} onValueChange={(v) => setGrupoFiltro(v === '__all' ? '' : Number(v))}>
+          <SelectTrigger className="h-9 w-40"><SelectValue placeholder="Todos los grupos" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all">Todas las GD</SelectItem>
-            {gdsDisponibles.map((gd) => <SelectItem key={gd} value={gd}>{gd}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={respFiltro || '__all'} onValueChange={(v) => setRespFiltro(v === '__all' ? '' : v)}>
-          <SelectTrigger className="h-9 w-40"><SelectValue placeholder="Todos los responsables" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all">Todos los responsables</SelectItem>
-            {respDisponibles.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+            <SelectItem value="__all">Todos los grupos</SelectItem>
+            {grupos.map((g) => <SelectItem key={g.id} value={String(g.id)}>{g.nombre}</SelectItem>)}
           </SelectContent>
         </Select>
         <Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="h-9 w-36" title="Desde" />
@@ -133,7 +137,7 @@ export default function Registro() {
           </SelectContent>
         </Select>
         {hayFiltros && (
-          <Button variant="outline" size="sm" onClick={() => { setSearch(''); setGdFiltro(''); setRespFiltro(''); setDesde(''); setHasta(''); setTipo('') }}>
+          <Button variant="outline" size="sm" onClick={() => { setSearch(''); setGdFiltro(''); setGrupoFiltro(''); setDesde(''); setHasta(''); setTipo('') }}>
             ✕ Limpiar
           </Button>
         )}
@@ -231,6 +235,20 @@ export default function Registro() {
                       <TableCell className="text-right tabular-nums text-success">{formatCLP(totales.sumMontoGD)}</TableCell>
                       {puedeEditar && <TableCell />}
                     </TableRow>
+                    {grupoFiltro !== '' && (
+                      <TableRow className="bg-primary/10 font-medium">
+                        <TableCell colSpan={2} className="text-xs text-primary">Total general (todos los grupos) · {totalesGeneral.nGDs} GD{totalesGeneral.nGDs !== 1 ? 's' : ''}</TableCell>
+                        <TableCell colSpan={3} />
+                        <TableCell className="text-right tabular-nums">{totalesGeneral.sumCantRec.toLocaleString('es-CL')}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatCLP(totalesGeneral.sumVTI)}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">{totalesGeneral.pptoAvg ? formatCLP(totalesGeneral.pptoAvg) : '—'}</TableCell>
+                        <TableCell className={`text-right tabular-nums ${totalesGeneral.sumDifT > 0 ? 'text-success' : totalesGeneral.sumDifT < 0 ? 'text-destructive' : ''}`}>{formatCLP(totalesGeneral.sumDifT)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{totalesGeneral.pctAvg != null ? totalesGeneral.pctAvg.toFixed(1) + '%' : '—'}</TableCell>
+                        <TableCell colSpan={2} />
+                        <TableCell className="text-right tabular-nums text-success">{formatCLP(totalesGeneral.sumMontoGD)}</TableCell>
+                        {puedeEditar && <TableCell />}
+                      </TableRow>
+                    )}
                   </tfoot>
                 )}
               </>

@@ -1,4 +1,4 @@
-import { Area, AreaChart, Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, Bar, CartesianGrid, ComposedChart, Legend, Line, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/modules/financiero/components/ui/chart'
 import type { CurvaData } from '../hooks/useCurvaData'
 
@@ -27,6 +27,7 @@ export function CurvaSChart({ data }: { data: CurvaData['curvaByWeek'] }) {
         />
         <Area type="monotone" dataKey="teorico" stroke="var(--color-teorico)" fill="var(--color-teorico)" fillOpacity={0.08} strokeWidth={2} dot />
         <Area type="monotone" dataKey="real" stroke="var(--color-real)" fill="var(--color-real)" fillOpacity={0.08} strokeWidth={2} dot />
+        <Legend verticalAlign="bottom" height={36} />
       </AreaChart>
     </ChartContainer>
   )

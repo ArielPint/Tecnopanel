@@ -1,11 +1,21 @@
 import { useEffect, useState } from 'react'
-import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, LabelList, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/modules/financiero/components/ui/chart'
 import { Input } from '@/modules/financiero/components/ui/input'
 import type { ResumenData } from '../hooks/useResumenData'
 import { fmtM, fmtPr } from '../lib/format'
 
 const BUCKET_COLORS = ['#e3903e', '#d2b932', '#a3c83c', '#64c850', '#3fb950']
+
+// Tamaño fijo de barra para poder solaparlas: mismo barSize en ambas series +
+// barGap negativo igual al barSize en el chart contenedor hace que ocupen el
+// mismo slot en X en vez de ir lado a lado — la de atrás (semitransparente,
+// con borde) queda como "tarro", la de adelante (sólida) como "líquido".
+const BAR_SIZE = 28
+
+const VALUE_LABEL_STYLE = { fontSize: 12, fontWeight: 700 } as const
+
+const labelFmt = (fn: (v: number) => string) => (v: unknown) => (v == null ? '' : fn(Number(v)))
 
 export function DistribucionModulosChart({ data }: { data: ResumenData['distribucionBuckets'] }) {
   const config = { cantidad: { label: 'Módulos' } } satisfies ChartConfig
@@ -20,6 +30,7 @@ export function DistribucionModulosChart({ data }: { data: ResumenData['distribu
           {data.map((entry, i) => (
             <Cell key={entry.bucket} fill={BUCKET_COLORS[i]} />
           ))}
+          <LabelList dataKey="cantidad" position="top" style={VALUE_LABEL_STYLE} />
         </Bar>
       </BarChart>
     </ChartContainer>
@@ -62,8 +73,11 @@ export function ComprasVsPresupuestoChart({ data }: { data: ResumenData['compras
           {data.map((d) => (
             <Cell key={d.mes} fill={d.sobrepasado ? '#f85149' : 'var(--color-real)'} />
           ))}
+          <LabelList dataKey="real" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtM)} />
         </Bar>
-        <Bar dataKey="presupuesto" fill="var(--color-presupuesto)" radius={4} />
+        <Bar dataKey="presupuesto" fill="var(--color-presupuesto)" radius={4}>
+          <LabelList dataKey="presupuesto" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtM)} />
+        </Bar>
       </BarChart>
     </ChartContainer>
   )
@@ -104,9 +118,6 @@ export function CrecimientoMensualTabla({ data }: { data: ResumenData['crecimien
   )
 }
 
-// ponytail: el original dibuja un overlay canvas outline naranja sobre la última barra
-// para el "proyectado adicional" editable. Acá se muestra como línea punteada extra en vez
-// de un plugin canvas custom sobre Recharts — mismo dato, overlay más simple.
 export function AvanceEconomicoChart({ data, readOnly }: { data: ResumenData['avanceEconomico']; readOnly?: boolean }) {
   const [proyExtra, setProyExtra] = useState(() => parseFloat(localStorage.getItem('planta_proyExtra_avEcon') || '4.5'))
 
@@ -127,7 +138,7 @@ export function AvanceEconomicoChart({ data, readOnly }: { data: ResumenData['av
   return (
     <div className="space-y-2">
       <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
-        <ComposedChart data={chartData} margin={{ left: 8, right: 8 }}>
+        <ComposedChart data={chartData} barGap={-BAR_SIZE} margin={{ left: 8, right: 8 }}>
           <CartesianGrid vertical={false} />
           <XAxis dataKey="mes" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
           <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
@@ -143,9 +154,15 @@ export function AvanceEconomicoChart({ data, readOnly }: { data: ResumenData['av
               />
             }
           />
-          <Bar dataKey="real" fill="var(--color-real)" radius={4} />
-          <Line type="monotone" dataKey="proyectado" stroke="var(--color-proyectado)" strokeWidth={2.5} dot connectNulls />
-          <Line type="monotone" dataKey="proyExtra" stroke="#f5a623" strokeWidth={2.5} strokeDasharray="4 3" dot={{ r: 4 }} />
+          <Bar dataKey="proyectado" barSize={BAR_SIZE} fill="var(--color-proyectado)" fillOpacity={0.25} stroke="var(--color-proyectado)" radius={4}>
+            <LabelList dataKey="proyectado" position="top" style={{ ...VALUE_LABEL_STYLE, fill: 'var(--color-proyectado)' }} formatter={labelFmt(fmtPr)} />
+          </Bar>
+          <Bar dataKey="real" barSize={BAR_SIZE} fill="var(--color-real)" radius={4}>
+            <LabelList dataKey="real" position="top" style={{ ...VALUE_LABEL_STYLE, fill: 'var(--color-real)' }} formatter={labelFmt(fmtPr)} />
+          </Bar>
+          <Bar dataKey="proyExtra" barSize={BAR_SIZE} fill="none" stroke="#f5a623" strokeWidth={2} strokeDasharray="4 3" radius={4}>
+            <LabelList dataKey="proyExtra" position="top" style={{ ...VALUE_LABEL_STYLE, fill: '#f5a623' }} formatter={labelFmt(fmtPr)} />
+          </Bar>
         </ComposedChart>
       </ChartContainer>
       {!readOnly && (
@@ -177,7 +194,7 @@ export function AvanceEconomicoAcumChart({ data }: { data: ResumenData['avanceEc
   } satisfies ChartConfig
   return (
     <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
-      <ComposedChart data={data} margin={{ left: 8, right: 8 }}>
+      <ComposedChart data={data} barGap={-BAR_SIZE} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="mes" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
         <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
@@ -193,8 +210,12 @@ export function AvanceEconomicoAcumChart({ data }: { data: ResumenData['avanceEc
             />
           }
         />
-        <Bar dataKey="realAcum" fill="var(--color-realAcum)" radius={4} />
-        <Line type="monotone" dataKey="proyAcum" stroke="var(--color-proyAcum)" strokeWidth={2.5} dot connectNulls />
+        <Bar dataKey="proyAcum" barSize={BAR_SIZE} fill="var(--color-proyAcum)" fillOpacity={0.25} stroke="var(--color-proyAcum)" radius={4}>
+          <LabelList dataKey="proyAcum" position="top" style={{ ...VALUE_LABEL_STYLE, fill: 'var(--color-proyAcum)' }} formatter={labelFmt(fmtPr)} />
+        </Bar>
+        <Bar dataKey="realAcum" barSize={BAR_SIZE} fill="var(--color-realAcum)" radius={4}>
+          <LabelList dataKey="realAcum" position="top" style={{ ...VALUE_LABEL_STYLE, fill: 'var(--color-realAcum)' }} formatter={labelFmt(fmtPr)} />
+        </Bar>
       </ComposedChart>
     </ChartContainer>
   )
@@ -208,7 +229,7 @@ export function M2AcumuladoChart({ data }: { data: ResumenData['m2Acumulado'] })
   } satisfies ChartConfig
   return (
     <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
-      <ComposedChart data={data} margin={{ left: 8, right: 8 }}>
+      <ComposedChart data={data} barGap={-BAR_SIZE} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="mes" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
         <YAxis tickFormatter={(v) => v.toLocaleString('es-CL')} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={56} />
@@ -224,8 +245,12 @@ export function M2AcumuladoChart({ data }: { data: ResumenData['m2Acumulado'] })
             />
           }
         />
-        <Bar dataKey="real" fill="var(--color-real)" radius={4} />
-        <Line type="monotone" dataKey="plan" stroke="var(--color-plan)" strokeWidth={2.5} dot connectNulls />
+        <Bar dataKey="plan" barSize={BAR_SIZE} fill="var(--color-plan)" fillOpacity={0.25} stroke="var(--color-plan)" radius={4}>
+          <LabelList dataKey="plan" position="top" style={{ ...VALUE_LABEL_STYLE, fill: 'var(--color-plan)' }} formatter={labelFmt((v) => v.toLocaleString('es-CL'))} />
+        </Bar>
+        <Bar dataKey="real" barSize={BAR_SIZE} fill="var(--color-real)" radius={4}>
+          <LabelList dataKey="real" position="top" style={{ ...VALUE_LABEL_STYLE, fill: 'var(--color-real)' }} formatter={labelFmt((v) => v.toLocaleString('es-CL'))} />
+        </Bar>
       </ComposedChart>
     </ChartContainer>
   )

@@ -26,8 +26,8 @@ export default function DespachoGD() {
   const [mes, setMes] = useState('')
   const [torre, setTorre] = useState('')
   const [tipo, setTipo] = useState('')
-  const [sortCol, setSortCol] = useState<SortCol | null>(null)
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [sortCol, setSortCol] = useState<SortCol | null>('fecha_gd')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
   useEffect(() => {
     loadCatalogoModulos().then(setCatalogo)

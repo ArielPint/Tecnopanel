@@ -44,7 +44,7 @@ function ItemLink({ to, label, activo, onNavigate }: { to: string; label: string
 
 const COLLAPSE_KEY = 'tecnopanel-hub-portal-sidebar-collapsed'
 
-export default function PortalShell({ actual, children }: { actual: ModuloKey; children: ReactNode }) {
+export default function PortalShell({ actual, children, hideAside }: { actual: ModuloKey; children: ReactNode; hideAside?: boolean }) {
   const { proyectoSlug = '' } = useParams<{ proyectoSlug: string }>()
   const acceso = usePermisosProyecto(proyectoSlug)
   const { nombre } = useProyectoActual()
@@ -83,48 +83,50 @@ export default function PortalShell({ actual, children }: { actual: ModuloKey; c
           <ItemLink to={`${base}/settings`} label="Configuración" activo={actual === 'settings'} onNavigate={onNavigate} />
         )}
       </nav>
-      <div className="flex flex-col gap-1 px-3">
-        <Link to="/" className="text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground" onClick={onNavigate}>
-          ← Volver al Hub
-        </Link>
-        <Link to="/proyectos" className="text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground" onClick={onNavigate}>
-          ← Volver a Proyectos
-        </Link>
-      </div>
     </>
   )
 
   return (
     <div className="flex min-h-svh">
-      <aside
-        className={cn(
-          'hidden shrink-0 flex-col border-r bg-sidebar py-4 md:flex',
-          collapsed ? 'md:w-0 md:overflow-hidden md:border-r-0 md:py-0' : 'w-56',
-        )}
-      >
-        {!collapsed && navContent()}
-      </aside>
+      {!hideAside && (
+        <aside
+          className={cn(
+            'hidden shrink-0 flex-col border-r bg-sidebar py-4 md:flex',
+            collapsed ? 'md:w-0 md:overflow-hidden md:border-r-0 md:py-0' : 'w-56',
+          )}
+        >
+          {!collapsed && navContent()}
+        </aside>
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-2 border-b bg-background px-3 py-2 md:px-4">
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
-                <Menu className="size-5" />
+          {!hideAside && (
+            <>
+              <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="md:hidden">
+                    <Menu className="size-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-56 bg-sidebar p-0">
+                  <SheetTitle className="sr-only">Menú del proyecto</SheetTitle>
+                  <div className="flex h-full flex-col py-4">{navContent(() => setMobileOpen(false))}</div>
+                </SheetContent>
+              </Sheet>
+              <Button variant="ghost" size="icon" className="hidden md:inline-flex" onClick={toggleCollapsed} title={collapsed ? 'Mostrar menú del proyecto' : 'Ocultar menú del proyecto'}>
+                {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
               </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-56 bg-sidebar p-0">
-              <SheetTitle className="sr-only">Menú del proyecto</SheetTitle>
-              <div className="flex h-full flex-col py-4">{navContent(() => setMobileOpen(false))}</div>
-            </SheetContent>
-          </Sheet>
-          <Button variant="ghost" size="icon" className="hidden md:inline-flex" onClick={toggleCollapsed} title={collapsed ? 'Mostrar menú del proyecto' : 'Ocultar menú del proyecto'}>
-            {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
-          </Button>
+            </>
+          )}
           <p className="truncate text-xs font-medium text-muted-foreground md:hidden">{nombre}</p>
-          <Button variant="ghost" size="icon" className="ml-auto" onClick={toggleMode} aria-label="Cambiar tema">
-            {mode === 'dark' ? <Sun className="size-5" /> : <Moon className="size-5" />}
-          </Button>
+          <div className="ml-auto flex items-center gap-3">
+            <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">← Hub</Link>
+            <Link to="/proyectos" className="text-xs text-muted-foreground hover:text-foreground">← Proyectos</Link>
+            <Button variant="ghost" size="icon" onClick={toggleMode} aria-label="Cambiar tema">
+              {mode === 'dark' ? <Sun className="size-5" /> : <Moon className="size-5" />}
+            </Button>
+          </div>
         </div>
         <div className="flex min-h-0 flex-1">{children}</div>
       </div>

@@ -5,15 +5,15 @@ import OrdenesCompra from './OrdenesCompra'
 import Registro from './Registro'
 
 const SUBTABS = [
-  { value: 'catalogo', label: 'Catálogo', implementado: true },
-  { value: 'responsables', label: 'Responsables', implementado: true },
-  { value: 'oc', label: 'Órdenes de Compra', implementado: true },
   { value: 'registro', label: 'Registro', implementado: true },
+  { value: 'oc', label: 'Órdenes de Compra', implementado: true },
+  { value: 'responsables', label: 'Responsables', implementado: true },
+  { value: 'catalogo', label: 'Catálogo', implementado: true },
 ]
 
 export default function RegistroGD() {
   return (
-    <Tabs defaultValue="catalogo">
+    <Tabs defaultValue="registro">
       <TabsList variant="line" className="mb-4 flex-wrap border-b">
         {SUBTABS.map((t) => (
           <TabsTrigger key={t.value} value={t.value} disabled={!t.implementado}>
@@ -21,17 +21,17 @@ export default function RegistroGD() {
           </TabsTrigger>
         ))}
       </TabsList>
-      <TabsContent value="catalogo">
-        <Catalogo />
-      </TabsContent>
-      <TabsContent value="responsables">
-        <Responsables />
+      <TabsContent value="registro">
+        <Registro />
       </TabsContent>
       <TabsContent value="oc">
         <OrdenesCompra />
       </TabsContent>
-      <TabsContent value="registro">
-        <Registro />
+      <TabsContent value="responsables">
+        <Responsables />
+      </TabsContent>
+      <TabsContent value="catalogo">
+        <Catalogo />
       </TabsContent>
       {SUBTABS.filter((t) => !t.implementado).map((t) => (
         <TabsContent key={t.value} value={t.value}>

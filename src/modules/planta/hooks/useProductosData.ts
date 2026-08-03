@@ -1,9 +1,19 @@
 import { useMemo } from 'react'
+import { normCod } from '@/modules/logistica/lib/calc'
+import { PRODUCTOS_BASE } from '@/modules/logistica/lib/productosBase'
 import type { ParsedDashboardData, ProductoRow } from '../lib/excelParser'
+
+const CATALOGO_DESC = new Map(PRODUCTOS_BASE.map((p) => [normCod(p.codigo), p.descripcion]))
 
 export function useProductosData(excelData: ParsedDashboardData | null) {
   return useMemo(() => {
-    const productos: ProductoRow[] = excelData?.productos ?? []
+    // Completa descripción faltante en el Excel con el catálogo fijo de productos
+    // (mismo código normalizado) — evita filas "sin descripción" en tabla y gráficos.
+    const productos: ProductoRow[] = (excelData?.productos ?? []).map((p) => {
+      if (p.desc || p.descCorta) return p
+      const fallback = CATALOGO_DESC.get(normCod(String(p.codigo ?? '')))
+      return fallback ? { ...p, desc: fallback, descCorta: fallback } : p
+    })
     const criticos = productos.filter((p) => p.critico === 'PRODUCTO CRITICO')
     const conAv = productos.filter((p) => p.avTeorico != null)
     const sobre100 = conAv.filter((p) => (p.avTeorico ?? 0) > 100).length
