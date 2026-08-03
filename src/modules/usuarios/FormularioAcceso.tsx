@@ -178,7 +178,7 @@ export default function FormularioAcceso({ acceso, trigger, onGuardar }: Props) 
                       checked={form.laChacraLogisticaEdit}
                       onCheckedChange={(v) => setForm((f) => ({ ...f, laChacraLogisticaEdit: !!v }))}
                     />
-                    Puede crear y editar despachos, registros y órdenes de compra
+                    Puede crear y editar despachos, registros, órdenes de compra y productos del catálogo
                   </label>
                 </div>
               )}

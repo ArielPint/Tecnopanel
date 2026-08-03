@@ -15,7 +15,7 @@ import FormularioProductoGD from '../components/FormularioProductoGD'
 const normCod = (c: string) => String(c || '').trim().toUpperCase()
 
 export default function Catalogo() {
-  const { perfil, isAdmin } = useAuth()
+  const { perfil, puedeEditar } = useAuth()
   const { allProducts, customCodes, pppMap, loading, error, guardar, ocultar } = useCatalogoGD()
   const [search, setSearch] = useState('')
 
@@ -58,7 +58,7 @@ export default function Catalogo() {
         <span className="ml-auto text-xs text-muted-foreground">
           {filtrados.length} producto{filtrados.length !== 1 ? 's' : ''} · {totales.conPrecio} con precio · {formatCLP(totales.monto)} comprado total
         </span>
-        {isAdmin && (
+        {puedeEditar && (
           <FormularioProductoGD
             existentes={allProducts}
             onGuardar={(input) => guardar(input, perfil?.username ?? 'admin')}
@@ -81,11 +81,11 @@ export default function Catalogo() {
                 <TableHead className="text-right">Presupuesto</TableHead>
                 <TableHead className="text-right">PPP</TableHead>
                 <TableHead>Fuente</TableHead>
-                {isAdmin && <TableHead />}
+                {puedeEditar && <TableHead />}
               </TableRow>
             </TableHeader>
             {loading ? (
-              <TableSkeleton columns={8 + (isAdmin ? 1 : 0)} />
+              <TableSkeleton columns={8 + (puedeEditar ? 1 : 0)} />
             ) : (
               <TableBody>
                 {filtrados.map((p) => {
@@ -106,7 +106,7 @@ export default function Catalogo() {
                       <TableCell>
                         <Badge variant={esCustom ? 'secondary' : 'outline'}>{esCustom ? 'Custom' : 'Base'}</Badge>
                       </TableCell>
-                      {isAdmin && (
+                      {puedeEditar && (
                         <TableCell>
                           <div className="flex gap-2">
                             <FormularioProductoGD
