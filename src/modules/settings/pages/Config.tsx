@@ -84,8 +84,8 @@ function AvanceProduccionUploadCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>🏗️ Excel de avance de producción (partidas)</CardTitle>
-        <CardDescription>Alimenta el módulo Producción — torre, módulo, tipo y, si el archivo trae columnas por partida (OG.01, EL.01, etc.), su checklist</CardDescription>
+        <CardTitle>🏗️ Excel de avance de producción (avance.xlsx)</CardTitle>
+        <CardDescription>Alimenta el módulo Producción desde la hoja BD_AVANCE — torre, módulo, tipo, estado y el checklist por partida (obra gruesa, sanitario, eléctrico y parte de terminaciones)</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {error && <p className="text-xs text-destructive">{error}</p>}
