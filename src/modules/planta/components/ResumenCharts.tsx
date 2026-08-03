@@ -13,7 +13,10 @@ const BUCKET_COLORS = ['#e3903e', '#d2b932', '#a3c83c', '#64c850', '#3fb950']
 // con borde) queda como "tarro", la de adelante (sólida) como "líquido".
 const BAR_SIZE = 28
 
-const VALUE_LABEL_STYLE = { fontSize: 12, fontWeight: 700 } as const
+// Negro en tema claro, blanco en tema oscuro (--foreground ya resuelve eso) — un
+// solo color de etiqueta legible sobre cualquier barra/línea, sin depender del
+// color de cada serie.
+const VALUE_LABEL_STYLE = { fontSize: 12, fontWeight: 700, fill: 'hsl(var(--foreground))' } as const
 
 const labelFmt = (fn: (v: number) => string) => (v: unknown) => (v == null ? '' : fn(Number(v)))
 
@@ -155,13 +158,13 @@ export function AvanceEconomicoChart({ data, readOnly }: { data: ResumenData['av
             }
           />
           <Bar dataKey="real" barSize={BAR_SIZE} fill="var(--color-real)" radius={4}>
-            <LabelList dataKey="real" position="top" style={{ ...VALUE_LABEL_STYLE, fill: 'var(--color-real)' }} formatter={labelFmt(fmtPr)} />
+            <LabelList dataKey="real" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
           </Bar>
           <Line type="monotone" dataKey="proyectado" stroke="var(--color-proyectado)" strokeWidth={2.5} dot connectNulls>
-            <LabelList dataKey="proyectado" position="top" style={{ ...VALUE_LABEL_STYLE, fill: 'var(--color-proyectado)' }} formatter={labelFmt(fmtPr)} />
+            <LabelList dataKey="proyectado" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
           </Line>
           <Bar dataKey="proyExtra" barSize={BAR_SIZE} fill="none" stroke="#f5a623" strokeWidth={2} strokeDasharray="4 3" radius={4}>
-            <LabelList dataKey="proyExtra" position="top" style={{ ...VALUE_LABEL_STYLE, fill: '#f5a623' }} formatter={labelFmt(fmtPr)} />
+            <LabelList dataKey="proyExtra" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
           </Bar>
         </ComposedChart>
       </ChartContainer>
@@ -211,10 +214,10 @@ export function AvanceEconomicoAcumChart({ data }: { data: ResumenData['avanceEc
           }
         />
         <Bar dataKey="realAcum" fill="var(--color-realAcum)" radius={4}>
-          <LabelList dataKey="realAcum" position="top" style={{ ...VALUE_LABEL_STYLE, fill: 'var(--color-realAcum)' }} formatter={labelFmt(fmtPr)} />
+          <LabelList dataKey="realAcum" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
         </Bar>
         <Line type="monotone" dataKey="proyAcum" stroke="var(--color-proyAcum)" strokeWidth={2.5} dot connectNulls>
-          <LabelList dataKey="proyAcum" position="top" style={{ ...VALUE_LABEL_STYLE, fill: 'var(--color-proyAcum)' }} formatter={labelFmt(fmtPr)} />
+          <LabelList dataKey="proyAcum" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
         </Line>
       </ComposedChart>
     </ChartContainer>
@@ -246,10 +249,10 @@ export function M2AcumuladoChart({ data }: { data: ResumenData['m2Acumulado'] })
           }
         />
         <Bar dataKey="real" fill="var(--color-real)" radius={4}>
-          <LabelList dataKey="real" position="top" style={{ ...VALUE_LABEL_STYLE, fill: 'var(--color-real)' }} formatter={labelFmt((v) => v.toLocaleString('es-CL'))} />
+          <LabelList dataKey="real" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt((v) => v.toLocaleString('es-CL'))} />
         </Bar>
         <Line type="monotone" dataKey="plan" stroke="var(--color-plan)" strokeWidth={2.5} dot connectNulls>
-          <LabelList dataKey="plan" position="top" style={{ ...VALUE_LABEL_STYLE, fill: 'var(--color-plan)' }} formatter={labelFmt((v) => v.toLocaleString('es-CL'))} />
+          <LabelList dataKey="plan" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt((v) => v.toLocaleString('es-CL'))} />
         </Line>
       </ComposedChart>
     </ChartContainer>
