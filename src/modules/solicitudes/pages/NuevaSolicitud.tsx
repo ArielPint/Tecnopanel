@@ -155,6 +155,8 @@ export default function NuevaSolicitud() {
   const [grupoId, setGrupoId] = useState('')
   const [responsableId, setResponsableId] = useState('')
   const [filas, setFilas] = useState<FilaSolicitud[]>([filaVacia()])
+  const [productosGrupo, setProductosGrupo] = useState<Producto[] | null>(null)
+  const [intentoGuardar, setIntentoGuardar] = useState(false)
   const [observacion, setObservacion] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [lastSaved, setLastSaved] = useState<LastSaved | null>(null)
@@ -166,15 +168,18 @@ export default function NuevaSolicitud() {
     setResponsableId('')
     if (!id) {
       setFilas([filaVacia()])
+      setProductosGrupo(null)
       return
     }
     const codigos = await cargarReceta(Number(id))
     if (!codigos.length) {
       setFilas([filaVacia()])
+      setProductosGrupo([])
       return
     }
     const set = new Set(codigos.map((c) => c.toUpperCase()))
     const productos = allProducts.filter((p) => set.has(p.codigo.toUpperCase())).sort((a, b) => a.descripcion.localeCompare(b.descripcion))
+    setProductosGrupo(productos)
     setFilas(productos.length ? productos.map((p) => filaVacia(p)) : [filaVacia()])
   }
 
@@ -247,9 +252,11 @@ export default function NuevaSolicitud() {
   function limpiarItems() {
     setFilas([filaVacia()])
     setObservacion('')
+    setIntentoGuardar(false)
   }
 
   async function guardar() {
+    setIntentoGuardar(true)
     if (!itemsValidos.length) {
       toast.error('Sin productos válidos')
       return
@@ -277,6 +284,7 @@ export default function NuevaSolicitud() {
         estado: 'pendiente',
       })
       setLastSaved({ id: saved.id, numero: saved.numero, grupoNombre: grupo.nombre, responsableNombre: responsable.nombre, items: itemsValidos, observacion: observacion.trim() || null })
+      setIntentoGuardar(false)
       toast.success(`Solicitud N° ${saved.numero} guardada. Pulsa "Enviar correo" para completarla.`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al guardar')
@@ -326,7 +334,7 @@ export default function NuevaSolicitud() {
           <div className="min-w-[200px] flex-1">
             <Label>Grupo solicitante *</Label>
             <Select value={grupoId} onValueChange={onGrupoChange}>
-              <SelectTrigger className="mt-1.5 min-w-[180px]">
+              <SelectTrigger className={`mt-1.5 min-w-[180px] ${intentoGuardar && !grupoId ? 'border-destructive' : ''}`}>
                 <SelectValue placeholder="Selecciona grupo…" />
               </SelectTrigger>
               <SelectContent>
@@ -341,7 +349,7 @@ export default function NuevaSolicitud() {
           <div className="min-w-[200px] flex-1">
             <Label>Para quién se solicita *</Label>
             <Select value={responsableId} onValueChange={setResponsableId} disabled={!grupoId}>
-              <SelectTrigger className="mt-1.5 min-w-[180px]">
+              <SelectTrigger className={`mt-1.5 min-w-[180px] ${intentoGuardar && !responsableId ? 'border-destructive' : ''}`}>
                 <SelectValue placeholder={grupoId ? 'Selecciona responsable…' : 'Selecciona grupo primero…'} />
               </SelectTrigger>
               <SelectContent>
@@ -358,13 +366,24 @@ export default function NuevaSolicitud() {
 
       <div className="rounded-md border p-4">
         <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Productos solicitados</div>
+        {!grupoId ? (
+          <p className="mb-2 text-xs text-muted-foreground">Selecciona un grupo para ver sus productos habituales.</p>
+        ) : null}
+        <div className="grid grid-cols-[1fr_60px_75px_75px_75px_36px] items-center gap-2 px-1 pb-1 text-[11px] font-medium text-muted-foreground">
+          <div>Producto (código o descripción)</div>
+          <div className="text-center">Unidad</div>
+          <div className="text-center">Cant. Sol.</div>
+          <div className="text-center">Cant. Real</div>
+          <div className="text-center">Módulos</div>
+          <div />
+        </div>
         <div className="space-y-2">
           {filas.map((f) => (
             <div key={f.id} className="grid grid-cols-[1fr_60px_75px_75px_75px_36px] items-center gap-2">
               <ProductoAutocomplete
                 value={f.busqueda}
-                productos={allProducts}
-                placeholder="Buscar producto…"
+                productos={productosGrupo ?? allProducts}
+                placeholder="Código o descripción…"
                 onChange={(v) => setFilas((prev) => prev.map((row) => (row.id === f.id ? { ...row, busqueda: v, producto: null } : row)))}
                 onSelect={(p) => onSelectProducto(f.id, p)}
               />
