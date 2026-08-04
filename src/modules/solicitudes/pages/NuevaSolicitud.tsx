@@ -172,6 +172,11 @@ export default function NuevaSolicitud() {
       return
     }
     const codigos = await cargarReceta(Number(id))
+    if (!codigos.length) {
+      setProductosGrupo(null)
+      setFilas([filaVacia()])
+      return
+    }
     const set = new Set(codigos.map((c) => c.toUpperCase()))
     const productos = allProducts.filter((p) => set.has(p.codigo.toUpperCase())).sort((a, b) => a.descripcion.localeCompare(b.descripcion))
     setProductosGrupo(productos)
