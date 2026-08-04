@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/components/ui/card'
 import { useResumenData } from '../hooks/useResumenData'
 import { useDespachosData } from '../hooks/useDespachosData'
+import { useSyncProjectKpis } from '../hooks/useSyncProjectKpis'
 import { useAuth } from '../hooks/useAuth'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { fmt, fmtM, fmtPr } from '../lib/format'
@@ -70,6 +71,19 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
   const resumen = useResumenData(excelData)
   const despachos = useDespachosData(excelData)
   const { isAdmin } = useAuth()
+
+  const avanceEconomicoAcum = resumen.avanceEconomicoAcumulado
+  useSyncProjectKpis(
+    {
+      avance_fisico: resumen.kpis.avanceFisico,
+      avance_economico: avanceEconomicoAcum[avanceEconomicoAcum.length - 1]?.realAcum ?? null,
+      modulos_terminados: resumen.kpis.modulosTerminados,
+      modulos_despachados: resumen.kpis.modulosDespachados,
+      modulos_en_proceso: resumen.kpis.modulosEnProceso,
+      compras_total: resumen.kpis.totalComprado,
+    },
+    !resumen.loading,
+  )
 
   return (
     <div className="space-y-4">
