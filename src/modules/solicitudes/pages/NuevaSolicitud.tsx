@@ -172,15 +172,10 @@ export default function NuevaSolicitud() {
       return
     }
     const codigos = await cargarReceta(Number(id))
-    if (!codigos.length) {
-      setFilas([filaVacia()])
-      setProductosGrupo([])
-      return
-    }
     const set = new Set(codigos.map((c) => c.toUpperCase()))
     const productos = allProducts.filter((p) => set.has(p.codigo.toUpperCase())).sort((a, b) => a.descripcion.localeCompare(b.descripcion))
     setProductosGrupo(productos)
-    setFilas(productos.length ? productos.map((p) => filaVacia(p)) : [filaVacia()])
+    setFilas([filaVacia()])
   }
 
   function onSelectProducto(id: number, p: Producto) {
