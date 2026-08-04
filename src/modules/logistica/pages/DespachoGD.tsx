@@ -10,6 +10,7 @@ import EmptyState from '@/modules/financiero/components/EmptyState'
 import TableSkeleton from '@/modules/financiero/components/TableSkeleton'
 import { formatCLP, formatCLPCompact, formatFecha } from '@/modules/financiero/utils/formatters'
 import { useDespachosGD } from '../hooks/useDespachosGD'
+import { useModulosTerminados } from '../hooks/useModulosTerminados'
 import { loadCatalogoModulos, type CatalogoModulos } from '../lib/catalogoModulos'
 import FormularioDespachoGD from '../components/FormularioDespachoGD'
 import { useAuth } from '../hooks/useAuth'
@@ -21,6 +22,7 @@ const MES_ABBR = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep',
 export default function DespachoGD() {
   const { perfil, puedeEditar } = useAuth()
   const { despachos, loading, error, crear, actualizar, eliminar } = useDespachosGD()
+  const modulosTerminados = useModulosTerminados()
   const [catalogo, setCatalogo] = useState<CatalogoModulos>({ modulos: {}, torres: [] })
   const [search, setSearch] = useState('')
   const [mes, setMes] = useState('')
@@ -181,7 +183,7 @@ export default function DespachoGD() {
           {filtrados.length < despachos.length ? `${filtrados.length} de ${despachos.length} registros` : `${despachos.length} registros`}
         </span>
         {puedeEditar && (
-          <FormularioDespachoGD despachos={despachos} catalogo={catalogo} onCreate={(i) => crear(i, perfil?.name ?? 'anon')} onUpdate={actualizar} />
+          <FormularioDespachoGD despachos={despachos} catalogo={catalogo} modulosTerminados={modulosTerminados} onCreate={(i) => crear(i, perfil?.name ?? 'anon')} onUpdate={actualizar} />
         )}
       </div>
 
@@ -226,7 +228,7 @@ export default function DespachoGD() {
                     {puedeEditar && (
                       <TableCell>
                         <div className="flex gap-2">
-                          <FormularioDespachoGD despacho={d} despachos={despachos} catalogo={catalogo} onCreate={(i) => crear(i, perfil?.name ?? 'anon')} onUpdate={actualizar} />
+                          <FormularioDespachoGD despacho={d} despachos={despachos} catalogo={catalogo} modulosTerminados={modulosTerminados} onCreate={(i) => crear(i, perfil?.name ?? 'anon')} onUpdate={actualizar} />
                           <Button variant="outline" size="sm" onClick={() => onDelete(d.id)}>✕</Button>
                         </div>
                       </TableCell>

@@ -13,13 +13,14 @@ interface Props {
   despacho?: DespachoGD
   despachos: DespachoGD[]
   catalogo: CatalogoModulos
+  modulosTerminados: Set<string>
   onCreate: (input: NuevoDespachoGD) => Promise<void>
   onUpdate: (id: number, input: NuevoDespachoGD) => Promise<void>
 }
 
 const hoy = () => new Date().toISOString().slice(0, 10)
 
-export default function FormularioDespachoGD({ despacho, despachos, catalogo, onCreate, onUpdate }: Props) {
+export default function FormularioDespachoGD({ despacho, despachos, catalogo, modulosTerminados, onCreate, onUpdate }: Props) {
   const esEdicion = !!despacho
   const [open, setOpen] = useState(false)
   const [enviando, setEnviando] = useState(false)
@@ -42,6 +43,15 @@ export default function FormularioDespachoGD({ despacho, despachos, catalogo, on
     const prev = despachos.filter((d) => d.modulo === modulo && d.id !== despacho?.id)
     return prev.length ? prev[prev.length - 1].monto_neto : null
   })()
+
+  // Solo módulos con producción terminada y que no tengan ya un despacho registrado
+  // (excepto el propio, si se está editando) — el selector queda acotado a lo pendiente.
+  const modulosEnviados = new Set(despachos.filter((d) => d.id !== despacho?.id).map((d) => d.modulo).filter(Boolean))
+  const modulosDisponibles = Object.keys(catalogo.modulos).filter(
+    (m) => modulosTerminados.has(m) && !modulosEnviados.has(m),
+  )
+  if (despacho?.modulo && !modulosDisponibles.includes(despacho.modulo)) modulosDisponibles.push(despacho.modulo)
+  modulosDisponibles.sort()
 
   function limpiar() {
     setFechaGd(hoy())
@@ -139,7 +149,7 @@ export default function FormularioDespachoGD({ despacho, despachos, catalogo, on
                 <SelectValue placeholder="— Seleccionar —" />
               </SelectTrigger>
               <SelectContent>
-                {Object.keys(catalogo.modulos).sort().map((m) => (
+                {modulosDisponibles.map((m) => (
                   <SelectItem key={m} value={m}>
                     {m} · {catalogo.modulos[m].torre} · {catalogo.modulos[m].tipo}
                   </SelectItem>
