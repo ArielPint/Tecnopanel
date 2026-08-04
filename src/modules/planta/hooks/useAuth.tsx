@@ -101,8 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!perfil,
         isAdmin,
         puedeVer,
-        // Misma condición usada en la policy de storage dashboard_docs_insert/update
-        puedeSubirExcel: isAdmin || puedeVer('resumen'),
+        puedeSubirExcel: isAdmin,
         signOut: async () => {
           await supabase.auth.signOut()
         },
