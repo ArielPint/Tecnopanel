@@ -76,6 +76,67 @@ function buildMailto(numero: number, grupoNombre: string, responsableNombre: str
   return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 
+function buildMailtoSubject(numero: number, grupoNombre: string) {
+  const now = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return `Solicitud de materiales N° ${numero} · ${grupoNombre} · ${now}`
+}
+
+function escHtml(s: string) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
+}
+
+function buildEmailHtmlTable(numero: number, grupoNombre: string, responsableNombre: string, items: ItemSolicitud[], observacion: string | null) {
+  const now = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const filas = items
+    .map(
+      (it) => `
+    <tr>
+      <td style="border:1px solid #999;padding:4px 8px">${escHtml(PROYECTO_CONST)}</td>
+      <td style="border:1px solid #999;padding:4px 8px">${escHtml(WIP_CONST)}</td>
+      <td style="border:1px solid #999;padding:4px 8px">${escHtml(it.codigo)}</td>
+      <td style="border:1px solid #999;padding:4px 8px">${escHtml(it.descripcion)}</td>
+      <td style="border:1px solid #999;padding:4px 8px">${escHtml(it.unidad)}</td>
+      <td style="border:1px solid #999;padding:4px 8px;text-align:right">${it.cantidad_real}</td>
+    </tr>`,
+    )
+    .join('')
+  return `
+    <div style="font-family:Segoe UI,Arial,sans-serif;font-size:13px;color:#000">
+      <p>N° Solicitud: <b>${numero}</b><br>
+      Grupo: <b>${escHtml(grupoNombre)}</b><br>
+      Para: <b>${escHtml(responsableNombre)}</b><br>
+      Fecha: <b>${now}</b></p>
+      <table style="border-collapse:collapse;border:1px solid #999">
+        <thead>
+          <tr style="background:#eee;font-weight:bold">
+            <th style="border:1px solid #999;padding:4px 8px">PROYECTO</th>
+            <th style="border:1px solid #999;padding:4px 8px">WIP</th>
+            <th style="border:1px solid #999;padding:4px 8px">CODIGO</th>
+            <th style="border:1px solid #999;padding:4px 8px">DESCRIPCION</th>
+            <th style="border:1px solid #999;padding:4px 8px">Unid. Med</th>
+            <th style="border:1px solid #999;padding:4px 8px">Cantidad</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+      ${observacion ? `<p>Observaciones: ${escHtml(observacion)}</p>` : ''}
+    </div>`
+}
+
+async function copyHtmlTableToClipboard(html: string): Promise<boolean> {
+  if (!navigator.clipboard || !window.ClipboardItem) return false
+  try {
+    const item = new ClipboardItem({
+      'text/html': new Blob([html], { type: 'text/html' }),
+      'text/plain': new Blob([html.replace(/<[^>]+>/g, ' ')], { type: 'text/plain' }),
+    })
+    await navigator.clipboard.write([item])
+    return true
+  } catch {
+    return false
+  }
+}
+
 interface LastSaved {
   id: string
   numero: number
@@ -226,7 +287,16 @@ export default function NuevaSolicitud() {
 
   async function enviarCorreo() {
     if (!lastSaved) return
-    window.location.href = buildMailto(lastSaved.numero, lastSaved.grupoNombre, lastSaved.responsableNombre, lastSaved.items, lastSaved.observacion)
+    const html = buildEmailHtmlTable(lastSaved.numero, lastSaved.grupoNombre, lastSaved.responsableNombre, lastSaved.items, lastSaved.observacion)
+    const copiado = await copyHtmlTableToClipboard(html)
+    if (copiado) {
+      const subject = buildMailtoSubject(lastSaved.numero, lastSaved.grupoNombre)
+      const body = `N° Solicitud: ${lastSaved.numero}\nGrupo: ${lastSaved.grupoNombre}\nPara: ${lastSaved.responsableNombre}\n\n(Pega aquí la tabla copiada: Ctrl+V)`
+      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+      toast.success('Tabla copiada al portapapeles. Pégala (Ctrl+V) en el cuerpo del correo.')
+    } else {
+      window.location.href = buildMailto(lastSaved.numero, lastSaved.grupoNombre, lastSaved.responsableNombre, lastSaved.items, lastSaved.observacion)
+    }
     try {
       await marcarUsada(lastSaved.id)
     } catch (err) {
