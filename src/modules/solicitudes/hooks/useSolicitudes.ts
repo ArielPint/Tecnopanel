@@ -94,5 +94,14 @@ export function useSolicitudes() {
     [refetch],
   )
 
-  return { solicitudes, loading, crear, marcarUsada, eliminar }
+  const actualizarItems = useCallback(
+    async (id: string, items: ItemSolicitud[]) => {
+      const { error } = await supabase.from('solicitudes').update({ items }).eq('id', id)
+      if (error) throw new Error(error.message)
+      await refetch()
+    },
+    [refetch],
+  )
+
+  return { solicitudes, loading, crear, marcarUsada, eliminar, actualizarItems }
 }
