@@ -1,7 +1,9 @@
+import { useParams } from 'react-router-dom'
 import isologo from '@/modules/financiero/assets/tecnopanel-isologo-color.png'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/modules/financiero/components/ui/tabs'
 import { Skeleton } from '@/modules/financiero/components/ui/skeleton'
 import { useProyectoActual } from '@/hooks/useProyectoActual'
+import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 import { useExcelData } from '../hooks/useExcelData'
 import ProduccionResumen from './ProduccionResumen'
 import ProduccionTorres from './ProduccionTorres'
@@ -19,6 +21,10 @@ const TABS = [
 
 export default function ProduccionLayout() {
   const { nombre: nombreProyecto } = useProyectoActual()
+  const { proyectoSlug = '' } = useParams<{ proyectoSlug: string }>()
+  const acceso = usePermisosProyecto(proyectoSlug)
+  const visibles = TABS.filter((t) => acceso.tieneAccion(`produccion:${t.value}`))
+  const primerTab = visibles[0]?.value ?? 'resumen'
   // Solo se usa para las fechas planificadas (Alertas/Detalle) — el resto de Producción
   // lee planta_modulos en vivo y funciona igual sin xlsm cargado.
   const { excelData, autoLoading } = useExcelData()
@@ -44,17 +50,17 @@ export default function ProduccionLayout() {
             <Skeleton className="h-[280px]" />
           </div>
         ) : (
-          <Tabs defaultValue="resumen">
+          <Tabs defaultValue={primerTab}>
             <TabsList variant="line" className="mb-4 flex-wrap border-b">
-              {TABS.map((t) => (
+              {visibles.map((t) => (
                 <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
               ))}
             </TabsList>
-            <TabsContent value="resumen"><ProduccionResumen excelData={excelData} /></TabsContent>
-            <TabsContent value="torres"><ProduccionTorres excelData={excelData} /></TabsContent>
-            <TabsContent value="partidas"><ProduccionPartidas excelData={excelData} /></TabsContent>
-            <TabsContent value="alertas"><ProduccionAlertas excelData={excelData} /></TabsContent>
-            <TabsContent value="detalle"><ProduccionDetalle excelData={excelData} /></TabsContent>
+            {visibles.some((t) => t.value === 'resumen') && <TabsContent value="resumen"><ProduccionResumen excelData={excelData} /></TabsContent>}
+            {visibles.some((t) => t.value === 'torres') && <TabsContent value="torres"><ProduccionTorres excelData={excelData} /></TabsContent>}
+            {visibles.some((t) => t.value === 'partidas') && <TabsContent value="partidas"><ProduccionPartidas excelData={excelData} /></TabsContent>}
+            {visibles.some((t) => t.value === 'alertas') && <TabsContent value="alertas"><ProduccionAlertas excelData={excelData} /></TabsContent>}
+            {visibles.some((t) => t.value === 'detalle') && <TabsContent value="detalle"><ProduccionDetalle excelData={excelData} /></TabsContent>}
           </Tabs>
         )}
       </main>

@@ -12,13 +12,14 @@ export interface ProyectoObra {
 export interface ProyectoAcceso {
   rolNegocio: string
   modulos: string[]
+  tabs: Record<string, string[]>
   financieroEdit: Record<string, boolean>
   estadosPagoAcciones: Record<string, boolean>
   logisticaEdit: boolean
 }
 
 export function proyectoAccesoVacio(): ProyectoAcceso {
-  return { rolNegocio: '', modulos: [], financieroEdit: {}, estadosPagoAcciones: {}, logisticaEdit: false }
+  return { rolNegocio: '', modulos: [], tabs: {}, financieroEdit: {}, estadosPagoAcciones: {}, logisticaEdit: false }
 }
 
 export interface Acceso {
@@ -61,6 +62,7 @@ async function syncAccesos(userId: string, input: AccesoInput) {
         Object.fromEntries(pa.modulos.map((m) => [m, { access: true }])),
         pa.financieroEdit,
         accionesExtra,
+        pa.tabs,
       ),
       pa.rolNegocio ? syncRolNegocio(userId, proyectoId, pa.rolNegocio) : Promise.resolve(),
     ]
@@ -110,7 +112,12 @@ export function useAccesos() {
 
       const proyectos: Record<string, ProyectoAcceso> = {}
       for (const proy of proyectosObraLista) {
-        const modulos = misPermisos.filter((x) => x.proyecto_id === proy.id && x.accion === 'ver').map((x) => x.modulo_key)
+        // Pestañas: modulo_key con sufijo "modulo:tab" y accion 'ver' (ej. "dashboard:resumen") —
+        // se listan aparte de `modulos` (que solo captura claves sin ':').
+        const modulos = misPermisos
+          .filter((x) => x.proyecto_id === proy.id && x.accion === 'ver' && !x.modulo_key.includes(':'))
+          .map((x) => x.modulo_key)
+        const tabs: Record<string, string[]> = {}
         const financieroEdit: Record<string, boolean> = {}
         const estadosPagoAcciones: Record<string, boolean> = {}
         let logisticaEdit = false
@@ -125,10 +132,15 @@ export function useAccesos() {
           if (x.modulo_key === 'logistica' && x.accion === 'editar') {
             logisticaEdit = true
           }
+          if (x.accion === 'ver' && x.modulo_key.includes(':')) {
+            const [modulo, tab] = x.modulo_key.split(':')
+            tabs[modulo] = [...(tabs[modulo] ?? []), tab]
+          }
         }
         proyectos[proy.id] = {
           rolNegocio: miAcceso.find((x) => x.proyecto_id === proy.id)?.rol_negocio ?? '',
           modulos,
+          tabs,
           financieroEdit,
           estadosPagoAcciones,
           logisticaEdit,

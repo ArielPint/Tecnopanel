@@ -89,6 +89,30 @@ export function useRitmoProyeccion() {
   return { ritmoTope, ritmoTorre3, loading, guardar }
 }
 
+export function useProyExtraAvEcon() {
+  const [valor, setValor] = useState(4.5)
+  const [loading, setLoading] = useState(true)
+
+  const refetch = useCallback(async () => {
+    setLoading(true)
+    const { data } = await supabase.from('config').select('value').eq('key', 'proy_extra_avEcon').maybeSingle()
+    if (data?.value != null) setValor(parseFloat(data.value) || 4.5)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    refetch()
+  }, [refetch])
+
+  const guardar = useCallback(async (nuevoValor: number) => {
+    const { error } = await supabase.from('config').update({ value: String(nuevoValor) }).eq('key', 'proy_extra_avEcon')
+    if (error) throw new Error(error.message)
+    setValor(nuevoValor)
+  }, [])
+
+  return { valor, loading, guardar }
+}
+
 export interface FilaMensual {
   mes: number
   valor: number

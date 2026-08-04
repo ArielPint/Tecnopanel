@@ -5,6 +5,7 @@ import isologo from '@/modules/financiero/assets/tecnopanel-isologo-color.png'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/modules/financiero/components/ui/sheet'
 import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
+import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
 import { useProyectoActual } from '@/hooks/useProyectoActual'
 import { useThemeStore } from '@/store/themeStore'
 import { cn } from '@/lib/utils'
@@ -47,6 +48,10 @@ const COLLAPSE_KEY = 'tecnopanel-hub-portal-sidebar-collapsed'
 export default function PortalShell({ actual, children, hideAside }: { actual: ModuloKey; children: ReactNode; hideAside?: boolean }) {
   const { proyectoSlug = '' } = useParams<{ proyectoSlug: string }>()
   const acceso = usePermisosProyecto(proyectoSlug)
+  const { escenario } = useAccesoUsuario()
+  // Solo mostrar "volver" si hay algo más a lo que volver — un usuario con
+  // acceso a un único proyecto y nada de CRM no tiene Hub que ver.
+  const tieneHub = escenario === 'hub_completo' || escenario === 'selector_portales'
   const { nombre } = useProyectoActual()
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1')
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -121,8 +126,12 @@ export default function PortalShell({ actual, children, hideAside }: { actual: M
           )}
           <p className="truncate text-xs font-medium text-muted-foreground md:hidden">{nombre}</p>
           <div className="ml-auto flex items-center gap-3">
-            <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">← Hub</Link>
-            <Link to="/proyectos" className="text-xs text-muted-foreground hover:text-foreground">← Proyectos</Link>
+            {tieneHub && (
+              <>
+                <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">← Hub</Link>
+                <Link to="/proyectos" className="text-xs text-muted-foreground hover:text-foreground">← Proyectos</Link>
+              </>
+            )}
             <Button variant="ghost" size="icon" onClick={toggleMode} aria-label="Cambiar tema">
               {mode === 'dark' ? <Sun className="size-5" /> : <Moon className="size-5" />}
             </Button>

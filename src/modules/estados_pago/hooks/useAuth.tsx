@@ -3,11 +3,14 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 
+export type EstadosPagoTab = 'listado' | 'subcontratos'
+
 interface AuthValue {
   loading: boolean
   isAdmin: boolean
   rolNegocio: string | null
   puedeVer: boolean
+  puedeVerTab: (tab: EstadosPagoTab) => boolean
   puedeCrear: boolean
   puedeEditar: boolean
   puedeAprobar: boolean
@@ -28,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin: acceso.isAdmin,
         rolNegocio: acceso.rolNegocio,
         puedeVer: acceso.tieneAccion('estados_pago'),
+        puedeVerTab: (tab) => acceso.tieneAccion('estados_pago') && acceso.tieneAccion(`estados_pago:${tab}`),
         puedeCrear: acceso.tieneAccion('estados_pago', 'crear'),
         puedeEditar: acceso.tieneAccion('estados_pago', 'editar'),
         puedeAprobar: acceso.tieneAccion('estados_pago', 'aprobar'),

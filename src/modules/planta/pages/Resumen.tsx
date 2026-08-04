@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/components/ui/card'
 import { useResumenData } from '../hooks/useResumenData'
 import { useDespachosData } from '../hooks/useDespachosData'
+import { useAuth } from '../hooks/useAuth'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { fmt, fmtM, fmtPr } from '../lib/format'
 import {
@@ -68,6 +69,7 @@ function KpiCards({ kpis }: { kpis: ReturnType<typeof useResumenData>['kpis'] })
 export default function Resumen({ excelData }: { excelData: ParsedDashboardData }) {
   const resumen = useResumenData(excelData)
   const despachos = useDespachosData(excelData)
+  const { isAdmin } = useAuth()
 
   return (
     <div className="space-y-4">
@@ -80,7 +82,7 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
             <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Avance económico mensual</CardTitle>
           </CardHeader>
           <CardContent>
-            <AvanceEconomicoChart data={resumen.avanceEconomico} />
+            <AvanceEconomicoChart data={resumen.avanceEconomico} isAdmin={isAdmin} />
           </CardContent>
         </Card>
         <Card>

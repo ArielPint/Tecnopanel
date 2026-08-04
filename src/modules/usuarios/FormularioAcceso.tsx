@@ -64,8 +64,22 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
 
   function toggleModuloProyecto(proyectoId: string, modulo: string, checked: boolean) {
     const actual = form.proyectos[proyectoId] ?? proyectoAccesoVacio()
-    setProyectoAcceso(proyectoId, {
+    const patch: Partial<ProyectoAcceso> = {
       modulos: checked ? [...actual.modulos, modulo] : actual.modulos.filter((m) => m !== modulo),
+    }
+    // Al marcar el módulo por primera vez, todas sus pestañas parten habilitadas
+    // (si ya tenía pestañas guardadas de antes, se respetan).
+    if (checked && !actual.tabs[modulo] && modulo in PAGE_MAP) {
+      patch.tabs = { ...actual.tabs, [modulo]: Object.keys(PAGE_MAP[modulo as keyof typeof PAGE_MAP].tabs) }
+    }
+    setProyectoAcceso(proyectoId, patch)
+  }
+
+  function toggleTabProyecto(proyectoId: string, modulo: string, tab: string, checked: boolean) {
+    const actual = form.proyectos[proyectoId] ?? proyectoAccesoVacio()
+    const actuales = actual.tabs[modulo] ?? []
+    setProyectoAcceso(proyectoId, {
+      tabs: { ...actual.tabs, [modulo]: checked ? [...actuales, tab] : actuales.filter((t) => t !== tab) },
     })
   }
 
@@ -170,15 +184,31 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                     </div>
                     <div className="flex flex-col gap-2">
                       <Label>Módulos con acceso</Label>
-                      {OBRA_MODULOS.map((pid) => (
-                        <label key={pid} className="flex items-center gap-2 text-sm">
-                          <Checkbox
-                            checked={pa.modulos.includes(pid)}
-                            onCheckedChange={(v) => toggleModuloProyecto(proy.id, pid, !!v)}
-                          />
-                          {PAGE_MAP[pid as keyof typeof PAGE_MAP].label}
-                        </label>
-                      ))}
+                      {OBRA_MODULOS.map((pid) => {
+                        const def = PAGE_MAP[pid as keyof typeof PAGE_MAP]
+                        const marcado = pa.modulos.includes(pid)
+                        return (
+                          <div key={pid} className="flex flex-col gap-1.5">
+                            <label className="flex items-center gap-2 text-sm">
+                              <Checkbox checked={marcado} onCheckedChange={(v) => toggleModuloProyecto(proy.id, pid, !!v)} />
+                              {def.label}
+                            </label>
+                            {marcado && pid !== 'financiero' && (
+                              <div className="ml-6 flex flex-wrap gap-x-4 gap-y-1 rounded-md border p-2">
+                                {Object.entries(def.tabs).map(([tabKey, tabLabel]) => (
+                                  <label key={tabKey} className="flex items-center gap-1.5 text-xs">
+                                    <Checkbox
+                                      checked={(pa.tabs[pid] ?? []).includes(tabKey)}
+                                      onCheckedChange={(v) => toggleTabProyecto(proy.id, pid, tabKey, !!v)}
+                                    />
+                                    {tabLabel}
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                     {pa.modulos.includes('financiero') && (
                       <div className="flex flex-col gap-1.5 rounded-md border p-3">

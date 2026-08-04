@@ -90,8 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const acceso = usePermisosProyecto(proyectoSlug!)
   const isAdmin = acceso.isAdmin
 
-  // ponytail: puedeVer ya no distingue por tab (ver nota en logistica/hooks/useAuth.tsx).
-  const puedeVer = (_tab: DashboardTab): boolean => acceso.tieneAccion('dashboard')
+  const puedeVer = (tab: DashboardTab): boolean => acceso.tieneAccion('dashboard') && acceso.tieneAccion(`dashboard:${tab}`)
   const perfilConRol = perfil ? { ...perfil, role: acceso.rolNegocio ?? '' } : null
 
   return (

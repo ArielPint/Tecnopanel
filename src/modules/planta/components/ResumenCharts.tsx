@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, LabelList, Line, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/modules/financiero/components/ui/chart'
 import { Input } from '@/modules/financiero/components/ui/input'
+import { useProyExtraAvEcon } from '@/modules/settings/hooks/useConfig'
 import type { ResumenData } from '../hooks/useResumenData'
 import { fmtM, fmtPr } from '../lib/format'
 
@@ -121,12 +121,16 @@ export function CrecimientoMensualTabla({ data }: { data: ResumenData['crecimien
   )
 }
 
-export function AvanceEconomicoChart({ data, readOnly }: { data: ResumenData['avanceEconomico']; readOnly?: boolean }) {
-  const [proyExtra, setProyExtra] = useState(() => parseFloat(localStorage.getItem('planta_proyExtra_avEcon') || '4.5'))
-
-  useEffect(() => {
-    localStorage.setItem('planta_proyExtra_avEcon', String(proyExtra))
-  }, [proyExtra])
+export function AvanceEconomicoChart({
+  data,
+  readOnly,
+  isAdmin,
+}: {
+  data: ResumenData['avanceEconomico']
+  readOnly?: boolean
+  isAdmin?: boolean
+}) {
+  const { valor: proyExtra, guardar: guardarProyExtra } = useProyExtraAvEcon()
 
   if (!data.length) {
     return <div className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">Sin datos de avance económico</div>
@@ -171,17 +175,21 @@ export function AvanceEconomicoChart({ data, readOnly }: { data: ResumenData['av
       {!readOnly && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <label htmlFor="proy-extra">Proyectado adicional del último mes:</label>
-          <Input
-            id="proy-extra"
-            type="number"
-            step="0.1"
-            value={proyExtra}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value)
-              if (!isNaN(v) && v >= 0) setProyExtra(v)
-            }}
-            className="h-7 w-20"
-          />
+          {isAdmin ? (
+            <Input
+              id="proy-extra"
+              type="number"
+              step="0.1"
+              value={proyExtra}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value)
+                if (!isNaN(v) && v >= 0) guardarProyExtra(v)
+              }}
+              className="h-7 w-20"
+            />
+          ) : (
+            <span className="font-medium text-foreground">{proyExtra}</span>
+          )}
           <span>%</span>
         </div>
       )}

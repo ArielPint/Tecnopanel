@@ -35,10 +35,15 @@ export async function syncPermisosProyecto(
   pages: Record<string, { access: boolean }>,
   financieroEdit: Record<string, boolean>,
   accionesExtra: Record<string, boolean> = {},
+  tabs: Record<string, string[]> = {},
 ) {
   const filas: { modulo_key: string; accion: string }[] = []
   for (const [pid, def] of Object.entries(pages)) {
-    if (def.access) filas.push({ modulo_key: pid, accion: 'ver' })
+    if (!def.access) continue
+    filas.push({ modulo_key: pid, accion: 'ver' })
+    for (const tab of tabs[pid] ?? []) {
+      filas.push({ modulo_key: `${pid}:${tab}`, accion: 'ver' })
+    }
   }
   for (const [seccion, on] of Object.entries(financieroEdit)) {
     if (on) filas.push({ modulo_key: `financiero:${seccion}`, accion: 'editar' })

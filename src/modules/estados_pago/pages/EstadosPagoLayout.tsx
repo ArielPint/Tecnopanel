@@ -8,9 +8,16 @@ import { useAuth } from '../hooks/useAuth'
 import Listado from './Listado'
 import Subcontratos from './Subcontratos'
 
+const TABS: { value: 'listado' | 'subcontratos'; label: string }[] = [
+  { value: 'listado', label: 'Estados de Pago' },
+  { value: 'subcontratos', label: 'Subcontratos' },
+]
+
 export default function EstadosPagoLayout() {
-  const { signOut } = useAuth()
+  const { signOut, puedeVerTab } = useAuth()
   const { nombre: nombreProyecto } = useProyectoActual()
+  const visibles = TABS.filter((t) => puedeVerTab(t.value))
+  const primerTab = visibles[0]?.value ?? 'listado'
 
   return (
     <PortalShell actual="estados_pago">
@@ -29,17 +36,22 @@ export default function EstadosPagoLayout() {
       </header>
 
       <main className="min-w-0 flex-1 overflow-x-auto p-4 md:p-6">
-        <Tabs defaultValue="listado">
+        <Tabs defaultValue={primerTab}>
           <TabsList variant="line" className="mb-4 flex-wrap border-b">
-            <TabsTrigger value="listado">Estados de Pago</TabsTrigger>
-            <TabsTrigger value="subcontratos">Subcontratos</TabsTrigger>
+            {visibles.map((t) => (
+              <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
+            ))}
           </TabsList>
-          <TabsContent value="listado">
-            <Listado />
-          </TabsContent>
-          <TabsContent value="subcontratos">
-            <Subcontratos />
-          </TabsContent>
+          {puedeVerTab('listado') && (
+            <TabsContent value="listado">
+              <Listado />
+            </TabsContent>
+          )}
+          {puedeVerTab('subcontratos') && (
+            <TabsContent value="subcontratos">
+              <Subcontratos />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>

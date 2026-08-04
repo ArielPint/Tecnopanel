@@ -80,10 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const acceso = usePermisosProyecto(proyectoSlug!)
   const isAdmin = acceso.isAdmin
 
-  // ponytail: puedeVer ya no distingue por tab — nadie tiene hoy un subconjunto
-  // parcial de tabs (todo-o-nada por módulo), y permisos(modulo_key,accion) no
-  // modela tabs. El parámetro se mantiene para no tocar los call sites.
-  const puedeVer = (_tab: LogisticaTab): boolean => acceso.tieneAccion('logistica')
+  const puedeVer = (tab: LogisticaTab): boolean => acceso.tieneAccion('logistica') && acceso.tieneAccion(`logistica:${tab}`)
   const puedeEditar = acceso.tieneAccion('logistica', 'editar')
   const perfilConRol = perfil ? { ...perfil, role: acceso.rolNegocio ?? '' } : null
 

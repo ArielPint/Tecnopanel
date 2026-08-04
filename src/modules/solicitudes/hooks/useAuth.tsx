@@ -79,12 +79,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const acceso = usePermisosProyecto(proyectoSlug!)
   const isAdmin = acceso.isAdmin
 
-  // ponytail: 'catalogo' nunca estuvo en pageMap.ts (tabs de solicitudes = nueva/historial
-  // nomás) — hoy es admin-only, no algo que se pueda otorgar por acceso a "solicitudes".
-  // Se preserva explícito para no regalarlo al colapsar el resto a acceso por módulo.
+  // 'catalogo' nunca estuvo en pageMap.ts (tabs de solicitudes = nueva/historial
+  // nomás) — es admin-only, no algo que se pueda otorgar por acceso a "solicitudes".
   const puedeVer = (tab: SolicitudesTab): boolean => {
     if (tab === 'catalogo') return isAdmin
-    return acceso.tieneAccion('solicitudes')
+    return acceso.tieneAccion('solicitudes') && acceso.tieneAccion(`solicitudes:${tab}`)
   }
   const perfilConRol = perfil ? { ...perfil, role: acceso.rolNegocio ?? '' } : null
 
