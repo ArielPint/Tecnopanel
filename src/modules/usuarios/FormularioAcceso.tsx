@@ -9,17 +9,22 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/modules/financiero/components/ui/tabs'
 import { PAGE_MAP, FINANCIERO_EDIT_GROUPS, ESTADOS_PAGO_ACCION_GROUPS, ROLES } from '@/modules/settings/lib/pageMap'
 import { ROL_META, MODULOS as CRM_MODULOS } from '@/modules/crm/lib/roles'
-import type { Acceso, AccesoInput } from './useAccesos'
+import { proyectoAccesoVacio, type Acceso, type AccesoInput, type ProyectoAcceso, type ProyectoObra } from './useAccesos'
 
-const LA_CHACRA_MODULOS = Object.keys(PAGE_MAP)
+const OBRA_MODULOS = Object.keys(PAGE_MAP)
 
 interface Props {
   acceso?: Acceso | null
+  proyectosObra: ProyectoObra[]
   trigger: React.ReactNode
   onGuardar: (input: AccesoInput) => Promise<void>
 }
 
-function inputFromAcceso(acceso?: Acceso | null): AccesoInput {
+function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: ProyectoObra[]): AccesoInput {
+  const proyectos: Record<string, ProyectoAcceso> = {}
+  for (const p of proyectosObra) {
+    proyectos[p.id] = acceso?.proyectos[p.id] ?? proyectoAccesoVacio()
+  }
   return {
     nombre: acceso?.nombre ?? '',
     apellido: acceso?.apellido ?? '',
@@ -28,30 +33,40 @@ function inputFromAcceso(acceso?: Acceso | null): AccesoInput {
     activo: acceso?.activo ?? true,
     isSuperAdmin: acceso?.isSuperAdmin ?? false,
     rol: acceso?.rol ?? 'vendedor',
-    laChacraRolNegocio: acceso?.laChacraRolNegocio ?? '',
-    laChacraModulos: acceso?.laChacraModulos ?? [],
-    laChacraFinancieroEdit: acceso?.laChacraFinancieroEdit ?? {},
-    laChacraEstadosPagoAcciones: acceso?.laChacraEstadosPagoAcciones ?? {},
-    laChacraLogisticaEdit: acceso?.laChacraLogisticaEdit ?? false,
+    proyectos,
     crmRolNegocio: acceso?.crmRolNegocio ?? '',
     crmModulos: acceso?.crmModulos ?? [],
   }
 }
 
-export default function FormularioAcceso({ acceso, trigger, onGuardar }: Props) {
+export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGuardar }: Props) {
   const [open, setOpen] = useState(false)
   const [enviando, setEnviando] = useState(false)
-  const [form, setForm] = useState<AccesoInput>(inputFromAcceso(acceso))
+  const [form, setForm] = useState<AccesoInput>(inputFromAcceso(acceso, proyectosObra))
 
   useEffect(() => {
-    if (open) setForm(inputFromAcceso(acceso))
-  }, [open, acceso])
+    if (open) setForm(inputFromAcceso(acceso, proyectosObra))
+  }, [open, acceso, proyectosObra])
 
-  function toggleModulo(lista: 'laChacraModulos' | 'crmModulos', modulo: string, checked: boolean) {
+  function toggleCrmModulo(modulo: string, checked: boolean) {
     setForm((f) => ({
       ...f,
-      [lista]: checked ? [...f[lista], modulo] : f[lista].filter((m) => m !== modulo),
+      crmModulos: checked ? [...f.crmModulos, modulo] : f.crmModulos.filter((m) => m !== modulo),
     }))
+  }
+
+  function setProyectoAcceso(proyectoId: string, patch: Partial<ProyectoAcceso>) {
+    setForm((f) => ({
+      ...f,
+      proyectos: { ...f.proyectos, [proyectoId]: { ...(f.proyectos[proyectoId] ?? proyectoAccesoVacio()), ...patch } },
+    }))
+  }
+
+  function toggleModuloProyecto(proyectoId: string, modulo: string, checked: boolean) {
+    const actual = form.proyectos[proyectoId] ?? proyectoAccesoVacio()
+    setProyectoAcceso(proyectoId, {
+      modulos: checked ? [...actual.modulos, modulo] : actual.modulos.filter((m) => m !== modulo),
+    })
   }
 
   async function onSubmit(e: FormEvent) {
@@ -129,78 +144,89 @@ export default function FormularioAcceso({ acceso, trigger, onGuardar }: Props) 
               </label>
             </TabsContent>
 
-            <TabsContent value="proyecto" className="flex flex-col gap-3 pt-2">
-              <div className="flex flex-col gap-1.5">
-                <Label>Rol en La Chacra</Label>
-                <Select value={form.laChacraRolNegocio || undefined} onValueChange={(v) => setForm((f) => ({ ...f, laChacraRolNegocio: v }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin rol asignado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label>Módulos con acceso</Label>
-                {LA_CHACRA_MODULOS.map((pid) => (
-                  <label key={pid} className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={form.laChacraModulos.includes(pid)} onCheckedChange={(v) => toggleModulo('laChacraModulos', pid, !!v)} />
-                    {PAGE_MAP[pid as keyof typeof PAGE_MAP].label}
-                  </label>
-                ))}
-              </div>
-              {form.laChacraModulos.includes('financiero') && (
-                <div className="flex flex-col gap-1.5 rounded-md border p-3">
-                  <Label className="text-xs text-muted-foreground">Edición en Financiero</Label>
-                  {FINANCIERO_EDIT_GROUPS.map((g) => (
-                    <label key={g.key} className="flex items-center gap-1.5 text-xs">
-                      <Checkbox
-                        checked={form.laChacraFinancieroEdit[g.key] ?? false}
-                        onCheckedChange={(v) =>
-                          setForm((f) => ({ ...f, laChacraFinancieroEdit: { ...f.laChacraFinancieroEdit, [g.key]: !!v } }))
-                        }
-                      />
-                      {g.label}
-                    </label>
-                  ))}
-                </div>
+            <TabsContent value="proyecto" className="flex flex-col gap-4 pt-2">
+              {proyectosObra.length === 0 && (
+                <p className="text-sm text-muted-foreground">Aún no hay proyectos creados en el hub.</p>
               )}
-              {form.laChacraModulos.includes('logistica') && (
-                <div className="flex flex-col gap-1.5 rounded-md border p-3">
-                  <Label className="text-xs text-muted-foreground">Edición en Logística</Label>
-                  <label className="flex items-center gap-1.5 text-xs">
-                    <Checkbox
-                      checked={form.laChacraLogisticaEdit}
-                      onCheckedChange={(v) => setForm((f) => ({ ...f, laChacraLogisticaEdit: !!v }))}
-                    />
-                    Puede crear y editar despachos, registros, órdenes de compra y productos del catálogo
-                  </label>
-                </div>
-              )}
-              {form.laChacraModulos.includes('estados_pago') && (
-                <div className="flex flex-col gap-1.5 rounded-md border p-3">
-                  <Label className="text-xs text-muted-foreground">Acciones en Estados de Pago</Label>
-                  {ESTADOS_PAGO_ACCION_GROUPS.map((g) => (
-                    <label key={g.key} className="flex items-center gap-1.5 text-xs">
-                      <Checkbox
-                        checked={form.laChacraEstadosPagoAcciones[g.key] ?? false}
-                        onCheckedChange={(v) =>
-                          setForm((f) => ({
-                            ...f,
-                            laChacraEstadosPagoAcciones: { ...f.laChacraEstadosPagoAcciones, [g.key]: !!v },
-                          }))
-                        }
-                      />
-                      {g.label}
-                    </label>
-                  ))}
-                </div>
-              )}
+              {proyectosObra.map((proy) => {
+                const pa = form.proyectos[proy.id] ?? proyectoAccesoVacio()
+                return (
+                  <div key={proy.id} className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3">
+                    <p className="text-sm font-bold">{proy.nombre}</p>
+                    <div className="flex flex-col gap-1.5">
+                      <Label>Rol en el proyecto</Label>
+                      <Select value={pa.rolNegocio || undefined} onValueChange={(v) => setProyectoAcceso(proy.id, { rolNegocio: v })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sin rol asignado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ROLES.map((r) => (
+                            <SelectItem key={r.value} value={r.value}>
+                              {r.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label>Módulos con acceso</Label>
+                      {OBRA_MODULOS.map((pid) => (
+                        <label key={pid} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={pa.modulos.includes(pid)}
+                            onCheckedChange={(v) => toggleModuloProyecto(proy.id, pid, !!v)}
+                          />
+                          {PAGE_MAP[pid as keyof typeof PAGE_MAP].label}
+                        </label>
+                      ))}
+                    </div>
+                    {pa.modulos.includes('financiero') && (
+                      <div className="flex flex-col gap-1.5 rounded-md border p-3">
+                        <Label className="text-xs text-muted-foreground">Edición en Financiero</Label>
+                        {FINANCIERO_EDIT_GROUPS.map((g) => (
+                          <label key={g.key} className="flex items-center gap-1.5 text-xs">
+                            <Checkbox
+                              checked={pa.financieroEdit[g.key] ?? false}
+                              onCheckedChange={(v) =>
+                                setProyectoAcceso(proy.id, { financieroEdit: { ...pa.financieroEdit, [g.key]: !!v } })
+                              }
+                            />
+                            {g.label}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    {pa.modulos.includes('logistica') && (
+                      <div className="flex flex-col gap-1.5 rounded-md border p-3">
+                        <Label className="text-xs text-muted-foreground">Edición en Logística</Label>
+                        <label className="flex items-center gap-1.5 text-xs">
+                          <Checkbox
+                            checked={pa.logisticaEdit}
+                            onCheckedChange={(v) => setProyectoAcceso(proy.id, { logisticaEdit: !!v })}
+                          />
+                          Puede crear y editar despachos, registros, órdenes de compra y productos del catálogo
+                        </label>
+                      </div>
+                    )}
+                    {pa.modulos.includes('estados_pago') && (
+                      <div className="flex flex-col gap-1.5 rounded-md border p-3">
+                        <Label className="text-xs text-muted-foreground">Acciones en Estados de Pago</Label>
+                        {ESTADOS_PAGO_ACCION_GROUPS.map((g) => (
+                          <label key={g.key} className="flex items-center gap-1.5 text-xs">
+                            <Checkbox
+                              checked={pa.estadosPagoAcciones[g.key] ?? false}
+                              onCheckedChange={(v) =>
+                                setProyectoAcceso(proy.id, { estadosPagoAcciones: { ...pa.estadosPagoAcciones, [g.key]: !!v } })
+                              }
+                            />
+                            {g.label}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </TabsContent>
 
             <TabsContent value="crm" className="flex flex-col gap-3 pt-2">
@@ -234,7 +260,7 @@ export default function FormularioAcceso({ acceso, trigger, onGuardar }: Props) 
                       <button
                         type="button"
                         key={m}
-                        onClick={() => toggleModulo('crmModulos', m, !on)}
+                        onClick={() => toggleCrmModulo(m, !on)}
                         className={
                           'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ' +
                           (on ? 'border-primary bg-primary/10 text-primary' : 'border-muted bg-muted/40 text-muted-foreground hover:bg-muted')

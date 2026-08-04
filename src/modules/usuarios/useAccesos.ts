@@ -1,7 +1,25 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
-import { syncPermisosCrm, syncPermisosLaChacra, syncRolNegocio } from '@/lib/syncPermisos'
+import { syncPermisosCrm, syncPermisosProyecto, syncRolNegocio } from '@/lib/syncPermisos'
+
+export interface ProyectoObra {
+  id: string
+  nombre: string
+  slug: string
+}
+
+export interface ProyectoAcceso {
+  rolNegocio: string
+  modulos: string[]
+  financieroEdit: Record<string, boolean>
+  estadosPagoAcciones: Record<string, boolean>
+  logisticaEdit: boolean
+}
+
+export function proyectoAccesoVacio(): ProyectoAcceso {
+  return { rolNegocio: '', modulos: [], financieroEdit: {}, estadosPagoAcciones: {}, logisticaEdit: false }
+}
 
 export interface Acceso {
   id: string
@@ -11,11 +29,7 @@ export interface Acceso {
   activo: boolean
   isSuperAdmin: boolean
   rol: string
-  laChacraRolNegocio: string
-  laChacraModulos: string[]
-  laChacraFinancieroEdit: Record<string, boolean>
-  laChacraEstadosPagoAcciones: Record<string, boolean>
-  laChacraLogisticaEdit: boolean
+  proyectos: Record<string, ProyectoAcceso>
   crmRolNegocio: string
   crmModulos: string[]
 }
@@ -28,30 +42,33 @@ export interface AccesoInput {
   activo: boolean
   isSuperAdmin: boolean
   rol: string
-  laChacraRolNegocio: string
-  laChacraModulos: string[]
-  laChacraFinancieroEdit: Record<string, boolean>
-  laChacraEstadosPagoAcciones: Record<string, boolean>
-  laChacraLogisticaEdit: boolean
+  proyectos: Record<string, ProyectoAcceso>
   crmRolNegocio: string
   crmModulos: string[]
 }
 
 async function syncAccesos(userId: string, input: AccesoInput) {
-  const accionesExtra = {
-    ...Object.fromEntries(Object.entries(input.laChacraEstadosPagoAcciones).map(([accion, on]) => [`estados_pago:${accion}`, on])),
-    'logistica:editar': input.laChacraLogisticaEdit,
-  }
+  const syncsProyectos = Object.entries(input.proyectos).flatMap(([proyectoId, pa]) => {
+    const accionesExtra = {
+      ...Object.fromEntries(Object.entries(pa.estadosPagoAcciones).map(([accion, on]) => [`estados_pago:${accion}`, on])),
+      'logistica:editar': pa.logisticaEdit,
+    }
+    return [
+      syncPermisosProyecto(
+        userId,
+        proyectoId,
+        Object.fromEntries(pa.modulos.map((m) => [m, { access: true }])),
+        pa.financieroEdit,
+        accionesExtra,
+      ),
+      pa.rolNegocio ? syncRolNegocio(userId, proyectoId, pa.rolNegocio) : Promise.resolve(),
+    ]
+  })
+  const crmId = await getProyectoId('crm')
   await Promise.all([
-    syncPermisosLaChacra(
-      userId,
-      Object.fromEntries(input.laChacraModulos.map((m) => [m, { access: true }])),
-      input.laChacraFinancieroEdit,
-      accionesExtra,
-    ),
+    ...syncsProyectos,
     syncPermisosCrm(userId, input.crmModulos),
-    input.laChacraRolNegocio ? syncRolNegocio(userId, 'la-chacra', input.laChacraRolNegocio) : Promise.resolve(),
-    input.crmRolNegocio ? syncRolNegocio(userId, 'crm', input.crmRolNegocio) : Promise.resolve(),
+    input.crmRolNegocio ? syncRolNegocio(userId, crmId, input.crmRolNegocio) : Promise.resolve(),
   ])
   const { error } = await supabase.from('profiles').update({ rol: input.rol }).eq('id', userId)
   if (error) throw new Error(error.message)
@@ -59,12 +76,18 @@ async function syncAccesos(userId: string, input: AccesoInput) {
 
 export function useAccesos() {
   const [accesos, setAccesos] = useState<Acceso[]>([])
+  const [proyectosObra, setProyectosObra] = useState<ProyectoObra[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    const [crmId, laChacraId] = await Promise.all([getProyectoId('crm'), getProyectoId('la-chacra')])
+    const [{ data: obras }, crmId] = await Promise.all([
+      // Fase F: cualquier proyecto tipo obra, no solo La Chacra — mismo criterio que useAccesoUsuario.
+      supabase.from('proyectos').select('id, nombre, slug').neq('tipo', 'crm').order('nombre'),
+      getProyectoId('crm'),
+    ])
+    const proyectosObraLista: ProyectoObra[] = obras ?? []
     const [{ data: profiles, error: profilesError }, { data: permisos }, { data: access }] = await Promise.all([
       supabase.from('profiles').select('id, nombre, apellido, email, activo, is_super_admin, rol').order('nombre'),
       supabase.from('permisos').select('user_id, proyecto_id, modulo_key, accion'),
@@ -79,22 +102,34 @@ export function useAccesos() {
     const mapped: Acceso[] = (profiles ?? []).map((p) => {
       const misPermisos = (permisos ?? []).filter((x) => x.user_id === p.id)
       const miAcceso = (access ?? []).filter((x) => x.user_id === p.id)
-      const laChacraModulos = misPermisos.filter((x) => x.proyecto_id === laChacraId && x.accion === 'ver').map((x) => x.modulo_key)
-      const laChacraFinancieroEdit: Record<string, boolean> = {}
-      const laChacraEstadosPagoAcciones: Record<string, boolean> = {}
-      let laChacraLogisticaEdit = false
-      for (const x of misPermisos) {
-        if (x.proyecto_id !== laChacraId) continue
-        if (x.accion === 'editar' && x.modulo_key.startsWith('financiero:')) {
-          laChacraFinancieroEdit[x.modulo_key.split(':')[1]] = true
+
+      const proyectos: Record<string, ProyectoAcceso> = {}
+      for (const proy of proyectosObraLista) {
+        const modulos = misPermisos.filter((x) => x.proyecto_id === proy.id && x.accion === 'ver').map((x) => x.modulo_key)
+        const financieroEdit: Record<string, boolean> = {}
+        const estadosPagoAcciones: Record<string, boolean> = {}
+        let logisticaEdit = false
+        for (const x of misPermisos) {
+          if (x.proyecto_id !== proy.id) continue
+          if (x.accion === 'editar' && x.modulo_key.startsWith('financiero:')) {
+            financieroEdit[x.modulo_key.split(':')[1]] = true
+          }
+          if (x.modulo_key === 'estados_pago' && x.accion !== 'ver') {
+            estadosPagoAcciones[x.accion] = true
+          }
+          if (x.modulo_key === 'logistica' && x.accion === 'editar') {
+            logisticaEdit = true
+          }
         }
-        if (x.modulo_key === 'estados_pago' && x.accion !== 'ver') {
-          laChacraEstadosPagoAcciones[x.accion] = true
-        }
-        if (x.modulo_key === 'logistica' && x.accion === 'editar') {
-          laChacraLogisticaEdit = true
+        proyectos[proy.id] = {
+          rolNegocio: miAcceso.find((x) => x.proyecto_id === proy.id)?.rol_negocio ?? '',
+          modulos,
+          financieroEdit,
+          estadosPagoAcciones,
+          logisticaEdit,
         }
       }
+
       const crmModulos = misPermisos.filter((x) => x.proyecto_id === crmId && x.accion === 'ver').map((x) => x.modulo_key)
       return {
         id: p.id,
@@ -104,16 +139,13 @@ export function useAccesos() {
         activo: p.activo,
         isSuperAdmin: !!p.is_super_admin,
         rol: p.rol,
-        laChacraRolNegocio: miAcceso.find((x) => x.proyecto_id === laChacraId)?.rol_negocio ?? '',
-        laChacraModulos,
-        laChacraFinancieroEdit,
-        laChacraEstadosPagoAcciones,
-        laChacraLogisticaEdit,
+        proyectos,
         crmRolNegocio: miAcceso.find((x) => x.proyecto_id === crmId)?.rol_negocio ?? '',
         crmModulos,
       }
     })
     setAccesos(mapped)
+    setProyectosObra(proyectosObraLista)
     setLoading(false)
   }, [])
 
@@ -177,5 +209,5 @@ export function useAccesos() {
     [refetch],
   )
 
-  return { accesos, loading, error, crear, actualizar, eliminar }
+  return { accesos, proyectosObra, loading, error, crear, actualizar, eliminar }
 }

@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/table'
 
 export default function UsuariosPage() {
-  const { accesos, loading, error, crear, actualizar, eliminar } = useAccesos()
+  const { accesos, proyectosObra, loading, error, crear, actualizar, eliminar } = useAccesos()
 
   async function onEliminar(a: Acceso) {
     if (!confirm(`¿Eliminar a ${a.nombre} ${a.apellido ?? ''}? Esta acción no se puede deshacer.`)) return
@@ -45,6 +45,7 @@ export default function UsuariosPage() {
           </p>
         </div>
         <FormularioAcceso
+          proyectosObra={proyectosObra}
           onGuardar={crear}
           trigger={
             <Button size="sm" className="gap-1.5">
@@ -89,17 +90,24 @@ export default function UsuariosPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1.5">
-                        {a.laChacraModulos.length > 0 && <Badge variant="outline">La Chacra ({a.laChacraModulos.length})</Badge>}
+                        {proyectosObra.map((proy) => {
+                          const n = a.proyectos[proy.id]?.modulos.length ?? 0
+                          return n > 0 ? (
+                            <Badge key={proy.id} variant="outline">
+                              {proy.nombre} ({n})
+                            </Badge>
+                          ) : null
+                        })}
                         {a.crmModulos.length > 0 && <Badge variant="outline">CRM ({a.crmModulos.length})</Badge>}
-                        {a.laChacraModulos.length === 0 && a.crmModulos.length === 0 && (
-                          <span className="text-sm text-muted-foreground">Sin accesos</span>
-                        )}
+                        {proyectosObra.every((proy) => (a.proyectos[proy.id]?.modulos.length ?? 0) === 0) &&
+                          a.crmModulos.length === 0 && <span className="text-sm text-muted-foreground">Sin accesos</span>}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1.5">
                         <FormularioAcceso
                           acceso={a}
+                          proyectosObra={proyectosObra}
                           onGuardar={(input) => actualizar(a.id, input)}
                           trigger={
                             <Button size="icon" variant="ghost">

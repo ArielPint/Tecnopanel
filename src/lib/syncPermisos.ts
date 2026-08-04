@@ -1,8 +1,7 @@
 import { supabase } from './supabaseClient'
 import { getProyectoId } from './proyectoIds'
 
-async function reemplazarPermisos(userId: string, proyectoSlug: string, filas: { modulo_key: string; accion: string }[]) {
-  const proyectoId = await getProyectoId(proyectoSlug)
+async function reemplazarPermisos(userId: string, proyectoId: string, filas: { modulo_key: string; accion: string }[]) {
   const { error: delErr } = await supabase.from('permisos').delete().eq('user_id', userId).eq('proyecto_id', proyectoId)
   if (delErr) throw new Error(delErr.message)
   if (filas.length === 0) return
@@ -14,21 +13,25 @@ async function reemplazarPermisos(userId: string, proyectoSlug: string, filas: {
 
 /** CRM: un usuario tiene "ver" sobre cada string literal de módulo que el admin le marcó (profiles.modulos). */
 export async function syncPermisosCrm(userId: string, modulos: string[]) {
+  const proyectoId = await getProyectoId('crm')
   await reemplazarPermisos(
     userId,
-    'crm',
+    proyectoId,
     modulos.map((m) => ({ modulo_key: m, accion: 'ver' })),
   )
 }
 
 /**
- * La Chacra: "ver" por página habilitada (pages.<pid>.access) + "editar" por sección
- * financiera (financiero:<seccion>) + acciones extra de otros módulos (clave literal
- * "modulo_key:accion", ej. "estados_pago:aprobar") — mismo mecanismo que financieroEdit,
- * generalizado para no repetir el patrón por cada módulo nuevo con acciones granulares.
+ * Cualquier proyecto tipo obra (La Chacra, y cualquiera creado después): "ver" por página
+ * habilitada (pages.<pid>.access) + "editar" por sección financiera (financiero:<seccion>) +
+ * acciones extra de otros módulos (clave literal "modulo_key:accion", ej. "estados_pago:aprobar",
+ * "logistica:editar") — mismo mecanismo que financieroEdit, generalizado para no repetir el
+ * patrón por cada módulo nuevo con acciones granulares. Antes hardcodeado al proyecto_id de
+ * 'la-chacra' — ahora recibe el proyecto_id real, así funciona para cualquier obra.
  */
-export async function syncPermisosLaChacra(
+export async function syncPermisosProyecto(
   userId: string,
+  proyectoId: string,
   pages: Record<string, { access: boolean }>,
   financieroEdit: Record<string, boolean>,
   accionesExtra: Record<string, boolean> = {},
@@ -45,12 +48,11 @@ export async function syncPermisosLaChacra(
     const separador = key.lastIndexOf(':')
     filas.push({ modulo_key: key.slice(0, separador), accion: key.slice(separador + 1) })
   }
-  await reemplazarPermisos(userId, 'la-chacra', filas)
+  await reemplazarPermisos(userId, proyectoId, filas)
 }
 
 /** Rol de negocio por proyecto (catálogo abierto, ver Fase E1) — reemplaza el 'full_access' decorativo. */
-export async function syncRolNegocio(userId: string, proyectoSlug: string, rolNegocio: string) {
-  const proyectoId = await getProyectoId(proyectoSlug)
+export async function syncRolNegocio(userId: string, proyectoId: string, rolNegocio: string) {
   const { error } = await supabase
     .from('project_access')
     // ponytail: 'rol' es legacy (NOT NULL, decorativo, nadie lo lee) — se rellena para no romper el INSERT
