@@ -26,7 +26,7 @@ let rowSeq = 0
 const filaVacia = (producto?: Producto): FilaSolicitud => ({
   id: ++rowSeq,
   producto: producto ?? null,
-  busqueda: producto?.descripcion ?? '',
+  busqueda: producto?.codigo ?? '',
   cantidadSol: producto ? '0' : '',
   cantidadReal: producto ? '0' : '',
   realDirty: false,
@@ -188,7 +188,7 @@ export default function NuevaSolicitud() {
       prev.map((f) => {
         if (f.id !== id) return f
         const cantidadReal = f.realDirty ? f.cantidadReal : f.cantidadSol
-        return { ...f, producto: p, busqueda: p.descripcion, modulos: syncModulos(cantidadReal, p.cantidad_por_modulo) }
+        return { ...f, producto: p, busqueda: p.codigo, modulos: syncModulos(cantidadReal, p.cantidad_por_modulo) }
       }),
     )
   }
@@ -369,8 +369,9 @@ export default function NuevaSolicitud() {
         {!grupoId ? (
           <p className="mb-2 text-xs text-muted-foreground">Selecciona un grupo para ver sus productos habituales.</p>
         ) : null}
-        <div className="grid grid-cols-[1fr_60px_75px_75px_75px_36px] items-center gap-2 px-1 pb-1 text-[11px] font-medium text-muted-foreground">
-          <div>Producto (código o descripción)</div>
+        <div className="grid grid-cols-[150px_1fr_60px_75px_75px_75px_36px] items-center gap-2 px-1 pb-1 text-[11px] font-medium text-muted-foreground">
+          <div>Código (o buscar)</div>
+          <div>Descripción</div>
           <div className="text-center">Unidad</div>
           <div className="text-center">Cant. Sol.</div>
           <div className="text-center">Cant. Real</div>
@@ -379,7 +380,7 @@ export default function NuevaSolicitud() {
         </div>
         <div className="space-y-2">
           {filas.map((f) => (
-            <div key={f.id} className="grid grid-cols-[1fr_60px_75px_75px_75px_36px] items-center gap-2">
+            <div key={f.id} className="grid grid-cols-[150px_1fr_60px_75px_75px_75px_36px] items-center gap-2">
               <ProductoAutocomplete
                 value={f.busqueda}
                 productos={productosGrupo ?? allProducts}
@@ -387,6 +388,7 @@ export default function NuevaSolicitud() {
                 onChange={(v) => setFilas((prev) => prev.map((row) => (row.id === f.id ? { ...row, busqueda: v, producto: null } : row)))}
                 onSelect={(p) => onSelectProducto(f.id, p)}
               />
+              <div className="truncate text-sm">{f.producto?.descripcion || ''}</div>
               <div className="text-center text-xs text-muted-foreground">{f.producto?.unidad || '—'}</div>
               <Input type="number" min="0" step="1" placeholder="0" value={f.cantidadSol} onChange={(e) => onCantSolChange(f.id, e.target.value)} title="Cant. Solicitada" />
               <Input type="number" min="0" step="1" placeholder="0" value={f.cantidadReal} onChange={(e) => onCantRealChange(f.id, e.target.value)} title="Cant. Real (va al correo)" />
