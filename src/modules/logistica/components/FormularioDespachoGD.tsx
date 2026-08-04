@@ -151,7 +151,7 @@ export default function FormularioDespachoGD({ despacho, despachos, catalogo, mo
               <SelectContent>
                 {modulosDisponibles.map((m) => (
                   <SelectItem key={m} value={m}>
-                    {m} · {catalogo.modulos[m].torre} · {catalogo.modulos[m].tipo}
+                    {m} · {catalogo.modulos[m]?.torre ?? '—'} · {catalogo.modulos[m]?.tipo ?? '—'}
                   </SelectItem>
                 ))}
               </SelectContent>
