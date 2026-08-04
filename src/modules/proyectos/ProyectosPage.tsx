@@ -6,6 +6,7 @@ import type { Proyecto } from '../dashboard/types'
 import { Badge } from '@/components/ui/badge'
 import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
 import CrearProyectoDialog from './CrearProyectoDialog'
+import EliminarProyectoDialog from './EliminarProyectoDialog'
 
 const estadoTone: Record<string, 'success' | 'warning' | 'secondary'> = {
   activa: 'success',
@@ -29,7 +30,7 @@ function rutaInterna(p: Proyecto): string | undefined {
 export default function ProyectosPage() {
   const [proyectos, setProyectos] = useState<Proyecto[]>([])
   const [loading, setLoading] = useState(true)
-  const { isAdmin } = useAccesoUsuario()
+  const { isAdmin, isSuperAdmin } = useAccesoUsuario()
 
   const cargarProyectos = useCallback(() => {
     return supabase
@@ -89,20 +90,28 @@ export default function ProyectosPage() {
                 )}
               </>
             )
-            return internalRoute ? (
-              <Link key={p.id} to={internalRoute} className={cardClass}>
-                {content}
-              </Link>
-            ) : (
-              <a
-                key={p.id}
-                href={p.url_app ?? undefined}
-                target={p.url_app ? '_blank' : undefined}
-                rel={p.url_app ? 'noreferrer' : undefined}
-                className={cardClass}
-              >
-                {content}
-              </a>
+            return (
+              <div key={p.id} className="relative">
+                {internalRoute ? (
+                  <Link to={internalRoute} className={cardClass}>
+                    {content}
+                  </Link>
+                ) : (
+                  <a
+                    href={p.url_app ?? undefined}
+                    target={p.url_app ? '_blank' : undefined}
+                    rel={p.url_app ? 'noreferrer' : undefined}
+                    className={cardClass}
+                  >
+                    {content}
+                  </a>
+                )}
+                {isSuperAdmin && (
+                  <div className="absolute right-2 top-2">
+                    <EliminarProyectoDialog proyecto={{ id: p.id, nombre: p.nombre }} onEliminado={cargarProyectos} />
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>

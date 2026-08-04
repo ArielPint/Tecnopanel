@@ -15,6 +15,8 @@ interface AccesoUsuario {
   loading: boolean
   escenario: Escenario | null
   isAdmin: boolean
+  /** profiles.is_super_admin — el que realmente exige la RLS de `proyectos` (ALL, incluye delete). No confundir con isAdmin (rol='admin'). */
+  isSuperAdmin: boolean
   tieneCrm: boolean
   tieneProyecto: boolean
   /** Proyectos tipo obra con permiso real — Fase F: antes era un boolean fijo a La Chacra, ahora N proyectos. */
@@ -25,6 +27,7 @@ const ESTADO_INICIAL: AccesoUsuario = {
   loading: true,
   escenario: null,
   isAdmin: false,
+  isSuperAdmin: false,
   tieneCrm: false,
   tieneProyecto: false,
   proyectosObra: [],
@@ -43,7 +46,7 @@ export function useAccesoUsuario(): AccesoUsuario {
     if (authLoading) return
 
     if (!userId) {
-      setEstado({ loading: false, escenario: null, isAdmin: false, tieneCrm: false, tieneProyecto: false, proyectosObra: [] })
+      setEstado({ loading: false, escenario: null, isAdmin: false, isSuperAdmin: false, tieneCrm: false, tieneProyecto: false, proyectosObra: [] })
       return
     }
 
@@ -52,7 +55,7 @@ export function useAccesoUsuario(): AccesoUsuario {
 
     async function resolver() {
       const [{ data: profile }, { data: permisos }, crmId, { data: obras }] = await Promise.all([
-        supabase.from('profiles').select('rol, activo').eq('id', userId).maybeSingle(),
+        supabase.from('profiles').select('rol, activo, is_super_admin').eq('id', userId).maybeSingle(),
         // Fase E5 prep: reemplaza profiles.modulos/user_profiles.active (decorativos post
         // Fase D) por la señal real — cualquier fila en `permisos` para ese proyecto.
         supabase.from('permisos').select('proyecto_id').eq('user_id', userId),
@@ -63,17 +66,18 @@ export function useAccesoUsuario(): AccesoUsuario {
       if (cancelado) return
 
       if (!profile || profile.activo === false) {
-        setEstado({ loading: false, escenario: 'sin_acceso', isAdmin: false, tieneCrm: false, tieneProyecto: false, proyectosObra: [] })
+        setEstado({ loading: false, escenario: 'sin_acceso', isAdmin: false, isSuperAdmin: false, tieneCrm: false, tieneProyecto: false, proyectosObra: [] })
         return
       }
       const isAdmin = profile.rol === 'admin'
+      const isSuperAdmin = !!profile.is_super_admin
       const proyectosConAcceso = new Set((permisos ?? []).map((p) => p.proyecto_id))
       const tieneCrm = isAdmin || proyectosConAcceso.has(crmId)
       const proyectosObra = (obras ?? []).filter((p) => isAdmin || proyectosConAcceso.has(p.id))
       const tieneProyecto = proyectosObra.length > 0
 
       if (isAdmin) {
-        setEstado({ loading: false, escenario: 'hub_completo', isAdmin, tieneCrm, tieneProyecto, proyectosObra })
+        setEstado({ loading: false, escenario: 'hub_completo', isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, proyectosObra })
         return
       }
 
@@ -83,7 +87,7 @@ export function useAccesoUsuario(): AccesoUsuario {
       else if (tieneProyecto) escenario = 'solo_proyecto'
       else escenario = 'sin_acceso'
 
-      setEstado({ loading: false, escenario, isAdmin, tieneCrm, tieneProyecto, proyectosObra })
+      setEstado({ loading: false, escenario, isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, proyectosObra })
     }
 
     resolver()
