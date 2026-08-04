@@ -14,6 +14,22 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
+function formatUltimoIngreso(iso: string | null): { relativo: string; absoluto: string } | null {
+  if (!iso) return null
+  const ms = Date.now() - new Date(iso).getTime()
+  const min = Math.floor(ms / 60000)
+  let relativo: string
+  if (min < 1) relativo = 'recién'
+  else if (min < 60) relativo = `hace ${min} min`
+  else if (min < 60 * 24) relativo = `hace ${Math.floor(min / 60)} h`
+  else {
+    const dias = Math.floor(min / (60 * 24))
+    relativo = `hace ${dias} día${dias === 1 ? '' : 's'}`
+  }
+  const absoluto = new Date(iso).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' })
+  return { relativo, absoluto }
+}
+
 export default function UsuariosPage() {
   const { accesos, proyectosObra, loading, error, crear, actualizar, eliminar } = useAccesos()
 
@@ -70,6 +86,7 @@ export default function UsuariosPage() {
                   <TableHead>Usuario</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Accesos</TableHead>
+                  <TableHead>Último ingreso</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -102,6 +119,19 @@ export default function UsuariosPage() {
                         {proyectosObra.every((proy) => (a.proyectos[proy.id]?.modulos.length ?? 0) === 0) &&
                           a.crmModulos.length === 0 && <span className="text-sm text-muted-foreground">Sin accesos</span>}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const ui = formatUltimoIngreso(a.ultimoIngreso)
+                        return ui ? (
+                          <div>
+                            <div className="text-sm">{ui.relativo}</div>
+                            <div className="text-[12.5px] text-muted-foreground">{ui.absoluto}</div>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Nunca</span>
+                        )
+                      })()}
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1.5">

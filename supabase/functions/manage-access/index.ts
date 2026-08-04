@@ -82,6 +82,18 @@ Deno.serve(async (req) => {
       return json({ ok: true })
     }
 
+    if (action === 'list_last_logins') {
+      // Único lugar donde se puede leer auth.users.last_sign_in_at (protegido, no
+      // expuesto vía PostgREST) — se resuelve acá con service role en vez de mantener
+      // un profiles.last_login manual que se desincroniza. perPage cubre hasta 1000
+      // cuentas; si el hub crece más allá de eso, paginar.
+      const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 })
+      if (error) return json({ error: error.message }, 400)
+      const logins: Record<string, string | null> = {}
+      for (const u of data.users) logins[u.id] = u.last_sign_in_at ?? null
+      return json({ logins })
+    }
+
     if (action === 'delete') {
       const { userId } = body
       if (!userId) return json({ error: 'Falta userId' }, 400)

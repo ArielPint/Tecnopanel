@@ -32,6 +32,7 @@ export interface Acceso {
   proyectos: Record<string, ProyectoAcceso>
   crmRolNegocio: string
   crmModulos: string[]
+  ultimoIngreso: string | null
 }
 
 export interface AccesoInput {
@@ -88,16 +89,20 @@ export function useAccesos() {
       getProyectoId('crm'),
     ])
     const proyectosObraLista: ProyectoObra[] = obras ?? []
-    const [{ data: profiles, error: profilesError }, { data: permisos }, { data: access }] = await Promise.all([
+    const [{ data: profiles, error: profilesError }, { data: permisos }, { data: access }, loginsResp] = await Promise.all([
       supabase.from('profiles').select('id, nombre, apellido, email, activo, is_super_admin, rol').order('nombre'),
       supabase.from('permisos').select('user_id, proyecto_id, modulo_key, accion'),
       supabase.from('project_access').select('user_id, proyecto_id, rol_negocio'),
+      supabase.functions.invoke('manage-access', { body: { action: 'list_last_logins' } }),
     ])
     if (profilesError) {
       setError(profilesError.message)
       setLoading(false)
       return
     }
+    // Requiere is_super_admin (mismo gate que el resto de manage-access) — si quien
+    // mira esta página no lo es, no rompemos el listado entero por esto.
+    const logins: Record<string, string | null> = loginsResp.data?.logins ?? {}
 
     const mapped: Acceso[] = (profiles ?? []).map((p) => {
       const misPermisos = (permisos ?? []).filter((x) => x.user_id === p.id)
@@ -142,6 +147,7 @@ export function useAccesos() {
         proyectos,
         crmRolNegocio: miAcceso.find((x) => x.proyecto_id === crmId)?.rol_negocio ?? '',
         crmModulos,
+        ultimoIngreso: logins[p.id] ?? null,
       }
     })
     setAccesos(mapped)
