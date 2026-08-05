@@ -69,11 +69,13 @@ function enriquecer(rows: PlantaModuloRow[], excelData: ParsedDashboardData | nu
       torre: String(r.torre ?? ''),
       tipo: String(r.tipo ?? ''),
       estadoModulo: r.estado_modulo,
-      avance: moduloProgress(r),
-      og: catProgress(r, 'obra_gruesa' as Categoria),
-      san: catProgress(r, 'sanitario' as Categoria),
-      elec: catProgress(r, 'electrico' as Categoria),
-      term: catProgress(r, 'terminaciones' as Categoria),
+      // Mismo fallback que `terminado`: si el Excel ya dio el modulo por terminado, el checklist
+      // manual (probablemente vacio) no debe hacer bajar el % de avance ni el de cada categoria.
+      avance: terminado ? 1 : moduloProgress(r),
+      og: terminado ? 1 : catProgress(r, 'obra_gruesa' as Categoria),
+      san: terminado ? 1 : catProgress(r, 'sanitario' as Categoria),
+      elec: terminado ? 1 : catProgress(r, 'electrico' as Categoria),
+      term: terminado ? 1 : catProgress(r, 'terminaciones' as Categoria),
       iniciado,
       terminado,
       initReal: fechaInicioReal(r),
