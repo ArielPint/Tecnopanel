@@ -51,21 +51,6 @@ export default function DashboardLayout() {
           <p className="text-sm font-bold leading-none">Dashboard</p>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          {excelData && puedeSubirExcel && (
-            <label className="cursor-pointer text-xs text-muted-foreground underline">
-              {uploading ? 'Procesando…' : 'Reemplazar archivo'}
-              <input
-                type="file"
-                accept=".xlsm,.xlsx"
-                className="hidden"
-                disabled={uploading}
-                onChange={(e) => {
-                  const f = e.target.files?.[0]
-                  if (f) handleFile(f)
-                }}
-              />
-            </label>
-          )}
           <Avatar className="size-8">
             <AvatarFallback className="text-xs">{iniciales(perfil?.name)}</AvatarFallback>
           </Avatar>
