@@ -15,6 +15,7 @@ import { useResponsables } from '../hooks/useResponsables'
 import { useOrdenesCompra } from '../hooks/useOrdenesCompra'
 import { useRegistroCompras, type RegistroCompra } from '../hooks/useRegistroCompras'
 import FormularioRegistro from '../components/FormularioRegistro'
+import ResumenGD from '../components/ResumenGD'
 
 function getPPTO(r: RegistroCompra, allProductsPptoMap: Record<string, number | null>) {
   const p = allProductsPptoMap[normCod(r.codigo)]
@@ -114,6 +115,7 @@ export default function Registro() {
 
   return (
     <div className="space-y-4">
+      {!cargandoDeps && <ResumenGD registros={registros} pptoMap={pptoMap} />}
       <div className="flex flex-wrap items-center gap-2">
         <Input placeholder="🔍  Código, descripción, obs…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-56" />
         <Input placeholder="🔍  GD…" value={gdFiltro} onChange={(e) => setGdFiltro(e.target.value)} className="h-9 w-28" />
