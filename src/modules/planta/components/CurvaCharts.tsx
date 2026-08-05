@@ -55,6 +55,7 @@ export function ModulosLineChart({
         <XAxis dataKey="semana" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
         <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} />
         <ChartTooltip content={<ChartTooltipContent />} />
+        <Legend wrapperStyle={{ fontSize: 11 }} />
         <Area type="monotone" dataKey={planKey} stroke={`var(--color-${planKey})`} fill={`var(--color-${planKey})`} fillOpacity={0.08} strokeWidth={2} dot={{ r: 3 }} />
         <Area type="monotone" dataKey={realKey} stroke={`var(--color-${realKey})`} fill={`var(--color-${realKey})`} fillOpacity={0.08} strokeWidth={2} dot={{ r: 3 }} />
       </AreaChart>
@@ -71,7 +72,8 @@ export function GalponBarChart({ data }: { data: CurvaData['galponByWeek'] }) {
         <XAxis dataKey="semana" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
         <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Bar dataKey="count" fill="var(--color-count)" radius={4} />
+        <Legend wrapperStyle={{ fontSize: 11 }} />
+        <Bar dataKey="count" name="Módulos" fill="var(--color-count)" radius={4} />
       </ComposedChart>
     </ChartContainer>
   )
@@ -90,8 +92,9 @@ export function TiempoTorreChart({ data }: { data: CurvaData['torreTiempo'] }) {
         <XAxis dataKey="torre" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
         <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={36} />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Bar dataKey="real" fill="var(--color-real)" radius={4} />
-        <Line type="monotone" dataKey="proy" stroke="var(--color-proy)" strokeWidth={2.5} dot={{ r: 4 }} connectNulls />
+        <Legend wrapperStyle={{ fontSize: 11 }} />
+        <Bar dataKey="real" name="Tiempo Real (días)" fill="var(--color-real)" radius={4} />
+        <Line type="monotone" dataKey="proy" name="Tiempo Proyectado (días)" stroke="var(--color-proy)" strokeWidth={2.5} dot={{ r: 4 }} connectNulls />
       </ComposedChart>
     </ChartContainer>
   )
