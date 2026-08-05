@@ -150,8 +150,6 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   useEffect(() => {
     if (tab !== 'chat') return
     loadMensajes()
-    const id = setInterval(loadMensajes, 8000)
-    return () => clearInterval(id)
   }, [tab, opp.id])
 
   async function loadAll() {
