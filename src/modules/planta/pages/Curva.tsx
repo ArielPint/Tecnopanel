@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/c
 import { useCurvaData } from '../hooks/useCurvaData'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { fmt, fmtDate, fmtPr } from '../lib/format'
-import { CurvaSChart, GalponBarChart, ModulosLineChart, TiempoModuloChart, TiempoTorreChart } from '../components/CurvaCharts'
+import { CurvaSChart, GalponBarChart, ModulosLineChart, TiempoTorreChart } from '../components/CurvaCharts'
 import { cn } from '@/lib/utils'
 
 function KpiCards({ kpis }: { kpis: ReturnType<typeof useCurvaData>['kpis'] }) {
@@ -107,37 +107,6 @@ export default function Curva({ excelData }: { excelData: ParsedDashboardData })
         </CardHeader>
         <CardContent>
           <TiempoTorreChart data={data.torreTiempo} />
-        </CardContent>
-      </Card>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold">🏗 Filtrar por torre:</span>
-        {data.torresDisponibles.map((t) => (
-          <Chip key={t} label={t} active={data.torresSeleccionadas == null || data.torresSeleccionadas.has(t)} onClick={() => data.toggleTorre(t)} />
-        ))}
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">
-            <span>Tiempo real vs proyectado — Módulos Húmedos</span>
-            {data.tiempoHumedo.promedio != null && <span className="text-sm font-bold text-primary normal-case">⌀ {data.tiempoHumedo.promedio.toFixed(1)} días reales</span>}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TiempoModuloChart data={data.tiempoHumedo.data} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">
-            <span>Tiempo real vs proyectado — Módulos Secos</span>
-            {data.tiempoSeco.promedio != null && <span className="text-sm font-bold text-primary normal-case">⌀ {data.tiempoSeco.promedio.toFixed(1)} días reales</span>}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TiempoModuloChart data={data.tiempoSeco.data} />
         </CardContent>
       </Card>
 
