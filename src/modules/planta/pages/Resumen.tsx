@@ -127,11 +127,11 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
       <Card>
         <CardHeader>
           <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">
-            Diferencia avance económico real vs. físico real (acumulado)
+            Distribución de módulos por avance
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <DiferenciaAvanceEconFisicoAcumChart data={resumen.diferenciaEconomicoFisicoAcum} />
+          <DistribucionModulosChart data={resumen.distribucionBuckets} />
         </CardContent>
       </Card>
 
@@ -139,11 +139,11 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
         <Card>
           <CardHeader>
             <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">
-              Distribución de módulos por avance
+              Diferencia avance económico real vs. físico real (acumulado)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <DistribucionModulosChart data={resumen.distribucionBuckets} />
+            <DiferenciaAvanceEconFisicoAcumChart data={resumen.diferenciaEconomicoFisicoAcum} />
           </CardContent>
         </Card>
         {MOSTRAR_M2_ACUMULADO ? (
