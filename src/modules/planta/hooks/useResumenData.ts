@@ -255,6 +255,17 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
         diferencia: economico != null && fisico != null ? +(economico - fisico).toFixed(2) : null,
       }
     })
+    const diferenciaEconomicoFisicoAcum = avanceEconomicoAcumulado.map((x, i) => {
+      const entry = fisicoByMes[`${i + 1}-${anioActual}`]
+      const fisicoAcum = entry ? +(entry.cum * 100).toFixed(2) : null
+      const economicoAcum = x.realAcum
+      return {
+        mes: x.mes,
+        economicoAcum,
+        fisicoAcum,
+        diferencia: economicoAcum != null && fisicoAcum != null ? +(economicoAcum - fisicoAcum).toFixed(2) : null,
+      }
+    })
 
     // Módulos terminados / iniciados por mes
     const terminadosByMes: Record<string, number> = {}
@@ -303,6 +314,7 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
       avanceEconomicoAcumulado,
       m2Acumulado,
       diferenciaEconomicoFisico,
+      diferenciaEconomicoFisicoAcum,
       modulosTerminadosPorMes,
       modulosIniciadosPorMes,
       salidaGalponPorMes,

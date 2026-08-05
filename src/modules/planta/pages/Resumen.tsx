@@ -11,6 +11,7 @@ import {
   ComprasVsPresupuestoChart,
   CrecimientoMensualTabla,
   DespachosPorMesChart,
+  DiferenciaAvanceEconFisicoAcumChart,
   DiferenciaAvanceEconFisicoChart,
   DistribucionModulosChart,
   M2AcumuladoChart,
@@ -120,6 +121,17 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
         <CardContent className="space-y-4">
           <ComprasVsPresupuestoChart data={resumen.comprasVsPresupuesto} />
           <CrecimientoMensualTabla data={resumen.crecimientoMensual} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">
+            Diferencia avance económico real vs. físico real (acumulado)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DiferenciaAvanceEconFisicoAcumChart data={resumen.diferenciaEconomicoFisicoAcum} />
         </CardContent>
       </Card>
 
