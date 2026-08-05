@@ -1,6 +1,10 @@
-import { Area, AreaChart, Bar, CartesianGrid, ComposedChart, Legend, Line, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, Bar, CartesianGrid, ComposedChart, LabelList, Legend, Line, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/modules/financiero/components/ui/chart'
 import type { CurvaData } from '../hooks/useCurvaData'
+
+const VALUE_LABEL_STYLE = { fontSize: 11, fontWeight: 700, fill: 'hsl(var(--foreground))' } as const
+
+const labelFmt = (fn: (v: number) => string) => (v: unknown) => (v == null ? '' : fn(Number(v)))
 
 export function CurvaSChart({ data }: { data: CurvaData['curvaByWeek'] }) {
   const config = {
@@ -25,8 +29,12 @@ export function CurvaSChart({ data }: { data: CurvaData['curvaByWeek'] }) {
             />
           }
         />
-        <Area type="monotone" dataKey="teorico" stroke="var(--color-teorico)" fill="var(--color-teorico)" fillOpacity={0.08} strokeWidth={2} dot />
-        <Area type="monotone" dataKey="real" stroke="var(--color-real)" fill="var(--color-real)" fillOpacity={0.08} strokeWidth={2} dot />
+        <Area type="monotone" dataKey="teorico" stroke="var(--color-teorico)" fill="var(--color-teorico)" fillOpacity={0.08} strokeWidth={2} dot>
+          <LabelList dataKey="teorico" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt((v) => `${v.toFixed(1)}%`)} />
+        </Area>
+        <Area type="monotone" dataKey="real" stroke="var(--color-real)" fill="var(--color-real)" fillOpacity={0.08} strokeWidth={2} dot>
+          <LabelList dataKey="real" position="bottom" style={VALUE_LABEL_STYLE} formatter={labelFmt((v) => `${v.toFixed(1)}%`)} />
+        </Area>
         <Legend verticalAlign="bottom" height={36} />
       </AreaChart>
     </ChartContainer>
@@ -56,8 +64,12 @@ export function ModulosLineChart({
         <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Area type="monotone" dataKey={planKey} stroke={`var(--color-${planKey})`} fill={`var(--color-${planKey})`} fillOpacity={0.08} strokeWidth={2} dot={{ r: 3 }} />
-        <Area type="monotone" dataKey={realKey} stroke={`var(--color-${realKey})`} fill={`var(--color-${realKey})`} fillOpacity={0.08} strokeWidth={2} dot={{ r: 3 }} />
+        <Area type="monotone" dataKey={planKey} stroke={`var(--color-${planKey})`} fill={`var(--color-${planKey})`} fillOpacity={0.08} strokeWidth={2} dot={{ r: 3 }}>
+          <LabelList dataKey={planKey} position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt((v) => v.toFixed(0))} />
+        </Area>
+        <Area type="monotone" dataKey={realKey} stroke={`var(--color-${realKey})`} fill={`var(--color-${realKey})`} fillOpacity={0.08} strokeWidth={2} dot={{ r: 3 }}>
+          <LabelList dataKey={realKey} position="bottom" style={VALUE_LABEL_STYLE} formatter={labelFmt((v) => v.toFixed(0))} />
+        </Area>
       </AreaChart>
     </ChartContainer>
   )
@@ -73,7 +85,9 @@ export function GalponBarChart({ data }: { data: CurvaData['galponByWeek'] }) {
         <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Bar dataKey="count" name="Módulos" fill="var(--color-count)" radius={4} />
+        <Bar dataKey="count" name="Módulos" fill="var(--color-count)" radius={4}>
+          <LabelList dataKey="count" position="top" style={VALUE_LABEL_STYLE} />
+        </Bar>
       </ComposedChart>
     </ChartContainer>
   )
@@ -93,8 +107,12 @@ export function TiempoTorreChart({ data }: { data: CurvaData['torreTiempo'] }) {
         <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={36} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Bar dataKey="real" name="Tiempo Real (días)" fill="var(--color-real)" radius={4} />
-        <Line type="monotone" dataKey="proy" name="Tiempo Proyectado (días)" stroke="var(--color-proy)" strokeWidth={2.5} dot={{ r: 4 }} connectNulls />
+        <Bar dataKey="real" name="Tiempo Real (días)" fill="var(--color-real)" radius={4}>
+          <LabelList dataKey="real" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt((v) => v.toFixed(0))} />
+        </Bar>
+        <Line type="monotone" dataKey="proy" name="Tiempo Proyectado (días)" stroke="var(--color-proy)" strokeWidth={2.5} dot={{ r: 4 }} connectNulls>
+          <LabelList dataKey="proy" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt((v) => v.toFixed(0))} />
+        </Line>
       </ComposedChart>
     </ChartContainer>
   )
