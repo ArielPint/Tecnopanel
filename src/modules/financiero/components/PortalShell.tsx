@@ -137,7 +137,7 @@ export default function PortalShell({ actual, children, hideAside }: { actual: M
             </Button>
           </div>
         </div>
-        <div className="flex min-h-0 flex-1">{children}</div>
+        <div className="flex min-h-0 min-w-0 flex-1">{children}</div>
       </div>
     </div>
   )
