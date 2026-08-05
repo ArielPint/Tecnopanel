@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Input } from '@/modules/financiero/components/ui/input'
@@ -146,41 +146,73 @@ interface LastSaved {
   observacion: string | null
 }
 
+const DRAFT_KEY = 'tecnopanel_solicitud_draft'
+
+interface Draft {
+  grupoId: string
+  responsableId: string
+  filas: FilaSolicitud[]
+  observacion: string
+}
+
+function cargarDraft(): Draft | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY)
+    return raw ? (JSON.parse(raw) as Draft) : null
+  } catch {
+    return null
+  }
+}
+
+async function cargarProductosGrupo(grupoId: number, allProducts: Producto[], cargarReceta: (id: number) => Promise<string[]>) {
+  const codigos = await cargarReceta(grupoId)
+  if (!codigos.length) return null
+  const set = new Set(codigos.map((c) => c.toUpperCase()))
+  return allProducts.filter((p) => set.has(p.codigo.toUpperCase())).sort((a, b) => a.descripcion.localeCompare(b.descripcion))
+}
+
 export default function NuevaSolicitud() {
   const { perfil } = useAuth()
   const { allProducts } = useCatalogoGD()
   const { grupos, responsables, cargarReceta } = useGruposResponsables()
   const { crear, marcarUsada } = useSolicitudes()
 
-  const [grupoId, setGrupoId] = useState('')
-  const [responsableId, setResponsableId] = useState('')
-  const [filas, setFilas] = useState<FilaSolicitud[]>([filaVacia()])
+  const [draft] = useState(() => {
+    const d = cargarDraft()
+    if (d?.filas?.length) rowSeq = Math.max(rowSeq, ...d.filas.map((f) => f.id))
+    return d
+  })
+
+  const [grupoId, setGrupoId] = useState(draft?.grupoId ?? '')
+  const [responsableId, setResponsableId] = useState(draft?.responsableId ?? '')
+  const [filas, setFilas] = useState<FilaSolicitud[]>(draft?.filas?.length ? draft.filas : [filaVacia()])
   const [productosGrupo, setProductosGrupo] = useState<Producto[] | null>(null)
   const [intentoGuardar, setIntentoGuardar] = useState(false)
-  const [observacion, setObservacion] = useState('')
+  const [observacion, setObservacion] = useState(draft?.observacion ?? '')
   const [enviando, setEnviando] = useState(false)
   const [lastSaved, setLastSaved] = useState<LastSaved | null>(null)
 
   const responsablesGrupo = useMemo(() => responsables.filter((r) => String(r.grupo_id) === grupoId), [responsables, grupoId])
 
+  useEffect(() => {
+    const data: Draft = { grupoId, responsableId, filas, observacion }
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(data))
+  }, [grupoId, responsableId, filas, observacion])
+
+  useEffect(() => {
+    if (!grupoId || !allProducts.length || productosGrupo !== null) return
+    cargarProductosGrupo(Number(grupoId), allProducts, cargarReceta).then(setProductosGrupo)
+  }, [grupoId, allProducts, productosGrupo, cargarReceta])
+
   async function onGrupoChange(id: string) {
     setGrupoId(id)
     setResponsableId('')
-    if (!id) {
-      setFilas([filaVacia()])
-      setProductosGrupo(null)
-      return
-    }
-    const codigos = await cargarReceta(Number(id))
-    if (!codigos.length) {
-      setProductosGrupo(null)
-      setFilas([filaVacia()])
-      return
-    }
-    const set = new Set(codigos.map((c) => c.toUpperCase()))
-    const productos = allProducts.filter((p) => set.has(p.codigo.toUpperCase())).sort((a, b) => a.descripcion.localeCompare(b.descripcion))
-    setProductosGrupo(productos)
     setFilas([filaVacia()])
+    if (!id) {
+      setProductosGrupo(null)
+      return
+    }
+    setProductosGrupo(await cargarProductosGrupo(Number(id), allProducts, cargarReceta))
   }
 
   function onSelectProducto(id: number, p: Producto) {
@@ -253,6 +285,7 @@ export default function NuevaSolicitud() {
     setFilas([filaVacia()])
     setObservacion('')
     setIntentoGuardar(false)
+    sessionStorage.removeItem(DRAFT_KEY)
   }
 
   async function guardar() {
