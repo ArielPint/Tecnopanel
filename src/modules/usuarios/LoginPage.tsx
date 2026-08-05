@@ -10,6 +10,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
 
   if (session) {
     return <Navigate to="/" replace />
@@ -22,6 +24,24 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
     if (error) setError(error.message)
+  }
+
+  async function handleForgotPassword() {
+    if (!email) {
+      setError('Ingresa tu email arriba para poder enviarte la clave de recuperación.')
+      return
+    }
+    setError(null)
+    setResetLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    setResetLoading(false)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    setResetSent(true)
   }
 
   return (
@@ -54,6 +74,11 @@ export default function LoginPage() {
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
+          {resetSent && (
+            <p className="text-sm text-green-700 dark:text-green-400">
+              Te enviamos un correo con instrucciones para restablecer tu contraseña.
+            </p>
+          )}
 
           <button
             type="submit"
@@ -61,6 +86,15 @@ export default function LoginPage() {
             className="w-full rounded-md bg-tecnopanel py-2 text-sm font-medium text-white hover:bg-tecnopanel-light disabled:opacity-60"
           >
             {loading ? 'Ingresando…' : 'Ingresar'}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            disabled={resetLoading}
+            className="w-full text-center text-sm text-tecnopanel hover:underline disabled:opacity-60 dark:text-tecnopanel-light"
+          >
+            {resetLoading ? 'Enviando…' : '¿Olvidaste tu contraseña?'}
           </button>
         </form>
       </div>
