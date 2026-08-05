@@ -44,17 +44,35 @@ export function useOrdenesCompra() {
     setLoading(true)
     setError(null)
     const proyectoId = await getProyectoId(proyectoSlug!)
-    const [ocRes, ogRes, comprasRes] = await Promise.all([
-      supabase.from('ordenes_compra').select('*').eq('proyecto_id', proyectoId).order('fecha', { ascending: false }),
-      supabase.from('oc_guias').select('*').eq('proyecto_id', proyectoId),
-      supabase
+
+    const PAGE = 1000
+    let comprasData: { gd: string; cantidad_sol: number | null; devolucion: number | null; valor_und: number | null; valor_total_item: number | null }[] = []
+    let comprasError: string | null = null
+    let from = 0
+    let done = false
+    while (!done) {
+      const { data, error: qError } = await supabase
         .from('registro_compras')
         .select('gd,cantidad_sol,devolucion,valor_und,valor_total_item')
-        .eq('proyecto_id', proyectoId),
+        .eq('proyecto_id', proyectoId)
+        .range(from, from + PAGE - 1)
+      if (qError) {
+        comprasError = qError.message
+        break
+      }
+      const rows = data ?? []
+      comprasData = comprasData.concat(rows)
+      done = rows.length < PAGE
+      from += PAGE
+    }
+
+    const [ocRes, ogRes] = await Promise.all([
+      supabase.from('ordenes_compra').select('*').eq('proyecto_id', proyectoId).order('created_at', { ascending: false }),
+      supabase.from('oc_guias').select('*').eq('proyecto_id', proyectoId),
     ])
     if (ocRes.error) setError(ocRes.error.message)
     else if (ogRes.error) setError(ogRes.error.message)
-    else if (comprasRes.error) setError(comprasRes.error.message)
+    else if (comprasError) setError(comprasError)
     else {
       const ocData = (ocRes.data ?? []) as OrdenCompra[]
       const ogData = (ogRes.data ?? []) as OCGuia[]
@@ -62,7 +80,7 @@ export function useOrdenesCompra() {
       setGuias(ogData)
 
       const montoPorGD: Record<string, number> = {}
-      for (const r of comprasRes.data ?? []) {
+      for (const r of comprasData) {
         const gd = String(r.gd)
         montoPorGD[gd] = (montoPorGD[gd] || 0) + getVTI(r)
       }
