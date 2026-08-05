@@ -13,7 +13,7 @@ export function CurvaSChart({ data }: { data: CurvaData['curvaByWeek'] }) {
   } satisfies ChartConfig
   return (
     <ChartContainer config={config} className="aspect-auto h-[320px] w-full">
-      <AreaChart data={data} margin={{ left: 8, right: 8 }}>
+      <AreaChart data={data} margin={{ left: 8, right: 28 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="semana" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
         <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} />
@@ -58,7 +58,7 @@ export function ModulosLineChart({
   } satisfies ChartConfig
   return (
     <ChartContainer config={config} className="aspect-auto h-[280px] w-full" aria-label={title}>
-      <AreaChart data={data} margin={{ left: 8, right: 8 }}>
+      <AreaChart data={data} margin={{ left: 8, right: 28 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="semana" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
         <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} />
@@ -79,7 +79,7 @@ export function GalponBarChart({ data }: { data: CurvaData['galponByWeek'] }) {
   const config = { count: { label: 'Módulos', color: '#58a6ff' } } satisfies ChartConfig
   return (
     <ChartContainer config={config} className="aspect-auto h-[320px] w-full">
-      <ComposedChart data={data} margin={{ left: 8, right: 8 }}>
+      <ComposedChart data={data} margin={{ left: 8, right: 20 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="semana" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
         <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
@@ -101,7 +101,7 @@ export function TiempoTorreChart({ data }: { data: CurvaData['torreTiempo'] }) {
   if (!data.length) return <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">Sin datos</div>
   return (
     <ChartContainer config={config} className="aspect-auto h-[340px] w-full">
-      <ComposedChart data={data} margin={{ left: 8, right: 8 }}>
+      <ComposedChart data={data} margin={{ left: 8, right: 20 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="torre" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
         <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={36} />
