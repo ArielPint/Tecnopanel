@@ -11,12 +11,16 @@ import {
   ComprasVsPresupuestoChart,
   CrecimientoMensualTabla,
   DespachosPorMesChart,
+  DiferenciaAvanceEconFisicoChart,
   DistribucionModulosChart,
   M2AcumuladoChart,
   ModulosIniciadosPorMesChart,
   ModulosTerminadosPorMesChart,
   SalidaGalponPorMesChart,
 } from '../components/ResumenCharts'
+
+// ponytail: M2 acumulado oculto a pedido, dejar false hasta nuevo aviso
+const MOSTRAR_M2_ACUMULADO = false
 
 interface Kpi {
   label: string
@@ -130,14 +134,27 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
             <DistribucionModulosChart data={resumen.distribucionBuckets} />
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">M² acumulado real vs. programado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <M2AcumuladoChart data={resumen.m2Acumulado} />
-          </CardContent>
-        </Card>
+        {MOSTRAR_M2_ACUMULADO ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">M² acumulado real vs. programado</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <M2AcumuladoChart data={resumen.m2Acumulado} />
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">
+                Diferencia avance económico real vs. físico real (mensual)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DiferenciaAvanceEconFisicoChart data={resumen.diferenciaEconomicoFisico} />
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

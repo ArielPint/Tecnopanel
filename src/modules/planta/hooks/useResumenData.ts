@@ -223,6 +223,39 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
       return { mes: m.lbl, real: e.real, plan: e.plan }
     })
 
+    // Avance físico real mensual (delta del acumulado de la curva S por mes) vs avance económico real mensual
+    const fisicoByMes: Record<string, { cum: number; last: Date | null }> = {}
+    for (const r of curva) {
+      const fd = parseDate(r.fecha)
+      if (!fd || isNaN(fd.getTime()) || fd > hoy) continue
+      const key = `${fd.getMonth() + 1}-${fd.getFullYear()}`
+      const entry = fisicoByMes[key] ?? (fisicoByMes[key] = { cum: 0, last: null })
+      if (!entry.last || fd > entry.last) {
+        entry.cum = r.real ?? 0
+        entry.last = fd
+      }
+    }
+    let prevFisicoCum = 0
+    const fisicoMensualPorClave: Record<string, number | null> = {}
+    for (const m of MESES_ORDER) {
+      const key = `${m.n}-${m.y}`
+      const entry = fisicoByMes[key]
+      if (!entry) continue
+      fisicoMensualPorClave[key] = +((entry.cum - prevFisicoCum) * 100).toFixed(2)
+      prevFisicoCum = entry.cum
+    }
+    const anioActual = new Date().getFullYear()
+    const diferenciaEconomicoFisico = avanceEconomico.map((x, i) => {
+      const fisico = fisicoMensualPorClave[`${i + 1}-${anioActual}`] ?? null
+      const economico = x.real
+      return {
+        mes: x.mes,
+        economico,
+        fisico,
+        diferencia: economico != null && fisico != null ? +(economico - fisico).toFixed(2) : null,
+      }
+    })
+
     // Módulos terminados / iniciados por mes
     const terminadosByMes: Record<string, number> = {}
     const iniciadosByMes: Record<string, number> = {}
@@ -269,6 +302,7 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
       avanceEconomico,
       avanceEconomicoAcumulado,
       m2Acumulado,
+      diferenciaEconomicoFisico,
       modulosTerminadosPorMes,
       modulosIniciadosPorMes,
       salidaGalponPorMes,

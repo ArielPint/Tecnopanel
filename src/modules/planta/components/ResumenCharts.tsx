@@ -309,3 +309,36 @@ export function M2AcumuladoChart({ data }: { data: ResumenData['m2Acumulado'] })
     </ChartContainer>
   )
 }
+
+export function DiferenciaAvanceEconFisicoChart({ data }: { data: ResumenData['diferenciaEconomicoFisico'] }) {
+  if (!data.length) return null
+  const config = { diferencia: { label: 'Diferencia (econ. − físico)' } } satisfies ChartConfig
+  return (
+    <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
+      <BarChart data={data} margin={{ left: 8, right: 8 }}>
+        <CartesianGrid vertical={false} />
+        <XAxis dataKey="mes" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+        <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
+        <ChartTooltip
+          content={
+            <ChartTooltipContent
+              formatter={(_value, _name, item) => (
+                <div className="flex w-full flex-col gap-1 tabular-nums">
+                  <span className="flex justify-between gap-4"><span>Avance económico real</span><span className="font-medium">{fmtPr(item.payload.economico)}</span></span>
+                  <span className="flex justify-between gap-4"><span>Avance físico real</span><span className="font-medium">{fmtPr(item.payload.fisico)}</span></span>
+                  <span className="flex justify-between gap-4"><span>Diferencia</span><span className="font-medium">{fmtPr(item.payload.diferencia)}</span></span>
+                </div>
+              )}
+            />
+          }
+        />
+        <Bar dataKey="diferencia" radius={4}>
+          {data.map((d) => (
+            <Cell key={d.mes} fill={d.diferencia == null ? '#8b949e' : d.diferencia >= 0 ? '#3fb950' : '#f85149'} />
+          ))}
+          <LabelList dataKey="diferencia" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt((v) => `${v >= 0 ? '+' : ''}${fmtPr(v)}`)} />
+        </Bar>
+      </BarChart>
+    </ChartContainer>
+  )
+}
