@@ -52,7 +52,9 @@ function enriquecer(rows: PlantaModuloRow[], excelData: ParsedDashboardData | nu
   return rows.map((r) => {
     const nombre = String(r.nombre ?? '').trim()
     const iniciado = isModuloIniciado(r)
-    const terminado = isModuloTerminado(r)
+    // El checklist partida-por-partida casi nunca se completa a mano (ver useModulosTerminados.ts),
+    // así que si el Excel ya marcó el módulo como terminado eso también cuenta.
+    const terminado = isModuloTerminado(r) || r.estado_modulo === 'MODULO TERMINADO'
     const pend = partidasPendientes(r)
     const plan = planPorModulo.get(nombre)
     const termPlanDate = plan?.termPlan ? parseDate(plan.termPlan) : null
