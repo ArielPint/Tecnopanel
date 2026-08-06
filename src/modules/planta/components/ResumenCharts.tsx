@@ -257,7 +257,7 @@ export function AvanceEconomicoAcumChart({
   } satisfies ChartConfig
   return (
     <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
-      <ComposedChart data={data} margin={{ left: 8, right: 8, top: 8 }}>
+      <ComposedChart data={data} margin={{ left: 8, right: 8, top: 24 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="mes" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
         <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
