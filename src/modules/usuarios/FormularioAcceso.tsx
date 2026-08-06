@@ -238,6 +238,18 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                         </label>
                       </div>
                     )}
+                    {pa.modulos.includes('solicitudes') && (
+                      <div className="flex flex-col gap-1.5 rounded-md border p-3">
+                        <Label className="text-xs text-muted-foreground">Edición en Solicitudes de Materiales</Label>
+                        <label className="flex items-center gap-1.5 text-xs">
+                          <Checkbox
+                            checked={pa.solicitudesEdit}
+                            onCheckedChange={(v) => setProyectoAcceso(proy.id, { solicitudesEdit: !!v })}
+                          />
+                          Puede editar la receta por grupo de solicitante (pestaña &quot;Receta por Grupo&quot;)
+                        </label>
+                      </div>
+                    )}
                     {pa.modulos.includes('estados_pago') && (
                       <div className="flex flex-col gap-1.5 rounded-md border p-3">
                         <Label className="text-xs text-muted-foreground">Acciones en Estados de Pago</Label>

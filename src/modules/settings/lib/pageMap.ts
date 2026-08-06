@@ -49,6 +49,7 @@ export const PAGE_MAP: Record<PageId, PageDef> = {
     tabs: {
       nueva: 'Nueva Solicitud',
       historial: 'Historial',
+      receta: 'Receta por Grupo',
     },
   },
   financiero: {

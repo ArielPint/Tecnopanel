@@ -16,10 +16,11 @@ export interface ProyectoAcceso {
   financieroEdit: Record<string, boolean>
   estadosPagoAcciones: Record<string, boolean>
   logisticaEdit: boolean
+  solicitudesEdit: boolean
 }
 
 export function proyectoAccesoVacio(): ProyectoAcceso {
-  return { rolNegocio: '', modulos: [], tabs: {}, financieroEdit: {}, estadosPagoAcciones: {}, logisticaEdit: false }
+  return { rolNegocio: '', modulos: [], tabs: {}, financieroEdit: {}, estadosPagoAcciones: {}, logisticaEdit: false, solicitudesEdit: false }
 }
 
 export interface Acceso {
@@ -54,6 +55,7 @@ async function syncAccesos(userId: string, input: AccesoInput) {
     const accionesExtra = {
       ...Object.fromEntries(Object.entries(pa.estadosPagoAcciones).map(([accion, on]) => [`estados_pago:${accion}`, on])),
       'logistica:editar': pa.logisticaEdit,
+      'solicitudes:editar': pa.solicitudesEdit,
     }
     return [
       syncPermisosProyecto(
@@ -121,6 +123,7 @@ export function useAccesos() {
         const financieroEdit: Record<string, boolean> = {}
         const estadosPagoAcciones: Record<string, boolean> = {}
         let logisticaEdit = false
+        let solicitudesEdit = false
         for (const x of misPermisos) {
           if (x.proyecto_id !== proy.id) continue
           if (x.accion === 'editar' && x.modulo_key.startsWith('financiero:')) {
@@ -131,6 +134,9 @@ export function useAccesos() {
           }
           if (x.modulo_key === 'logistica' && x.accion === 'editar') {
             logisticaEdit = true
+          }
+          if (x.modulo_key === 'solicitudes' && x.accion === 'editar') {
+            solicitudesEdit = true
           }
           if (x.accion === 'ver' && x.modulo_key.includes(':')) {
             const [modulo, tab] = x.modulo_key.split(':')
@@ -144,6 +150,7 @@ export function useAccesos() {
           financieroEdit,
           estadosPagoAcciones,
           logisticaEdit,
+          solicitudesEdit,
         }
       }
 

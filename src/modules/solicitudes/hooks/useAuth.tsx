@@ -12,7 +12,7 @@ interface Perfil {
   permissions: Record<string, unknown>
 }
 
-export type SolicitudesTab = 'nueva' | 'historial' | 'catalogo'
+export type SolicitudesTab = 'nueva' | 'historial' | 'catalogo' | 'receta'
 
 interface AuthValue {
   perfil: Perfil | null
@@ -20,6 +20,7 @@ interface AuthValue {
   isAuthenticated: boolean
   isAdmin: boolean
   puedeVer: (tab: SolicitudesTab) => boolean
+  puedeEditar: boolean
   signOut: () => Promise<void>
 }
 
@@ -85,6 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (tab === 'catalogo') return isAdmin
     return acceso.tieneAccion('solicitudes') && acceso.tieneAccion(`solicitudes:${tab}`)
   }
+  // Ver la pestaña de recetas es un permiso de tab normal (otorgable); editarlas requiere
+  // además el permiso extra "solicitudes:editar" (checkbox aparte en FormularioAcceso).
+  const puedeEditar = acceso.tieneAccion('solicitudes', 'editar')
   const perfilConRol = perfil ? { ...perfil, role: acceso.rolNegocio ?? '' } : null
 
   return (
@@ -95,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!perfil,
         isAdmin,
         puedeVer,
+        puedeEditar,
         signOut: async () => {
           await supabase.auth.signOut()
         },

@@ -10,10 +10,12 @@ import { AuthProvider as LogisticaAuthProvider } from '@/modules/logistica/hooks
 import { useAuth, type SolicitudesTab } from '../hooks/useAuth'
 import NuevaSolicitud from './NuevaSolicitud'
 import Historial from './Historial'
+import RecetaGrupo from './RecetaGrupo'
 
 const TABS: { value: SolicitudesTab; label: string }[] = [
   { value: 'nueva', label: '📋 Nueva Solicitud' },
   { value: 'historial', label: '📂 Historial' },
+  { value: 'receta', label: '🧾 Receta por Grupo' },
   { value: 'catalogo', label: '🗂 Catálogo' },
 ]
 
@@ -61,6 +63,9 @@ export default function SolicitudesLayout() {
           </TabsContent>
           <TabsContent value="historial">
             <Historial />
+          </TabsContent>
+          <TabsContent value="receta">
+            <RecetaGrupo />
           </TabsContent>
           <TabsContent value="catalogo">
             <LogisticaAuthProvider>
