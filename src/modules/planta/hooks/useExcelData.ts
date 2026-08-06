@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabaseClient'
 import { parseWorkbook, type ParsedDashboardData } from '../lib/excelParser'
 
@@ -47,6 +48,7 @@ export function useExcelData() {
       const { error: upError } = await supabase.storage.from(BUCKET).upload(OBJECT_PATH, file, { upsert: true })
       if (upError) throw upError
       setExcelData(parsed)
+      toast.success('Archivo cargado y aplicado para todo el equipo')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo procesar el archivo')
     } finally {
