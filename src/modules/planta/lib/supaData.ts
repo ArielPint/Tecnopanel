@@ -139,10 +139,16 @@ export interface AvanceEconProyRow {
   anio: number
   mes: number
   valor: string | number
+  forecast: string
 }
 
 export async function loadAvanceEconProy(anio: number): Promise<AvanceEconProyRow[]> {
-  const { data } = await supabase.from('avance_econ_proy').select('anio, mes, valor').eq('anio', anio).order('mes', { ascending: true })
+  const { data } = await supabase
+    .from('avance_econ_proy')
+    .select('anio, mes, valor, forecast')
+    .eq('anio', anio)
+    .order('created_at', { ascending: true })
+    .order('mes', { ascending: true })
   return (data ?? []) as AvanceEconProyRow[]
 }
 

@@ -197,11 +197,21 @@ export function AvanceEconomicoChart({
   )
 }
 
-export function AvanceEconomicoAcumChart({ data }: { data: ResumenData['avanceEconomicoAcumulado'] }) {
+const FORECAST_COLORS = ['#4f8ef7', '#f2a340', '#a371f7', '#3fb950', '#f75f5f', '#40c4c4']
+
+export function AvanceEconomicoAcumChart({
+  data,
+  forecastLabels = [],
+}: {
+  data: ResumenData['avanceEconomicoAcumulado']
+  forecastLabels?: string[]
+}) {
   if (!data.length) return null
   const config = {
     realAcum: { label: 'Real acumulado', color: '#d42b1e' },
-    proyAcum: { label: 'Proyectado acumulado', color: '#4f8ef7' },
+    ...Object.fromEntries(
+      forecastLabels.map((label, i) => [label, { label, color: FORECAST_COLORS[i % FORECAST_COLORS.length] }]),
+    ),
   } satisfies ChartConfig
   return (
     <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
@@ -214,7 +224,7 @@ export function AvanceEconomicoAcumChart({ data }: { data: ResumenData['avanceEc
             <ChartTooltipContent
               formatter={(value, name) => (
                 <span className="flex w-full justify-between gap-4 tabular-nums">
-                  <span>{name === 'realAcum' ? 'Real acumulado' : 'Proyectado acumulado'}</span>
+                  <span>{name === 'realAcum' ? 'Real acumulado' : String(name)}</span>
                   <span className="font-medium">{fmtPr(Number(value))}</span>
                 </span>
               )}
@@ -224,9 +234,19 @@ export function AvanceEconomicoAcumChart({ data }: { data: ResumenData['avanceEc
         <Bar dataKey="realAcum" fill="var(--color-realAcum)" radius={4}>
           <LabelList dataKey="realAcum" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
         </Bar>
-        <Line type="monotone" dataKey="proyAcum" stroke="var(--color-proyAcum)" strokeWidth={2.5} dot connectNulls>
-          <LabelList dataKey="proyAcum" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
-        </Line>
+        {forecastLabels.map((label, i) => (
+          <Line
+            key={label}
+            type="monotone"
+            dataKey={label}
+            stroke={FORECAST_COLORS[i % FORECAST_COLORS.length]}
+            strokeWidth={2.5}
+            dot
+            connectNulls
+          >
+            <LabelList dataKey={label} position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
+          </Line>
+        ))}
       </ComposedChart>
     </ChartContainer>
   )

@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { fmtM } from '@/modules/planta/lib/format'
 import { useExcelData } from '@/modules/planta/hooks/useExcelData'
 import { useAvanceProduccionExcel } from '@/modules/planta/hooks/useAvanceProduccionExcel'
-import { useConfigFinanciero, useRitmoProyeccion, useTablaAnual, MESES } from '../hooks/useConfig'
+import { useConfigFinanciero, useRitmoProyeccion, useTablaAnual, useAvanceEconProy, MESES } from '../hooks/useConfig'
 
 const ANIOS = [2026, 2027, 2028]
 
@@ -24,14 +24,7 @@ export default function Config() {
       <AvanceProduccionUploadCard />
       <PresupuestoCard />
       <RitmoCard />
-      <TablaAnualCard
-        titulo="Avance económico proyectado"
-        descripcion="% mensual proyectado — línea azul en el gráfico del dashboard"
-        tabla="avance_econ_proy"
-        unidad="%"
-        toInput={(v) => (v * 100).toFixed(4)}
-        fromInput={(v) => (parseFloat(v) || 0) / 100}
-      />
+      <AvanceEconProyCard />
       <TablaAnualCard
         titulo="Ajuste manual de compras"
         descripcion="Monto adicional por mes — se suma al total de compras reales del dashboard"
@@ -236,10 +229,101 @@ function RitmoCard() {
   )
 }
 
+const FORECAST_COLORS = ['#4f8ef7', '#f2a340', '#a371f7', '#3fb950', '#f75f5f', '#40c4c4']
+
+function AvanceEconProyCard() {
+  const { anio, setAnio, columnas, loading, agregarColumna, actualizarLabel, actualizarValor, guardar } = useAvanceEconProy()
+  const [guardando, setGuardando] = useState(false)
+
+  async function onGuardar() {
+    setGuardando(true)
+    try {
+      await guardar()
+      toast.success('Guardado')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al guardar')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Avance económico proyectado</CardTitle>
+        <CardDescription>% mensual proyectado — cada columna es un forecast y agrega su propia línea al gráfico del dashboard</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Label>Año</Label>
+          <Select value={String(anio)} onValueChange={(v) => setAnio(parseInt(v))}>
+            <SelectTrigger className="w-28">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ANIOS.map((a) => (
+                <SelectItem key={a} value={String(a)}>
+                  {a}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Mes</TableHead>
+                {columnas.map((c, i) => (
+                  <TableHead key={c.key} className="min-w-36 text-right">
+                    <Input
+                      value={c.label}
+                      placeholder="Nombre del forecast"
+                      onChange={(e) => actualizarLabel(c.key, e.target.value)}
+                      className="h-7 border-2 text-xs"
+                      style={{ borderColor: FORECAST_COLORS[i % FORECAST_COLORS.length] }}
+                    />
+                  </TableHead>
+                ))}
+                <TableHead className="w-10">
+                  <Button type="button" size="icon-sm" variant="outline" onClick={agregarColumna} title="Agregar forecast">
+                    +
+                  </Button>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {MESES.map((mes, mesIdx) => (
+                <TableRow key={mes}>
+                  <TableCell>{mes}</TableCell>
+                  {columnas.map((c) => (
+                    <TableCell key={c.key} className="text-right">
+                      <Input
+                        type="number"
+                        className="ml-auto w-28 text-right"
+                        value={loading ? '' : (c.valores[mesIdx] * 100).toFixed(4)}
+                        onChange={(e) => actualizarValor(c.key, mesIdx, (parseFloat(e.target.value) || 0) / 100)}
+                      />
+                    </TableCell>
+                  ))}
+                  <TableCell />
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <Button size="sm" disabled={guardando || loading} onClick={onGuardar}>
+          {guardando ? 'Guardando…' : 'Guardar'}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
 interface TablaAnualCardProps {
   titulo: string
   descripcion: string
-  tabla: 'avance_econ_proy' | 'ajustes_compras'
+  tabla: 'ajustes_compras'
   unidad: string
   toInput: (v: number) => string
   fromInput: (v: string) => number

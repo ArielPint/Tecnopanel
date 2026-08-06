@@ -121,7 +121,72 @@ export interface FilaMensual {
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 export { MESES }
 
-export function useTablaAnual(tabla: 'avance_econ_proy' | 'ajustes_compras') {
+export interface ForecastColumn {
+  key: string
+  label: string
+  originalLabel: string | null
+  valores: number[]
+}
+
+export function useAvanceEconProy() {
+  const [anio, setAnio] = useState(new Date().getFullYear())
+  const [columnas, setColumnas] = useState<ForecastColumn[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refetch = useCallback(async () => {
+    setLoading(true)
+    const { data } = await supabase
+      .from('avance_econ_proy')
+      .select('mes, valor, forecast')
+      .eq('anio', anio)
+      .order('created_at', { ascending: true })
+    const orden: string[] = []
+    const map: Record<string, number[]> = {}
+    for (const r of (data ?? []) as { mes: number; valor: number; forecast: string }[]) {
+      if (!map[r.forecast]) {
+        map[r.forecast] = Array(12).fill(0)
+        orden.push(r.forecast)
+      }
+      map[r.forecast][r.mes - 1] = parseFloat(String(r.valor)) || 0
+    }
+    setColumnas(orden.map((label) => ({ key: label, label, originalLabel: label, valores: map[label] })))
+    setLoading(false)
+  }, [anio])
+
+  useEffect(() => {
+    refetch()
+  }, [refetch])
+
+  const agregarColumna = useCallback(() => {
+    setColumnas((cols) => [...cols, { key: `nueva-${cols.length}-${Date.now()}`, label: '', originalLabel: null, valores: Array(12).fill(0) }])
+  }, [])
+
+  const actualizarLabel = useCallback((key: string, label: string) => {
+    setColumnas((cols) => cols.map((c) => (c.key === key ? { ...c, label } : c)))
+  }, [])
+
+  const actualizarValor = useCallback((key: string, mesIdx: number, valor: number) => {
+    setColumnas((cols) => cols.map((c) => (c.key === key ? { ...c, valores: c.valores.map((v, i) => (i === mesIdx ? valor : v)) } : c)))
+  }, [])
+
+  const guardar = useCallback(async () => {
+    if (columnas.some((c) => !c.label.trim())) throw new Error('Todas las columnas necesitan un nombre')
+    for (const c of columnas) {
+      if (c.originalLabel && c.originalLabel !== c.label) {
+        const { error } = await supabase.from('avance_econ_proy').delete().eq('anio', anio).eq('forecast', c.originalLabel)
+        if (error) throw new Error(error.message)
+      }
+      const payload = c.valores.map((valor, i) => ({ anio, mes: i + 1, forecast: c.label, valor }))
+      const { error } = await supabase.from('avance_econ_proy').upsert(payload, { onConflict: 'anio,mes,forecast' })
+      if (error) throw new Error(error.message)
+    }
+    await refetch()
+  }, [anio, columnas, refetch])
+
+  return { anio, setAnio, columnas, loading, agregarColumna, actualizarLabel, actualizarValor, guardar }
+}
+
+export function useTablaAnual(tabla: 'ajustes_compras') {
   const [anio, setAnio] = useState(new Date().getFullYear())
   const [filas, setFilas] = useState<FilaMensual[]>(MESES.map((_, i) => ({ mes: i + 1, valor: 0 })))
   const [loading, setLoading] = useState(true)

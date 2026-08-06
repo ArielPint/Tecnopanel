@@ -53,7 +53,7 @@ export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardDat
             <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Avance económico acumulado</CardTitle>
           </CardHeader>
           <CardContent>
-            <AvanceEconomicoAcumChart data={resumen.avanceEconomicoAcumulado} />
+            <AvanceEconomicoAcumChart data={resumen.avanceEconomicoAcumulado} forecastLabels={resumen.forecastLabels} />
           </CardContent>
         </Card>
       </div>

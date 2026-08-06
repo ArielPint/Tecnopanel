@@ -33,6 +33,12 @@ export function getCompras(supaCompras: DetalleGdRow[], excelDetalleGD: DetalleG
   })
 }
 
+export function getForecastLabels(avanceProy: AvanceEconProyRow[]): string[] {
+  const labels: string[] = []
+  for (const r of avanceProy) if (!labels.includes(r.forecast)) labels.push(r.forecast)
+  return labels
+}
+
 export function getHomeAvance(
   compras: DetalleGdRow[],
   avanceProy: AvanceEconProyRow[],
@@ -50,8 +56,9 @@ export function getHomeAvance(
   const preAnio = Object.entries(montoMes)
     .filter(([k]) => parseInt(k.split('-')[0]) < anio)
     .reduce((s, [, v]) => s + v, 0)
+  const primerForecast = getForecastLabels(avanceProy)[0]
   const proyMap: Record<number, number> = {}
-  for (const r of avanceProy) proyMap[r.mes] = parseFloat(String(r.valor)) || 0
+  for (const r of avanceProy) if (r.forecast === primerForecast) proyMap[r.mes] = parseFloat(String(r.valor)) || 0
 
   return MES_NAMES.map((nombre, i) => {
     const mes = i + 1
@@ -189,16 +196,27 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
       real: x.avEcon != null ? +(x.avEcon * 100).toFixed(2) : null,
       proyectado: x.avEconProy != null ? +(x.avEconProy * 100).toFixed(2) : null,
     }))
+    const forecastLabels = getForecastLabels(avanceProy)
+    const proyPorForecast: Record<string, Record<number, number>> = {}
+    for (const label of forecastLabels) proyPorForecast[label] = {}
+    for (const r of avanceProy) proyPorForecast[r.forecast][r.mes] = parseFloat(String(r.valor)) || 0
+
     let sumReal = 0
-    let sumProy = 0
-    const avanceEconomicoAcumulado = avanceEconomico.map((x) => {
-      if (x.real != null) sumReal += x.real
-      if (x.proyectado != null) sumProy += x.proyectado
-      return {
-        mes: x.mes,
-        realAcum: x.real != null ? +sumReal.toFixed(2) : null,
-        proyAcum: x.proyectado != null ? +sumProy.toFixed(2) : null,
+    const sumPorForecast: Record<string, number> = {}
+    for (const label of forecastLabels) sumPorForecast[label] = 0
+    const avanceEconomicoAcumulado = haFilt.map((x, i) => {
+      if (x.avEcon != null) sumReal += +(x.avEcon * 100).toFixed(2)
+      const mes = MES_ABBR[String(x.mes)] ?? String(x.mes).slice(0, 3)
+      const fila: { mes: string; realAcum: number | null; [label: string]: string | number | null } = {
+        mes,
+        realAcum: x.avEcon != null ? +sumReal.toFixed(2) : null,
       }
+      for (const label of forecastLabels) {
+        const v = proyPorForecast[label][i + 1]
+        if (v != null) sumPorForecast[label] += +(v * 100).toFixed(2)
+        fila[label] = v != null ? +sumPorForecast[label].toFixed(2) : null
+      }
+      return fila
     })
 
     // M² acumulado real vs programado por mes
@@ -312,6 +330,7 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
       crecimientoMensual,
       avanceEconomico,
       avanceEconomicoAcumulado,
+      forecastLabels,
       m2Acumulado,
       diferenciaEconomicoFisico,
       diferenciaEconomicoFisicoAcum,
