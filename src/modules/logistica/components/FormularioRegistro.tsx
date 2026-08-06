@@ -332,15 +332,15 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
                 <div className="grid grid-cols-3 gap-2">
                   <div className="flex flex-col gap-1">
                     <Label className="text-xs">Cant. Sol.</Label>
-                    <Input type="number" step="any" min="0" value={l.cantidad_sol || ''} onChange={(e) => actualizarLinea(idx, { cantidad_sol: parseFloat(e.target.value) || 0 })} />
+                    <Input type="number" step="any" min="0" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value={l.cantidad_sol || ''} onChange={(e) => actualizarLinea(idx, { cantidad_sol: parseFloat(e.target.value) || 0 })} />
                   </div>
                   <div className="flex flex-col gap-1">
                     <Label className="text-xs">Devol.</Label>
-                    <Input type="number" step="any" min="0" value={l.devolucion || ''} onChange={(e) => actualizarLinea(idx, { devolucion: parseFloat(e.target.value) || 0 })} />
+                    <Input type="number" step="any" min="0" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value={l.devolucion || ''} onChange={(e) => actualizarLinea(idx, { devolucion: parseFloat(e.target.value) || 0 })} />
                   </div>
                   <div className="flex flex-col gap-1">
                     <Label className="text-xs">Valor Total ($)</Label>
-                    <Input type="number" step="any" min="0" value={l.valor_total_item || ''} onChange={(e) => actualizarLinea(idx, { valor_total_item: parseFloat(e.target.value) || 0 })} />
+                    <Input type="number" step="any" min="0" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value={l.valor_total_item || ''} onChange={(e) => actualizarLinea(idx, { valor_total_item: parseFloat(e.target.value) || 0 })} />
                   </div>
                 </div>
                 <LineaCalc linea={l} />
