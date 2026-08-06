@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Loader2, X } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
-import type { TipoVenta } from '@/modules/crm/types/database'
+import type { TipoVenta, TipoSubsidioVit, ZonaTermicaVit, TipologiaVitPrecio } from '@/modules/crm/types/database'
 
 interface Cliente { id: string; razon_social: string }
 
@@ -10,16 +10,24 @@ const TIPO_VENTA_LABELS: Record<TipoVenta, string> = {
   Proyecto: 'Proyecto',
   Producto: 'Venta Directa',
   Kit: 'Viviendas Industrializadas',
+  VIT: 'VIT',
 }
 
 // Etapa inicial forzada segun tipo de venta: Proyecto entra por Clasificacion;
 // Producto (Venta Directa) y Kit (Viviendas Industrializadas) entran directo a
 // Costos y Presupuestos, ya que esa etapa fusiona lo que antes eran Cubicacion y Presupuestos.
+// VIT entra por Clasificacion, pero sigue su propio flujo corto de 3 etapas
+// (Clasificacion -> Oportunidad -> Negociacion), ver ETAPAS_ORDER_VIT en OportunidadDrawer.
 const ETAPA_INICIAL_POR_TIPO: Record<TipoVenta, string> = {
   Proyecto: 'Clasificación',
   Producto: 'Costos y Presupuestos',
   Kit: 'Costos y Presupuestos',
+  VIT: 'Clasificación',
 }
+
+export const ZONAS_TERMICAS: ZonaTermicaVit[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
+
+export const TIPO_SUBSIDIO_OPCIONES: TipoSubsidioVit[] = ['DS49', 'DS10', 'DS01']
 
 export const FAMILIA_PRODUCTOS_OPCIONES = ['TecnoPanel', 'TecnoTruss', 'TecnoFrame', 'Escaleras'] as const
 
@@ -57,6 +65,8 @@ interface FormData {
   duracion_meses_est: string;
   familia_productos: string[];
   alcances: string[];
+  nombre_comite_vivienda: string; nombre_constructora: string;
+  zona_termica: ZonaTermicaVit | ''; tipologia_vit: string; venta_actual_uf: string;
 }
 const INIT: FormData = {
   nombre:'', cliente_id:'', tipo_venta:'Proyecto',
@@ -69,6 +79,8 @@ const INIT: FormData = {
   duracion_meses_est:'',
   familia_productos: [],
   alcances: [],
+  nombre_comite_vivienda: '', nombre_constructora: '',
+  zona_termica: '', tipologia_vit: '', venta_actual_uf: '',
 }
 function genCodigo() { const d=new Date(); return 'OPP-'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+'-'+(crypto.getRandomValues(new Uint16Array(1))[0]%9000+1000) }
 
@@ -77,6 +89,7 @@ interface Props { isOpen: boolean; onClose: () => void; onSuccess: () => void }
 export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Props) {
   const { profile } = useAuth()
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const [tipologias, setTipologias] = useState<TipologiaVitPrecio[]>([])
   const [form, setForm] = useState<FormData>(INIT)
   const [archivo, setArchivo] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
@@ -91,10 +104,17 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
     setForm(INIT); setError(''); setArchivo(null)
     supabase.from('clientes').select('id,razon_social').order('razon_social')
       .then(({ data }) => setClientes((data as Cliente[]) ?? []))
+    supabase.from('tipologia_vit_precios').select('tipologia,venta_actual_uf').order('venta_actual_uf')
+      .then(({ data }) => setTipologias((data as TipologiaVitPrecio[]) ?? []))
   }, [isOpen])
 
   const comunasDisponibles = form.region ? (REGIONES_COMUNAS[form.region] ?? []) : []
   const etapaInicial = ETAPA_INICIAL_POR_TIPO[form.tipo_venta]
+
+  function elegirTipologia(tipologia: string) {
+    const encontrada = tipologias.find(t => t.tipologia === tipologia)
+    setForm(f => ({ ...f, tipologia_vit: tipologia, venta_actual_uf: encontrada ? String(encontrada.venta_actual_uf) : f.venta_actual_uf }))
+  }
 
   async function crearClienteInline() {
     if (!nuevoCliente.razon_social.trim()) { setErrorCliente('La razón social es requerida'); return }
@@ -145,7 +165,12 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
       monto_estimado: form.monto_estimado ? Number(form.monto_estimado) : null,
       probabilidad: Number(form.probabilidad), etapa_actual: etapaInicial,
       fecha_cierre_est: form.fecha_cierre_est || null, descripcion: form.descripcion || null,
-      nombre_entidad_patrocinante: form.tipo_venta === 'Kit' ? (form.nombre_entidad_patrocinante.trim() || null) : null,
+      nombre_entidad_patrocinante: (form.tipo_venta === 'Kit' || form.tipo_venta === 'VIT') ? (form.nombre_entidad_patrocinante.trim() || null) : null,
+      nombre_comite_vivienda: form.tipo_venta === 'VIT' ? (form.nombre_comite_vivienda.trim() || null) : null,
+      nombre_constructora: form.tipo_venta === 'VIT' ? (form.nombre_constructora.trim() || null) : null,
+      zona_termica: form.tipo_venta === 'VIT' ? (form.zona_termica || null) : null,
+      tipologia_vit: form.tipo_venta === 'VIT' ? (form.tipologia_vit || null) : null,
+      venta_actual_uf: form.tipo_venta === 'VIT' && form.venta_actual_uf ? Number(form.venta_actual_uf) : null,
       region: form.region || null, comuna: form.comuna || null,
       cantidad_casas: form.cantidad_casas ? Number(form.cantidad_casas) : null,
       cantidad_tipos_casas: form.cantidad_tipos_casas ? Number(form.cantidad_tipos_casas) : null,
@@ -238,6 +263,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
                 <option value="Proyecto">{TIPO_VENTA_LABELS.Proyecto}</option>
                 <option value="Producto">{TIPO_VENTA_LABELS.Producto}</option>
                 <option value="Kit">{TIPO_VENTA_LABELS.Kit}</option>
+                <option value="VIT">{TIPO_VENTA_LABELS.VIT}</option>
               </select>
             </div>
             <div>
@@ -251,6 +277,50 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
               <label className="block text-xs font-medium text-gray-700 mb-1">Nombre entidad patrocinante</label>
               <input value={form.nombre_entidad_patrocinante} onChange={e => setForm(f=>({...f,nombre_entidad_patrocinante:e.target.value}))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+            </div>
+          )}
+
+          {form.tipo_venta === 'VIT' && (
+            <div className="space-y-3 bg-gray-50 rounded-lg p-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Clasificación VIT</p>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Nombre de la Entidad Patrocinante</label>
+                <input value={form.nombre_entidad_patrocinante} onChange={e => setForm(f=>({...f,nombre_entidad_patrocinante:e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Nombre del Comité de Vivienda</label>
+                <input value={form.nombre_comite_vivienda} onChange={e => setForm(f=>({...f,nombre_comite_vivienda:e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Nombre de la Constructora</label>
+                <input value={form.nombre_constructora} onChange={e => setForm(f=>({...f,nombre_constructora:e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Zona Térmica del Proyecto</label>
+                <select value={form.zona_termica} onChange={e => setForm(f=>({...f,zona_termica:e.target.value as ZonaTermicaVit}))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+                  <option value="">Sin zona</option>
+                  {ZONAS_TERMICAS.map(z => <option key={z} value={z}>{z}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Tipología de VIT</label>
+                  <select value={form.tipologia_vit} onChange={e => elegirTipologia(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+                    <option value="">Sin tipología</option>
+                    {tipologias.map(t => <option key={t.tipologia} value={t.tipologia}>{t.tipologia}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Venta actual (UF)</label>
+                  <input type="number" value={form.venta_actual_uf} onChange={e => setForm(f=>({...f,venta_actual_uf:e.target.value}))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                </div>
+              </div>
             </div>
           )}
 

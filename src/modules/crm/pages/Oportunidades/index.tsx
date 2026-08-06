@@ -6,7 +6,7 @@ import OportunidadDrawer from '@/modules/crm/components/OportunidadDrawer'
 import NuevaOportunidadModal from '@/modules/crm/components/NuevaOportunidadModal'
 
 const ETAPAS: EtapaOportunidad[] = [
-  'Clasificación','Ingeniería','Desarrollo','Costos y Presupuestos',
+  'Clasificación','Oportunidad','Ingeniería','Desarrollo','Costos y Presupuestos',
   'Revisión Vendedor','Negociación',
 ]
 
@@ -14,12 +14,14 @@ const TIPO_COLOR: Record<TipoVenta, string> = {
   Proyecto: 'bg-purple-100 text-purple-700',
   Producto: 'bg-blue-100 text-blue-700',
   Kit: 'bg-amber-100 text-amber-700',
+  VIT: 'bg-emerald-100 text-emerald-700',
 }
 
 const TIPO_VENTA_LABELS: Record<TipoVenta, string> = {
   Proyecto: 'Proyecto',
   Producto: 'Venta Directa',
   Kit: 'Viviendas Industrializadas',
+  VIT: 'VIT',
 }
 
 function formatMM(n: number) { return (n / 1_000_000).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' MM' }

@@ -5,12 +5,13 @@ import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import type { Oportunidad, OportunidadHistorialEtapa } from '@/modules/crm/types/database'
 
 const ETAPAS = [
-  'Clasificación','Ingeniería','Desarrollo','Costos y Presupuestos',
+  'Clasificación','Oportunidad','Ingeniería','Desarrollo','Costos y Presupuestos',
   'Revisión Vendedor','Negociación',
 ]
 
 const ETAPA_COLORS: Record<string, string> = {
   'Clasificación':          '#64748b',
+  'Oportunidad':            '#10b981',
   'Ingeniería':             '#3b82f6',
   'Desarrollo':             '#8b5cf6',
   'Costos y Presupuestos':  '#f97316',
@@ -22,12 +23,14 @@ const TIPO_COLOR: Record<string,string> = {
   Proyecto: 'bg-purple-100 text-purple-700',
   Producto: 'bg-blue-100 text-blue-700',
   Kit: 'bg-amber-100 text-amber-700',
+  VIT: 'bg-emerald-100 text-emerald-700',
 }
 
 const TIPO_VENTA_LABELS: Record<string, string> = {
   Proyecto: 'Proyecto',
   Producto: 'Venta Directa',
   Kit: 'Viviendas Industrializadas',
+  VIT: 'VIT',
 }
 
 interface Notif {

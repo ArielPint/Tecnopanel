@@ -3,7 +3,10 @@ export type RolUsuario =
   | 'jefe_ingenieria' | 'ingeniero' | 'cubicador' | 'presupuestista' | 'finanzas'
   | 'desarrollador'
 
-export type TipoVenta = 'Proyecto' | 'Producto' | 'Kit'
+export type TipoVenta = 'Proyecto' | 'Producto' | 'Kit' | 'VIT'
+
+export type TipoSubsidioVit = 'DS49' | 'DS10' | 'DS01'
+export type ZonaTermicaVit = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I'
 
 export type EtapaOportunidad = string
 
@@ -67,10 +70,24 @@ export interface Oportunidad {
   familia_productos: string[] | null
   alcances: string[] | null
   margen_porcentaje: number | null
+  nombre_comite_vivienda: string | null
+  nombre_constructora: string | null
+  zona_termica: ZonaTermicaVit | null
+  tipologia_vit: string | null
+  venta_actual_uf: number | null
+  tipo_subsidio: TipoSubsidioVit | null
+  programa: string | null
+  fecha_ingreso_calificacion: string | null
+  estimacion_calificacion: string | null
   created_at: string
   updated_at: string
   cliente?: Cliente
   vendedor?: Profile
+}
+
+export interface TipologiaVitPrecio {
+  tipologia: string
+  venta_actual_uf: number
 }
 
 export interface OportunidadHistorialEtapa {
@@ -179,6 +196,7 @@ export type Database = {
       profiles: { Row: Profile }
       clientes: { Row: Cliente }
       oportunidades: { Row: Oportunidad }
+      tipologia_vit_precios: { Row: TipologiaVitPrecio }
       tareas_ingenieria: { Row: TareaIngenieria }
       tarea_asignaciones: { Row: TareaAsignacion }
       oportunidad_historial_etapas: { Row: OportunidadHistorialEtapa }

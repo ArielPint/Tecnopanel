@@ -4,8 +4,8 @@ import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
-import type { Oportunidad, Profile, OportunidadHistorialEtapa, OportunidadDocumento, OportunidadAsignacion, TareaIngenieria, MensajeOportunidad, Cierre } from '@/modules/crm/types/database'
-import { FAMILIA_PRODUCTOS_OPCIONES, ALCANCES_OPCIONES, REGIONES_COMUNAS } from '@/modules/crm/components/NuevaOportunidadModal'
+import type { Oportunidad, Profile, OportunidadHistorialEtapa, OportunidadDocumento, OportunidadAsignacion, TareaIngenieria, MensajeOportunidad, Cierre, TipologiaVitPrecio, ZonaTermicaVit, TipoSubsidioVit } from '@/modules/crm/types/database'
+import { FAMILIA_PRODUCTOS_OPCIONES, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
 
 const REGIONES = Object.keys(REGIONES_COMUNAS)
 
@@ -57,8 +57,15 @@ const ETAPAS_ORDER = [
   'Revisión Vendedor','Negociación',
 ]
 
+// Flujo corto exclusivo de tipo_venta = VIT: Clasificacion -> Oportunidad -> Negociacion,
+// sin pasar por Ingenieria/Desarrollo/Costos y Presupuestos/Revision Vendedor.
+const ETAPAS_ORDER_VIT = ['Clasificación', 'Oportunidad', 'Negociación']
+
+const CAMPOS_OPORTUNIDAD_REQUERIDOS = ['tipo_subsidio', 'programa', 'monto_estimado', 'fecha_ingreso_calificacion', 'estimacion_calificacion', 'fecha_inicio_despachos_est', 'duracion_meses_est'] as const
+
 const ETAPAS_LABELS: Record<string,string> = {
   'Clasificación': 'Clasificación',
+  'Oportunidad': 'Oportunidad',
   'Ingeniería': 'Ingeniería',
   'Desarrollo': 'Desarrollo',
   'Costos y Presupuestos': 'Costos y Presupuestos',
@@ -70,16 +77,19 @@ const TIPO_COLOR: Record<string, string> = {
   Proyecto: 'bg-purple-100 text-purple-700',
   Producto: 'bg-blue-100 text-blue-700',
   Kit: 'bg-amber-100 text-amber-700',
+  VIT: 'bg-emerald-100 text-emerald-700',
 }
 
 const TIPO_VENTA_LABELS: Record<string, string> = {
   Proyecto: 'Proyecto',
   Producto: 'Venta Directa',
   Kit: 'Viviendas Industrializadas',
+  VIT: 'VIT',
 }
 
 const STAGE_ROLES: Record<string, string[]> = {
   'Clasificación': ['admin','gerente_ventas','vendedor'],
+  'Oportunidad': ['admin','gerente_ventas','vendedor'],
   'Ingeniería': ['admin','jefe_ingenieria','ingeniero'],
   'Desarrollo': ['admin','jefe_ingenieria','desarrollador'],
   'Costos y Presupuestos': ['admin','cubicador','presupuestista'],
@@ -119,6 +129,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   const [asignadosIds, setAsignadosIds] = useState<string[]>([])
   const [etapaData, setEtapaData] = useState<Record<string, string>>({})
   const [costosData, setCostosData] = useState<Record<string, string>>({})
+  const [tipologias, setTipologias] = useState<TipologiaVitPrecio[]>([])
   const [docs, setDocs] = useState<OportunidadDocumento[]>([])
   const [historial, setHistorial] = useState<OportunidadHistorialEtapa[]>([])
   const [tareas, setTareas] = useState<TareaIngenieria[]>([])
@@ -146,6 +157,11 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { setOpp(oportunidad); setTab('general'); loadAll() }, [oportunidad.id])
+
+  useEffect(() => {
+    supabase.from('tipologia_vit_precios').select('tipologia,venta_actual_uf').order('venta_actual_uf')
+      .then(({ data }) => setTipologias((data as TipologiaVitPrecio[]) ?? []))
+  }, [])
 
   useEffect(() => {
     if (tab !== 'chat') return
@@ -402,7 +418,33 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       fecha_adjudicacion_est: opp.fecha_adjudicacion_est, fecha_inicio_despachos_est: opp.fecha_inicio_despachos_est,
       duracion_meses_est: opp.duracion_meses_est, nombre_entidad_patrocinante: opp.nombre_entidad_patrocinante,
       familia_productos: opp.familia_productos, alcances: opp.alcances,
+      nombre_comite_vivienda: opp.nombre_comite_vivienda, nombre_constructora: opp.nombre_constructora,
+      zona_termica: opp.zona_termica, tipologia_vit: opp.tipologia_vit, venta_actual_uf: opp.venta_actual_uf,
     }).eq('id', opp.id)
+    setSaving(false); onUpdate()
+  }
+
+  function elegirTipologia(tipologia: string) {
+    const encontrada = tipologias.find(t => t.tipologia === tipologia)
+    setOpp(o => ({ ...o, tipologia_vit: tipologia || null, venta_actual_uf: encontrada ? encontrada.venta_actual_uf : o.venta_actual_uf }))
+  }
+
+  // Guarda los campos de la etapa "Oportunidad" (columnas reales de oportunidades, no jsonb).
+  // Si con este guardado quedan los 7 campos requeridos completos, avanza automaticamente a Negociacion.
+  async function saveOportunidadCampos() {
+    setSaving(true)
+    await supabase.from('oportunidades').update({
+      tipo_subsidio: opp.tipo_subsidio, programa: opp.programa,
+      monto_estimado: opp.monto_estimado,
+      fecha_ingreso_calificacion: opp.fecha_ingreso_calificacion, estimacion_calificacion: opp.estimacion_calificacion,
+      fecha_inicio_despachos_est: opp.fecha_inicio_despachos_est, duracion_meses_est: opp.duracion_meses_est,
+      updated_at: new Date().toISOString(),
+    }).eq('id', opp.id)
+    const completo = CAMPOS_OPORTUNIDAD_REQUERIDOS.every(k => opp[k] !== null && opp[k] !== '' && opp[k] !== undefined)
+    if (completo && opp.etapa_actual === 'Oportunidad') {
+      await avanzarEtapa()
+      return
+    }
     setSaving(false); onUpdate()
   }
 
@@ -437,8 +479,9 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   }
 
   async function avanzarEtapa() {
-    const idx = ETAPAS_ORDER.indexOf(opp.etapa_actual)
-    const newEtapa = idx >= 0 && idx < ETAPAS_ORDER.length - 1 ? ETAPAS_ORDER[idx + 1] : 'Ganado'
+    const orden = opp.tipo_venta === 'VIT' ? ETAPAS_ORDER_VIT : ETAPAS_ORDER
+    const idx = orden.indexOf(opp.etapa_actual)
+    const newEtapa = idx >= 0 && idx < orden.length - 1 ? orden[idx + 1] : 'Ganado'
     setSaving(true)
     const { data: cur } = await supabase.from('oportunidad_historial_etapas').select('id').eq('oportunidad_id', opp.id).eq('etapa', opp.etapa_actual).is('fecha_salida', null).maybeSingle()
     if (cur) await supabase.from('oportunidad_historial_etapas').update({ fecha_salida: new Date().toISOString(), usuario_id: profile?.id }).eq('id', (cur as {id:string}).id)
@@ -455,9 +498,10 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   }
 
   async function retrocederEtapa() {
-    const idx = ETAPAS_ORDER.indexOf(opp.etapa_actual)
+    const orden = opp.tipo_venta === 'VIT' ? ETAPAS_ORDER_VIT : ETAPAS_ORDER
+    const idx = orden.indexOf(opp.etapa_actual)
     if (idx <= 0) return
-    const newEtapa = ETAPAS_ORDER[idx - 1]
+    const newEtapa = orden[idx - 1]
     setSaving(true)
     const { data: cur } = await supabase.from('oportunidad_historial_etapas').select('id').eq('oportunidad_id', opp.id).eq('etapa', opp.etapa_actual).is('fecha_salida', null).maybeSingle()
     if (cur) await supabase.from('oportunidad_historial_etapas').update({ fecha_salida: new Date().toISOString(), usuario_id: profile?.id }).eq('id', (cur as {id:string}).id)
@@ -471,6 +515,15 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       oportunidad_id: opp.id,
     })
     setSaving(false); onUpdate(); onClose()
+  }
+
+  async function eliminarOportunidad() {
+    if (!confirm(`¿Eliminar definitivamente ${opp.codigo} · ${opp.nombre}? Esta acción no se puede deshacer y borra todo su historial, documentos y datos asociados.`)) return
+    setSaving(true)
+    const { error: err } = await supabase.from('oportunidades').delete().eq('id', opp.id)
+    setSaving(false)
+    if (err) { alert('No se pudo eliminar: ' + err.message); return }
+    onUpdate(); onClose()
   }
 
   async function marcarEstado(estado: 'Ganado' | 'Perdido') {
@@ -546,7 +599,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     if (data?.signedUrl) window.open(data.signedUrl, '_blank')
   }
 
-  const etapas = ETAPAS_ORDER
+  const etapas = opp.tipo_venta === 'VIT' ? ETAPAS_ORDER_VIT : ETAPAS_ORDER
   const currentIdx = etapas.indexOf(opp.etapa_actual)
   const isTerminal = ['Ganado','Perdido'].includes(opp.etapa_actual)
   const nextEtapa = currentIdx >= 0 && currentIdx < etapas.length - 1 ? etapas[currentIdx + 1] : 'Ganado'
@@ -578,6 +631,57 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       <div className="text-center py-6">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Etapa actual</p>
         <p className="text-lg font-bold text-gray-700">Clasificación</p>
+        {opp.tipo_venta === 'VIT' && <p className="text-xs text-gray-400 mt-1">Los campos de clasificación VIT se editan en la pestaña General.</p>}
+      </div>
+    )
+    if (e === 'Oportunidad') return (
+      <div className="space-y-3">
+        <p className="text-xs text-gray-400">Al completar estos 7 campos, la oportunidad pasa automáticamente a Negociación.</p>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Tipo de Subsidio</label>
+          <select value={opp.tipo_subsidio ?? ''} onChange={ev => setOpp(o => ({...o, tipo_subsidio: (ev.target.value || null) as TipoSubsidioVit | null}))}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+            <option value="">Seleccionar...</option>
+            {TIPO_SUBSIDIO_OPCIONES.map(op => <option key={op} value={op}>{op}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Programa</label>
+          <input value={opp.programa ?? ''} onChange={ev => setOpp(o => ({...o, programa: ev.target.value || null}))} placeholder="ej. Nuevos Terrenos"
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Valor total del proyecto (CLP)</label>
+          <input type="number" value={opp.monto_estimado ?? ''} onChange={ev => setOpp(o => ({...o, monto_estimado: ev.target.value ? Number(ev.target.value) : null}))}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Fecha de Ingreso a Calificación</label>
+            <input type="date" value={opp.fecha_ingreso_calificacion ?? ''} onChange={ev => setOpp(o => ({...o, fecha_ingreso_calificacion: ev.target.value || null}))}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Estimación Calificación del proyecto</label>
+            <input type="date" value={opp.estimacion_calificacion ?? ''} onChange={ev => setOpp(o => ({...o, estimacion_calificacion: ev.target.value || null}))}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Estimación Inicio Despachos</label>
+            <input type="date" value={opp.fecha_inicio_despachos_est ?? ''} onChange={ev => setOpp(o => ({...o, fecha_inicio_despachos_est: ev.target.value || null}))}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de meses de despacho</label>
+            <input type="number" min="0" value={opp.duracion_meses_est ?? ''} onChange={ev => setOpp(o => ({...o, duracion_meses_est: ev.target.value ? Number(ev.target.value) : null}))}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+          </div>
+        </div>
+        <button onClick={saveOportunidadCampos} disabled={saving} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
+          {saving && <Loader2 size={14} className="animate-spin" />}{saving ? 'Guardando...' : 'Guardar datos de Oportunidad'}
+        </button>
       </div>
     )
     if (e === 'Ingeniería') return null
@@ -709,6 +813,25 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     }
     if (e === 'Negociación') return (
       <div className="space-y-3">
+        {opp.tipo_venta === 'VIT' && (
+          <div className="border border-gray-200 rounded-lg p-3 space-y-1 text-xs text-gray-600">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Resumen recopilado (Clasificación + Oportunidad)</p>
+            <p><span className="text-gray-400">Entidad Patrocinante:</span> {opp.nombre_entidad_patrocinante || '—'}</p>
+            <p><span className="text-gray-400">Comité de Vivienda:</span> {opp.nombre_comite_vivienda || '—'}</p>
+            <p><span className="text-gray-400">Constructora:</span> {opp.nombre_constructora || '—'}</p>
+            <p><span className="text-gray-400">Región / Comuna:</span> {[opp.region, opp.comuna].filter(Boolean).join(' / ') || '—'}</p>
+            <p><span className="text-gray-400">Zona Térmica:</span> {opp.zona_termica || '—'}</p>
+            <p><span className="text-gray-400">Tipología VIT:</span> {opp.tipologia_vit || '—'}</p>
+            <p><span className="text-gray-400">Venta actual:</span> {opp.venta_actual_uf != null ? opp.venta_actual_uf + ' UF' : '—'}</p>
+            <p><span className="text-gray-400">Tipo de Subsidio:</span> {opp.tipo_subsidio || '—'}</p>
+            <p><span className="text-gray-400">Programa:</span> {opp.programa || '—'}</p>
+            <p><span className="text-gray-400">Valor total del proyecto:</span> {opp.monto_estimado != null ? formatCLP(opp.monto_estimado) : '—'}</p>
+            <p><span className="text-gray-400">Fecha Ingreso Calificación:</span> {opp.fecha_ingreso_calificacion || '—'}</p>
+            <p><span className="text-gray-400">Estimación Calificación:</span> {opp.estimacion_calificacion || '—'}</p>
+            <p><span className="text-gray-400">Estimación Inicio Despachos:</span> {opp.fecha_inicio_despachos_est || '—'}</p>
+            <p><span className="text-gray-400">Meses de despacho:</span> {opp.duracion_meses_est ?? '—'}</p>
+          </div>
+        )}
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
           <p className="text-xs font-medium text-amber-800">Recuerda adjuntar el programa de despachos.</p>
         </div>
@@ -777,7 +900,13 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                 </p>
               )}
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 flex-shrink-0"><X size={18} /></button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {profile?.rol === 'admin' && (
+                <button onClick={eliminarOportunidad} disabled={saving} title="Eliminar oportunidad (solo admin)"
+                  className="text-gray-400 hover:text-red-600 disabled:opacity-40"><Trash2 size={16} /></button>
+              )}
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
           </div>
           {!isTerminal && currentIdx >= 0 && (
             <div className="mt-3 flex items-center gap-1">
@@ -813,10 +942,11 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                 <input value={opp.nombre} onChange={e => setOpp(o => ({...o,nombre:e.target.value}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Tipo venta</label>
-                  <select value={opp.tipo_venta} onChange={e => setOpp(o => ({...o,tipo_venta:e.target.value as 'Proyecto'|'Producto'|'Kit'}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+                  <select value={opp.tipo_venta} onChange={e => setOpp(o => ({...o,tipo_venta:e.target.value as 'Proyecto'|'Producto'|'Kit'|'VIT'}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
                     <option value="Proyecto">{TIPO_VENTA_LABELS.Proyecto}</option>
                     <option value="Producto">{TIPO_VENTA_LABELS.Producto}</option>
                     <option value="Kit">{TIPO_VENTA_LABELS.Kit}</option>
+                    <option value="VIT">{TIPO_VENTA_LABELS.VIT}</option>
                   </select></div>
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Fecha de presentación</label>
                   <input type="date" value={opp.fecha_cierre_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_cierre_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
@@ -830,9 +960,33 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
               <div><label className="block text-xs font-medium text-gray-600 mb-1">Descripcion</label>
                 <textarea value={opp.descripcion ?? ''} onChange={e => setOpp(o => ({...o,descripcion:e.target.value||null}))} rows={3} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" /></div>
 
-              {opp.tipo_venta === 'Kit' && (
+              {(opp.tipo_venta === 'Kit' || opp.tipo_venta === 'VIT') && (
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Entidad patrocinante</label>
                   <input value={opp.nombre_entidad_patrocinante ?? ''} onChange={e => setOpp(o => ({...o,nombre_entidad_patrocinante:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+              )}
+
+              {opp.tipo_venta === 'VIT' && (
+                <div className="space-y-3 bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Clasificación VIT</p>
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Comité de Vivienda</label>
+                    <input value={opp.nombre_comite_vivienda ?? ''} onChange={e => setOpp(o => ({...o,nombre_comite_vivienda:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Constructora</label>
+                    <input value={opp.nombre_constructora ?? ''} onChange={e => setOpp(o => ({...o,nombre_constructora:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Zona Térmica</label>
+                    <select value={opp.zona_termica ?? ''} onChange={e => setOpp(o => ({...o,zona_termica:(e.target.value || null) as ZonaTermicaVit | null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+                      <option value="">Sin zona</option>
+                      {ZONAS_TERMICAS.map(z => <option key={z} value={z}>{z}</option>)}
+                    </select></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="block text-xs font-medium text-gray-600 mb-1">Tipología VIT</label>
+                      <select value={opp.tipologia_vit ?? ''} onChange={e => elegirTipologia(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+                        <option value="">Sin tipología</option>
+                        {tipologias.map(t => <option key={t.tipologia} value={t.tipologia}>{t.tipologia}</option>)}
+                      </select></div>
+                    <div><label className="block text-xs font-medium text-gray-600 mb-1">Venta actual (UF)</label>
+                      <input type="number" value={opp.venta_actual_uf ?? ''} onChange={e => setOpp(o => ({...o,venta_actual_uf:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  </div>
+                </div>
               )}
 
               <div className="grid grid-cols-2 gap-3">
@@ -896,7 +1050,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
           ) : tab === 'etapa' ? (
             <div className="space-y-4">
               {renderEtapaForm()}
-              {opp.etapa_actual !== 'Clasificación' && opp.etapa_actual !== 'Ingeniería' && (
+              {opp.etapa_actual !== 'Clasificación' && opp.etapa_actual !== 'Ingeniería' && opp.etapa_actual !== 'Oportunidad' && (
                 <button onClick={saveEtapaData} disabled={saving} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
                   {saving && <Loader2 size={14} className="animate-spin" />}{saving ? 'Guardando...' : 'Guardar datos de etapa'}
                 </button>
