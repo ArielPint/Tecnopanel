@@ -128,7 +128,7 @@ export default function PortalShell({ actual, children, hideAside }: { actual: M
           <div className="ml-auto flex items-center gap-3">
             {tieneHub && (
               <>
-                <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">← Hub</Link>
+                <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">← Portal</Link>
                 <Link to="/proyectos" className="text-xs text-muted-foreground hover:text-foreground">← Proyectos</Link>
               </>
             )}

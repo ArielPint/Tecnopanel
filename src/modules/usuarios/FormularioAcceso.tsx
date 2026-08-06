@@ -160,7 +160,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
 
             <TabsContent value="proyecto" className="flex flex-col gap-4 pt-2">
               {proyectosObra.length === 0 && (
-                <p className="text-sm text-muted-foreground">Aún no hay proyectos creados en el hub.</p>
+                <p className="text-sm text-muted-foreground">Aún no hay proyectos creados en el portal.</p>
               )}
               {proyectosObra.map((proy) => {
                 const pa = form.proyectos[proy.id] ?? proyectoAccesoVacio()

@@ -74,7 +74,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm bg-white shadow-sm rounded-lg border p-8 dark:bg-neutral-800 dark:border-white/10">
         <img src={logo} alt="Tecnopanel" className="h-10 w-auto mb-4" />
         <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Elige tu nueva contraseña</h1>
-        <p className="text-sm text-gray-500 dark:text-white/50 mb-6">Tecnopanel Hub</p>
+        <p className="text-sm text-gray-500 dark:text-white/50 mb-6">Tecnopanel Portal</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

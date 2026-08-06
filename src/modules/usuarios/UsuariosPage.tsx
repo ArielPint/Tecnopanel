@@ -57,7 +57,7 @@ export default function UsuariosPage() {
         <div>
           <h1 className="text-xl font-extrabold">Usuarios</h1>
           <p className="text-sm text-muted-foreground">
-            {accesos.length > 0 ? `${accesos.length} cuentas con acceso al hub.` : 'Cuentas con acceso al hub.'}
+            {accesos.length > 0 ? `${accesos.length} cuentas con acceso al portal.` : 'Cuentas con acceso al portal.'}
           </p>
         </div>
         <FormularioAcceso

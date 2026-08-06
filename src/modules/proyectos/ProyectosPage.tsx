@@ -66,7 +66,7 @@ export default function ProyectosPage() {
           ))}
         </div>
       ) : proyectos.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Aún no hay proyectos cargados en el hub.</p>
+        <p className="text-sm text-muted-foreground">Aún no hay proyectos cargados en el portal.</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {proyectos.map((p) => {

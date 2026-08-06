@@ -174,7 +174,7 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : proyectosConstruccion.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aún no hay proyectos cargados en el hub.</p>
+            <p className="text-sm text-muted-foreground">Aún no hay proyectos cargados en el portal.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -194,7 +194,11 @@ export default function DashboardPage() {
                   const compras = findKpi(kpis, 'compras_total')
                   return (
                     <TableRow key={p.id}>
-                      <TableCell className="font-bold">{p.nombre}</TableCell>
+                      <TableCell className="font-bold">
+                        <Link to={`/proyectos/${p.slug}/dashboard`} className="hover:underline hover:text-brand">
+                          {p.nombre}
+                        </Link>
+                      </TableCell>
                       <TableCell><PercentBar value={findKpi(kpis, 'avance_fisico')} /></TableCell>
                       <TableCell><PercentBar value={findKpi(kpis, 'avance_economico')} /></TableCell>
                       <TableCell className="text-right font-mono-tabular">{findKpi(kpis, 'modulos_terminados') ?? '—'}</TableCell>
@@ -214,7 +218,9 @@ export default function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>CRM Tecnopanel</CardTitle>
+          <CardTitle>
+            <Link to="/crm" className="hover:underline hover:text-brand">CRM Tecnopanel</Link>
+          </CardTitle>
           <CardDescription>Pipeline de oportunidades</CardDescription>
         </CardHeader>
         <CardContent className="pt-0">

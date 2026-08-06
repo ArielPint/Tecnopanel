@@ -116,7 +116,7 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
                   >
                     <span className="flex items-center gap-2.5">
                       <Home size={16} />
-                      TecnoPanel Hub
+                      TecnoPanel Portal
                     </span>
                     <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
                   </NavLink>
