@@ -314,7 +314,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-700">Oportunidades Recientes</h2>
-            <a href="/oportunidades" className="text-xs text-crm-red hover:underline font-medium">Ver todas →</a>
+            <a href="/crm/oportunidades" className="text-xs text-crm-red hover:underline font-medium">Ver todas →</a>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
