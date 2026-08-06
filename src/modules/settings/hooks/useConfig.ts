@@ -125,7 +125,7 @@ export interface ForecastColumn {
   key: string
   label: string
   originalLabel: string | null
-  valores: number[]
+  valores: string[]
 }
 
 export function useAvanceEconProy() {
@@ -141,13 +141,13 @@ export function useAvanceEconProy() {
       .eq('anio', anio)
       .order('created_at', { ascending: true })
     const orden: string[] = []
-    const map: Record<string, number[]> = {}
+    const map: Record<string, string[]> = {}
     for (const r of (data ?? []) as { mes: number; valor: number; forecast: string }[]) {
       if (!map[r.forecast]) {
-        map[r.forecast] = Array(12).fill(0)
+        map[r.forecast] = Array(12).fill('0')
         orden.push(r.forecast)
       }
-      map[r.forecast][r.mes - 1] = parseFloat(String(r.valor)) || 0
+      map[r.forecast][r.mes - 1] = ((parseFloat(String(r.valor)) || 0) * 100).toFixed(4)
     }
     setColumnas(orden.map((label) => ({ key: label, label, originalLabel: label, valores: map[label] })))
     setLoading(false)
@@ -158,15 +158,15 @@ export function useAvanceEconProy() {
   }, [refetch])
 
   const agregarColumna = useCallback(() => {
-    setColumnas((cols) => [...cols, { key: `nueva-${cols.length}-${Date.now()}`, label: '', originalLabel: null, valores: Array(12).fill(0) }])
+    setColumnas((cols) => [...cols, { key: `nueva-${cols.length}-${Date.now()}`, label: '', originalLabel: null, valores: Array(12).fill('0') }])
   }, [])
 
   const actualizarLabel = useCallback((key: string, label: string) => {
     setColumnas((cols) => cols.map((c) => (c.key === key ? { ...c, label } : c)))
   }, [])
 
-  const actualizarValor = useCallback((key: string, mesIdx: number, valor: number) => {
-    setColumnas((cols) => cols.map((c) => (c.key === key ? { ...c, valores: c.valores.map((v, i) => (i === mesIdx ? valor : v)) } : c)))
+  const actualizarValor = useCallback((key: string, mesIdx: number, texto: string) => {
+    setColumnas((cols) => cols.map((c) => (c.key === key ? { ...c, valores: c.valores.map((v, i) => (i === mesIdx ? texto : v)) } : c)))
   }, [])
 
   const guardar = useCallback(async () => {
@@ -176,7 +176,7 @@ export function useAvanceEconProy() {
         const { error } = await supabase.from('avance_econ_proy').delete().eq('anio', anio).eq('forecast', c.originalLabel)
         if (error) throw new Error(error.message)
       }
-      const payload = c.valores.map((valor, i) => ({ anio, mes: i + 1, forecast: c.label, valor }))
+      const payload = c.valores.map((texto, i) => ({ anio, mes: i + 1, forecast: c.label, valor: (parseFloat(texto) || 0) / 100 }))
       const { error } = await supabase.from('avance_econ_proy').upsert(payload, { onConflict: 'anio,mes,forecast' })
       if (error) throw new Error(error.message)
     }

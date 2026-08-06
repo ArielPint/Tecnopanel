@@ -299,10 +299,11 @@ function AvanceEconProyCard() {
                   {columnas.map((c) => (
                     <TableCell key={c.key} className="text-right">
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         className="ml-auto w-28 text-right"
-                        value={loading ? '' : (c.valores[mesIdx] * 100).toFixed(4)}
-                        onChange={(e) => actualizarValor(c.key, mesIdx, (parseFloat(e.target.value) || 0) / 100)}
+                        value={loading ? '' : c.valores[mesIdx]}
+                        onChange={(e) => actualizarValor(c.key, mesIdx, e.target.value)}
                       />
                     </TableCell>
                   ))}
