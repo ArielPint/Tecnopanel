@@ -1,5 +1,13 @@
+import type { ComponentProps } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, LabelList, Line, XAxis, YAxis } from 'recharts'
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/modules/financiero/components/ui/chart'
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  type ChartConfig,
+} from '@/modules/financiero/components/ui/chart'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { useProyExtraAvEcon } from '@/modules/settings/hooks/useConfig'
 import type { ResumenData } from '../hooks/useResumenData'
@@ -199,6 +207,40 @@ export function AvanceEconomicoChart({
 
 const FORECAST_COLORS = ['#4f8ef7', '#f2a340', '#a371f7', '#3fb950', '#f75f5f', '#40c4c4']
 
+// Ene/Feb/Mar arrancan en ~0% — las etiquetas se pisan entre sí y no aportan nada, se ocultan
+const OCULTAR_ETIQUETAS_ANTES_DE = 3
+
+type LabelContent = NonNullable<ComponentProps<typeof LabelList>['content']>
+
+const realBarLabel: LabelContent = (props) => {
+  const { x, y, width, height, value, index } = props as {
+    x?: number | string
+    y?: number | string
+    width?: number | string
+    height?: number | string
+    value?: number | string
+    index?: number
+  }
+  if (index == null || index < OCULTAR_ETIQUETAS_ANTES_DE || value == null || x == null || y == null || width == null || height == null) return null
+  const cx = Number(x) + Number(width) / 2
+  const cy = Number(y) + Number(height) / 2
+  return (
+    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" style={VALUE_LABEL_STYLE}>
+      {fmtPr(Number(value))}
+    </text>
+  )
+}
+
+const lineaLabel: LabelContent = (props) => {
+  const { x, y, value, index } = props as { x?: number | string; y?: number | string; value?: number | string; index?: number }
+  if (index == null || index < OCULTAR_ETIQUETAS_ANTES_DE || value == null || x == null || y == null) return null
+  return (
+    <text x={Number(x)} y={Number(y) - 8} textAnchor="middle" style={VALUE_LABEL_STYLE}>
+      {fmtPr(Number(value))}
+    </text>
+  )
+}
+
 export function AvanceEconomicoAcumChart({
   data,
   forecastLabels = [],
@@ -208,14 +250,14 @@ export function AvanceEconomicoAcumChart({
 }) {
   if (!data.length) return null
   const config = {
-    realAcum: { label: 'Real acumulado', color: '#d42b1e' },
+    realAcum: { label: 'Real acum.', color: '#d42b1e' },
     ...Object.fromEntries(
       forecastLabels.map((label, i) => [label, { label, color: FORECAST_COLORS[i % FORECAST_COLORS.length] }]),
     ),
   } satisfies ChartConfig
   return (
     <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
-      <ComposedChart data={data} margin={{ left: 8, right: 8 }}>
+      <ComposedChart data={data} margin={{ left: 8, right: 8, top: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="mes" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
         <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
@@ -231,8 +273,9 @@ export function AvanceEconomicoAcumChart({
             />
           }
         />
+        <ChartLegend content={<ChartLegendContent />} />
         <Bar dataKey="realAcum" fill="var(--color-realAcum)" radius={4}>
-          <LabelList dataKey="realAcum" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
+          <LabelList dataKey="realAcum" content={realBarLabel} />
         </Bar>
         {forecastLabels.map((label, i) => (
           <Line
@@ -244,7 +287,7 @@ export function AvanceEconomicoAcumChart({
             dot
             connectNulls
           >
-            <LabelList dataKey={label} position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
+            <LabelList dataKey={label} content={lineaLabel} />
           </Line>
         ))}
       </ComposedChart>

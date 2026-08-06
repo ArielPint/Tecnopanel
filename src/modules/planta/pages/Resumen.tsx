@@ -95,6 +95,15 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
       <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">Indicadores</p>
       <KpiCards kpis={resumen.kpis} />
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Avance económico acumulado</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AvanceEconomicoAcumChart data={resumen.avanceEconomicoAcumulado} forecastLabels={resumen.forecastLabels} />
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -106,23 +115,14 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Avance económico acumulado</CardTitle>
+            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Compras reales vs. presupuesto por mes</CardTitle>
           </CardHeader>
-          <CardContent>
-            <AvanceEconomicoAcumChart data={resumen.avanceEconomicoAcumulado} forecastLabels={resumen.forecastLabels} />
+          <CardContent className="space-y-4">
+            <ComprasVsPresupuestoChart data={resumen.comprasVsPresupuesto} />
+            <CrecimientoMensualTabla data={resumen.crecimientoMensual} />
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Compras reales vs. presupuesto por mes</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <ComprasVsPresupuestoChart data={resumen.comprasVsPresupuesto} />
-          <CrecimientoMensualTabla data={resumen.crecimientoMensual} />
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
