@@ -63,8 +63,8 @@ export function useOrdenesCompra(presupuestoId?: string) {
 
   const createOrdenCompra = useCallback(
     async (input: NuevaOrdenCompra) => {
-      await asegurarProveedor(input.proveedor_rut)
       const proyectoId = await getProyectoId(proyectoSlug!)
+      await asegurarProveedor(input.proveedor_rut, proyectoId)
       const { data: userData } = await supabase.auth.getUser()
       const { data, error } = await supabase
         .from('financiero_ordenes_compra')
@@ -80,7 +80,8 @@ export function useOrdenesCompra(presupuestoId?: string) {
 
   const updateOrdenCompra = useCallback(
     async (id: string, patch: Partial<NuevaOrdenCompra & { estado: OrdenCompra['estado'] }>) => {
-      await asegurarProveedor(patch.proveedor_rut)
+      const proyectoId = await getProyectoId(proyectoSlug!)
+      await asegurarProveedor(patch.proveedor_rut, proyectoId)
       const { data, error } = await supabase
         .from('financiero_ordenes_compra')
         .update(patch)
@@ -91,7 +92,7 @@ export function useOrdenesCompra(presupuestoId?: string) {
       await refetch()
       return data as OrdenCompra
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   const deleteOrdenCompra = useCallback(

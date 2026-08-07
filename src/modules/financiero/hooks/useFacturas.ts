@@ -59,8 +59,8 @@ export function useFacturas(ordenesCompraId?: string) {
   // solo inserta y devuelve la fila ya validada por Supabase.
   const createFactura = useCallback(
     async (input: NuevaFactura) => {
-      await asegurarProveedor(input.proveedor_rut)
       const proyectoId = await getProyectoId(proyectoSlug!)
+      await asegurarProveedor(input.proveedor_rut, proyectoId)
       const { data: userData } = await supabase.auth.getUser()
       const { data, error } = await supabase
         .from('financiero_facturas')
@@ -76,7 +76,8 @@ export function useFacturas(ordenesCompraId?: string) {
 
   const updateFactura = useCallback(
     async (id: string, patch: Partial<NuevaFactura & { estado: Factura['estado'] }>) => {
-      await asegurarProveedor(patch.proveedor_rut)
+      const proyectoId = await getProyectoId(proyectoSlug!)
+      await asegurarProveedor(patch.proveedor_rut, proyectoId)
       const { data, error } = await supabase
         .from('financiero_facturas')
         .update(patch)
@@ -87,7 +88,7 @@ export function useFacturas(ordenesCompraId?: string) {
       await refetch()
       return data as Factura
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   const deleteFactura = useCallback(

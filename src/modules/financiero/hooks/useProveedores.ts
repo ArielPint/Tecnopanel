@@ -28,12 +28,9 @@ export function useProveedores() {
   const crearProveedor = useCallback(
     async (rut: string, nombre: string) => {
       const proyectoId = await getProyectoId(proyectoSlug!)
-      // ponytail: onConflict sigue en 'rut' solo — si `rut` tiene UNIQUE global
-      // (no compuesto con proyecto_id) esto puede pisar el proveedor de otro
-      // proyecto al hacer upsert. Verificar constraint real antes de un 2do proyecto.
       const { data, error } = await supabase
         .from('financiero_proveedores')
-        .upsert({ rut, nombre, proyecto_id: proyectoId }, { onConflict: 'rut' })
+        .upsert({ rut, nombre, proyecto_id: proyectoId }, { onConflict: 'rut,proyecto_id' })
         .select()
         .single()
       if (error) throw new Error(error.message)
