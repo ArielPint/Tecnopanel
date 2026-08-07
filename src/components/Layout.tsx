@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   LayoutDashboard,
   LogOut,
-  MapPin,
   Menu,
   Moon,
   Sun,
@@ -31,10 +30,8 @@ const navSections = [
   },
   {
     label: 'Gestión',
-    items: [
-      { to: '/crm', label: 'CRM', end: false, icon: Briefcase },
-      { to: '/geovictoria', label: 'GeoVictoria', end: false, icon: MapPin },
-    ],
+    // ponytail: GeoVictoria oculto del nav hasta setear GV_APIKEY/GV_SECRET en prod — ruta sigue viva en App.tsx
+    items: [{ to: '/crm', label: 'CRM', end: false, icon: Briefcase }],
   },
   {
     label: 'Sistema',
