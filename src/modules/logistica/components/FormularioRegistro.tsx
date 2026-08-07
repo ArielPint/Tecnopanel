@@ -190,6 +190,22 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
 
   const mesLabel = fechaGuia ? `${MES_NAMES[new Date(fechaGuia + 'T12:00:00').getMonth()]} ${new Date(fechaGuia + 'T12:00:00').getFullYear()}` : '—'
 
+  async function eliminarGuiaCompleta() {
+    if (!registro) return
+    if (!confirm(`¿Eliminar la guía ${registro.gd} completa? Se borrarán sus ${registros.filter((r) => r.gd === registro.gd).length} línea(s). Esta acción no se puede deshacer.`)) return
+    setEnviando(true)
+    try {
+      const idsGuia = registros.filter((r) => r.gd === registro.gd).map((r) => r.id)
+      for (const id of idsGuia) await onEliminar(id)
+      toast.success('Guía eliminada')
+      setOpen(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al eliminar')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     if (!fechaGuia) {
@@ -354,7 +370,12 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className={esEdicion ? 'sm:justify-between' : undefined}>
+            {esEdicion && (
+              <Button type="button" variant="destructive" disabled={enviando} onClick={eliminarGuiaCompleta}>
+                Eliminar guía
+              </Button>
+            )}
             <Button type="submit" disabled={enviando}>
               {enviando ? 'Guardando…' : 'Guardar'}
             </Button>
