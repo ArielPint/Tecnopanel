@@ -148,7 +148,11 @@ export function useRegistroCompras() {
       const { error: insError } = await supabase.from('registro_compras').insert(records)
       if (insError) throw new Error(insError.message)
       if (solicitudNumero != null) {
-        await supabase.from('solicitudes').update({ estado: 'usada' }).eq('numero', solicitudNumero)
+        await supabase
+          .from('solicitudes')
+          .update({ estado: 'usada' })
+          .eq('numero', solicitudNumero)
+          .eq('proyecto_id', proyectoId)
       }
       await refetch()
     },
