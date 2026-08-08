@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getProyectoId } from '@/lib/proyectoIds'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { parseDate } from '../lib/format'
 import { loadDespachos, type DespachoSupaRow } from '../lib/supaData'
@@ -37,20 +38,15 @@ interface DRow {
 
 export function useDespachosData(excelData: ParsedDashboardData | null) {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  const [supaDespachos, setSupaDespachos] = useState<DespachoSupaRow[]>([])
   const [mesesSeleccionados, setMesesSeleccionados] = useState<Set<string> | null>(null)
 
-  useEffect(() => {
-    let cancelado = false
-    getProyectoId(proyectoSlug!).then((proyectoId) =>
-      loadDespachos(proyectoId).then((rows) => {
-        if (!cancelado) setSupaDespachos(rows)
-      }),
-    )
-    return () => {
-      cancelado = true
-    }
+  const fetcher = useCallback(async () => {
+    const proyectoId = await getProyectoId(proyectoSlug!)
+    return loadDespachos(proyectoId)
   }, [proyectoSlug])
+
+  const { data } = useCachedQuery<DespachoSupaRow[]>(proyectoSlug ? `despachos_data:${proyectoSlug}` : null, fetcher, 60_000)
+  const supaDespachos = data ?? []
 
   const d: DRow[] = useMemo(() => {
     if (supaDespachos.length) return supaDespachos

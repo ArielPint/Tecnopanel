@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { getProyectoId } from '@/lib/proyectoIds'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 import { MESES_ORDER, parseDate } from '../lib/format'
 import type { DetalleGdRow, ParsedDashboardData } from '../lib/excelParser'
 import {
@@ -11,6 +12,14 @@ import {
   loadPresupuestoTotal,
   type AvanceEconProyRow,
 } from '../lib/supaData'
+
+interface ResumenSupaData {
+  compras: DetalleGdRow[]
+  presupuestoTotal: number | null
+  pptoCatalogo: Record<string, number>
+  despachadosCount: number
+  avanceProy: AvanceEconProyRow[]
+}
 
 const MES_NAMES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -70,37 +79,25 @@ export function getHomeAvance(
 
 export function useResumenData(excelData: ParsedDashboardData | null) {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  const [loadingSupa, setLoadingSupa] = useState(true)
-  const [supaCompras, setSupaCompras] = useState<DetalleGdRow[]>([])
-  const [presupuestoTotal, setPresupuestoTotal] = useState<number | null>(null)
-  const [pptoCatalogo, setPptoCatalogo] = useState<Record<string, number>>({})
-  const [despachadosCount, setDespachadosCount] = useState(0)
-  const [avanceProy, setAvanceProy] = useState<AvanceEconProyRow[]>([])
 
-  useEffect(() => {
-    let cancelado = false
-    async function cargar() {
-      const proyectoId = await getProyectoId(proyectoSlug!)
-      const [compras, ppto, catalogo, despachados, proy] = await Promise.all([
-        loadCompras(proyectoId),
-        loadPresupuestoTotal(),
-        loadPptoCatalogo(),
-        loadModulosDespachadosCount(proyectoId),
-        loadAvanceEconProy(new Date().getFullYear()),
-      ])
-      if (cancelado) return
-      setSupaCompras(compras)
-      setPresupuestoTotal(ppto)
-      setPptoCatalogo(catalogo)
-      setDespachadosCount(despachados)
-      setAvanceProy(proy)
-      setLoadingSupa(false)
-    }
-    cargar()
-    return () => {
-      cancelado = true
-    }
+  const fetcher = useCallback(async (): Promise<ResumenSupaData> => {
+    const proyectoId = await getProyectoId(proyectoSlug!)
+    const [compras, ppto, catalogo, despachados, proy] = await Promise.all([
+      loadCompras(proyectoId),
+      loadPresupuestoTotal(),
+      loadPptoCatalogo(),
+      loadModulosDespachadosCount(proyectoId),
+      loadAvanceEconProy(new Date().getFullYear()),
+    ])
+    return { compras, presupuestoTotal: ppto, pptoCatalogo: catalogo, despachadosCount: despachados, avanceProy: proy }
   }, [proyectoSlug])
+
+  const { data, loading } = useCachedQuery<ResumenSupaData>(proyectoSlug ? `resumen_data:${proyectoSlug}` : null, fetcher, 60_000)
+  const supaCompras = data?.compras ?? []
+  const presupuestoTotal = data?.presupuestoTotal ?? null
+  const pptoCatalogo = data?.pptoCatalogo ?? {}
+  const despachadosCount = data?.despachadosCount ?? 0
+  const avanceProy = data?.avanceProy ?? []
 
   return useMemo(() => {
     const modulos = excelData?.modulos ?? []
@@ -323,7 +320,7 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
     }))
 
     return {
-      loading: loadingSupa && !excelData,
+      loading: loading && !excelData,
       kpis,
       distribucionBuckets,
       comprasVsPresupuesto,
@@ -338,7 +335,7 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
       modulosIniciadosPorMes,
       salidaGalponPorMes,
     }
-  }, [excelData, supaCompras, presupuestoTotal, pptoCatalogo, despachadosCount, avanceProy, loadingSupa])
+  }, [excelData, supaCompras, presupuestoTotal, pptoCatalogo, despachadosCount, avanceProy, loading])
 }
 
 export type ResumenData = ReturnType<typeof useResumenData>

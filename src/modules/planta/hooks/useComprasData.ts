@@ -1,9 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { getProyectoId } from '@/lib/proyectoIds'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 import { MESES_ORDER } from '../lib/format'
 import type { DetalleGdRow, ParsedDashboardData } from '../lib/excelParser'
 import { loadCompras, loadPptoCatalogo, loadPresupuestoTotal } from '../lib/supaData'
+
+interface ComprasSupaData {
+  compras: DetalleGdRow[]
+  presupuestoTotal: number | null
+  pptoCatalogo: Record<string, number>
+}
 
 function aplicarCatalogo(compras: DetalleGdRow[], catalogo: Record<string, number>) {
   if (!Object.keys(catalogo).length) return compras
@@ -18,24 +25,17 @@ function aplicarCatalogo(compras: DetalleGdRow[], catalogo: Record<string, numbe
 
 export function useComprasData(excelData: ParsedDashboardData | null) {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  const [supaCompras, setSupaCompras] = useState<DetalleGdRow[]>([])
-  const [presupuestoTotal, setPresupuestoTotal] = useState<number | null>(null)
-  const [pptoCatalogo, setPptoCatalogo] = useState<Record<string, number>>({})
 
-  useEffect(() => {
-    let cancelado = false
-    getProyectoId(proyectoSlug!).then((proyectoId) =>
-      Promise.all([loadCompras(proyectoId), loadPresupuestoTotal(), loadPptoCatalogo()]).then(([compras, ppto, catalogo]) => {
-        if (cancelado) return
-        setSupaCompras(compras)
-        setPresupuestoTotal(ppto)
-        setPptoCatalogo(catalogo)
-      }),
-    )
-    return () => {
-      cancelado = true
-    }
+  const fetcher = useCallback(async (): Promise<ComprasSupaData> => {
+    const proyectoId = await getProyectoId(proyectoSlug!)
+    const [compras, ppto, catalogo] = await Promise.all([loadCompras(proyectoId), loadPresupuestoTotal(), loadPptoCatalogo()])
+    return { compras, presupuestoTotal: ppto, pptoCatalogo: catalogo }
   }, [proyectoSlug])
+
+  const { data } = useCachedQuery<ComprasSupaData>(proyectoSlug ? `compras_data:${proyectoSlug}` : null, fetcher, 60_000)
+  const supaCompras = data?.compras ?? []
+  const presupuestoTotal = data?.presupuestoTotal ?? null
+  const pptoCatalogo = data?.pptoCatalogo ?? {}
 
   return useMemo(() => {
     const base = supaCompras.length ? supaCompras : (excelData?.detalleGD ?? [])

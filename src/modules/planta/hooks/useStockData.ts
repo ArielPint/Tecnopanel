@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getProyectoId } from '@/lib/proyectoIds'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { parseDate, weekKey, weekLabel } from '../lib/format'
 import { loadRegistroStock, type RegistroStockRow } from '../lib/supaData'
@@ -65,21 +66,15 @@ function enriquecer(rows: RegistroStockRow[], excelData: ParsedDashboardData | n
 
 export function useStockData(excelData: ParsedDashboardData | null) {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  const [rows, setRows] = useState<RegistroStockRow[]>([])
   const [selectedWeekTs, setSelectedWeekTs] = useState<number | null>(null)
 
-  useEffect(() => {
-    let cancelado = false
-    getProyectoId(proyectoSlug!).then((proyectoId) =>
-      loadRegistroStock(proyectoId).then((data) => {
-        if (cancelado) return
-        setRows(data)
-      }),
-    )
-    return () => {
-      cancelado = true
-    }
+  const fetcher = useCallback(async () => {
+    const proyectoId = await getProyectoId(proyectoSlug!)
+    return loadRegistroStock(proyectoId)
   }, [proyectoSlug])
+
+  const { data } = useCachedQuery<RegistroStockRow[]>(proyectoSlug ? `registro_stock:${proyectoSlug}` : null, fetcher, 60_000)
+  const rows = data ?? []
 
   const enriquecidas = useMemo(() => enriquecer(rows, excelData), [rows, excelData])
 

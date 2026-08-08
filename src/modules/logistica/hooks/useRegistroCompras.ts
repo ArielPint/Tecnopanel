@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
+import { useCachedQuery } from '@/lib/useCachedQuery'
+import { invalidate } from '@/lib/queryCache'
 
 export interface RegistroCompra {
   id: string
@@ -70,44 +72,34 @@ function genId() {
 
 export function useRegistroCompras() {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  const [registros, setRegistros] = useState<RegistroCompra[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const cacheKey = proyectoSlug ? `registro_compras:${proyectoSlug}` : null
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  const fetchAll = useCallback(async () => {
     const PAGE = 1000
     let all: RegistroCompra[] = []
     let from = 0
     let done = false
-    try {
-      const proyectoId = await getProyectoId(proyectoSlug!)
-      while (!done) {
-        const { data, error: qError } = await supabase
-          .from('registro_compras')
-          .select('*')
-          .eq('proyecto_id', proyectoId)
-          .order('fecha_guia', { ascending: false })
-          .order('id', { ascending: false })
-          .range(from, from + PAGE - 1)
-        if (qError) throw new Error(qError.message)
-        const rows = (data ?? []) as RegistroCompra[]
-        all = all.concat(rows)
-        done = rows.length < PAGE
-        from += PAGE
-      }
-      setRegistros(all)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al cargar registros')
-    } finally {
-      setLoading(false)
+    const proyectoId = await getProyectoId(proyectoSlug!)
+    while (!done) {
+      const { data, error: qError } = await supabase
+        .from('registro_compras')
+        .select('*')
+        .eq('proyecto_id', proyectoId)
+        .order('fecha_guia', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, from + PAGE - 1)
+      if (qError) throw new Error(qError.message)
+      const rows = (data ?? []) as RegistroCompra[]
+      all = all.concat(rows)
+      done = rows.length < PAGE
+      from += PAGE
     }
+    return all
   }, [proyectoSlug])
 
-  useEffect(() => {
-    refetch()
-  }, [refetch])
+  // Sin realtime acá: cache 2min + invalidación explícita tras cada mutación propia.
+  const { data, loading, error, refetch } = useCachedQuery<RegistroCompra[]>(cacheKey, fetchAll, 2 * 60_000)
+  const registros = data ?? []
 
   const crearMulti = useCallback(
     async (meta: MetaEntrada, lineas: LineaProducto[], createdBy: string, solicitudNumero: number | null) => {
@@ -153,6 +145,8 @@ export function useRegistroCompras() {
           .update({ estado: 'usada' })
           .eq('numero', solicitudNumero)
           .eq('proyecto_id', proyectoId)
+        // Cross-invalidation: useSolicitudes.ts cachea por proyectoSlug, misma key acá.
+        invalidate(`solicitudes:${proyectoSlug}`)
       }
       await refetch()
     },

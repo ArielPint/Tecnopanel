@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { getProyectoId } from '@/lib/proyectoIds'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 import { loadPlantaModulos, type PlantaModuloRow } from '../lib/supaData'
 import {
   catProgress, moduloProgress, isModuloIniciado, isModuloTerminado,
@@ -94,24 +95,14 @@ function enriquecer(rows: PlantaModuloRow[], excelData: ParsedDashboardData | nu
 
 export function useProduccionModulos(excelData: ParsedDashboardData | null) {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  const [rows, setRows] = useState<PlantaModuloRow[]>([])
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    let cancelado = false
-    setLoading(true)
-    getProyectoId(proyectoSlug!).then((proyectoId) =>
-      loadPlantaModulos(proyectoId).then((r) => {
-        if (!cancelado) {
-          setRows(r)
-          setLoading(false)
-        }
-      }),
-    )
-    return () => {
-      cancelado = true
-    }
+  const fetcher = useCallback(async () => {
+    const proyectoId = await getProyectoId(proyectoSlug!)
+    return loadPlantaModulos(proyectoId)
   }, [proyectoSlug])
+
+  const { data, loading } = useCachedQuery<PlantaModuloRow[]>(proyectoSlug ? `planta_modulos:${proyectoSlug}` : null, fetcher, 60_000)
+  const rows = data ?? []
 
   const modulos = useMemo(() => enriquecer(rows, excelData), [rows, excelData])
 

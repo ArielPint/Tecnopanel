@@ -1,26 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 import type { ForecastPresupuesto } from '@/modules/financiero/types/financiero'
 
 type ForecastInput = Pick<ForecastPresupuesto, 'presupuesto_id' | 'mes' | 'anio' | 'monto_forecast'>
 
 export function useForecast(presupuestoId?: string) {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  const [forecast, setForecast] = useState<ForecastPresupuesto[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  // Si presupuestoId cambia justo después de montar (ej. de '' al id real),
-  // el pedido anterior (sin filtro, más lento por traer más filas) puede
-  // resolver DESPUÉS del nuevo y pisar el resultado correcto. Este contador
-  // descarta cualquier respuesta que no sea la de la última request emitida.
-  const ultimaRequestId = useRef(0)
+  const cacheKey = proyectoSlug ? `forecast:${proyectoSlug}:${presupuestoId ?? ''}` : null
 
-  const refetch = useCallback(async () => {
-    const idDeEstaRequest = ++ultimaRequestId.current
-    setLoading(true)
-    setError(null)
+  const fetcher = useCallback(async () => {
     const proyectoId = await getProyectoId(proyectoSlug!)
     let query = supabase
       .from('financiero_forecast_presupuesto')
@@ -30,15 +21,13 @@ export function useForecast(presupuestoId?: string) {
       .order('mes')
     if (presupuestoId) query = query.eq('presupuesto_id', presupuestoId)
     const { data, error } = await query
-    if (idDeEstaRequest !== ultimaRequestId.current) return // llegó una request más nueva primero
-    if (error) setError(error.message)
-    else setForecast(data ?? [])
-    setLoading(false)
+    if (error) throw new Error(error.message)
+    return data ?? []
   }, [presupuestoId, proyectoSlug])
 
-  useEffect(() => {
-    refetch()
-  }, [refetch])
+  // Sin realtime acá: cache 1min, la key ya incluye presupuestoId así que no
+  // hace falta el contador de "última request" que evitaba el race al filtrar.
+  const { data, loading, error, refetch } = useCachedQuery<ForecastPresupuesto[]>(cacheKey, fetcher, 60_000)
 
   // Un forecast por (presupuesto_id, mes, anio) — upsert evita duplicar la
   // fila si ya existe (choca con la UNIQUE de la migración 007).
@@ -57,5 +46,5 @@ export function useForecast(presupuestoId?: string) {
     [refetch, proyectoSlug],
   )
 
-  return { forecast, loading, error, refetch, upsertForecast }
+  return { forecast: data ?? [], loading, error, refetch, upsertForecast }
 }

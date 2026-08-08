@@ -1,29 +1,26 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 import type { Proveedor } from '@/modules/financiero/types/financiero'
 
 export function useProveedores() {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  const [proveedores, setProveedores] = useState<Proveedor[]>([])
-  const [loading, setLoading] = useState(true)
+  const cacheKey = proyectoSlug ? `proveedores:${proyectoSlug}` : null
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
+  const fetcher = useCallback(async () => {
     const proyectoId = await getProyectoId(proyectoSlug!)
     const { data } = await supabase
       .from('financiero_proveedores')
       .select('*')
       .eq('proyecto_id', proyectoId)
       .order('nombre')
-    setProveedores(data ?? [])
-    setLoading(false)
+    return data ?? []
   }, [proyectoSlug])
 
-  useEffect(() => {
-    refetch()
-  }, [refetch])
+  // Catálogo, cambia poco: cache 5min.
+  const { data, loading, refetch } = useCachedQuery<Proveedor[]>(cacheKey, fetcher, 5 * 60_000)
 
   const crearProveedor = useCallback(
     async (rut: string, nombre: string) => {
@@ -40,5 +37,5 @@ export function useProveedores() {
     [refetch, proyectoSlug],
   )
 
-  return { proveedores, loading, refetch, crearProveedor }
+  return { proveedores: data ?? [], loading, refetch, crearProveedor }
 }

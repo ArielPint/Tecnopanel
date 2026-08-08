@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 
 export interface ItemSolicitud {
   codigo: string
@@ -42,24 +43,23 @@ export interface SolicitudInput {
 
 export function useSolicitudes() {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  const [solicitudes, setSolicitudes] = useState<Solicitud[]>([])
-  const [loading, setLoading] = useState(true)
+  const cacheKey = proyectoSlug ? `solicitudes:${proyectoSlug}` : null
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
+  const fetcher = useCallback(async (): Promise<Solicitud[]> => {
     const proyectoId = await getProyectoId(proyectoSlug!)
     const { data, error } = await supabase
       .from('solicitudes')
       .select('*')
       .eq('proyecto_id', proyectoId)
       .order('created_at', { ascending: false })
-    if (!error) setSolicitudes((data ?? []) as Solicitud[])
-    setLoading(false)
+    if (error) throw new Error(error.message)
+    return (data ?? []) as Solicitud[]
   }, [proyectoSlug])
 
-  useEffect(() => {
-    refetch()
-  }, [refetch])
+  // Sin realtime: cache 60s + invalidación explícita tras mutación propia
+  // (también invalidada cruzadamente desde useRegistroCompras al marcar 'usada').
+  const { data, loading, refetch } = useCachedQuery<Solicitud[]>(cacheKey, fetcher, 60_000)
+  const solicitudes = data ?? []
 
   const crear = useCallback(
     async (input: SolicitudInput) => {

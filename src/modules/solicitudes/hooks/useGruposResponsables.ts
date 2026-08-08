@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 
 export interface Grupo {
   id: number
@@ -17,30 +18,25 @@ export interface RecetaItem {
   codigo: string
 }
 
+interface GruposResponsablesData {
+  grupos: Grupo[]
+  responsables: Responsable[]
+}
+
 export function useGruposResponsables() {
-  const [grupos, setGrupos] = useState<Grupo[]>([])
-  const [responsables, setResponsables] = useState<Responsable[]>([])
-  const [loading, setLoading] = useState(true)
   const [recetas, setRecetas] = useState<Record<number, string[]>>({})
   const [recetasItems, setRecetasItems] = useState<Record<number, RecetaItem[]>>({})
 
-  useEffect(() => {
-    let cancelado = false
-    async function cargar() {
-      const [rg, rr] = await Promise.all([
-        supabase.from('grupos').select('id, nombre').eq('activo', true).order('nombre'),
-        supabase.from('responsables').select('id, nombre, grupo_id').eq('activo', true).order('nombre'),
-      ])
-      if (cancelado) return
-      setGrupos((rg.data ?? []) as Grupo[])
-      setResponsables((rr.data ?? []) as Responsable[])
-      setLoading(false)
-    }
-    cargar()
-    return () => {
-      cancelado = true
-    }
+  const fetcher = useCallback(async (): Promise<GruposResponsablesData> => {
+    const [rg, rr] = await Promise.all([
+      supabase.from('grupos').select('id, nombre').eq('activo', true).order('nombre'),
+      supabase.from('responsables').select('id, nombre, grupo_id').eq('activo', true).order('nombre'),
+    ])
+    return { grupos: (rg.data ?? []) as Grupo[], responsables: (rr.data ?? []) as Responsable[] }
   }, [])
+
+  // Catálogo global (sin scope por proyecto), cambia poco: cache 5min. Sin realtime.
+  const { data, loading } = useCachedQuery<GruposResponsablesData>('grupos_responsables', fetcher, 5 * 60_000)
 
   const cargarReceta = useCallback(
     async (grupoId: number): Promise<string[]> => {
@@ -73,5 +69,14 @@ export function useGruposResponsables() {
     await cargarRecetaItems(grupoId)
   }, [cargarRecetaItems])
 
-  return { grupos, responsables, loading, cargarReceta, recetasItems, cargarRecetaItems, agregarReceta, quitarReceta }
+  return {
+    grupos: data?.grupos ?? [],
+    responsables: data?.responsables ?? [],
+    loading,
+    cargarReceta,
+    recetasItems,
+    cargarRecetaItems,
+    agregarReceta,
+    quitarReceta,
+  }
 }

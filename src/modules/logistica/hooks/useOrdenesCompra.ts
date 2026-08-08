@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 import { getVTI } from '../lib/calc'
 
 export interface OrdenCompra {
@@ -32,22 +33,20 @@ function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 }
 
+interface OrdenesData {
+  ordenes: OrdenCompra[]
+  guias: OCGuia[]
+  montoPorOC: Record<string, number>
+}
+
 export function useOrdenesCompra() {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  const [ordenes, setOrdenes] = useState<OrdenCompra[]>([])
-  const [guias, setGuias] = useState<OCGuia[]>([])
-  const [montoPorOC, setMontoPorOC] = useState<Record<string, number>>({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  const fetcher = useCallback(async (): Promise<OrdenesData> => {
     const proyectoId = await getProyectoId(proyectoSlug!)
 
     const PAGE = 1000
     let comprasData: { gd: string; cantidad_sol: number | null; devolucion: number | null; valor_und: number | null; valor_total_item: number | null }[] = []
-    let comprasError: string | null = null
     let from = 0
     let done = false
     while (!done) {
@@ -56,10 +55,7 @@ export function useOrdenesCompra() {
         .select('gd,cantidad_sol,devolucion,valor_und,valor_total_item')
         .eq('proyecto_id', proyectoId)
         .range(from, from + PAGE - 1)
-      if (qError) {
-        comprasError = qError.message
-        break
-      }
+      if (qError) throw new Error(qError.message)
       const rows = data ?? []
       comprasData = comprasData.concat(rows)
       done = rows.length < PAGE
@@ -70,33 +66,34 @@ export function useOrdenesCompra() {
       supabase.from('ordenes_compra').select('*').eq('proyecto_id', proyectoId).order('created_at', { ascending: false }),
       supabase.from('oc_guias').select('*').eq('proyecto_id', proyectoId),
     ])
-    if (ocRes.error) setError(ocRes.error.message)
-    else if (ogRes.error) setError(ogRes.error.message)
-    else if (comprasError) setError(comprasError)
-    else {
-      const ocData = (ocRes.data ?? []) as OrdenCompra[]
-      const ogData = (ogRes.data ?? []) as OCGuia[]
-      setOrdenes(ocData)
-      setGuias(ogData)
+    if (ocRes.error) throw new Error(ocRes.error.message)
+    if (ogRes.error) throw new Error(ogRes.error.message)
 
-      const montoPorGD: Record<string, number> = {}
-      for (const r of comprasData) {
-        const gd = String(r.gd)
-        montoPorGD[gd] = (montoPorGD[gd] || 0) + getVTI(r)
-      }
-      const montos: Record<string, number> = {}
-      for (const oc of ocData) {
-        const gds = ogData.filter((og) => og.oc_id === oc.id).map((og) => String(og.gd))
-        montos[oc.id] = gds.reduce((s, gd) => s + (montoPorGD[gd] || 0), 0)
-      }
-      setMontoPorOC(montos)
+    const ocData = (ocRes.data ?? []) as OrdenCompra[]
+    const ogData = (ogRes.data ?? []) as OCGuia[]
+
+    const montoPorGD: Record<string, number> = {}
+    for (const r of comprasData) {
+      const gd = String(r.gd)
+      montoPorGD[gd] = (montoPorGD[gd] || 0) + getVTI(r)
     }
-    setLoading(false)
+    const montos: Record<string, number> = {}
+    for (const oc of ocData) {
+      const gds = ogData.filter((og) => og.oc_id === oc.id).map((og) => String(og.gd))
+      montos[oc.id] = gds.reduce((s, gd) => s + (montoPorGD[gd] || 0), 0)
+    }
+
+    return { ordenes: ocData, guias: ogData, montoPorOC: montos }
   }, [proyectoSlug])
 
-  useEffect(() => {
-    refetch()
-  }, [refetch])
+  const { data, loading, error, refetch } = useCachedQuery<OrdenesData>(
+    proyectoSlug ? `ordenes_compra:${proyectoSlug}` : null,
+    fetcher,
+    60_000,
+  )
+  const ordenes = data?.ordenes ?? []
+  const guias = data?.guias ?? []
+  const montoPorOC = data?.montoPorOC ?? {}
 
   const guardar = useCallback(
     async (input: NuevaOC, id: string | null, createdBy: string) => {

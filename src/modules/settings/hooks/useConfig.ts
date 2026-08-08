@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 
 async function loadTotalComprado(): Promise<number> {
   const PAGE = 1000
@@ -25,25 +26,24 @@ async function loadTotalComprado(): Promise<number> {
   return total
 }
 
-export function useConfigFinanciero() {
-  const [totalComprado, setTotalComprado] = useState<number | null>(null)
-  const [presupuesto, setPresupuesto] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
+interface ConfigFinancieroData {
+  totalComprado: number
+  presupuesto: number | null
+}
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
+// Global, sin scope por proyecto. loadTotalComprado escanea registro_compras
+// completo (paginado) — vale cachear 30s para no repetir el escaneo en cada
+// visita a Settings. Sin realtime.
+export function useConfigFinanciero() {
+  const fetcher = useCallback(async (): Promise<ConfigFinancieroData> => {
     const [comprado, { data }] = await Promise.all([
       loadTotalComprado(),
       supabase.from('config').select('value').eq('key', 'presupuesto_total').maybeSingle(),
     ])
-    setTotalComprado(comprado)
-    setPresupuesto(data?.value != null ? parseFloat(data.value) || null : null)
-    setLoading(false)
+    return { totalComprado: comprado, presupuesto: data?.value != null ? parseFloat(data.value) || null : null }
   }, [])
 
-  useEffect(() => {
-    refetch()
-  }, [refetch])
+  const { data, loading, refetch } = useCachedQuery<ConfigFinancieroData>('config_financiero', fetcher, 30_000)
 
   const guardarPresupuesto = useCallback(
     async (valor: number) => {
@@ -54,7 +54,7 @@ export function useConfigFinanciero() {
     [refetch],
   )
 
-  return { totalComprado, presupuesto, loading, guardarPresupuesto }
+  return { totalComprado: data?.totalComprado ?? null, presupuesto: data?.presupuesto ?? null, loading, guardarPresupuesto }
 }
 
 export function useRitmoProyeccion() {

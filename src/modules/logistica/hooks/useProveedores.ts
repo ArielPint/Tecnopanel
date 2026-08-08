@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 
 export interface Proveedor {
   id: string
@@ -24,19 +25,14 @@ export interface ProveedorInput {
 }
 
 export function useProveedores() {
-  const [proveedores, setProveedores] = useState<Proveedor[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const refetch = useCallback(async () => {
-    setLoading(true)
+  const fetcher = useCallback(async () => {
     const { data, error } = await supabase.from('proveedores').select('*').eq('activo', true).order('nombre', { ascending: true })
-    if (!error) setProveedores((data ?? []) as Proveedor[])
-    setLoading(false)
+    if (error) throw new Error(error.message)
+    return (data ?? []) as Proveedor[]
   }, [])
 
-  useEffect(() => {
-    refetch()
-  }, [refetch])
+  const { data, loading, refetch } = useCachedQuery<Proveedor[]>('proveedores', fetcher, 5 * 60_000)
+  const proveedores = data ?? []
 
   const crear = useCallback(
     async (input: ProveedorInput, creadoPor: string) => {

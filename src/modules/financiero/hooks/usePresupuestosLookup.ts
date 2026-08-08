@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 
 export interface PresupuestoLookup {
   id: string
@@ -12,28 +13,25 @@ export interface PresupuestoLookup {
 
 // Vista mínima (sin montos) legible por cualquier autenticado — ver migración 015.
 // Usar esta, no usePresupuestos, en formularios de OC/Facturas.
+// Catálogo, cambia poco: cache 5min, sin invalidación por escritura (no hay mutaciones acá).
 export function usePresupuestosLookup() {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  const [presupuestos, setPresupuestos] = useState<PresupuestoLookup[]>([])
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    let cancelado = false
-    ;(async () => {
-      const proyectoId = await getProyectoId(proyectoSlug!)
-      const { data } = await supabase
-        .from('financiero_presupuestos_lookup')
-        .select('*')
-        .eq('proyecto_id', proyectoId)
-        .order('nombre')
-      if (cancelado) return
-      setPresupuestos(data ?? [])
-      setLoading(false)
-    })()
-    return () => {
-      cancelado = true
-    }
+  const fetcher = useCallback(async () => {
+    const proyectoId = await getProyectoId(proyectoSlug!)
+    const { data } = await supabase
+      .from('financiero_presupuestos_lookup')
+      .select('*')
+      .eq('proyecto_id', proyectoId)
+      .order('nombre')
+    return data ?? []
   }, [proyectoSlug])
 
-  return { presupuestos, loading }
+  const { data, loading } = useCachedQuery<PresupuestoLookup[]>(
+    proyectoSlug ? `presupuestos_lookup:${proyectoSlug}` : null,
+    fetcher,
+    5 * 60_000,
+  )
+
+  return { presupuestos: data ?? [], loading }
 }

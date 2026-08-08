@@ -1,33 +1,30 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 import type { EstadoPagoDocumento, EstadoPagoHistorialItem } from '../types'
+
+interface Detalle {
+  documentos: EstadoPagoDocumento[]
+  historial: EstadoPagoHistorialItem[]
+}
 
 // Documentos + historial de un EP puntual — se cargan aparte de la lista
 // principal (useEstadosPago) porque solo hacen falta al abrir el detalle.
+// Sin realtime: cache 60s por estadoPagoId, refetch tras mutación propia.
 export function useEstadoPagoDetalle(estadoPagoId: string | null) {
-  const [documentos, setDocumentos] = useState<EstadoPagoDocumento[]>([])
-  const [historial, setHistorial] = useState<EstadoPagoHistorialItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const cacheKey = estadoPagoId ? `estado_pago_detalle:${estadoPagoId}` : null
 
-  const refetch = useCallback(async () => {
-    if (!estadoPagoId) {
-      setDocumentos([])
-      setHistorial([])
-      return
-    }
-    setLoading(true)
+  const fetcher = useCallback(async (): Promise<Detalle> => {
     const [{ data: docs }, { data: hist }] = await Promise.all([
       supabase.from('estados_pago_documentos').select('*').eq('estado_pago_id', estadoPagoId).order('created_at'),
       supabase.from('estados_pago_historial').select('*').eq('estado_pago_id', estadoPagoId).order('created_at'),
     ])
-    setDocumentos(docs ?? [])
-    setHistorial(hist ?? [])
-    setLoading(false)
+    return { documentos: docs ?? [], historial: hist ?? [] }
   }, [estadoPagoId])
 
-  useEffect(() => {
-    refetch()
-  }, [refetch])
+  const { data, loading, refetch } = useCachedQuery<Detalle>(cacheKey, fetcher, 60_000)
+  const documentos = estadoPagoId ? data?.documentos ?? [] : []
+  const historial = estadoPagoId ? data?.historial ?? [] : []
 
   const agregarDocumento = useCallback(
     async (nombre: string, storagePath: string) => {
@@ -51,5 +48,5 @@ export function useEstadoPagoDetalle(estadoPagoId: string | null) {
     [refetch],
   )
 
-  return { documentos, historial, loading, refetch, agregarDocumento, eliminarDocumentoFila }
+  return { documentos, historial, loading: estadoPagoId ? loading : false, refetch, agregarDocumento, eliminarDocumentoFila }
 }

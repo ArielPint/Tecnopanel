@@ -1,20 +1,17 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 import type { GastoDirecto } from '@/modules/financiero/types/financiero'
 
 type NuevoGasto = Pick<GastoDirecto, 'presupuesto_id' | 'mes' | 'anio' | 'monto' | 'observacion' | 'proveedor_rut'>
 
 export function useGastosDirectos() {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  const [gastos, setGastos] = useState<GastoDirecto[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const cacheKey = proyectoSlug ? `gastos_directos:${proyectoSlug}` : null
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  const fetcher = useCallback(async () => {
     const proyectoId = await getProyectoId(proyectoSlug!)
     const { data, error } = await supabase
       .from('financiero_gastos_directos')
@@ -22,14 +19,12 @@ export function useGastosDirectos() {
       .eq('proyecto_id', proyectoId)
       .order('anio', { ascending: false })
       .order('mes', { ascending: false })
-    if (error) setError(error.message)
-    else setGastos(data ?? [])
-    setLoading(false)
+    if (error) throw new Error(error.message)
+    return data ?? []
   }, [proyectoSlug])
 
-  useEffect(() => {
-    refetch()
-  }, [refetch])
+  // Sin realtime acá: cache 1min + invalidación explícita tras cada mutación propia.
+  const { data, loading, error, refetch } = useCachedQuery<GastoDirecto[]>(cacheKey, fetcher, 60_000)
 
   const upsertGasto = useCallback(
     async (input: NuevoGasto & { id?: string }) => {
@@ -49,5 +44,5 @@ export function useGastosDirectos() {
     [refetch, proyectoSlug],
   )
 
-  return { gastos, loading, error, refetch, upsertGasto }
+  return { gastos: data ?? [], loading, error, refetch, upsertGasto }
 }

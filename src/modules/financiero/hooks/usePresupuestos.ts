@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 import type { Presupuesto } from '@/modules/financiero/types/financiero'
 
 type NuevoPresupuesto = Pick<
@@ -11,27 +12,21 @@ type NuevoPresupuesto = Pick<
 
 export function usePresupuestos() {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const cacheKey = proyectoSlug ? `presupuestos:${proyectoSlug}` : null
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  const fetcher = useCallback(async () => {
     const proyectoId = await getProyectoId(proyectoSlug!)
     const { data, error } = await supabase
       .from('financiero_presupuestos')
       .select('*')
       .eq('proyecto_id', proyectoId)
       .order('codigo_articulo')
-    if (error) setError(error.message)
-    else setPresupuestos(data ?? [])
-    setLoading(false)
+    if (error) throw new Error(error.message)
+    return data ?? []
   }, [proyectoSlug])
 
-  useEffect(() => {
-    refetch()
-  }, [refetch])
+  // Sin realtime acá: cache 1min + invalidación explícita tras cada mutación propia.
+  const { data, loading, error, refetch } = useCachedQuery<Presupuesto[]>(cacheKey, fetcher, 60_000)
 
   const createPresupuesto = useCallback(
     async (input: NuevoPresupuesto) => {
@@ -63,5 +58,5 @@ export function usePresupuestos() {
     [refetch],
   )
 
-  return { presupuestos, loading, error, refetch, createPresupuesto, updatePresupuesto }
+  return { presupuestos: data ?? [], loading, error, refetch, createPresupuesto, updatePresupuesto }
 }

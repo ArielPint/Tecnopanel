@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { supabase } from '../../lib/supabaseClient'
+import { useCachedQuery } from '@/lib/useCachedQuery'
 import type { Proyecto, ProjectKpi } from './types'
 
 interface DashboardData {
@@ -9,62 +10,38 @@ interface DashboardData {
   error: string | null
 }
 
+interface DashboardRaw {
+  proyectos: Proyecto[]
+  kpisPorProyecto: Record<string, ProjectKpi[]>
+}
+
+// Global (todos los proyectos, sin scope por proyectoSlug). Sin realtime y sin
+// mutaciones propias acá — cache 60s.
 export function useDashboardData(): DashboardData {
-  const [proyectos, setProyectos] = useState<Proyecto[]>([])
-  const [kpisPorProyecto, setKpisPorProyecto] = useState<Record<string, ProjectKpi[]>>({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const fetcher = useCallback(async (): Promise<DashboardRaw> => {
+    const { data: proyectosData, error: proyectosError } = await supabase.from('proyectos').select('*').order('nombre')
+    if (proyectosError) throw new Error(proyectosError.message)
 
-  useEffect(() => {
-    let cancelled = false
+    const { data: kpisData, error: kpisError } = await supabase
+      .from('project_kpis')
+      .select('*')
+      .order('timestamp', { ascending: false })
+    if (kpisError) throw new Error(kpisError.message)
 
-    async function load() {
-      setLoading(true)
-      setError(null)
-
-      const { data: proyectosData, error: proyectosError } = await supabase
-        .from('proyectos')
-        .select('*')
-        .order('nombre')
-
-      if (proyectosError) {
-        if (!cancelled) {
-          setError(proyectosError.message)
-          setLoading(false)
-        }
-        return
-      }
-
-      const { data: kpisData, error: kpisError } = await supabase
-        .from('project_kpis')
-        .select('*')
-        .order('timestamp', { ascending: false })
-
-      if (kpisError) {
-        if (!cancelled) {
-          setError(kpisError.message)
-          setLoading(false)
-        }
-        return
-      }
-
-      if (!cancelled) {
-        const grouped: Record<string, ProjectKpi[]> = {}
-        for (const kpi of kpisData ?? []) {
-          if (!grouped[kpi.proyecto_id]) grouped[kpi.proyecto_id] = []
-          grouped[kpi.proyecto_id].push(kpi)
-        }
-        setProyectos(proyectosData ?? [])
-        setKpisPorProyecto(grouped)
-        setLoading(false)
-      }
+    const grouped: Record<string, ProjectKpi[]> = {}
+    for (const kpi of kpisData ?? []) {
+      if (!grouped[kpi.proyecto_id]) grouped[kpi.proyecto_id] = []
+      grouped[kpi.proyecto_id].push(kpi)
     }
-
-    load()
-    return () => {
-      cancelled = true
-    }
+    return { proyectos: proyectosData ?? [], kpisPorProyecto: grouped }
   }, [])
 
-  return { proyectos, kpisPorProyecto, loading, error }
+  const { data, loading, error } = useCachedQuery<DashboardRaw>('dashboard_data', fetcher, 60_000)
+
+  return {
+    proyectos: data?.proyectos ?? [],
+    kpisPorProyecto: data?.kpisPorProyecto ?? {},
+    loading,
+    error,
+  }
 }
