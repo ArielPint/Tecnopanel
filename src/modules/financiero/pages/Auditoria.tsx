@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import EmptyState from '@/modules/financiero/components/EmptyState'
 import TableSkeleton from '@/modules/financiero/components/TableSkeleton'
-import { formatFecha } from '@/modules/financiero/utils/formatters'
+import { formatFechaHora } from '@/modules/financiero/utils/formatters'
 
 const TABLAS = [
   { value: 'financiero_presupuestos', label: 'Presupuestos' },
@@ -79,7 +79,7 @@ export default function Auditoria() {
               <TableBody>
                 {auditLog.map((entry) => (
                   <TableRow key={entry.id}>
-                    <TableCell>{formatFecha(entry.fecha)}</TableCell>
+                    <TableCell>{formatFechaHora(entry.fecha)}</TableCell>
                     <TableCell>{nombreTabla(entry.tabla_afectada)}</TableCell>
                     <TableCell>
                       <Badge variant={entry.accion === 'INSERT' ? 'default' : 'secondary'}>{entry.accion}</Badge>
