@@ -19,11 +19,12 @@ export function usePresupuestosLookup() {
 
   const fetcher = useCallback(async () => {
     const proyectoId = await getProyectoId(proyectoSlug!)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('financiero_presupuestos_lookup')
       .select('*')
       .eq('proyecto_id', proyectoId)
       .order('nombre')
+    if (error) throw new Error(error.message)
     return data ?? []
   }, [proyectoSlug])
 

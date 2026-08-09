@@ -28,6 +28,7 @@ export type FinancieroSeccionEditable = 'oc' | 'presupuestos' | 'remuneraciones'
 interface AuthValue {
   perfil: Perfil | null
   loading: boolean
+  authError: string | null
   isAuthenticated: boolean
   isAdmin: boolean
   canEditOC: boolean
@@ -41,39 +42,51 @@ const AuthContext = createContext<AuthValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [perfil, setPerfil] = useState<Perfil | null>(null)
+  const [authError, setAuthError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelado = false
 
     async function cargarPerfil() {
-      const { data: sessionData } = await supabase.auth.getSession()
-      const userId = sessionData.session?.user.id
-      if (!userId) {
-        if (!cancelado) {
-          setPerfil(null)
-          setLoading(false)
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const userId = sessionData.session?.user.id
+        if (!userId) {
+          if (!cancelado) {
+            setPerfil(null)
+            setLoading(false)
+          }
+          return
         }
-        return
-      }
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, username, nombre, apellido, activo, permissions')
-        .eq('id', userId)
-        .single()
-      if (!cancelado) {
-        setPerfil(
-          data
-            ? {
-                id: data.id,
-                username: data.username ?? '',
-                name: [data.nombre, data.apellido].filter(Boolean).join(' '),
-                role: '',
-                active: data.activo,
-                permissions: data.permissions,
-              }
-            : null,
-        )
-        setLoading(false)
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, username, nombre, apellido, activo, permissions')
+          .eq('id', userId)
+          .single()
+        if (error) throw error
+        if (!cancelado) {
+          setAuthError(null)
+          setPerfil(
+            data
+              ? {
+                  id: data.id,
+                  username: data.username ?? '',
+                  name: [data.nombre, data.apellido].filter(Boolean).join(' '),
+                  role: '',
+                  active: data.activo,
+                  permissions: data.permissions,
+                }
+              : null,
+          )
+        }
+      } catch (err) {
+        console.error('Error al cargar perfil:', err)
+        if (!cancelado) {
+          setAuthError(err instanceof Error ? err.message : 'Error al cargar perfil')
+          setPerfil(null)
+        }
+      } finally {
+        if (!cancelado) setLoading(false)
       }
     }
 
@@ -108,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         perfil: perfilConRol,
         loading: loading || acceso.loading,
+        authError,
         isAuthenticated: !!perfil,
         isAdmin,
         canEditOC,

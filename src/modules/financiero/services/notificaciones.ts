@@ -6,9 +6,10 @@ import { supabase } from '@/lib/supabaseClient'
 // no envía nada (sent: 0) — no es un error, solo falta esa configuración.
 export async function notificarFacturaSuperaOC(mensaje: string) {
   try {
-    await supabase.functions.invoke('telegram-notify', {
+    const { error } = await supabase.functions.invoke('telegram-notify', {
       body: { evento: 'factura_supera_oc', message: mensaje },
     })
+    if (error) console.warn('No se pudo enviar la notificación de Telegram', error.message)
   } catch (err) {
     console.warn('No se pudo enviar la notificación de Telegram', err)
   }
