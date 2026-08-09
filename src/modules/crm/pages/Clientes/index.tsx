@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, UserPlus, X, Building2, Clock, User } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
+import { handleSupabaseError } from '@/modules/crm/lib/errors'
 
 interface Cliente {
   id: string; razon_social: string; rut: string; tipo: string; rubro: string
@@ -53,23 +54,26 @@ export default function Clientes() {
   const [search, setSearch] = useState('')
 
   async function load() {
-    const { data } = await supabase.from('clientes').select('*').order('razon_social')
+    const { data, error } = await supabase.from('clientes').select('*').order('razon_social')
+    handleSupabaseError(error, 'Clientes.load')
     setClientes((data as Cliente[]) || [])
     setLoading(false)
   }
 
   async function loadContactos(clienteId: string) {
-    const { data } = await supabase.from('cliente_contactos').select('*').eq('cliente_id', clienteId).order('created_at')
+    const { data, error } = await supabase.from('cliente_contactos').select('*').eq('cliente_id', clienteId).order('created_at')
+    handleSupabaseError(error, 'Clientes.loadContactos')
     setContactos(prev => ({ ...prev, [clienteId]: (data as Contacto[]) || [] }))
   }
 
   async function loadHistorial(clienteId: string) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('cliente_historial')
       .select('id,tipo,datos_antes,datos_despues,created_at,usuario_id')
       .eq('cliente_id', clienteId)
       .order('created_at', { ascending: false })
       .limit(20)
+    handleSupabaseError(error, 'Clientes.loadHistorial')
 
     const entries = (data as (HistorialEntry & { usuario_id: string | null })[]) || []
 
@@ -77,7 +81,8 @@ export default function Clientes() {
     const uids = [...new Set(entries.map(e => e.usuario_id).filter(Boolean))]
     let userMap: Record<string, { nombre: string; apellido: string }> = {}
     if (uids.length) {
-      const { data: profiles } = await supabase.from('profiles').select('id,nombre,apellido').in('id', uids)
+      const { data: profiles, error: profErr } = await supabase.from('profiles').select('id,nombre,apellido').in('id', uids)
+      handleSupabaseError(profErr, 'Clientes.loadHistorial.profiles')
       userMap = Object.fromEntries((profiles || []).map((p: { id: string; nombre: string; apellido: string }) => [p.id, p]))
     }
 
@@ -97,19 +102,21 @@ export default function Clientes() {
   }
 
   async function registrarHistorial(clienteId: string, tipo: 'creacion' | 'modificacion', datosAntes: object | null, datosDespues: object) {
-    await supabase.from('cliente_historial').insert({
+    const { error } = await supabase.from('cliente_historial').insert({
       cliente_id: clienteId,
       usuario_id: user?.id ?? null,
       tipo,
       datos_antes: datosAntes,
       datos_despues: datosDespues,
     })
+    handleSupabaseError(error, 'Clientes.registrarHistorial')
   }
 
   async function saveCliente() {
     setSaving(true)
     if (editCliente) {
-      await supabase.from('clientes').update(clienteForm).eq('id', editCliente.id)
+      const { error } = await supabase.from('clientes').update(clienteForm).eq('id', editCliente.id)
+      if (handleSupabaseError(error, 'Clientes.saveCliente.update')) { setSaving(false); return }
       await registrarHistorial(editCliente.id, 'modificacion', {
         razon_social: editCliente.razon_social, rut: editCliente.rut, tipo: editCliente.tipo,
         rubro: editCliente.rubro, direccion: editCliente.direccion, ciudad: editCliente.ciudad,
@@ -120,7 +127,8 @@ export default function Clientes() {
       // Refrescar historial si está visible
       if (expanded === editCliente.id) await loadHistorial(editCliente.id)
     } else {
-      const { data } = await supabase.from('clientes').insert(clienteForm).select('id').single()
+      const { data, error } = await supabase.from('clientes').insert(clienteForm).select('id').single()
+      if (handleSupabaseError(error, 'Clientes.saveCliente.insert')) { setSaving(false); return }
       if (data) await registrarHistorial(data.id, 'creacion', null, clienteForm)
     }
     setSaving(false); setEditCliente(null); setNewCliente(false); load()
@@ -128,17 +136,20 @@ export default function Clientes() {
 
   async function deleteCliente(id: string) {
     if (!confirm('¿Eliminar este cliente?')) return
-    await supabase.from('clientes').delete().eq('id', id)
+    const { error } = await supabase.from('clientes').delete().eq('id', id)
+    if (handleSupabaseError(error, 'Clientes.deleteCliente')) return
     setExpanded(null); load()
   }
 
   async function saveContacto() {
     setSaving(true)
     if (editContacto) {
-      await supabase.from('cliente_contactos').update(contactoForm).eq('id', editContacto.id)
+      const { error } = await supabase.from('cliente_contactos').update(contactoForm).eq('id', editContacto.id)
+      if (handleSupabaseError(error, 'Clientes.saveContacto.update')) { setSaving(false); return }
       await loadContactos(editContacto.cliente_id)
     } else if (newContacto) {
-      await supabase.from('cliente_contactos').insert({ ...contactoForm, cliente_id: newContacto })
+      const { error } = await supabase.from('cliente_contactos').insert({ ...contactoForm, cliente_id: newContacto })
+      if (handleSupabaseError(error, 'Clientes.saveContacto.insert')) { setSaving(false); return }
       await loadContactos(newContacto)
     }
     setSaving(false); setEditContacto(null); setNewContacto(null)
@@ -146,7 +157,8 @@ export default function Clientes() {
 
   async function deleteContacto(c: Contacto) {
     if (!confirm('¿Eliminar este contacto?')) return
-    await supabase.from('cliente_contactos').delete().eq('id', c.id)
+    const { error } = await supabase.from('cliente_contactos').delete().eq('id', c.id)
+    if (handleSupabaseError(error, 'Clientes.deleteContacto')) return
     await loadContactos(c.cliente_id)
   }
 

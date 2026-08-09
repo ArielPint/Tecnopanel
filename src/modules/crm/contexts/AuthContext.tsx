@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
 import type { Profile } from '@/modules/crm/types/database'
+import { handleSupabaseError } from '@/modules/crm/lib/errors'
 
 interface AuthContextType {
   session:  Session | null
@@ -36,11 +37,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function loadProfile(userId: string) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single()
+    if (handleSupabaseError(error, 'AuthContext.loadProfile')) {
+      setProfile(null)
+      setLoading(false)
+      return
+    }
     setProfile(data)
     setLoading(false)
   }
@@ -51,7 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut()
+    handleSupabaseError(error, 'AuthContext.signOut')
   }
 
   return (

@@ -33,7 +33,8 @@ function ForcePasswordChange({ userId }: { userId: string }) {
     setSaving(true); setError(null)
     const { error: err } = await supabase.auth.updateUser({ password: newPass })
     if (err) { setError(err.message); setSaving(false); return }
-    await supabase.from('profiles').update({ must_change_password: false }).eq('id', userId)
+    const { error: profileErr } = await supabase.from('profiles').update({ must_change_password: false }).eq('id', userId)
+    if (profileErr) { setError(profileErr.message); setSaving(false); return }
     window.location.reload()
   }
 

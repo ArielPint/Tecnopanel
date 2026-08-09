@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { Bell, CheckCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
+import { handleSupabaseError } from '@/modules/crm/lib/errors'
 
 interface Notif {
   id: string
@@ -39,11 +40,12 @@ export default function NotificationsBell() {
 
   async function load() {
     if (!profile?.id) return
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('notifications')
       .select('id,tipo,titulo,mensaje,leida,created_at')
       .order('created_at', { ascending: false })
       .limit(20)
+    handleSupabaseError(error, 'NotificationsBell.load')
     setNotifs((data as Notif[]) ?? [])
   }
 
@@ -59,7 +61,8 @@ export default function NotificationsBell() {
 
   async function markAllRead() {
     if (!profile?.id) return
-    await supabase.from('notifications').update({ leida: true }).eq('leida', false)
+    const { error } = await supabase.from('notifications').update({ leida: true }).eq('leida', false)
+    if (handleSupabaseError(error, 'NotificationsBell.markAllRead')) return
     setNotifs(n => n.map(x => ({ ...x, leida: true })))
   }
 

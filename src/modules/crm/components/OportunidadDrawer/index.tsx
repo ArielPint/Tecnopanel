@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
+import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import type { Oportunidad, Profile, OportunidadHistorialEtapa, OportunidadDocumento, OportunidadAsignacion, TareaIngenieria, MensajeOportunidad, Cierre, TipologiaVitPrecio, ZonaTermicaVit, TipoSubsidioVit } from '@/modules/crm/types/database'
 import { FAMILIA_PRODUCTOS_OPCIONES, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
 
@@ -348,20 +349,20 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       fecha_oc: ocForm.fecha_oc || null,
       storage_oc_path: storagePath,
     }
-    if (cierre) {
-      await supabase.from('cierres').update(payload).eq('id', cierre.id)
-    } else {
-      await supabase.from('cierres').insert({
-        oportunidad_id: opp.id, resultado: 'ganado', registrado_por: profile?.id, ...payload,
-      })
-    }
+    const { error } = cierre
+      ? await supabase.from('cierres').update(payload).eq('id', cierre.id)
+      : await supabase.from('cierres').insert({
+          oportunidad_id: opp.id, resultado: 'ganado', registrado_por: profile?.id, ...payload,
+        })
     setOcFile(null); setSavingOc(false)
+    if (handleSupabaseError(error, 'OportunidadDrawer.guardarOc')) return
     await loadAll()
   }
 
   async function loadMensajes() {
-    const { data } = await supabase.from('mensajes_oportunidad').select('*,usuario:profiles(nombre,apellido)')
+    const { data, error } = await supabase.from('mensajes_oportunidad').select('*,usuario:profiles(nombre,apellido)')
       .eq('oportunidad_id', opp.id).order('created_at', { ascending: true })
+    handleSupabaseError(error, 'OportunidadDrawer.loadMensajes')
     setMensajes((data as MensajeOportunidad[]) ?? [])
   }
 
@@ -369,26 +370,32 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     if (!nuevoMensaje.trim() || !profile?.id) return
     const texto = nuevoMensaje.trim()
     setNuevoMensaje('')
-    await supabase.from('mensajes_oportunidad').insert({
+    const { error } = await supabase.from('mensajes_oportunidad').insert({
       oportunidad_id: opp.id, etapa: opp.etapa_actual, usuario_id: profile.id, mensaje: texto,
     })
+    if (handleSupabaseError(error, 'OportunidadDrawer.enviarMensaje')) {
+      setNuevoMensaje(texto)
+      return
+    }
     await loadMensajes()
   }
 
   async function crearTarea() {
     if (!nuevaTarea.titulo.trim()) return
     setCreandoTarea(true)
-    const { data: tarea } = await supabase.from('tareas_ingenieria').insert({
+    const { data: tarea, error: tareaErr } = await supabase.from('tareas_ingenieria').insert({
       oportunidad_id: opp.id, titulo: nuevaTarea.titulo.trim(),
       descripcion: nuevaTarea.descripcion.trim() || null,
       prioridad: Number(nuevaTarea.prioridad),
       fecha_limite: nuevaTarea.fecha_limite || null,
     }).select('id').single()
+    if (handleSupabaseError(tareaErr, 'OportunidadDrawer.crearTarea')) { setCreandoTarea(false); return }
     if (tarea && nuevaTarea.asignados_ids.length) {
-      await supabase.from('tarea_asignaciones').insert(
+      const { error: asigErr } = await supabase.from('tarea_asignaciones').insert(
         nuevaTarea.asignados_ids.map(usuario_id => ({ tarea_id: tarea.id, usuario_id, asignado_por: profile?.id }))
       )
-      await supabase.from('notifications').insert(
+      handleSupabaseError(asigErr, 'OportunidadDrawer.crearTarea.asignaciones')
+      const { error: notifErr } = await supabase.from('notifications').insert(
         nuevaTarea.asignados_ids.map(user_id => ({
           user_id, tipo: 'asignacion',
           titulo: `Nueva tarea: ${nuevaTarea.titulo.trim()}`,
@@ -396,6 +403,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
           oportunidad_id: opp.id,
         }))
       )
+      handleSupabaseError(notifErr, 'OportunidadDrawer.crearTarea.notify')
     }
     setNuevaTarea({ titulo: '', descripcion: '', asignados_ids: [], prioridad: '2', fecha_limite: '' })
     setShowCrearTarea(false); setCreandoTarea(false)
@@ -403,13 +411,17 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   }
 
   async function saveMargen(value: number | null) {
+    const anterior = opp.margen_porcentaje
     setOpp(o => ({ ...o, margen_porcentaje: value }))
-    await supabase.from('oportunidades').update({ margen_porcentaje: value }).eq('id', opp.id)
+    const { error } = await supabase.from('oportunidades').update({ margen_porcentaje: value }).eq('id', opp.id)
+    if (handleSupabaseError(error, 'OportunidadDrawer.saveMargen')) {
+      setOpp(o => ({ ...o, margen_porcentaje: anterior }))
+    }
   }
 
   async function saveGeneral() {
     setSaving(true)
-    await supabase.from('oportunidades').update({
+    const { error } = await supabase.from('oportunidades').update({
       nombre: opp.nombre, monto_estimado: opp.monto_estimado,
       probabilidad: opp.probabilidad, fecha_cierre_est: opp.fecha_cierre_est,
       descripcion: opp.descripcion, tipo_venta: opp.tipo_venta,
@@ -421,7 +433,9 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       nombre_comite_vivienda: opp.nombre_comite_vivienda, nombre_constructora: opp.nombre_constructora,
       zona_termica: opp.zona_termica, tipologia_vit: opp.tipologia_vit, venta_actual_uf: opp.venta_actual_uf,
     }).eq('id', opp.id)
-    setSaving(false); onUpdate()
+    setSaving(false)
+    if (handleSupabaseError(error, 'OportunidadDrawer.saveGeneral')) return
+    onUpdate()
   }
 
   function elegirTipologia(tipologia: string) {
@@ -433,13 +447,14 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   // Si con este guardado quedan los 7 campos requeridos completos, avanza automaticamente a Negociacion.
   async function saveOportunidadCampos() {
     setSaving(true)
-    await supabase.from('oportunidades').update({
+    const { error } = await supabase.from('oportunidades').update({
       tipo_subsidio: opp.tipo_subsidio, programa: opp.programa,
       monto_estimado: opp.monto_estimado,
       fecha_ingreso_calificacion: opp.fecha_ingreso_calificacion, estimacion_calificacion: opp.estimacion_calificacion,
       fecha_inicio_despachos_est: opp.fecha_inicio_despachos_est, duracion_meses_est: opp.duracion_meses_est,
       updated_at: new Date().toISOString(),
     }).eq('id', opp.id)
+    if (handleSupabaseError(error, 'OportunidadDrawer.saveOportunidadCampos')) { setSaving(false); return }
     const completo = CAMPOS_OPORTUNIDAD_REQUERIDOS.every(k => opp[k] !== null && opp[k] !== '' && opp[k] !== undefined)
     if (completo && opp.etapa_actual === 'Oportunidad') {
       await avanzarEtapa()
@@ -450,51 +465,77 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
 
   async function saveEtapaData() {
     setSaving(true)
-    await supabase.from('oportunidad_datos_etapa').upsert({
+    const { error } = await supabase.from('oportunidad_datos_etapa').upsert({
       oportunidad_id: opp.id, etapa: opp.etapa_actual,
       datos: etapaData, updated_by: profile?.id, updated_at: new Date().toISOString(),
     }, { onConflict: 'oportunidad_id,etapa' })
     setSaving(false)
+    handleSupabaseError(error, 'OportunidadDrawer.saveEtapaData')
   }
 
   async function toggleAsignado(userId: string) {
     if (asignadosIds.includes(userId)) {
       setAsignadosIds(ids => ids.filter(id => id !== userId))
-      await supabase.from('oportunidad_asignaciones').delete()
+      const { error } = await supabase.from('oportunidad_asignaciones').delete()
         .eq('oportunidad_id', opp.id).eq('etapa', opp.etapa_actual).eq('usuario_id', userId)
+      if (handleSupabaseError(error, 'OportunidadDrawer.toggleAsignado.delete')) {
+        setAsignadosIds(ids => [...ids, userId])
+      }
     } else {
       setAsignadosIds(ids => [...ids, userId])
-      await supabase.from('oportunidad_asignaciones').insert({
+      const { error } = await supabase.from('oportunidad_asignaciones').insert({
         oportunidad_id: opp.id, etapa: opp.etapa_actual,
         usuario_id: userId, asignado_por: profile?.id,
       })
-      await supabase.from('notifications').insert({
+      if (handleSupabaseError(error, 'OportunidadDrawer.toggleAsignado.insert')) {
+        setAsignadosIds(ids => ids.filter(id => id !== userId))
+        return
+      }
+      const { error: notifErr } = await supabase.from('notifications').insert({
         user_id: userId,
         tipo: 'asignacion',
         titulo: `Te asignaron: ${opp.nombre}`,
         mensaje: `${opp.codigo} · etapa ${opp.etapa_actual}`,
         oportunidad_id: opp.id,
       })
+      handleSupabaseError(notifErr, 'OportunidadDrawer.toggleAsignado.notify')
     }
+  }
+
+  // Cierra el historial de la etapa actual, mueve oportunidades.etapa_actual y abre nuevo historial.
+  // Si el insert de historial falla tras el update, revierte el update para no desincronizar deal state vs audit trail.
+  async function cambiarEtapaOportunidad(newEtapa: string, notif: { tipo: string; titulo: string; mensaje: string }): Promise<boolean> {
+    const etapaAnterior = opp.etapa_actual
+    setSaving(true)
+    const { data: cur } = await supabase.from('oportunidad_historial_etapas').select('id').eq('oportunidad_id', opp.id).eq('etapa', etapaAnterior).is('fecha_salida', null).maybeSingle()
+    if (cur) {
+      const { error } = await supabase.from('oportunidad_historial_etapas').update({ fecha_salida: new Date().toISOString(), usuario_id: profile?.id }).eq('id', (cur as {id:string}).id)
+      if (handleSupabaseError(error, 'OportunidadDrawer.cambiarEtapa.cerrarHistorial')) { setSaving(false); return false }
+    }
+    const { error: updErr } = await supabase.from('oportunidades').update({ etapa_actual: newEtapa, updated_at: new Date().toISOString() }).eq('id', opp.id)
+    if (handleSupabaseError(updErr, 'OportunidadDrawer.cambiarEtapa.update')) { setSaving(false); return false }
+    const { error: histErr } = await supabase.from('oportunidad_historial_etapas').insert({ oportunidad_id: opp.id, etapa: newEtapa, fecha_entrada: new Date().toISOString(), usuario_id: profile?.id })
+    if (handleSupabaseError(histErr, 'OportunidadDrawer.cambiarEtapa.insertHistorial')) {
+      await supabase.from('oportunidades').update({ etapa_actual: etapaAnterior, updated_at: new Date().toISOString() }).eq('id', opp.id)
+      setSaving(false)
+      return false
+    }
+    const { error: notifErr } = await supabase.from('notifications').insert({ user_id: profile?.id, oportunidad_id: opp.id, ...notif })
+    handleSupabaseError(notifErr, 'OportunidadDrawer.cambiarEtapa.notify')
+    setSaving(false)
+    return true
   }
 
   async function avanzarEtapa() {
     const orden = opp.tipo_venta === 'VIT' ? ETAPAS_ORDER_VIT : ETAPAS_ORDER
     const idx = orden.indexOf(opp.etapa_actual)
     const newEtapa = idx >= 0 && idx < orden.length - 1 ? orden[idx + 1] : 'Ganado'
-    setSaving(true)
-    const { data: cur } = await supabase.from('oportunidad_historial_etapas').select('id').eq('oportunidad_id', opp.id).eq('etapa', opp.etapa_actual).is('fecha_salida', null).maybeSingle()
-    if (cur) await supabase.from('oportunidad_historial_etapas').update({ fecha_salida: new Date().toISOString(), usuario_id: profile?.id }).eq('id', (cur as {id:string}).id)
-    await supabase.from('oportunidades').update({ etapa_actual: newEtapa, updated_at: new Date().toISOString() }).eq('id', opp.id)
-    await supabase.from('oportunidad_historial_etapas').insert({ oportunidad_id: opp.id, etapa: newEtapa, fecha_entrada: new Date().toISOString(), usuario_id: profile?.id })
-    await supabase.from('notifications').insert({
-      user_id: profile?.id,
+    const ok = await cambiarEtapaOportunidad(newEtapa, {
       tipo: 'etapa_cambio',
       titulo: `${opp.nombre} avanzó a ${newEtapa}`,
       mensaje: `${opp.codigo} · de ${opp.etapa_actual} a ${newEtapa}`,
-      oportunidad_id: opp.id,
     })
-    setSaving(false); onUpdate(); onClose()
+    if (ok) { onUpdate(); onClose() }
   }
 
   async function retrocederEtapa() {
@@ -502,19 +543,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     const idx = orden.indexOf(opp.etapa_actual)
     if (idx <= 0) return
     const newEtapa = orden[idx - 1]
-    setSaving(true)
-    const { data: cur } = await supabase.from('oportunidad_historial_etapas').select('id').eq('oportunidad_id', opp.id).eq('etapa', opp.etapa_actual).is('fecha_salida', null).maybeSingle()
-    if (cur) await supabase.from('oportunidad_historial_etapas').update({ fecha_salida: new Date().toISOString(), usuario_id: profile?.id }).eq('id', (cur as {id:string}).id)
-    await supabase.from('oportunidades').update({ etapa_actual: newEtapa, updated_at: new Date().toISOString() }).eq('id', opp.id)
-    await supabase.from('oportunidad_historial_etapas').insert({ oportunidad_id: opp.id, etapa: newEtapa, fecha_entrada: new Date().toISOString(), usuario_id: profile?.id })
-    await supabase.from('notifications').insert({
-      user_id: profile?.id,
+    const ok = await cambiarEtapaOportunidad(newEtapa, {
       tipo: 'etapa_cambio',
       titulo: `${opp.nombre} retrocedió a ${newEtapa}`,
       mensaje: `${opp.codigo} · de ${opp.etapa_actual} a ${newEtapa}`,
-      oportunidad_id: opp.id,
     })
-    setSaving(false); onUpdate(); onClose()
+    if (ok) { onUpdate(); onClose() }
   }
 
   async function eliminarOportunidad() {
@@ -527,19 +561,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   }
 
   async function marcarEstado(estado: 'Ganado' | 'Perdido') {
-    setSaving(true)
-    const { data: cur } = await supabase.from('oportunidad_historial_etapas').select('id').eq('oportunidad_id', opp.id).eq('etapa', opp.etapa_actual).is('fecha_salida', null).maybeSingle()
-    if (cur) await supabase.from('oportunidad_historial_etapas').update({ fecha_salida: new Date().toISOString(), usuario_id: profile?.id }).eq('id', (cur as {id:string}).id)
-    await supabase.from('oportunidades').update({ etapa_actual: estado, updated_at: new Date().toISOString() }).eq('id', opp.id)
-    await supabase.from('oportunidad_historial_etapas').insert({ oportunidad_id: opp.id, etapa: estado, fecha_entrada: new Date().toISOString(), usuario_id: profile?.id })
-    await supabase.from('notifications').insert({
-      user_id: profile?.id,
+    const ok = await cambiarEtapaOportunidad(estado, {
       tipo: 'estado_final',
       titulo: `${opp.nombre} marcada como ${estado}`,
       mensaje: `${opp.codigo} · ${estado === 'Ganado' ? '✓ cerrada con éxito' : '✗ perdida'}`,
-      oportunidad_id: opp.id,
     })
-    setSaving(false); onUpdate(); onClose()
+    if (ok) { onUpdate(); onClose() }
   }
 
   async function uploadFile(file: File) {
@@ -547,14 +574,14 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     const ext = file.name.split('.').pop() ?? ''
     const path = opp.id + '/' + Date.now() + '-' + file.name
     const { error: upErr } = await supabase.storage.from('oportunidades').upload(path, file)
-    if (!upErr) {
-      await supabase.from('oportunidad_documentos').insert({
-        oportunidad_id: opp.id, nombre: file.name, tipo: 'archivo',
-        url: path, extension: ext, tamanio_bytes: file.size,
-        subido_por: profile?.id, etapa: opp.etapa_actual,
-      })
-      await loadAll()
-    }
+    if (handleSupabaseError(upErr, 'OportunidadDrawer.uploadFile.storage')) { setUploading(false); return }
+    const { error: docErr } = await supabase.from('oportunidad_documentos').insert({
+      oportunidad_id: opp.id, nombre: file.name, tipo: 'archivo',
+      url: path, extension: ext, tamanio_bytes: file.size,
+      subido_por: profile?.id, etapa: opp.etapa_actual,
+    })
+    if (handleSupabaseError(docErr, 'OportunidadDrawer.uploadFile.insert')) { setUploading(false); return }
+    await loadAll()
     setUploading(false)
   }
 
@@ -571,21 +598,27 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       alert('Solo se permiten URLs http o https.')
       return
     }
-    await supabase.from('oportunidad_documentos').insert({
+    const { error } = await supabase.from('oportunidad_documentos').insert({
       oportunidad_id: opp.id, nombre: linkNombre.trim() || linkUrl.trim(),
       tipo: 'link', url: linkUrl.trim(), subido_por: profile?.id, etapa: opp.etapa_actual,
     })
+    if (handleSupabaseError(error, 'OportunidadDrawer.addLink')) return
     setLinkUrl(''); setLinkNombre(''); setShowLink(false); await loadAll()
   }
 
   async function saveComentarioDoc(id: string, comentario: string) {
-    await supabase.from('oportunidad_documentos').update({ comentario: comentario.trim() || null }).eq('id', id)
+    const { error } = await supabase.from('oportunidad_documentos').update({ comentario: comentario.trim() || null }).eq('id', id)
+    if (handleSupabaseError(error, 'OportunidadDrawer.saveComentarioDoc')) return
     setDocs(ds => ds.map(d => d.id === id ? { ...d, comentario: comentario.trim() || null } : d))
   }
 
   async function deleteDoc(id: string, tipo: string, url: string) {
-    if (tipo === 'archivo') await supabase.storage.from('oportunidades').remove([url])
-    await supabase.from('oportunidad_documentos').delete().eq('id', id)
+    if (tipo === 'archivo') {
+      const { error: storErr } = await supabase.storage.from('oportunidades').remove([url])
+      if (handleSupabaseError(storErr, 'OportunidadDrawer.deleteDoc.storage')) return
+    }
+    const { error } = await supabase.from('oportunidad_documentos').delete().eq('id', id)
+    if (handleSupabaseError(error, 'OportunidadDrawer.deleteDoc')) return
     await loadAll()
   }
 
@@ -595,7 +628,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       window.open(url, '_blank', 'noopener,noreferrer')
       return
     }
-    const { data } = await supabase.storage.from('oportunidades').createSignedUrl(url, 3600)
+    const { data, error } = await supabase.storage.from('oportunidades').createSignedUrl(url, 3600)
+    if (handleSupabaseError(error, 'OportunidadDrawer.openFile')) return
     if (data?.signedUrl) window.open(data.signedUrl, '_blank')
   }
 

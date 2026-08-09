@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { handleSupabaseError } from '@/modules/crm/lib/errors'
 
 interface Result {
   id: string
@@ -39,11 +40,12 @@ export default function HeaderSearch() {
       const trimmed = q.trim()
       if (trimmed.length < 2) { setResults([]); setOpen(false); return }
       setLoading(true)
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('oportunidades')
         .select('id,nombre,codigo,etapa_actual,monto_estimado,cliente:clientes(razon_social)')
         .or(`nombre.ilike.%${trimmed}%,codigo.ilike.%${trimmed}%`)
         .limit(7)
+      handleSupabaseError(error, 'HeaderSearch.search')
       setResults((data as unknown as Result[]) ?? [])
       setOpen(true)
       setLoading(false)

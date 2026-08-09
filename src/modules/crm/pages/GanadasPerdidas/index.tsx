@@ -3,6 +3,7 @@ import { Trophy, XCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import type { Oportunidad } from '@/modules/crm/types/database'
 import OportunidadDrawer from '@/modules/crm/components/OportunidadDrawer'
+import { handleSupabaseError } from '@/modules/crm/lib/errors'
 
 const TIPO_COLOR: Record<string,string>={Proyecto:'bg-purple-100 text-purple-700',Producto:'bg-blue-100 text-blue-700',Kit:'bg-amber-100 text-amber-700'}
 type Filtro = 'todas' | 'Ganado' | 'Perdido'
@@ -15,7 +16,8 @@ export default function GanadasPerdidas(){
 
   async function load(){
     setLoading(true)
-    const {data}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').in('etapa_actual',['Ganado','Perdido']).order('updated_at',{ascending:false})
+    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').in('etapa_actual',['Ganado','Perdido']).order('updated_at',{ascending:false})
+    handleSupabaseError(error,'GanadasPerdidas.load')
     setOpps((data as Oportunidad[])||[])
     setLoading(false)
   }

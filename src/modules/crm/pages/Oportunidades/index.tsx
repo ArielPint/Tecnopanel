@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient'
 import type { Oportunidad, EtapaOportunidad, TipoVenta } from '@/modules/crm/types/database'
 import OportunidadDrawer from '@/modules/crm/components/OportunidadDrawer'
 import NuevaOportunidadModal from '@/modules/crm/components/NuevaOportunidadModal'
+import { handleSupabaseError } from '@/modules/crm/lib/errors'
 
 const ETAPAS: EtapaOportunidad[] = [
   'Clasificación','Oportunidad','Ingeniería','Desarrollo','Costos y Presupuestos',
@@ -34,11 +35,12 @@ export default function Oportunidades() {
   const [selected, setSelected] = useState<Oportunidad | null>(null)
 
   async function load() {
-    const { data: opps } = await supabase
+    const { data: opps, error } = await supabase
       .from('oportunidades')
       .select('*, cliente:clientes(razon_social), vendedor:profiles(nombre,apellido)')
       .not('etapa_actual','in','("Ganado","Perdido")')
       .order('updated_at',{ascending:false})
+    handleSupabaseError(error, 'Oportunidades.load')
     setOportunidades((opps as Oportunidad[]) || [])
     setLoading(false)
   }

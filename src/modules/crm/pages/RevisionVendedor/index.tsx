@@ -3,6 +3,7 @@ import { Clock, User } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import type { Oportunidad } from '@/modules/crm/types/database'
 import OportunidadDrawer from '@/modules/crm/components/OportunidadDrawer'
+import { handleSupabaseError } from '@/modules/crm/lib/errors'
 
 const TIPO_COLOR: Record<string,string>={Proyecto:'bg-purple-100 text-purple-700',Producto:'bg-blue-100 text-blue-700',Kit:'bg-amber-100 text-amber-700'}
 interface OE extends Oportunidad{asignado?:{nombre:string;apellido:string}|null;diasEtapa?:number}
@@ -13,23 +14,28 @@ export default function RevisionVendedor(){
   const [sel,setSel]=useState<Oportunidad|null>(null)
 
   async function load(){
-    const {data:paso}=await supabase.from('oportunidad_historial_etapas').select('oportunidad_id').eq('etapa','Revisión Vendedor')
+    const {data:paso,error:pasoErr}=await supabase.from('oportunidad_historial_etapas').select('oportunidad_id').eq('etapa','Revisión Vendedor')
+    handleSupabaseError(pasoErr,'RevisionVendedor.load.paso')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const idsPaso=[...new Set((paso||[]).map((p:any)=>p.oportunidad_id))]
     if(!idsPaso.length){setOpps([]);setLoading(false);return}
-    const {data}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').in('id',idsPaso).in('etapa_actual',['Revisión Vendedor','Ganado']).order('updated_at',{ascending:false})
+    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').in('id',idsPaso).in('etapa_actual',['Revisión Vendedor','Ganado']).order('updated_at',{ascending:false})
+    handleSupabaseError(error,'RevisionVendedor.load')
     const base=(data as Oportunidad[])||[]
     if(!base.length){setOpps([]);setLoading(false);return}
     const ids=base.map(o=>o.id)
-    const [{data:asigs},{data:hist}]=await Promise.all([
+    const [{data:asigs,error:asigsErr},{data:hist,error:histErr}]=await Promise.all([
       supabase.from('oportunidad_asignaciones').select('oportunidad_id,usuario_id').in('oportunidad_id',ids).eq('etapa','Revisión Vendedor'),
       supabase.from('oportunidad_historial_etapas').select('oportunidad_id,fecha_entrada').in('oportunidad_id',ids).eq('etapa','Revisión Vendedor').is('fecha_salida',null),
     ])
+    handleSupabaseError(asigsErr,'RevisionVendedor.load.asignaciones')
+    handleSupabaseError(histErr,'RevisionVendedor.load.historial')
     const am:Record<string,{nombre:string;apellido:string}>={}
     const dm:Record<string,number>={}
     const userIds=[...new Set((asigs||[]).map((a:any)=>a.usuario_id).filter(Boolean))]
     if(userIds.length){
-      const {data:users}=await supabase.from('profiles').select('id,nombre,apellido').in('id',userIds)
+      const {data:users,error:usersErr}=await supabase.from('profiles').select('id,nombre,apellido').in('id',userIds)
+      handleSupabaseError(usersErr,'RevisionVendedor.load.profiles')
       const um:Record<string,{nombre:string;apellido:string}>=Object.fromEntries((users||[]).map(u=>[u.id,u]))
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(asigs||[]).forEach((a:any)=>{if(um[a.usuario_id])am[a.oportunidad_id]=um[a.usuario_id]})
