@@ -40,6 +40,7 @@ export function useIngresoStock(productos: Producto[]) {
   const [rawItems, setRawItems] = useState<RawStockItem[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const prodMap = useMemo(() => {
     const m: Record<string, Producto> = {}
@@ -55,14 +56,17 @@ export function useIngresoStock(productos: Producto[]) {
 
   const cargarSemana = useCallback(async (key: string) => {
     setLoading(true)
+    setError(null)
     const proyectoId = await getProyectoId(proyectoSlug!)
-    const { data, error } = await supabase
+    const { data, error: qError } = await supabase
       .from('registro_stock')
       .select('id, codigo, material, unidad, stock_fisico')
       .eq('proyecto_id', proyectoId)
       .eq('semana_key', key)
       .order('material', { ascending: true })
-    if (!error) {
+    if (qError) {
+      setError(qError.message)
+    } else {
       const rows = (data ?? []) as RegistroStockRow[]
       setRawItems(
         rows.map((r) => ({
@@ -82,13 +86,14 @@ export function useIngresoStock(productos: Producto[]) {
     let cancelado = false
     async function init() {
       const proyectoId = await getProyectoId(proyectoSlug!)
-      const { data } = await supabase
+      const { data, error: qError } = await supabase
         .from('registro_stock')
         .select('semana_key')
         .eq('proyecto_id', proyectoId)
         .order('semana_key', { ascending: false })
         .limit(1000)
       if (cancelado) return
+      if (qError) setError(qError.message)
       const vistas = new Set<string>((data ?? []).map((r: { semana_key: string }) => String(r.semana_key)))
       const actual = String(weekKey(new Date()))
       vistas.add(actual)
@@ -141,12 +146,17 @@ export function useIngresoStock(productos: Producto[]) {
     async (idx: number) => {
       const it = rawItems[idx]
       if (it.id) {
-        const { error } = await supabase.from('registro_stock').delete().eq('id', it.id)
-        if (error) throw new Error(error.message)
+        const proyectoId = await getProyectoId(proyectoSlug!)
+        const { error: delError } = await supabase
+          .from('registro_stock')
+          .delete()
+          .eq('id', it.id)
+          .eq('proyecto_id', proyectoId)
+        if (delError) throw new Error(delError.message)
       }
       setRawItems((prev) => prev.filter((_, i) => i !== idx))
     },
-    [rawItems],
+    [rawItems, proyectoSlug],
   )
 
   const guardarTodo = useCallback(
@@ -177,5 +187,5 @@ export function useIngresoStock(productos: Producto[]) {
     [rawItems, semanaKey, cargarSemana, proyectoSlug],
   )
 
-  return { semanas, semanaKey, items, loading, saving, setSemana, goPrev, goNext, goHoy, agregar, editar, removeItem, guardarTodo }
+  return { semanas, semanaKey, items, loading, saving, error, setSemana, goPrev, goNext, goHoy, agregar, editar, removeItem, guardarTodo }
 }

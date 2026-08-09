@@ -131,11 +131,16 @@ export function useOrdenesCompra() {
 
   const eliminar = useCallback(
     async (id: string) => {
-      const { error } = await supabase.from('ordenes_compra').delete().eq('id', id)
+      const proyectoId = await getProyectoId(proyectoSlug!)
+      const { error } = await supabase
+        .from('ordenes_compra')
+        .delete()
+        .eq('id', id)
+        .eq('proyecto_id', proyectoId)
       if (error) throw new Error(error.message)
       await refetch()
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   return { ordenes, guias, montoPorOC, loading, error, guardar, eliminar }

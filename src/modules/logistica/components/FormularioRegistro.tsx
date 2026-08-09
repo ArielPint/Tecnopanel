@@ -196,9 +196,14 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
     setEnviando(true)
     try {
       const idsGuia = registros.filter((r) => r.gd === registro.gd).map((r) => r.id)
-      for (const id of idsGuia) await onEliminar(id)
-      toast.success('Guía eliminada')
-      setOpen(false)
+      const resultados = await Promise.allSettled(idsGuia.map((id) => onEliminar(id)))
+      const fallidas = resultados.filter((r) => r.status === 'rejected').length
+      if (fallidas) {
+        toast.error(`Guía eliminada parcialmente: ${fallidas} de ${idsGuia.length} línea(s) no se pudieron borrar. Reintenta antes de continuar.`)
+      } else {
+        toast.success('Guía eliminada')
+        setOpen(false)
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al eliminar')
     } finally {
@@ -224,17 +229,23 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
     try {
       const meta: MetaEntrada = { fechaGuia, fechaSol, obs, gd, oc: gdOCMap[gd] ?? '', responsable }
       if (esEdicion) {
-        for (const id of idsEliminados) await onEliminar(id)
+        const delResultados = await Promise.allSettled(idsEliminados.map((id) => onEliminar(id)))
         const existentes = lineas.filter((l): l is LineaEditable & { id: string } => !!l.id && !!l.codigo)
-        for (const l of existentes) {
-          await onActualizar(l.id, {
-            fechaGuia, fechaSol, obs, gd, oc: gdOCMap[gd] ?? '', responsable,
-            codigo: l.codigo, descripcion: l.descripcion, unidad: l.unidad, tipoProducto: l.tipo_producto,
-            cantidadSol: l.cantidad_sol, devolucion: l.devolucion, valorTotalItem: l.valor_total_item, ppto: l.ppto,
-          })
-        }
+        const updResultados = await Promise.allSettled(
+          existentes.map((l) =>
+            onActualizar(l.id, {
+              fechaGuia, fechaSol, obs, gd, oc: gdOCMap[gd] ?? '', responsable,
+              codigo: l.codigo, descripcion: l.descripcion, unidad: l.unidad, tipoProducto: l.tipo_producto,
+              cantidadSol: l.cantidad_sol, devolucion: l.devolucion, valorTotalItem: l.valor_total_item, ppto: l.ppto,
+            }),
+          ),
+        )
         const nuevas = lineas.filter((l) => !l.id && l.codigo)
         if (nuevas.length) await onCrear(meta, nuevas, null)
+        const fallidas = [...delResultados, ...updResultados].filter((r) => r.status === 'rejected').length
+        if (fallidas) {
+          throw new Error(`Guía actualizada parcialmente: ${fallidas} línea(s) no se guardaron. Revisa y reintenta.`)
+        }
         toast.success('Guía actualizada')
       } else {
         await onCrear(meta, lineas, solCargada)

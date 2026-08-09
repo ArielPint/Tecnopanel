@@ -43,11 +43,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return
       }
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .select('id, username, nombre, apellido, activo, permissions')
         .eq('id', userId)
         .single()
+      if (error) console.error('useAuth: fallo al cargar perfil', error)
       if (!cancelado) {
         setPerfil(
           data

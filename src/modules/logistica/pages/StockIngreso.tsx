@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 import { Boxes } from 'lucide-react'
 import { Button } from '@/modules/financiero/components/ui/button'
@@ -30,6 +30,10 @@ export default function StockIngreso() {
   const { perfil } = useAuth()
   const { allProducts, loading: catalogLoading } = useCatalogoGD()
   const stock = useIngresoStock(allProducts)
+
+  useEffect(() => {
+    if (stock.error) toast.error(stock.error)
+  }, [stock.error])
 
   const disponibles = useMemo(() => {
     const usados = new Set(stock.items.map((i) => normCod(i.codigo)))

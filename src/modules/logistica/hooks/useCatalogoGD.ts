@@ -35,7 +35,12 @@ export function useCatalogoGD() {
   const fetcher = useCallback(async (): Promise<CatalogoData> => {
     const proyectoId = await getProyectoId(proyectoSlug!)
     const [pptoRes, customRes, comprasRes] = await Promise.all([
-      fetch(`${PROD_URL}?v=${Date.now()}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch(`${PROD_URL}?v=${Date.now()}`)
+        .then((r) => (r.ok ? r.json() : []))
+        .catch((e) => {
+          console.error('useCatalogoGD: fallo al cargar precios ppto', e)
+          return []
+        }),
       supabase.from('productos_custom').select('*').eq('activo', true),
       supabase
         .from('registro_compras')

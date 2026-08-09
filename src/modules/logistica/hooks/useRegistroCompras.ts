@@ -140,11 +140,12 @@ export function useRegistroCompras() {
       const { error: insError } = await supabase.from('registro_compras').insert(records)
       if (insError) throw new Error(insError.message)
       if (solicitudNumero != null) {
-        await supabase
+        const { error: solError } = await supabase
           .from('solicitudes')
           .update({ estado: 'usada' })
           .eq('numero', solicitudNumero)
           .eq('proyecto_id', proyectoId)
+        if (solError) throw new Error(solError.message)
         // Cross-invalidation: useSolicitudes.ts cachea por proyectoSlug, misma key acá.
         invalidate(`solicitudes:${proyectoSlug}`)
       }
@@ -155,6 +156,7 @@ export function useRegistroCompras() {
 
   const actualizarSingle = useCallback(
     async (id: string, input: EdicionSingle, createdBy: string) => {
+      const proyectoId = await getProyectoId(proyectoSlug!)
       const fechaMes = new Date(input.fechaGuia + 'T12:00:00').getMonth() + 1
       const cr = input.cantidadSol - input.devolucion
       const vu = cr ? input.valorTotalItem / cr : 0
@@ -179,20 +181,29 @@ export function useRegistroCompras() {
         updated_at: new Date().toISOString(),
         created_by: createdBy,
       }
-      const { error: updError } = await supabase.from('registro_compras').update(record).eq('id', id)
+      const { error: updError } = await supabase
+        .from('registro_compras')
+        .update(record)
+        .eq('id', id)
+        .eq('proyecto_id', proyectoId)
       if (updError) throw new Error(updError.message)
       await refetch()
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   const eliminar = useCallback(
     async (id: string) => {
-      const { error: delError } = await supabase.from('registro_compras').delete().eq('id', id)
+      const proyectoId = await getProyectoId(proyectoSlug!)
+      const { error: delError } = await supabase
+        .from('registro_compras')
+        .delete()
+        .eq('id', id)
+        .eq('proyecto_id', proyectoId)
       if (delError) throw new Error(delError.message)
       await refetch()
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   return { registros, loading, error, refetch, crearMulti, actualizarSingle, eliminar }

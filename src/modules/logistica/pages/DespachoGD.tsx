@@ -32,7 +32,12 @@ export default function DespachoGD() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
   useEffect(() => {
-    loadCatalogoModulos().then(setCatalogo)
+    loadCatalogoModulos()
+      .then(setCatalogo)
+      .catch((e) => {
+        console.error('DespachoGD: fallo al cargar catálogo de módulos', e)
+        toast.error('No se pudo cargar el catálogo de módulos (torre/tipo/serie)')
+      })
   }, [])
 
   const conAcumulado = useMemo(() => {
