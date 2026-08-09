@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase, unwrap } from '@/lib/supabaseClient'
 import { useCachedQuery } from '@/lib/useCachedQuery'
 
 interface CrmResumen {
@@ -30,7 +30,7 @@ interface CrmResumenData {
 // Global, sin realtime, sin mutaciones propias acá — cache 60s.
 export function useCrmResumen(): CrmResumen {
   const fetcher = useCallback(async (): Promise<CrmResumenData> => {
-    const { data: opps } = await supabase.from('oportunidades').select('etapa_actual, monto_estimado, updated_at')
+    const opps = await unwrap(supabase.from('oportunidades').select('etapa_actual, monto_estimado, updated_at'))
     const rows = (opps ?? []) as OppRow[]
     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
 

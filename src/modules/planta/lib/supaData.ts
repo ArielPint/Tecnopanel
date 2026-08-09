@@ -1,15 +1,15 @@
-import { supabase } from '@/lib/supabaseClient'
+import { supabase, unwrap } from '@/lib/supabaseClient'
 import type { DetalleGdRow } from './excelParser'
 
 export async function loadPresupuestoTotal(): Promise<number | null> {
-  const { data } = await supabase.from('config').select('value').eq('key', 'presupuesto_total').maybeSingle()
+  const data = await unwrap(supabase.from('config').select('value').eq('key', 'presupuesto_total').maybeSingle())
   return data?.value != null ? parseFloat(data.value) || null : null
 }
 
 // Catálogo de ppto vigente por código — resuelto en vivo contra productos_custom,
 // igual que registro-gd.html (reemplaza el precio "foto" guardado en registro_compras.valor_ppto).
 export async function loadPptoCatalogo(): Promise<Record<string, number>> {
-  const { data } = await supabase.from('productos_custom').select('codigo, ppto').eq('activo', true)
+  const data = await unwrap(supabase.from('productos_custom').select('codigo, ppto').eq('activo', true))
   const map: Record<string, number> = {}
   for (const p of data ?? []) {
     if (p.codigo && p.ppto != null) map[String(p.codigo).trim().toUpperCase()] = parseFloat(p.ppto) || 0
@@ -47,7 +47,8 @@ export async function loadCompras(proyectoId: string): Promise<DetalleGdRow[]> {
       .eq('proyecto_id', proyectoId)
       .order('fecha_guia', { ascending: false })
       .range(from, from + PAGE - 1)
-    if (error || !data) break
+    if (error) throw new Error(error.message)
+    if (!data) break
     all.push(...(data as RegistroCompraRow[]))
     if (data.length < PAGE) break
     from += PAGE
@@ -89,7 +90,7 @@ export async function loadCompras(proyectoId: string): Promise<DetalleGdRow[]> {
     }
   })
 
-  const { data: ajustes } = await supabase.from('ajustes_compras').select('anio, mes, valor, concepto').eq('proyecto_id', proyectoId)
+  const ajustes = await unwrap(supabase.from('ajustes_compras').select('anio, mes, valor, concepto').eq('proyecto_id', proyectoId))
   for (const a of ajustes ?? []) {
     const valor = parseFloat(String(a.valor)) || 0
     if (!valor) continue
@@ -106,7 +107,7 @@ export async function loadCompras(proyectoId: string): Promise<DetalleGdRow[]> {
 }
 
 export async function loadModulosDespachadosCount(proyectoId: string): Promise<number> {
-  const { data } = await supabase.from('despachos_gd').select('modulo').eq('proyecto_id', proyectoId)
+  const data = await unwrap(supabase.from('despachos_gd').select('modulo').eq('proyecto_id', proyectoId))
   return new Set((data ?? []).map((r) => r.modulo).filter(Boolean)).size
 }
 
@@ -122,11 +123,13 @@ export interface DespachoSupaRow {
 }
 
 export async function loadDespachos(proyectoId: string): Promise<DespachoSupaRow[]> {
-  const { data } = await supabase
-    .from('despachos_gd')
-    .select('fecha_despacho, gd_numero, modulo_nro_serie, cantidad, monto_neto, modulo, torre, tipo')
-    .eq('proyecto_id', proyectoId)
-    .order('fecha_gd', { ascending: true })
+  const data = await unwrap(
+    supabase
+      .from('despachos_gd')
+      .select('fecha_despacho, gd_numero, modulo_nro_serie, cantidad, monto_neto, modulo, torre, tipo')
+      .eq('proyecto_id', proyectoId)
+      .order('fecha_gd', { ascending: true }),
+  )
   return (data ?? []).map((r) => ({
     fecha: r.fecha_despacho, gd: r.gd_numero, serie: r.modulo_nro_serie,
     cant: r.cantidad != null ? parseFloat(r.cantidad) : null,
@@ -143,12 +146,14 @@ export interface AvanceEconProyRow {
 }
 
 export async function loadAvanceEconProy(anio: number): Promise<AvanceEconProyRow[]> {
-  const { data } = await supabase
-    .from('avance_econ_proy')
-    .select('anio, mes, valor, forecast')
-    .eq('anio', anio)
-    .order('created_at', { ascending: true })
-    .order('mes', { ascending: true })
+  const data = await unwrap(
+    supabase
+      .from('avance_econ_proy')
+      .select('anio, mes, valor, forecast')
+      .eq('anio', anio)
+      .order('created_at', { ascending: true })
+      .order('mes', { ascending: true }),
+  )
   return (data ?? []) as AvanceEconProyRow[]
 }
 
@@ -162,12 +167,14 @@ export interface RegistroStockRow {
 }
 
 export async function loadRegistroStock(proyectoId: string): Promise<RegistroStockRow[]> {
-  const { data } = await supabase
-    .from('registro_stock')
-    .select('fecha, semana_key, codigo, material, unidad, stock_fisico')
-    .eq('proyecto_id', proyectoId)
-    .order('semana_key', { ascending: false })
-    .order('material', { ascending: true })
+  const data = await unwrap(
+    supabase
+      .from('registro_stock')
+      .select('fecha, semana_key, codigo, material, unidad, stock_fisico')
+      .eq('proyecto_id', proyectoId)
+      .order('semana_key', { ascending: false })
+      .order('material', { ascending: true }),
+  )
   return (data ?? []) as RegistroStockRow[]
 }
 
@@ -178,7 +185,7 @@ export interface RitmoProyeccion {
 
 // Defaults iguales a dashboard.html si faltan las keys en config
 export async function loadRitmoProyeccion(): Promise<RitmoProyeccion> {
-  const { data } = await supabase.from('config').select('key, value').in('key', ['proy_ritmo_tope', 'proy_ritmo_torre3_fijo'])
+  const data = await unwrap(supabase.from('config').select('key, value').in('key', ['proy_ritmo_tope', 'proy_ritmo_torre3_fijo']))
   let ritmoTope = 15
   let ritmoTorre3 = 6
   for (const r of data ?? []) {
@@ -197,11 +204,13 @@ export interface PlantaModuloProdRow {
 }
 
 export async function loadPlantaModulosProdDiaria(proyectoId: string): Promise<PlantaModuloProdRow[]> {
-  const { data } = await supabase
-    .from('planta_modulos')
-    .select('nombre, torre, tipo, estados, tiempos')
-    .eq('proyecto_id', proyectoId)
-    .order('orden', { ascending: true })
+  const data = await unwrap(
+    supabase
+      .from('planta_modulos')
+      .select('nombre, torre, tipo, estados, tiempos')
+      .eq('proyecto_id', proyectoId)
+      .order('orden', { ascending: true }),
+  )
   return (data ?? []) as PlantaModuloProdRow[]
 }
 
@@ -217,10 +226,12 @@ export interface PlantaModuloRow {
 // Set completo de columnas para el módulo Producción (Resumen/Torres/Partidas/Alertas/Detalle) —
 // separado de loadPlantaModulosProdDiaria (que solo necesita 5 columnas) para no cambiarle el shape.
 export async function loadPlantaModulos(proyectoId: string): Promise<PlantaModuloRow[]> {
-  const { data } = await supabase
-    .from('planta_modulos')
-    .select('nombre, torre, tipo, estado_modulo, estados, tiempos')
-    .eq('proyecto_id', proyectoId)
-    .order('orden', { ascending: true })
+  const data = await unwrap(
+    supabase
+      .from('planta_modulos')
+      .select('nombre, torre, tipo, estado_modulo, estados, tiempos')
+      .eq('proyecto_id', proyectoId)
+      .order('orden', { ascending: true }),
+  )
   return (data ?? []) as PlantaModuloRow[]
 }

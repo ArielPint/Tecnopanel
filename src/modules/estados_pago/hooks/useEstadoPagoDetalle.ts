@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase, unwrap } from '@/lib/supabaseClient'
 import { useCachedQuery } from '@/lib/useCachedQuery'
 import type { EstadoPagoDocumento, EstadoPagoHistorialItem } from '../types'
 
@@ -15,9 +15,9 @@ export function useEstadoPagoDetalle(estadoPagoId: string | null) {
   const cacheKey = estadoPagoId ? `estado_pago_detalle:${estadoPagoId}` : null
 
   const fetcher = useCallback(async (): Promise<Detalle> => {
-    const [{ data: docs }, { data: hist }] = await Promise.all([
-      supabase.from('estados_pago_documentos').select('*').eq('estado_pago_id', estadoPagoId).order('created_at'),
-      supabase.from('estados_pago_historial').select('*').eq('estado_pago_id', estadoPagoId).order('created_at'),
+    const [docs, hist] = await Promise.all([
+      unwrap(supabase.from('estados_pago_documentos').select('*').eq('estado_pago_id', estadoPagoId).order('created_at')),
+      unwrap(supabase.from('estados_pago_historial').select('*').eq('estado_pago_id', estadoPagoId).order('created_at')),
     ])
     return { documentos: docs ?? [], historial: hist ?? [] }
   }, [estadoPagoId])

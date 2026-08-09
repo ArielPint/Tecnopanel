@@ -34,35 +34,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelado = false
 
     async function cargarPerfil() {
-      const { data: sessionData } = await supabase.auth.getSession()
-      const userId = sessionData.session?.user.id
-      if (!userId) {
-        if (!cancelado) {
-          setPerfil(null)
-          setLoading(false)
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const userId = sessionData.session?.user.id
+        if (!userId) {
+          if (!cancelado) {
+            setPerfil(null)
+            setLoading(false)
+          }
+          return
         }
-        return
-      }
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, nombre, apellido, activo, permissions')
-        .eq('id', userId)
-        .single()
-      if (error) console.error('useAuth: fallo al cargar perfil', error)
-      if (!cancelado) {
-        setPerfil(
-          data
-            ? {
-                id: data.id,
-                username: data.username ?? '',
-                name: [data.nombre, data.apellido].filter(Boolean).join(' '),
-                role: '',
-                active: data.activo,
-                permissions: data.permissions,
-              }
-            : null,
-        )
-        setLoading(false)
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, username, nombre, apellido, activo, permissions')
+          .eq('id', userId)
+          .single()
+        if (error) throw error
+        if (!cancelado) {
+          setPerfil(
+            data
+              ? {
+                  id: data.id,
+                  username: data.username ?? '',
+                  name: [data.nombre, data.apellido].filter(Boolean).join(' '),
+                  role: '',
+                  active: data.activo,
+                  permissions: data.permissions,
+                }
+              : null,
+          )
+        }
+      } catch (err) {
+        console.error('useAuth: fallo al cargar perfil', err)
+        if (!cancelado) setPerfil(null)
+      } finally {
+        if (!cancelado) setLoading(false)
       }
     }
 

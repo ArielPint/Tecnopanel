@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase, unwrap } from '@/lib/supabaseClient'
 import { useCachedQuery } from '@/lib/useCachedQuery'
 import { getProyectoId } from '@/lib/proyectoIds'
 
@@ -49,7 +49,7 @@ export function useGruposResponsables() {
   const cargarReceta = useCallback(
     async (grupoId: number): Promise<string[]> => {
       if (recetas[grupoId]) return recetas[grupoId]
-      const { data } = await supabase.from('recetas_grupo').select('codigo').eq('grupo_id', grupoId)
+      const data = await unwrap(supabase.from('recetas_grupo').select('codigo').eq('grupo_id', grupoId))
       const codigos = (data ?? []).map((d) => d.codigo as string)
       setRecetas((prev) => ({ ...prev, [grupoId]: codigos }))
       return codigos
@@ -58,7 +58,7 @@ export function useGruposResponsables() {
   )
 
   const cargarRecetaItems = useCallback(async (grupoId: number): Promise<RecetaItem[]> => {
-    const { data } = await supabase.from('recetas_grupo').select('id, codigo').eq('grupo_id', grupoId).order('codigo')
+    const data = await unwrap(supabase.from('recetas_grupo').select('id, codigo').eq('grupo_id', grupoId).order('codigo'))
     const items = (data ?? []) as RecetaItem[]
     setRecetasItems((prev) => ({ ...prev, [grupoId]: items }))
     setRecetas((prev) => ({ ...prev, [grupoId]: items.map((i) => i.codigo) }))

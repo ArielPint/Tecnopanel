@@ -87,20 +87,31 @@ export function useAccesos() {
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    const [{ data: obras }, crmId] = await Promise.all([
+    const [{ data: obras, error: obrasError }, crmId] = await Promise.all([
       // Fase F: cualquier proyecto tipo obra, no solo La Chacra — mismo criterio que useAccesoUsuario.
       supabase.from('proyectos').select('id, nombre, slug').neq('tipo', 'crm').order('nombre'),
       getProyectoId('crm'),
     ])
+    if (obrasError) {
+      setError(obrasError.message)
+      setLoading(false)
+      return
+    }
     const proyectosObraLista: ProyectoObra[] = obras ?? []
-    const [{ data: profiles, error: profilesError }, { data: permisos }, { data: access }, loginsResp] = await Promise.all([
+    const [
+      { data: profiles, error: profilesError },
+      { data: permisos, error: permisosError },
+      { data: access, error: accessError },
+      loginsResp,
+    ] = await Promise.all([
       supabase.from('profiles').select('id, nombre, apellido, email, activo, is_super_admin, rol').order('nombre'),
       supabase.from('permisos').select('user_id, proyecto_id, modulo_key, accion'),
       supabase.from('project_access').select('user_id, proyecto_id, rol_negocio'),
       supabase.functions.invoke('manage-access', { body: { action: 'list_last_logins' } }),
     ])
-    if (profilesError) {
-      setError(profilesError.message)
+    const primerError = profilesError || permisosError || accessError
+    if (primerError) {
+      setError(primerError.message)
       setLoading(false)
       return
     }

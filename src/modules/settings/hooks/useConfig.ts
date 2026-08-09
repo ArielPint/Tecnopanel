@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabaseClient'
 import { useCachedQuery } from '@/lib/useCachedQuery'
 
@@ -11,7 +12,8 @@ async function loadTotalComprado(): Promise<number> {
       .from('registro_compras')
       .select('valor_total_item, valor_und, cantidad_sol, devolucion')
       .range(from, from + PAGE - 1)
-    if (error || !data) break
+    if (error) throw new Error(error.message)
+    if (!data) break
     for (const r of data) {
       const cantRec = (parseFloat(String(r.cantidad_sol)) || 0) - (parseFloat(String(r.devolucion)) || 0)
       const vti =
@@ -64,7 +66,8 @@ export function useRitmoProyeccion() {
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from('config').select('key, value').in('key', ['proy_ritmo_tope', 'proy_ritmo_torre3_fijo'])
+    const { data, error } = await supabase.from('config').select('key, value').in('key', ['proy_ritmo_tope', 'proy_ritmo_torre3_fijo'])
+    if (error) toast.error(error.message)
     for (const r of data ?? []) {
       if (r.key === 'proy_ritmo_tope' && r.value) setRitmoTope(parseFloat(r.value) || 15)
       if (r.key === 'proy_ritmo_torre3_fijo' && r.value) setRitmoTorre3(parseFloat(r.value) || 6)
@@ -95,7 +98,8 @@ export function useProyExtraAvEcon() {
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from('config').select('value').eq('key', 'proy_extra_avEcon').maybeSingle()
+    const { data, error } = await supabase.from('config').select('value').eq('key', 'proy_extra_avEcon').maybeSingle()
+    if (error) toast.error(error.message)
     if (data?.value != null) setValor(parseFloat(data.value) || 4.5)
     setLoading(false)
   }, [])
@@ -135,11 +139,12 @@ export function useAvanceEconProy() {
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('avance_econ_proy')
       .select('mes, valor, forecast')
       .eq('anio', anio)
       .order('created_at', { ascending: true })
+    if (error) toast.error(error.message)
     const orden: string[] = []
     const map: Record<string, string[]> = {}
     for (const r of (data ?? []) as { mes: number; valor: number; forecast: string }[]) {
@@ -193,7 +198,8 @@ export function useTablaAnual(tabla: 'ajustes_compras') {
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from(tabla).select('mes, valor').eq('anio', anio).order('mes', { ascending: true })
+    const { data, error } = await supabase.from(tabla).select('mes, valor').eq('anio', anio).order('mes', { ascending: true })
+    if (error) toast.error(error.message)
     const map: Record<number, number> = {}
     for (const r of (data ?? []) as { mes: number; valor: number }[]) map[r.mes] = parseFloat(String(r.valor)) || 0
     setFilas(MESES.map((_, i) => ({ mes: i + 1, valor: map[i + 1] ?? 0 })))

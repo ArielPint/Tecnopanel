@@ -20,7 +20,8 @@ export function useSyncProjectKpis(valores: Record<string, number | null | undef
         .filter((e): e is [string, number] => e[1] != null)
         .map(([key, valor]) => ({ proyecto_id: proyectoId, key, valor, timestamp }))
       if (rows.length === 0) return
-      await supabase.from('project_kpis').upsert(rows, { onConflict: 'proyecto_id,key' })
+      const { error } = await supabase.from('project_kpis').upsert(rows, { onConflict: 'proyecto_id,key' })
+      if (error) console.error('useSyncProjectKpis', error)
     }
     sync()
     return () => {
