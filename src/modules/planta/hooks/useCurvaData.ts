@@ -153,6 +153,20 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
     }
     const galponByWeek = [...galponWeeks.entries()].sort(([a], [b]) => a - b).map(([wk, count]) => ({ semana: weekLabel(wk), count }))
 
+    const terminadosF = modulos.filter((m) => {
+      const d = parseDate(m.termReal)
+      return d && d <= today && dentroFiltroMes(d)
+    })
+    const terminadosWeeks = new Map<number, number>()
+    for (const m of terminadosF) {
+      const d = parseDate(m.termReal)
+      if (!d) continue
+      const wk = weekKey(d)
+      if (wk == null) continue
+      terminadosWeeks.set(wk, (terminadosWeeks.get(wk) || 0) + 1)
+    }
+    const terminadosByWeek = [...terminadosWeeks.entries()].sort(([a], [b]) => a - b).map(([wk, count]) => ({ semana: weekLabel(wk), count }))
+
     // Tiempo por torre — no afectado por filtros (igual que el original)
     const modsTorreAll = modulos.filter((m) => m.initReal && (m.avance ?? 0) >= 0.99 && (m.tiempoReal ?? 0) > 0)
     const torreTiempoMap = new Map<string, { realSum: number; realCnt: number; proySum: number; proyCnt: number }>()
@@ -246,7 +260,7 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
       .sort((a, b) => natCompare(a.torre, b.torre))
 
     return {
-      kpis, curvaByWeek, avByWeek, galponByWeek, torreTiempo, tiempoHumedo, tiempoSeco, ritmoTorreRows,
+      kpis, curvaByWeek, avByWeek, galponByWeek, terminadosByWeek, torreTiempo, tiempoHumedo, tiempoSeco, ritmoTorreRows,
       mesesDisponibles, mesesSeleccionados, toggleMes,
       torresDisponibles, torresSeleccionadas, toggleTorre,
     }

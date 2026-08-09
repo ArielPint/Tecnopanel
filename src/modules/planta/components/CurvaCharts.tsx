@@ -93,6 +93,24 @@ export function GalponBarChart({ data }: { data: CurvaData['galponByWeek'] }) {
   )
 }
 
+export function TerminadosSemanaBarChart({ data }: { data: CurvaData['terminadosByWeek'] }) {
+  const config = { count: { label: 'Módulos', color: '#3fb950' } } satisfies ChartConfig
+  return (
+    <ChartContainer config={config} className="aspect-auto h-[320px] w-full">
+      <ComposedChart data={data} margin={{ left: 8, right: 20 }}>
+        <CartesianGrid vertical={false} />
+        <XAxis dataKey="semana" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Legend wrapperStyle={{ fontSize: 11 }} />
+        <Bar dataKey="count" name="Módulos" fill="var(--color-count)" radius={4}>
+          <LabelList dataKey="count" position="top" style={VALUE_LABEL_STYLE} />
+        </Bar>
+      </ComposedChart>
+    </ChartContainer>
+  )
+}
+
 export function TiempoTorreChart({ data }: { data: CurvaData['torreTiempo'] }) {
   const config = {
     real: { label: 'Tiempo Real (días)', color: '#3fb950' },

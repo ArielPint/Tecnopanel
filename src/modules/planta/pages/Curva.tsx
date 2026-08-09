@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/c
 import { useCurvaData } from '../hooks/useCurvaData'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { fmt, fmtDate, fmtPr } from '../lib/format'
-import { CurvaSChart, GalponBarChart, ModulosLineChart, TiempoTorreChart } from '../components/CurvaCharts'
+import { CurvaSChart, GalponBarChart, ModulosLineChart, TerminadosSemanaBarChart, TiempoTorreChart } from '../components/CurvaCharts'
 import { cn } from '@/lib/utils'
 
 const SECCIONES = [
@@ -13,6 +13,7 @@ const SECCIONES = [
   { key: 'modIniciados', label: 'Módulos iniciados' },
   { key: 'modTerminados', label: 'Módulos terminados' },
   { key: 'galpon', label: 'Salida galpón' },
+  { key: 'terminadosSemana', label: 'Terminados por semana' },
   { key: 'tiempoTorre', label: 'Tiempo por torre' },
   { key: 'tablaRitmo', label: 'Tabla ritmo torre' },
 ] as const
@@ -155,6 +156,10 @@ export default function Curva({ excelData }: { excelData: ParsedDashboardData })
 
       <SectionCard title="Módulos que salen del galpón por semana" visible={esVisible('galpon')} onToggle={() => toggle('galpon')}>
         <GalponBarChart data={data.galponByWeek} />
+      </SectionCard>
+
+      <SectionCard title="Módulos terminados por semana" visible={esVisible('terminadosSemana')} onToggle={() => toggle('terminadosSemana')}>
+        <TerminadosSemanaBarChart data={data.terminadosByWeek} />
       </SectionCard>
 
       <SectionCard title="Tiempo real vs proyectado por torre" visible={esVisible('tiempoTorre')} onToggle={() => toggle('tiempoTorre')}>
