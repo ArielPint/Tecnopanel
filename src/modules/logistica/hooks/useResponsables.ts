@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import { getProyectoId } from '@/lib/proyectoIds'
 
 export interface Grupo {
   id: number
@@ -15,6 +17,7 @@ export interface Responsable {
 }
 
 export function useResponsables() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [grupos, setGrupos] = useState<Grupo[]>([])
   const [responsables, setResponsables] = useState<Responsable[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,8 +26,9 @@ export function useResponsables() {
   const refetch = useCallback(async () => {
     setLoading(true)
     setError(null)
+    const proyectoId = await getProyectoId(proyectoSlug!)
     const [gRes, rRes] = await Promise.all([
-      supabase.from('grupos').select('*').order('nombre'),
+      supabase.from('grupos').select('*').eq('proyecto_id', proyectoId).order('nombre'),
       supabase.from('responsables').select('*').order('nombre'),
     ])
     if (gRes.error) setError(gRes.error.message)
@@ -34,7 +38,7 @@ export function useResponsables() {
       setResponsables((rRes.data ?? []) as Responsable[])
     }
     setLoading(false)
-  }, [])
+  }, [proyectoSlug])
 
   useEffect(() => {
     refetch()
@@ -50,11 +54,12 @@ export function useResponsables() {
 
   const crearGrupo = useCallback(
     async (nombre: string) => {
-      const { error } = await supabase.from('grupos').insert({ nombre, activo: true })
+      const proyectoId = await getProyectoId(proyectoSlug!)
+      const { error } = await supabase.from('grupos').insert({ nombre, activo: true, proyecto_id: proyectoId })
       if (error) throw new Error(error.message)
       await refetch()
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   const editarGrupo = useCallback(

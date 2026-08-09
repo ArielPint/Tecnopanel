@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { useCachedQuery } from '@/lib/useCachedQuery'
+import { getProyectoId } from '@/lib/proyectoIds'
 
 export interface Grupo {
   id: number
@@ -24,19 +26,25 @@ interface GruposResponsablesData {
 }
 
 export function useGruposResponsables() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [recetas, setRecetas] = useState<Record<number, string[]>>({})
   const [recetasItems, setRecetasItems] = useState<Record<number, RecetaItem[]>>({})
 
   const fetcher = useCallback(async (): Promise<GruposResponsablesData> => {
+    const proyectoId = await getProyectoId(proyectoSlug!)
     const [rg, rr] = await Promise.all([
-      supabase.from('grupos').select('id, nombre').eq('activo', true).order('nombre'),
+      supabase.from('grupos').select('id, nombre').eq('activo', true).eq('proyecto_id', proyectoId).order('nombre'),
       supabase.from('responsables').select('id, nombre, grupo_id').eq('activo', true).order('nombre'),
     ])
     return { grupos: (rg.data ?? []) as Grupo[], responsables: (rr.data ?? []) as Responsable[] }
-  }, [])
+  }, [proyectoSlug])
 
-  // Catálogo global (sin scope por proyecto), cambia poco: cache 5min. Sin realtime.
-  const { data, loading } = useCachedQuery<GruposResponsablesData>('grupos_responsables', fetcher, 5 * 60_000)
+  // grupos ahora es por-obra (Fase F); responsables sigue siendo catálogo compartido. Cambia poco: cache 5min. Sin realtime.
+  const { data, loading } = useCachedQuery<GruposResponsablesData>(
+    proyectoSlug ? `grupos_responsables_${proyectoSlug}` : null,
+    fetcher,
+    5 * 60_000,
+  )
 
   const cargarReceta = useCallback(
     async (grupoId: number): Promise<string[]> => {
