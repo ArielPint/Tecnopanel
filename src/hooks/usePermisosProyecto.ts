@@ -40,31 +40,44 @@ export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
     setEstado((prev) => ({ ...prev, loading: true }))
 
     async function resolver() {
-      const proyectoId = await getProyectoId(proyectoSlug)
-      const [{ data: profile }, { data: permisos }, { data: modulos }, { data: access }] = await Promise.all([
-        supabase.from('profiles').select('rol, activo').eq('id', userId).maybeSingle(),
-        supabase.from('permisos').select('modulo_key, accion').eq('user_id', userId).eq('proyecto_id', proyectoId),
-        supabase.from('proyecto_modulos').select('modulo_key, habilitado').eq('proyecto_id', proyectoId),
-        supabase.from('project_access').select('rol_negocio').eq('user_id', userId).eq('proyecto_id', proyectoId).maybeSingle(),
-      ])
-      if (cancelado) return
+      try {
+        const proyectoId = await getProyectoId(proyectoSlug)
+        const [
+          { data: profile, error: profileErr },
+          { data: permisos, error: permisosErr },
+          { data: modulos, error: modulosErr },
+          { data: access, error: accessErr },
+        ] = await Promise.all([
+          supabase.from('profiles').select('rol, activo').eq('id', userId).maybeSingle(),
+          supabase.from('permisos').select('modulo_key, accion').eq('user_id', userId).eq('proyecto_id', proyectoId),
+          supabase.from('proyecto_modulos').select('modulo_key, habilitado').eq('proyecto_id', proyectoId),
+          supabase.from('project_access').select('rol_negocio').eq('user_id', userId).eq('proyecto_id', proyectoId).maybeSingle(),
+        ])
+        const queryErr = profileErr ?? permisosErr ?? modulosErr ?? accessErr
+        if (queryErr) throw queryErr
+        if (cancelado) return
 
-      const habilitados = new Set((modulos ?? []).filter((m) => m.habilitado).map((m) => m.modulo_key))
-      // modulo_key con sufijo (ej. "financiero:oc" para el permiso de edición de
-      // una sección) hereda el habilitado/deshabilitado del módulo base.
-      const granted = new Set(
-        (permisos ?? [])
-          .filter((p) => habilitados.has(p.modulo_key.split(':')[0]))
-          .map((p) => `${p.modulo_key}:${p.accion}`),
-      )
+        const habilitados = new Set((modulos ?? []).filter((m) => m.habilitado).map((m) => m.modulo_key))
+        // modulo_key con sufijo (ej. "financiero:oc" para el permiso de edición de
+        // una sección) hereda el habilitado/deshabilitado del módulo base.
+        const granted = new Set(
+          (permisos ?? [])
+            .filter((p) => habilitados.has(p.modulo_key.split(':')[0]))
+            .map((p) => `${p.modulo_key}:${p.accion}`),
+        )
 
-      setEstado({
-        loading: false,
-        isAdmin: profile?.rol === 'admin',
-        activo: profile?.activo !== false,
-        rolNegocio: access?.rol_negocio ?? null,
-        granted,
-      })
+        setEstado({
+          loading: false,
+          isAdmin: profile?.rol === 'admin',
+          activo: profile?.activo !== false,
+          rolNegocio: access?.rol_negocio ?? null,
+          granted,
+        })
+      } catch (err) {
+        if (cancelado) return
+        console.error('usePermisosProyecto: error al resolver permisos', err)
+        setEstado({ loading: false, isAdmin: false, activo: false, rolNegocio: null, granted: new Set() })
+      }
     }
 
     resolver()

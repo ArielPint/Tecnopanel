@@ -38,6 +38,7 @@ export default function GlobalSearch() {
   const [resultados, setResultados] = useState<Resultado[]>([])
   const [loading, setLoading] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
+  const [searchError, setSearchError] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
 
@@ -55,7 +56,7 @@ export default function GlobalSearch() {
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 0)
-    else { setQuery(''); setResultados([]); setActiveIndex(0) }
+    else { setQuery(''); setResultados([]); setActiveIndex(0); setSearchError(false) }
   }, [open])
 
   useEffect(() => {
@@ -63,7 +64,14 @@ export default function GlobalSearch() {
     setLoading(true)
     const timeout = setTimeout(async () => {
       const { data, error } = await supabase.rpc('search_global', { q: query.trim() })
-      if (!error) setResultados((data as Resultado[]) ?? [])
+      if (error) {
+        console.error('GlobalSearch: error en search_global', error)
+        setResultados([])
+        setSearchError(true)
+      } else {
+        setResultados((data as Resultado[]) ?? [])
+        setSearchError(false)
+      }
       setActiveIndex(0)
       setLoading(false)
     }, 250)
@@ -119,7 +127,11 @@ export default function GlobalSearch() {
             <div className="max-h-[60vh] overflow-y-auto p-2">
               {loading && <p className="px-3 py-4 text-center text-xs text-muted-foreground">Buscando...</p>}
 
-              {!loading && query.trim().length >= 2 && resultados.length === 0 && (
+              {!loading && searchError && (
+                <p className="px-3 py-4 text-center text-xs text-destructive">Error al buscar. Intenta de nuevo.</p>
+              )}
+
+              {!loading && !searchError && query.trim().length >= 2 && resultados.length === 0 && (
                 <p className="px-3 py-4 text-center text-xs text-muted-foreground">Sin resultados para "{query}"</p>
               )}
 

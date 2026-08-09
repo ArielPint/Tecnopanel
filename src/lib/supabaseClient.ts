@@ -16,3 +16,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
   },
 })
+
+// Query resultó falló silenciosamente en ~15+ call sites (solo se destructuraba `data`).
+// Tira en error para que llegue al error state de useCachedQuery / catch del caller.
+export async function unwrap<Q extends PromiseLike<{ data: unknown; error: { message: string } | null }>>(
+  query: Q,
+): Promise<Awaited<Q>['data']> {
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  return data
+}

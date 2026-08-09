@@ -7,9 +7,14 @@ export function getProyectoId(slug: string): Promise<string> {
     cache.set(
       slug,
       (async () => {
-        const { data, error } = await supabase.from('proyectos').select('id').eq('slug', slug).single()
-        if (error || !data) throw new Error(`proyecto "${slug}" no encontrado`)
-        return data.id as string
+        try {
+          const { data, error } = await supabase.from('proyectos').select('id').eq('slug', slug).single()
+          if (error || !data) throw new Error(`proyecto "${slug}" no encontrado`)
+          return data.id as string
+        } catch (err) {
+          cache.delete(slug)
+          throw err
+        }
       })(),
     )
   }

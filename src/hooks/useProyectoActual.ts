@@ -16,7 +16,12 @@ export function useProyectoActual() {
       cache.set(
         proyectoSlug,
         (async () => {
-          const { data } = await supabase.from('proyectos').select('nombre').eq('slug', proyectoSlug).single()
+          const { data, error } = await supabase.from('proyectos').select('nombre').eq('slug', proyectoSlug).single()
+          if (error) {
+            cache.delete(proyectoSlug)
+            console.error('useProyectoActual: error al resolver nombre', error)
+            return proyectoSlug
+          }
           return data?.nombre ?? proyectoSlug
         })(),
       )

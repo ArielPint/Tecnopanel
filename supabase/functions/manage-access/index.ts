@@ -31,14 +31,20 @@ Deno.serve(async (req) => {
   const { data: callerUser, error: callerErr } = await admin.auth.getUser(token)
   if (callerErr || !callerUser.user) return json({ error: 'No autenticado' }, 401)
 
-  const { data: callerProfile } = await admin
+  const { data: callerProfile, error: callerProfileErr } = await admin
     .from('profiles')
     .select('is_super_admin')
     .eq('id', callerUser.user.id)
     .single()
+  if (callerProfileErr) return json({ error: callerProfileErr.message }, 500)
   if (!callerProfile?.is_super_admin) return json({ error: 'Requiere administrador' }, 403)
 
-  const body = await req.json()
+  let body: any
+  try {
+    body = await req.json()
+  } catch {
+    return json({ error: 'JSON inválido' }, 400)
+  }
   const { action } = body
 
   try {

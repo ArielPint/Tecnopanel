@@ -15,15 +15,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   loading: true,
   init: () => {
-    supabase.auth.getSession().then(({ data }) => {
-      set({ session: data.session, user: data.session?.user ?? null, loading: false })
-    })
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        set({ session: data.session, user: data.session?.user ?? null, loading: false })
+      })
+      .catch(() => set({ loading: false }))
     supabase.auth.onAuthStateChange((_event, session) => {
       set({ session, user: session?.user ?? null, loading: false })
     })
   },
   signOut: async () => {
-    await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
     set({ session: null, user: null })
   },
 }))
