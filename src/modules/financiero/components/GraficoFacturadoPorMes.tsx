@@ -8,7 +8,7 @@ import { BarChart3 } from 'lucide-react'
 import { formatCLP, formatCLPCompact, nombreMes } from '@/modules/financiero/utils/formatters'
 
 const chartConfig = {
-  monto: { label: 'Facturado', color: 'var(--success)' },
+  monto: { label: 'Facturado', color: 'hsl(var(--success))' },
 } satisfies ChartConfig
 
 export default function GraficoFacturadoPorMes() {

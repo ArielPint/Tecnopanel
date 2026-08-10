@@ -381,8 +381,8 @@ function TabResumen() {
                     <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="asistentes" name="Asistentes" fill="var(--success)" radius={4} />
-                    <Bar dataKey="ausentes" name="Ausentes" fill="var(--destructive)" radius={4} />
+                    <Bar dataKey="asistentes" name="Asistentes" fill="hsl(var(--success))" radius={4} />
+                    <Bar dataKey="ausentes" name="Ausentes" fill="hsl(var(--destructive))" radius={4} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

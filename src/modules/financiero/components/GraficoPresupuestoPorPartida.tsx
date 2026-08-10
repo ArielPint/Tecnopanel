@@ -6,9 +6,9 @@ import { Skeleton } from '@/modules/financiero/components/ui/skeleton'
 import { formatCLPCompact } from '@/modules/financiero/utils/formatters'
 
 const chartConfig = {
-  presupuesto_original: { label: 'Presupuesto', color: 'var(--muted-foreground)' },
-  oc_ingresadas: { label: 'OC Ingresadas', color: 'var(--primary)' },
-  facturado: { label: 'Facturado', color: 'var(--success)' },
+  presupuesto_original: { label: 'Presupuesto', color: 'hsl(var(--muted-foreground))' },
+  oc_ingresadas: { label: 'OC Ingresadas', color: 'hsl(var(--primary))' },
+  facturado: { label: 'Facturado', color: 'hsl(var(--success))' },
 } satisfies ChartConfig
 
 function truncar(texto: string, max = 22) {

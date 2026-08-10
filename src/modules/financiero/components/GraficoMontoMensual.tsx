@@ -14,7 +14,7 @@ interface GraficoMontoMensualProps {
 
 export default function GraficoMontoMensual({ registros, loading, colorVar, etiqueta }: GraficoMontoMensualProps) {
   const chartConfig = useMemo(
-    () => ({ monto: { label: etiqueta, color: `var(${colorVar})` } }) satisfies ChartConfig,
+    () => ({ monto: { label: etiqueta, color: `hsl(var(${colorVar}))` } }) satisfies ChartConfig,
     [colorVar, etiqueta],
   )
 
