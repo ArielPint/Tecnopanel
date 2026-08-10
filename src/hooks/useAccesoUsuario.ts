@@ -19,6 +19,8 @@ interface AccesoUsuario {
   isSuperAdmin: boolean
   tieneCrm: boolean
   tieneProyecto: boolean
+  /** permisos(modulo_key='gestion') sobre el proyecto pseudo `tipo='sistema'` — ver §3.6/syncPermisosGestion. */
+  tieneGestion: boolean
   /** Proyectos tipo obra con permiso real — Fase F: antes era un boolean fijo a La Chacra, ahora N proyectos. */
   proyectosObra: ProyectoObra[]
 }
@@ -30,6 +32,7 @@ const ESTADO_INICIAL: AccesoUsuario = {
   isSuperAdmin: false,
   tieneCrm: false,
   tieneProyecto: false,
+  tieneGestion: false,
   proyectosObra: [],
 }
 
@@ -46,7 +49,7 @@ export function useAccesoUsuario(): AccesoUsuario {
     if (authLoading) return
 
     if (!userId) {
-      setEstado({ loading: false, escenario: null, isAdmin: false, isSuperAdmin: false, tieneCrm: false, tieneProyecto: false, proyectosObra: [] })
+      setEstado({ loading: false, escenario: null, isAdmin: false, isSuperAdmin: false, tieneCrm: false, tieneProyecto: false, tieneGestion: false, proyectosObra: [] })
       return
     }
 
@@ -59,6 +62,7 @@ export function useAccesoUsuario(): AccesoUsuario {
           { data: profile, error: profileErr },
           { data: permisos, error: permisosErr },
           crmId,
+          sistemaId,
           { data: obras, error: obrasErr },
         ] = await Promise.all([
           supabase.from('profiles').select('rol, activo, is_super_admin').eq('id', userId).maybeSingle(),
@@ -66,26 +70,29 @@ export function useAccesoUsuario(): AccesoUsuario {
           // Fase D) por la señal real — cualquier fila en `permisos` para ese proyecto.
           supabase.from('permisos').select('proyecto_id').eq('user_id', userId),
           getProyectoId('crm'),
-          // Fase F: cualquier proyecto tipo obra, no solo La Chacra — habilita N proyectos.
-          supabase.from('proyectos').select('id, slug, nombre').neq('tipo', 'crm').order('nombre'),
+          getProyectoId('sistema'),
+          // Fase F: proyectos tipo obra real, no CRM ni el pseudo-proyecto 'sistema' (§3.6, ancla de
+          // Gestión) — mismo criterio que ProyectosPage/DashboardPage.
+          supabase.from('proyectos').select('id, slug, nombre').not('tipo', 'in', '(crm,sistema)').order('nombre'),
         ])
         const queryErr = profileErr ?? permisosErr ?? obrasErr
         if (queryErr) throw queryErr
         if (cancelado) return
 
         if (!profile || profile.activo === false) {
-          setEstado({ loading: false, escenario: 'sin_acceso', isAdmin: false, isSuperAdmin: false, tieneCrm: false, tieneProyecto: false, proyectosObra: [] })
+          setEstado({ loading: false, escenario: 'sin_acceso', isAdmin: false, isSuperAdmin: false, tieneCrm: false, tieneProyecto: false, tieneGestion: false, proyectosObra: [] })
           return
         }
         const isAdmin = profile.rol === 'admin'
         const isSuperAdmin = !!profile.is_super_admin
         const proyectosConAcceso = new Set((permisos ?? []).map((p) => p.proyecto_id))
         const tieneCrm = isAdmin || proyectosConAcceso.has(crmId)
+        const tieneGestion = isAdmin || proyectosConAcceso.has(sistemaId)
         const proyectosObra = (obras ?? []).filter((p) => isAdmin || proyectosConAcceso.has(p.id))
         const tieneProyecto = proyectosObra.length > 0
 
         if (isAdmin) {
-          setEstado({ loading: false, escenario: 'hub_completo', isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, proyectosObra })
+          setEstado({ loading: false, escenario: 'hub_completo', isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, proyectosObra })
           return
         }
 
@@ -95,11 +102,11 @@ export function useAccesoUsuario(): AccesoUsuario {
         else if (tieneProyecto) escenario = 'solo_proyecto'
         else escenario = 'sin_acceso'
 
-        setEstado({ loading: false, escenario, isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, proyectosObra })
+        setEstado({ loading: false, escenario, isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, proyectosObra })
       } catch (err) {
         if (cancelado) return
         console.error('useAccesoUsuario: error al resolver acceso', err)
-        setEstado({ loading: false, escenario: 'sin_acceso', isAdmin: false, isSuperAdmin: false, tieneCrm: false, tieneProyecto: false, proyectosObra: [] })
+        setEstado({ loading: false, escenario: 'sin_acceso', isAdmin: false, isSuperAdmin: false, tieneCrm: false, tieneProyecto: false, tieneGestion: false, proyectosObra: [] })
       }
     }
 

@@ -4,6 +4,7 @@ import {
   Briefcase,
   Building2,
   ChevronLeft,
+  ClipboardList,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -35,7 +36,13 @@ const navSections = [
   },
   {
     label: 'Sistema',
-    items: [{ to: '/usuarios', label: 'Usuarios', end: false, icon: Users }],
+    items: [
+      // "Gestión" acá es el módulo transversal (§3.6: Reportes/Documentos/Alertas/...) — mismo
+      // nivel que Usuarios/Proyectos en la nav. No confundir con la sección de arriba, también
+      // llamada "Gestión" (agrupador de nav preexistente, sin relación con este módulo).
+      { to: '/gestion', label: 'Gestión', end: false, icon: ClipboardList },
+      { to: '/usuarios', label: 'Usuarios', end: false, icon: Users },
+    ],
   },
 ]
 
@@ -44,6 +51,7 @@ const pageTitles: Record<string, string> = {
   '/proyectos': 'Proyectos',
   '/crm': 'CRM',
   '/geovictoria': 'GeoVictoria',
+  '/gestion': 'Gestión',
   '/usuarios': 'Usuarios',
 }
 

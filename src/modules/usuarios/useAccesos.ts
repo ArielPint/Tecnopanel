@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
-import { syncPermisosCrm, syncPermisosProyecto, syncRolNegocio } from '@/lib/syncPermisos'
+import { syncPermisosCrm, syncPermisosGestion, syncPermisosProyecto, syncRolNegocio } from '@/lib/syncPermisos'
 
 export interface ProyectoObra {
   id: string
@@ -34,6 +34,8 @@ export interface Acceso {
   proyectos: Record<string, ProyectoAcceso>
   crmRolNegocio: string
   crmModulos: string[]
+  /** Acceso al módulo Gestión (§3.6) — permisos(modulo_key='gestion', accion='ver'), no es un proyecto. */
+  gestionVer: boolean
   ultimoIngreso: string | null
 }
 
@@ -48,6 +50,7 @@ export interface AccesoInput {
   proyectos: Record<string, ProyectoAcceso>
   crmRolNegocio: string
   crmModulos: string[]
+  gestionVer: boolean
 }
 
 async function syncAccesos(userId: string, input: AccesoInput) {
@@ -73,6 +76,7 @@ async function syncAccesos(userId: string, input: AccesoInput) {
   await Promise.all([
     ...syncsProyectos,
     syncPermisosCrm(userId, input.crmModulos),
+    syncPermisosGestion(userId, input.gestionVer),
     input.crmRolNegocio ? syncRolNegocio(userId, crmId, input.crmRolNegocio) : Promise.resolve(),
   ])
   const { error } = await supabase.from('profiles').update({ rol: input.rol }).eq('id', userId)
@@ -87,10 +91,13 @@ export function useAccesos() {
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    const [{ data: obras, error: obrasError }, crmId] = await Promise.all([
+    const [{ data: obras, error: obrasError }, crmId, sistemaId] = await Promise.all([
       // Fase F: cualquier proyecto tipo obra, no solo La Chacra — mismo criterio que useAccesoUsuario.
-      supabase.from('proyectos').select('id, nombre, slug').neq('tipo', 'crm').order('nombre'),
+      // Excluye 'sistema' (pseudo-proyecto ancla del módulo Gestión, §3.6) — ese acceso se gestiona
+      // aparte (checkbox "Acceso a Gestión" en la pestaña Cuenta, no como proyecto con módulos).
+      supabase.from('proyectos').select('id, nombre, slug').not('tipo', 'in', '(crm,sistema)').order('nombre'),
       getProyectoId('crm'),
+      getProyectoId('sistema'),
     ])
     if (obrasError) {
       setError(obrasError.message)
@@ -166,6 +173,7 @@ export function useAccesos() {
       }
 
       const crmModulos = misPermisos.filter((x) => x.proyecto_id === crmId && x.accion === 'ver').map((x) => x.modulo_key)
+      const gestionVer = misPermisos.some((x) => x.proyecto_id === sistemaId && x.modulo_key === 'gestion' && x.accion === 'ver')
       return {
         id: p.id,
         nombre: p.nombre,
@@ -177,6 +185,7 @@ export function useAccesos() {
         proyectos,
         crmRolNegocio: miAcceso.find((x) => x.proyecto_id === crmId)?.rol_negocio ?? '',
         crmModulos,
+        gestionVer,
         ultimoIngreso: logins[p.id] ?? null,
       }
     })

@@ -10,7 +10,7 @@ export default function ProtectedRoute({
   children: React.ReactNode
   loginPath?: string
   /** Si se indica, exige que el usuario tenga ese acceso además de sesión — si no, lo manda a "/" para que aterrice donde sí tiene acceso real. */
-  requiere?: 'admin' | 'crm' | 'proyecto'
+  requiere?: 'admin' | 'crm' | 'proyecto' | 'gestion'
 }) {
   const { session, loading } = useAuthStore()
   const acceso = useAccesoUsuario()
@@ -36,7 +36,9 @@ export default function ProtectedRoute({
         ? acceso.isAdmin
         : requiere === 'crm'
           ? acceso.tieneCrm
-          : acceso.isAdmin || acceso.proyectosObra.some((p) => p.slug === proyectoSlug)
+          : requiere === 'gestion'
+            ? acceso.tieneGestion
+            : acceso.isAdmin || acceso.proyectosObra.some((p) => p.slug === proyectoSlug)
     if (!autorizado) {
       return <Navigate to="/" replace />
     }

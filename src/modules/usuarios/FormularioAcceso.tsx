@@ -36,6 +36,7 @@ function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: Proye
     proyectos,
     crmRolNegocio: acceso?.crmRolNegocio ?? '',
     crmModulos: acceso?.crmModulos ?? [],
+    gestionVer: acceso?.gestionVer ?? false,
   }
 }
 
@@ -155,6 +156,10 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               <label className="flex items-center gap-2 text-sm">
                 <Checkbox checked={form.isSuperAdmin} onCheckedChange={(v) => setForm((f) => ({ ...f, isSuperAdmin: !!v }))} />
                 Super admin (puede administrar usuarios y accesos)
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={form.gestionVer} onCheckedChange={(v) => setForm((f) => ({ ...f, gestionVer: !!v }))} />
+                Acceso a Gestión (Reportes, Documentos, Alertas — módulo global del hub)
               </label>
             </TabsContent>
 

@@ -38,9 +38,10 @@ export default function ProyectosPage() {
       .select('*')
       .order('nombre')
       .then(({ data }) => {
-        // El CRM es un sistema de gestión interna, no una obra de Tecnopanel —
-        // se administra en su propia sección (ver /crm), no acá.
-        setProyectos((data ?? []).filter((p) => p.tipo?.toLowerCase() !== 'crm'))
+        // El CRM es un sistema de gestión interna, no una obra de Tecnopanel — se administra
+        // en su propia sección (ver /crm). 'sistema' es el pseudo-proyecto ancla del módulo
+        // Gestión (§3.6, ver Reportes) — tampoco es una obra real, se administra en /gestion.
+        setProyectos((data ?? []).filter((p) => !['crm', 'sistema'].includes(p.tipo?.toLowerCase() ?? '')))
         setLoading(false)
       })
   }, [])

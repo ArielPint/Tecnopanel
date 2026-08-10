@@ -115,7 +115,9 @@ export default function DashboardPage() {
     )
   }
 
-  const proyectosConstruccion = proyectos.filter((p) => p.tipo?.toLowerCase() !== 'crm')
+  // 'sistema' es el pseudo-proyecto ancla del módulo Gestión (§3.6) — no es una obra real, se excluye
+  // igual que 'crm' (mismo criterio que ProyectosPage.rutaInterna: 'construccion'/'custom' sí son obra).
+  const proyectosConstruccion = proyectos.filter((p) => !['crm', 'sistema'].includes(p.tipo?.toLowerCase() ?? ''))
   const construccionIds = proyectosConstruccion.map((p) => p.id)
 
   const laChacraKpis = {

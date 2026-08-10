@@ -56,6 +56,16 @@ export async function syncPermisosProyecto(
   await reemplazarPermisos(userId, proyectoId, filas)
 }
 
+/**
+ * Módulo "Gestión" (§3.6): global, no vive bajo ningún proyecto real — el ancla es un
+ * proyecto pseudo `tipo='sistema'` (slug 'sistema', invisible en toda lista de "proyectos
+ * obra") solo para poder colgar la fila de `permisos` (proyecto_id es NOT NULL).
+ */
+export async function syncPermisosGestion(userId: string, ver: boolean) {
+  const proyectoId = await getProyectoId('sistema')
+  await reemplazarPermisos(userId, proyectoId, ver ? [{ modulo_key: 'gestion', accion: 'ver' }] : [])
+}
+
 /** Rol de negocio por proyecto (catálogo abierto, ver Fase E1) — reemplaza el 'full_access' decorativo. */
 export async function syncRolNegocio(userId: string, proyectoId: string, rolNegocio: string) {
   const { error } = await supabase

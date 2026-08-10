@@ -17,6 +17,7 @@ import SolicitudesApp from './modules/solicitudes/SolicitudesApp'
 import EstadosPagoApp from './modules/estados_pago/EstadosPagoApp'
 import SettingsApp from './modules/settings/SettingsApp'
 import GeoVictoriaPage from './modules/gestion/GeoVictoriaPage'
+import GestionApp from './modules/gestion/GestionApp'
 import { useAuthStore } from './store/authStore'
 
 export default function App() {
@@ -113,6 +114,14 @@ export default function App() {
             }
           />
           <Route path="/geovictoria" element={<GeoVictoriaPage />} />
+          <Route
+            path="/gestion"
+            element={
+              <ProtectedRoute requiere="gestion">
+                <GestionApp />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/usuarios"
             element={
