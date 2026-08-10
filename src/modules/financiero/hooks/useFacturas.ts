@@ -7,7 +7,14 @@ import type { Factura } from '@/modules/financiero/types/financiero'
 
 type NuevaFactura = Pick<
   Factura,
-  'numero_factura' | 'ordenes_compra_id' | 'proveedor_rut' | 'fecha' | 'monto' | 'observacion' | 'pdf_path'
+  | 'numero_factura'
+  | 'ordenes_compra_id'
+  | 'proveedor_rut'
+  | 'fecha'
+  | 'monto'
+  | 'descuento'
+  | 'observacion'
+  | 'pdf_path'
 >
 
 export function useFacturas(ordenesCompraId?: string) {

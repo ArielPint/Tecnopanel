@@ -20,6 +20,7 @@ import { usePresupuestosLookup } from '@/modules/financiero/hooks/usePresupuesto
 import { pdfPath, subirPdf } from '@/modules/financiero/services/pdfStorage'
 import { notificarFacturaSuperaOC } from '@/modules/financiero/services/notificaciones'
 import { formatCLP } from '@/modules/financiero/utils/formatters'
+import { cn } from '@/lib/utils'
 import type { Factura, OrdenCompra } from '@/modules/financiero/types/financiero'
 
 interface FormularioFacturaProps {
@@ -32,6 +33,7 @@ interface FormularioFacturaProps {
     proveedor_rut: string | null
     fecha: string
     monto: number
+    descuento: number
     observacion: string | null
     pdf_path: null
   }) => Promise<Factura>
@@ -49,8 +51,18 @@ export default function FormularioFactura({ factura, facturas, ordenesCompra, on
   const [proveedorRut, setProveedorRut] = useState(factura?.proveedor_rut ?? '')
   const [fecha, setFecha] = useState(factura?.fecha ?? new Date().toISOString().slice(0, 10))
   const [monto, setMonto] = useState(String(factura?.monto ?? ''))
+  const [descuento, setDescuento] = useState(String(factura?.descuento ?? '0'))
   const [observacion, setObservacion] = useState(factura?.observacion ?? '')
   const [archivoPdf, setArchivoPdf] = useState<File | null>(null)
+
+  const ocSeleccionada = ordenesCompra.find((oc) => oc.id === ordenesCompraId)
+  const yaFacturado = useMemo(() => {
+    if (!ordenesCompraId) return 0
+    return facturas
+      .filter((f) => f.ordenes_compra_id === ordenesCompraId && f.estado !== 'ANULADA' && f.id !== factura?.id)
+      .reduce((suma, f) => suma + f.monto, 0)
+  }, [facturas, ordenesCompraId, factura?.id])
+  const saldoDisponible = ocSeleccionada ? ocSeleccionada.neto - yaFacturado : null
 
   // Un mismo N° de factura puede repetirse entre OC distintas si una factura
   // real se reparte en varias líneas — pero si además coincide el RUT
@@ -83,6 +95,7 @@ export default function FormularioFactura({ factura, facturas, ordenesCompra, on
           proveedor_rut: proveedorRut || null,
           fecha,
           monto: Number(monto),
+          descuento: Number(descuento) || 0,
           observacion: observacion || null,
         })
       } else {
@@ -92,6 +105,7 @@ export default function FormularioFactura({ factura, facturas, ordenesCompra, on
           proveedor_rut: proveedorRut || null,
           fecha,
           monto: Number(monto),
+          descuento: Number(descuento) || 0,
           observacion: observacion || null,
           pdf_path: null,
         })
@@ -121,6 +135,7 @@ export default function FormularioFactura({ factura, facturas, ordenesCompra, on
         setOrdenesCompraId('')
         setProveedorRut('')
         setMonto('')
+        setDescuento('0')
         setObservacion('')
         setArchivoPdf(null)
       }
@@ -163,6 +178,12 @@ export default function FormularioFactura({ factura, facturas, ordenesCompra, on
                 if (oc.proveedor_rut) setProveedorRut(oc.proveedor_rut)
               }}
             />
+            {ocSeleccionada && saldoDisponible !== null && (
+              <p className={cn('text-sm', saldoDisponible < 0 ? 'text-destructive' : 'text-muted-foreground')}>
+                Ya facturado {formatCLP(yaFacturado)} de {formatCLP(ocSeleccionada.neto)} — saldo disponible{' '}
+                {formatCLP(saldoDisponible)}
+              </p>
+            )}
           </div>
           <BuscadorProveedor rut={proveedorRut ?? ''} onRutChange={setProveedorRut} onResolved={() => {}} />
           <div className="flex flex-col gap-1.5">
@@ -181,6 +202,17 @@ export default function FormularioFactura({ factura, facturas, ordenesCompra, on
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="monto">Monto (CLP)</Label>
             <Input id="monto" type="number" min="0" step="1" value={monto} onChange={(e) => setMonto(e.target.value)} required />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="descuento">Descuento (CLP)</Label>
+            <Input
+              id="descuento"
+              type="number"
+              min="0"
+              step="1"
+              value={descuento}
+              onChange={(e) => setDescuento(e.target.value)}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="observacion">Observación</Label>

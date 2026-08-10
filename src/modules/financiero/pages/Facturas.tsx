@@ -52,7 +52,7 @@ export default function Facturas() {
 
   const haySuperapaso = filtradas.some((f) => f.estado === 'SUPERA_OC')
   const hayFiltrosActivos = !!search || !!presupuestoId
-  const columnas = 9 + (canEditOC ? 1 : 0)
+  const columnas = 10 + (canEditOC ? 1 : 0)
 
   if (error) return <p className="text-destructive">{error}</p>
 
@@ -82,6 +82,7 @@ export default function Facturas() {
                   Proveedor: f.proveedor_rut ?? '',
                   Fecha: f.fecha,
                   Monto: f.monto,
+                  Descuento: f.descuento,
                   Observación: f.observacion ?? '',
                   Estado: f.estado,
                 })),
@@ -124,6 +125,7 @@ export default function Facturas() {
                 <TableHead>Proveedor</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead className="text-right">Monto</TableHead>
+                <TableHead className="text-right">Descuento</TableHead>
                 <TableHead>Observación</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>PDF</TableHead>
@@ -144,6 +146,7 @@ export default function Facturas() {
                       <TableCell>{f.proveedor_rut ?? '—'}</TableCell>
                       <TableCell>{formatFecha(f.fecha)}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatCLP(f.monto)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{f.descuento ? formatCLP(f.descuento) : '—'}</TableCell>
                       <TableCell className="max-w-56 truncate">{f.observacion ?? '—'}</TableCell>
                       <TableCell>
                         <Badge variant={ESTADO_VARIANT[f.estado]}>{f.estado}</Badge>

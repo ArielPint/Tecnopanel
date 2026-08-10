@@ -70,6 +70,7 @@ export interface Factura {
   proveedor_rut: string | null
   fecha: string
   monto: number
+  descuento: number
   observacion: string | null
   mes: number | null
   anio: number | null
