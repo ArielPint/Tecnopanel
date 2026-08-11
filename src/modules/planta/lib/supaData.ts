@@ -18,6 +18,7 @@ export async function loadPptoCatalogo(): Promise<Record<string, number>> {
 }
 
 interface RegistroCompraRow {
+  id: string
   fecha_guia: string | null
   fecha_sol: string | null
   mes: number | null
@@ -43,9 +44,10 @@ export async function loadCompras(proyectoId: string): Promise<DetalleGdRow[]> {
   for (;;) {
     const { data, error } = await supabase
       .from('registro_compras')
-      .select('fecha_guia, fecha_sol, mes, gd, codigo, descripcion, cantidad_sol, devolucion, valor_und, valor_ppto, valor_total_item, responsable, oc, tipo_producto')
+      .select('id, fecha_guia, fecha_sol, mes, gd, codigo, descripcion, cantidad_sol, devolucion, valor_und, valor_ppto, valor_total_item, responsable, oc, tipo_producto')
       .eq('proyecto_id', proyectoId)
       .order('fecha_guia', { ascending: false })
+      .order('id', { ascending: true })
       .range(from, from + PAGE - 1)
     if (error) throw new Error(error.message)
     if (!data) break
@@ -75,7 +77,7 @@ export async function loadCompras(proyectoId: string): Promise<DetalleGdRow[]> {
     const valorPpto = parseFloat(String(r.valor_ppto)) || 0
     const difTotal = cantRec * valorPpto - valorTotal
     const base = cantRec * valorPpto
-    const fechaAgr = r.fecha_sol || r.fecha_guia
+    const fechaAgr = r.fecha_guia || r.fecha_sol
     const fd = fechaAgr ? new Date(fechaAgr + 'T12:00:00') : null
     return {
       fechaGuia: r.fecha_guia, anioGuia: fd ? fd.getFullYear() : null,
