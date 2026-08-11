@@ -3,6 +3,7 @@ import { Navigate, Link } from 'react-router-dom'
 import { useDashboardData } from './useDashboardData'
 import { useCrmResumen } from './useCrmResumen'
 import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
+import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 import { KPI_LABELS } from './types'
 import KpiCard from './KpiCard'
 import { fmtM } from '@/modules/planta/lib/format'
@@ -44,10 +45,25 @@ function PercentBar({ value }: { value: number | undefined }) {
   )
 }
 
+// Orden de prioridad de aterrizaje para 'solo_proyecto' — el primero al que el usuario
+// tenga acceso real (módulo habilitado en el proyecto + permiso). 'dashboard' ya no se
+// asume por defecto: un usuario con solo 'solicitudes' rebotaba sin acceso (ver DashboardPlantaGate).
+const MODULOS_ATERRIZAJE: { modulo: string; ruta: string }[] = [
+  { modulo: 'dashboard', ruta: 'dashboard' },
+  { modulo: 'produccion', ruta: 'produccion' },
+  { modulo: 'logistica', ruta: 'logistica' },
+  { modulo: 'solicitudes', ruta: 'solicitudes' },
+  { modulo: 'financiero', ruta: 'financiero' },
+  { modulo: 'estados_pago', ruta: 'estados-pago' },
+]
+
 export default function DashboardPage() {
   const acceso = useAccesoUsuario()
   const { proyectos, kpisPorProyecto, loading, error } = useDashboardData()
   const crmResumen = useCrmResumen()
+  const soloProyectoSlug =
+    acceso.escenario === 'solo_proyecto' && acceso.proyectosObra.length === 1 ? acceso.proyectosObra[0].slug : ''
+  const permisosSoloProyecto = usePermisosProyecto(soloProyectoSlug)
 
   if (acceso.loading) {
     return (
@@ -63,8 +79,17 @@ export default function DashboardPage() {
 
   if (acceso.escenario === 'solo_proyecto') {
     // Si tiene más de un proyecto obra (futuro, hoy siempre 1), manda al selector /proyectos en vez de adivinar cuál.
-    const destino = acceso.proyectosObra.length === 1 ? acceso.proyectosObra[0].slug : null
-    return <Navigate to={destino ? `/proyectos/${destino}/dashboard` : '/proyectos'} replace />
+    if (!soloProyectoSlug) return <Navigate to="/proyectos" replace />
+    if (permisosSoloProyecto.loading) {
+      return (
+        <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
+          Cargando…
+        </div>
+      )
+    }
+    const aterrizaje = MODULOS_ATERRIZAJE.find((m) => permisosSoloProyecto.tieneAccion(m.modulo))
+    const ruta = aterrizaje?.ruta ?? 'dashboard'
+    return <Navigate to={`/proyectos/${soloProyectoSlug}/${ruta}`} replace />
   }
 
   if (acceso.escenario === 'sin_acceso') {
