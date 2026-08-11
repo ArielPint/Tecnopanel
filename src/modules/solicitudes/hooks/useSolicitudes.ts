@@ -35,7 +35,7 @@ export interface SolicitudInput {
   username: string
   nombre: string
   grupo_id: number
-  responsable_id: number
+  responsable_id: number | null
   items: ItemSolicitud[]
   observacion: string | null
   estado: EstadoSolicitud

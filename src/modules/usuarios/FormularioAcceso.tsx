@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
+import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Label } from '@/modules/financiero/components/ui/label'
@@ -37,6 +38,7 @@ function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: Proye
     crmRolNegocio: acceso?.crmRolNegocio ?? '',
     crmModulos: acceso?.crmModulos ?? [],
     gestionVer: acceso?.gestionVer ?? false,
+    grupoId: acceso?.grupoId ?? null,
   }
 }
 
@@ -44,10 +46,26 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
   const [open, setOpen] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [form, setForm] = useState<AccesoInput>(inputFromAcceso(acceso, proyectosObra))
+  const [gruposPorProyecto, setGruposPorProyecto] = useState<Record<string, { id: number; nombre: string }[]>>({})
 
   useEffect(() => {
     if (open) setForm(inputFromAcceso(acceso, proyectosObra))
   }, [open, acceso, proyectosObra])
+
+  useEffect(() => {
+    if (!open || proyectosObra.length === 0) return
+    Promise.all(
+      proyectosObra.map((p) =>
+        supabase
+          .from('grupos')
+          .select('id, nombre')
+          .eq('proyecto_id', p.id)
+          .eq('activo', true)
+          .order('nombre')
+          .then((r) => [p.id, r.data ?? []] as const),
+      ),
+    ).then((entries) => setGruposPorProyecto(Object.fromEntries(entries)))
+  }, [open, proyectosObra])
 
   function toggleCrmModulo(modulo: string, checked: boolean) {
     setForm((f) => ({
@@ -251,8 +269,31 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                             checked={pa.solicitudesEdit}
                             onCheckedChange={(v) => setProyectoAcceso(proy.id, { solicitudesEdit: !!v })}
                           />
-                          Puede editar la receta por grupo de solicitante (pestaña &quot;Receta por Grupo&quot;)
+                          Puede ver todas las solicitudes (no solo las propias), editarlas, enviarlas y editar la receta por grupo
                         </label>
+                        {!pa.solicitudesEdit && (
+                          <div className="flex flex-col gap-1.5 pt-1">
+                            <Label className="text-xs text-muted-foreground">
+                              Acceso restringido — grupo fijo (solo crea solicitudes de ese grupo, sin ver para quién ni poder enviarlas)
+                            </Label>
+                            <Select
+                              value={form.grupoId != null ? String(form.grupoId) : '__ninguno'}
+                              onValueChange={(v) => setForm((f) => ({ ...f, grupoId: v === '__ninguno' ? null : Number(v) }))}
+                            >
+                              <SelectTrigger className="h-8 w-64">
+                                <SelectValue placeholder="Sin grupo asignado" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__ninguno">Sin grupo asignado</SelectItem>
+                                {(gruposPorProyecto[proy.id] ?? []).map((g) => (
+                                  <SelectItem key={g.id} value={String(g.id)}>
+                                    {g.nombre}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </div>
                     )}
                     {pa.modulos.includes('estados_pago') && (

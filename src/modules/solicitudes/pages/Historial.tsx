@@ -11,7 +11,8 @@ import { useCatalogoGD, type Producto } from '@/modules/logistica/hooks/useCatal
 import ProductoAutocomplete from '@/modules/logistica/components/ProductoAutocomplete'
 import { useAuth } from '../hooks/useAuth'
 import { useGruposResponsables } from '../hooks/useGruposResponsables'
-import { useSolicitudes, type EstadoSolicitud, type ItemSolicitud } from '../hooks/useSolicitudes'
+import { useSolicitudes, type EstadoSolicitud, type ItemSolicitud, type Solicitud } from '../hooks/useSolicitudes'
+import { buildMailto, buildMailtoSubject, buildEmailHtmlTable, copyHtmlTableToClipboard } from '../lib/email'
 
 const ESTADO_LABEL: Record<EstadoSolicitud, string> = {
   pendiente: 'No usada',
@@ -28,9 +29,9 @@ const ESTADO_BADGE: Record<EstadoSolicitud, 'warning' | 'success' | 'destructive
 }
 
 export default function Historial() {
-  const { perfil, isAdmin } = useAuth()
-  const { grupos } = useGruposResponsables()
-  const { solicitudes, eliminar, actualizarItems } = useSolicitudes()
+  const { perfil, isAdmin, puedeEditar } = useAuth()
+  const { grupos, responsables } = useGruposResponsables()
+  const { solicitudes, eliminar, actualizarItems, marcarUsada } = useSolicitudes()
   const { allProducts } = useCatalogoGD()
 
   const [busqueda, setBusqueda] = useState('')
@@ -38,6 +39,7 @@ export default function Historial() {
   const [fechaFiltro, setFechaFiltro] = useState('')
   const [estadoFiltro, setEstadoFiltro] = useState('')
   const [expandido, setExpandido] = useState<string | null>(null)
+  const [enviandoId, setEnviandoId] = useState<string | null>(null)
 
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [itemsEdit, setItemsEdit] = useState<ItemSolicitud[]>([])
@@ -93,10 +95,34 @@ export default function Historial() {
   }
 
   const grupoNombre = (id: number | null) => grupos.find((g) => g.id === id)?.nombre ?? '—'
+  const responsableNombre = (id: number | null) => responsables.find((r) => r.id === id)?.nombre ?? '—'
+
+  async function onEnviar(s: Solicitud) {
+    setEnviandoId(s.id)
+    try {
+      const grupoN = grupoNombre(s.grupo_id)
+      const respN = responsableNombre(s.responsable_id)
+      const html = buildEmailHtmlTable(s.numero, grupoN, respN, s.items, s.observacion)
+      const copiado = await copyHtmlTableToClipboard(html)
+      if (copiado) {
+        const subject = buildMailtoSubject(s.numero, grupoN)
+        const body = `N° Solicitud: ${s.numero}\nGrupo: ${grupoN}\nPara: ${respN}\n\n(Pega aquí la tabla copiada: Ctrl+V)`
+        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+        toast.success('Tabla copiada al portapapeles. Pégala (Ctrl+V) en el cuerpo del correo.')
+      } else {
+        window.location.href = buildMailto(s.numero, grupoN, respN, s.items, s.observacion)
+      }
+      await marcarUsada(s.id)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo enviar')
+    } finally {
+      setEnviandoId(null)
+    }
+  }
 
   const filtradas = useMemo(() => {
     let data = solicitudes
-    if (!isAdmin) data = data.filter((s) => s.usuario_id === perfil?.id)
+    if (!isAdmin && !puedeEditar) data = data.filter((s) => s.usuario_id === perfil?.id)
     if (grupoFiltro) data = data.filter((s) => String(s.grupo_id) === grupoFiltro)
     const q = busqueda.toLowerCase()
     if (q) {
@@ -110,7 +136,7 @@ export default function Historial() {
     if (fechaFiltro) data = data.filter((s) => s.created_at?.startsWith(fechaFiltro))
     if (estadoFiltro) data = data.filter((s) => s.estado === estadoFiltro)
     return data
-  }, [solicitudes, isAdmin, perfil, grupoFiltro, busqueda, fechaFiltro, estadoFiltro])
+  }, [solicitudes, isAdmin, puedeEditar, perfil, grupoFiltro, busqueda, fechaFiltro, estadoFiltro])
 
   async function onEliminar(id: string) {
     if (!confirm('¿Eliminar esta solicitud? Esta acción no se puede deshacer.')) return
@@ -177,6 +203,7 @@ export default function Historial() {
                 const isOwn = s.usuario_id === perfil?.id
                 const puedeEliminar = isAdmin || (isOwn && s.estado !== 'usada')
                 const puedeRetomar = s.estado === 'pendiente' && (isAdmin || isOwn)
+                const puedeEnviar = s.estado === 'pendiente' && (isAdmin || puedeEditar)
                 const editando = editandoId === s.id
                 return (
                   <Fragment key={s.id}>
@@ -191,6 +218,11 @@ export default function Historial() {
                         <Badge variant={ESTADO_BADGE[s.estado]}>{ESTADO_LABEL[s.estado]}</Badge>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()} className="space-x-2">
+                        {puedeEnviar && !editando && (
+                          <Button variant="outline" size="sm" onClick={() => onEnviar(s)} disabled={enviandoId === s.id}>
+                            ✉ {enviandoId === s.id ? 'Enviando…' : 'Enviar'}
+                          </Button>
+                        )}
                         {puedeRetomar && !editando && (
                           <Button variant="outline" size="sm" onClick={() => iniciarEdicion(s.id, s.items)}>
                             ✎ Retomar

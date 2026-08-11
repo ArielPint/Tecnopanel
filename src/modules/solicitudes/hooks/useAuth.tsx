@@ -10,9 +10,10 @@ interface Perfil {
   role: string
   active: boolean
   permissions: Record<string, unknown>
+  grupoId: number | null
 }
 
-export type SolicitudesTab = 'nueva' | 'historial' | 'catalogo' | 'receta'
+export type SolicitudesTab = 'nueva' | 'historial' | 'catalogo' | 'receta' | 'stock'
 
 interface AuthValue {
   perfil: Perfil | null
@@ -21,6 +22,8 @@ interface AuthValue {
   isAdmin: boolean
   puedeVer: (tab: SolicitudesTab) => boolean
   puedeEditar: boolean
+  /** Usuario con grupo fijo asignado y sin permiso de edición — solo crea solicitudes de su grupo, sin ver para quién ni poder enviarlas. */
+  esRestringido: boolean
   signOut: () => Promise<void>
 }
 
@@ -46,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, username, nombre, apellido, activo, permissions')
+          .select('id, username, nombre, apellido, activo, permissions, grupo_id')
           .eq('id', userId)
           .single()
         if (error) throw error
@@ -60,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   role: '',
                   active: data.activo,
                   permissions: data.permissions,
+                  grupoId: data.grupo_id,
                 }
               : null,
           )
@@ -97,6 +101,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // además el permiso extra "solicitudes:editar" (checkbox aparte en FormularioAcceso).
   const puedeEditar = acceso.tieneAccion('solicitudes', 'editar')
   const perfilConRol = perfil ? { ...perfil, role: acceso.rolNegocio ?? '' } : null
+  // Grupo fijo + sin permiso de edición => solo crea, sin elegir grupo/responsable ni enviar.
+  const esRestringido = !!perfil?.grupoId && !puedeEditar
 
   return (
     <AuthContext.Provider
@@ -107,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin,
         puedeVer,
         puedeEditar,
+        esRestringido,
         signOut: async () => {
           await supabase.auth.signOut()
         },

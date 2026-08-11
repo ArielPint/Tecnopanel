@@ -16,13 +16,29 @@ const normCod = (c: string) => String(c || '').trim().toUpperCase()
 export default function RecetaGrupo() {
   const { puedeEditar } = useAuth()
   const { allProducts } = useCatalogoGD()
-  const { grupos, recetasItems, cargarRecetaItems, agregarReceta, quitarReceta } = useGruposResponsables()
+  const { grupos, responsables, recetasItems, cargarRecetaItems, agregarReceta, quitarReceta, actualizarResponsableDefault } = useGruposResponsables()
 
   const [grupoId, setGrupoId] = useState('')
   const [loadingItems, setLoadingItems] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [productoNuevo, setProductoNuevo] = useState<Producto | null>(null)
   const [guardando, setGuardando] = useState(false)
+  const [guardandoResponsable, setGuardandoResponsable] = useState(false)
+
+  const grupoActual = grupos.find((g) => String(g.id) === grupoId)
+  const responsablesGrupo = responsables.filter((r) => String(r.grupo_id) === grupoId)
+
+  async function onCambiarResponsableDefault(value: string) {
+    setGuardandoResponsable(true)
+    try {
+      await actualizarResponsableDefault(Number(grupoId), value === '__ninguno' ? null : Number(value))
+      toast.success('Responsable por defecto actualizado')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al actualizar')
+    } finally {
+      setGuardandoResponsable(false)
+    }
+  }
 
   useEffect(() => {
     if (!grupoId) return
@@ -91,6 +107,30 @@ export default function RecetaGrupo() {
         <EmptyState icon={ListChecks} title="Selecciona un grupo para ver su receta" />
       ) : (
         <>
+          {puedeEditar && (
+            <div className="flex items-center gap-2 rounded-md border bg-muted/20 p-3">
+              <span className="text-xs text-muted-foreground">
+                Responsable por defecto (usuarios de acceso restringido de este grupo no lo eligen, se asigna solo al guardar)
+              </span>
+              <Select
+                value={grupoActual?.responsable_default_id != null ? String(grupoActual.responsable_default_id) : '__ninguno'}
+                onValueChange={onCambiarResponsableDefault}
+                disabled={guardandoResponsable}
+              >
+                <SelectTrigger className="h-8 w-56">
+                  <SelectValue placeholder="Sin responsable por defecto" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__ninguno">Sin responsable por defecto</SelectItem>
+                  {responsablesGrupo.map((r) => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {r.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {puedeEditar && (
             <div className="flex flex-wrap items-end gap-2 rounded-md border bg-muted/20 p-3">
               <div className="flex flex-col gap-1.5">

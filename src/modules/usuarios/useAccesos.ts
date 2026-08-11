@@ -36,6 +36,8 @@ export interface Acceso {
   crmModulos: string[]
   /** Acceso al módulo Gestión (§3.6) — permisos(modulo_key='gestion', accion='ver'), no es un proyecto. */
   gestionVer: boolean
+  /** Grupo fijo (profiles.grupo_id) para acceso restringido a Solicitudes — un único grupo, no por proyecto. */
+  grupoId: number | null
   ultimoIngreso: string | null
 }
 
@@ -51,6 +53,7 @@ export interface AccesoInput {
   crmRolNegocio: string
   crmModulos: string[]
   gestionVer: boolean
+  grupoId: number | null
 }
 
 async function syncAccesos(userId: string, input: AccesoInput) {
@@ -79,7 +82,7 @@ async function syncAccesos(userId: string, input: AccesoInput) {
     syncPermisosGestion(userId, input.gestionVer),
     input.crmRolNegocio ? syncRolNegocio(userId, crmId, input.crmRolNegocio) : Promise.resolve(),
   ])
-  const { error } = await supabase.from('profiles').update({ rol: input.rol }).eq('id', userId)
+  const { error } = await supabase.from('profiles').update({ rol: input.rol, grupo_id: input.grupoId }).eq('id', userId)
   if (error) throw new Error(error.message)
 }
 
@@ -111,7 +114,7 @@ export function useAccesos() {
       { data: access, error: accessError },
       loginsResp,
     ] = await Promise.all([
-      supabase.from('profiles').select('id, nombre, apellido, email, activo, is_super_admin, rol').order('nombre'),
+      supabase.from('profiles').select('id, nombre, apellido, email, activo, is_super_admin, rol, grupo_id').order('nombre'),
       supabase.from('permisos').select('user_id, proyecto_id, modulo_key, accion'),
       supabase.from('project_access').select('user_id, proyecto_id, rol_negocio'),
       supabase.functions.invoke('manage-access', { body: { action: 'list_last_logins' } }),
@@ -186,6 +189,7 @@ export function useAccesos() {
         crmRolNegocio: miAcceso.find((x) => x.proyecto_id === crmId)?.rol_negocio ?? '',
         crmModulos,
         gestionVer,
+        grupoId: p.grupo_id,
         ultimoIngreso: logins[p.id] ?? null,
       }
     })

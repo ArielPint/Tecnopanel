@@ -11,6 +11,7 @@ import ProductoAutocomplete from '@/modules/logistica/components/ProductoAutocom
 import { useAuth } from '../hooks/useAuth'
 import { useGruposResponsables } from '../hooks/useGruposResponsables'
 import { useSolicitudes, type ItemSolicitud } from '../hooks/useSolicitudes'
+import { buildMailto, buildMailtoSubject, buildEmailHtmlTable, copyHtmlTableToClipboard, PROYECTO_CONST, WIP_CONST } from '../lib/email'
 
 interface FilaSolicitud {
   id: number
@@ -33,108 +34,12 @@ const filaVacia = (producto?: Producto): FilaSolicitud => ({
   modulos: '',
 })
 
-const PROYECTO_CONST = '930026194'
-const WIP_CONST = '10010'
 const MODULOS_ALERTA = 20
 
 function syncModulos(cantidadReal: string, cpm: number | null): string {
   const real = parseFloat(cantidadReal)
   if (cpm == null || cpm <= 0 || isNaN(real) || real <= 0) return ''
   return (real / cpm).toFixed(2)
-}
-
-function padCol(str: string, len: number) {
-  const s = String(str)
-  return s.length >= len ? s.slice(0, len - 1) + ' ' : s + ' '.repeat(len - s.length)
-}
-
-function buildMailto(numero: number, grupoNombre: string, responsableNombre: string, items: ItemSolicitud[], observacion: string | null) {
-  const now = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  const subject = `Solicitud de materiales N° ${numero} · ${grupoNombre} · ${now}`
-  const colProy = 12
-  const colWip = 8
-  const colCod = 12
-  const colDesc = 45
-  const colUnid = 12
-  const header = padCol('PROYECTO', colProy) + padCol('WIP', colWip) + padCol('CODIGO', colCod) + padCol('DESCRIPCION', colDesc) + padCol('Unid. Med', colUnid) + 'Cantidad'
-  const sep = '-'.repeat(colProy + colWip + colCod + colDesc + colUnid + 10)
-  const lineas = items.map(
-    (it) => padCol(PROYECTO_CONST, colProy) + padCol(WIP_CONST, colWip) + padCol(it.codigo, colCod) + padCol(it.descripcion, colDesc) + padCol(it.unidad, colUnid) + it.cantidad_real,
-  )
-  const body = [
-    `N° Solicitud: ${numero}`,
-    `Grupo: ${grupoNombre}`,
-    `Para: ${responsableNombre}`,
-    `Fecha: ${now}`,
-    '',
-    header,
-    sep,
-    ...lineas,
-    '',
-    observacion ? `Observaciones: ${observacion}` : '',
-  ].join('\n')
-  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-}
-
-function buildMailtoSubject(numero: number, grupoNombre: string) {
-  const now = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  return `Solicitud de materiales N° ${numero} · ${grupoNombre} · ${now}`
-}
-
-function escHtml(s: string) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
-}
-
-function buildEmailHtmlTable(numero: number, grupoNombre: string, responsableNombre: string, items: ItemSolicitud[], observacion: string | null) {
-  const now = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  const filas = items
-    .map(
-      (it) => `
-    <tr>
-      <td style="border:1px solid #999;padding:4px 8px">${escHtml(PROYECTO_CONST)}</td>
-      <td style="border:1px solid #999;padding:4px 8px">${escHtml(WIP_CONST)}</td>
-      <td style="border:1px solid #999;padding:4px 8px">${escHtml(it.codigo)}</td>
-      <td style="border:1px solid #999;padding:4px 8px">${escHtml(it.descripcion)}</td>
-      <td style="border:1px solid #999;padding:4px 8px">${escHtml(it.unidad)}</td>
-      <td style="border:1px solid #999;padding:4px 8px;text-align:right">${it.cantidad_real}</td>
-    </tr>`,
-    )
-    .join('')
-  return `
-    <div style="font-family:Segoe UI,Arial,sans-serif;font-size:13px;color:#000">
-      <p>N° Solicitud: <b>${numero}</b><br>
-      Grupo: <b>${escHtml(grupoNombre)}</b><br>
-      Para: <b>${escHtml(responsableNombre)}</b><br>
-      Fecha: <b>${now}</b></p>
-      <table style="border-collapse:collapse;border:1px solid #999">
-        <thead>
-          <tr style="background:#eee;font-weight:bold">
-            <th style="border:1px solid #999;padding:4px 8px">PROYECTO</th>
-            <th style="border:1px solid #999;padding:4px 8px">WIP</th>
-            <th style="border:1px solid #999;padding:4px 8px">CODIGO</th>
-            <th style="border:1px solid #999;padding:4px 8px">DESCRIPCION</th>
-            <th style="border:1px solid #999;padding:4px 8px">Unid. Med</th>
-            <th style="border:1px solid #999;padding:4px 8px">Cantidad</th>
-          </tr>
-        </thead>
-        <tbody>${filas}</tbody>
-      </table>
-      ${observacion ? `<p>Observaciones: ${escHtml(observacion)}</p>` : ''}
-    </div>`
-}
-
-async function copyHtmlTableToClipboard(html: string): Promise<boolean> {
-  if (!navigator.clipboard || !window.ClipboardItem) return false
-  try {
-    const item = new ClipboardItem({
-      'text/html': new Blob([html], { type: 'text/html' }),
-      'text/plain': new Blob([html.replace(/<[^>]+>/g, ' ')], { type: 'text/plain' }),
-    })
-    await navigator.clipboard.write([item])
-    return true
-  } catch {
-    return false
-  }
 }
 
 interface LastSaved {
@@ -172,7 +77,8 @@ async function cargarProductosGrupo(grupoId: number, allProducts: Producto[], ca
 }
 
 export default function NuevaSolicitud() {
-  const { perfil } = useAuth()
+  const { perfil, esRestringido } = useAuth()
+  const grupoFijo = perfil?.grupoId ?? null
   const { allProducts } = useCatalogoGD()
   const { grupos, responsables, cargarReceta } = useGruposResponsables()
   const { crear, marcarUsada } = useSolicitudes()
@@ -203,6 +109,18 @@ export default function NuevaSolicitud() {
     if (!grupoId || !allProducts.length || productosGrupo !== null) return
     cargarProductosGrupo(Number(grupoId), allProducts, cargarReceta).then(setProductosGrupo)
   }, [grupoId, allProducts, productosGrupo, cargarReceta])
+
+  // Modo restringido: grupo fijo por perfil, sin selector manual.
+  useEffect(() => {
+    if (!esRestringido || !grupoFijo || grupoId) return
+    setGrupoId(String(grupoFijo))
+  }, [esRestringido, grupoFijo, grupoId])
+
+  // Precarga toda la receta del grupo como filas fijas (solo cantidades editables).
+  useEffect(() => {
+    if (!esRestringido || !productosGrupo || draft?.filas?.length) return
+    setFilas(productosGrupo.length ? productosGrupo.map((p) => filaVacia(p)) : [])
+  }, [esRestringido, productosGrupo, draft])
 
   async function onGrupoChange(id: string) {
     setGrupoId(id)
@@ -282,7 +200,7 @@ export default function NuevaSolicitud() {
   )
 
   function limpiarItems() {
-    setFilas([filaVacia()])
+    setFilas(esRestringido && productosGrupo?.length ? productosGrupo.map((p) => filaVacia(p)) : [filaVacia()])
     setObservacion('')
     setIntentoGuardar(false)
     sessionStorage.removeItem(DRAFT_KEY)
@@ -298,27 +216,32 @@ export default function NuevaSolicitud() {
       toast.error('Selecciona el grupo solicitante')
       return
     }
-    if (!responsableId) {
+    if (!esRestringido && !responsableId) {
       toast.error('Selecciona para quién se solicita')
       return
     }
     setEnviando(true)
     try {
       const grupo = grupos.find((g) => String(g.id) === grupoId)!
-      const responsable = responsables.find((r) => String(r.id) === responsableId)!
+      const responsable = esRestringido ? null : responsables.find((r) => String(r.id) === responsableId)!
       const saved = await crear({
         usuario_id: perfil!.id,
         username: perfil!.username,
         nombre: perfil!.name,
         grupo_id: grupo.id,
-        responsable_id: responsable.id,
+        responsable_id: esRestringido ? grupo.responsable_default_id : responsable!.id,
         items: itemsValidos,
         observacion: observacion.trim() || null,
         estado: 'pendiente',
       })
-      setLastSaved({ id: saved.id, numero: saved.numero, grupoNombre: grupo.nombre, responsableNombre: responsable.nombre, items: itemsValidos, observacion: observacion.trim() || null })
       setIntentoGuardar(false)
-      toast.success(`Solicitud N° ${saved.numero} guardada. Pulsa "Enviar correo" para completarla.`)
+      if (esRestringido) {
+        limpiarItems()
+        toast.success(`Solicitud N° ${saved.numero} guardada.`)
+      } else {
+        setLastSaved({ id: saved.id, numero: saved.numero, grupoNombre: grupo.nombre, responsableNombre: responsable!.nombre, items: itemsValidos, observacion: observacion.trim() || null })
+        toast.success(`Solicitud N° ${saved.numero} guardada. Pulsa "Enviar correo" para completarla.`)
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al guardar')
     } finally {
@@ -366,34 +289,42 @@ export default function NuevaSolicitud() {
           </div>
           <div className="min-w-[200px] flex-1">
             <Label>Grupo solicitante *</Label>
-            <Select value={grupoId} onValueChange={onGrupoChange}>
-              <SelectTrigger className={`mt-1.5 min-w-[180px] ${intentoGuardar && !grupoId ? 'border-destructive' : ''}`}>
-                <SelectValue placeholder="Selecciona grupo…" />
-              </SelectTrigger>
-              <SelectContent>
-                {grupos.map((g) => (
-                  <SelectItem key={g.id} value={String(g.id)}>
-                    {g.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {esRestringido ? (
+              <div className="mt-1.5 rounded-md border bg-card px-3 py-2 text-sm">
+                {grupos.find((g) => String(g.id) === grupoId)?.nombre ?? '—'}
+              </div>
+            ) : (
+              <Select value={grupoId} onValueChange={onGrupoChange}>
+                <SelectTrigger className={`mt-1.5 min-w-[180px] ${intentoGuardar && !grupoId ? 'border-destructive' : ''}`}>
+                  <SelectValue placeholder="Selecciona grupo…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {grupos.map((g) => (
+                    <SelectItem key={g.id} value={String(g.id)}>
+                      {g.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
-          <div className="min-w-[200px] flex-1">
-            <Label>Para quién se solicita *</Label>
-            <Select value={responsableId} onValueChange={setResponsableId} disabled={!grupoId}>
-              <SelectTrigger className={`mt-1.5 min-w-[180px] ${intentoGuardar && !responsableId ? 'border-destructive' : ''}`}>
-                <SelectValue placeholder={grupoId ? 'Selecciona responsable…' : 'Selecciona grupo primero…'} />
-              </SelectTrigger>
-              <SelectContent>
-                {responsablesGrupo.map((r) => (
-                  <SelectItem key={r.id} value={String(r.id)}>
-                    {r.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!esRestringido && (
+            <div className="min-w-[200px] flex-1">
+              <Label>Para quién se solicita *</Label>
+              <Select value={responsableId} onValueChange={setResponsableId} disabled={!grupoId}>
+                <SelectTrigger className={`mt-1.5 min-w-[180px] ${intentoGuardar && !responsableId ? 'border-destructive' : ''}`}>
+                  <SelectValue placeholder={grupoId ? 'Selecciona responsable…' : 'Selecciona grupo primero…'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {responsablesGrupo.map((r) => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {r.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </div>
 
@@ -401,26 +332,32 @@ export default function NuevaSolicitud() {
         <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Productos solicitados</div>
         {!grupoId ? (
           <p className="mb-2 text-xs text-muted-foreground">Selecciona un grupo para ver sus productos habituales.</p>
+        ) : esRestringido && productosGrupo != null && productosGrupo.length === 0 ? (
+          <p className="mb-2 text-xs text-muted-foreground">Tu grupo aún no tiene una receta de productos cargada. Avisa a un administrador.</p>
         ) : null}
-        <div className="grid grid-cols-[150px_1fr_60px_75px_75px_75px_36px] items-center gap-2 px-1 pb-1 text-[11px] font-medium text-muted-foreground">
-          <div>Código (o buscar)</div>
+        <div className={`grid ${esRestringido ? 'grid-cols-[150px_1fr_60px_75px_75px_75px]' : 'grid-cols-[150px_1fr_60px_75px_75px_75px_36px]'} items-center gap-2 px-1 pb-1 text-[11px] font-medium text-muted-foreground`}>
+          <div>Código{esRestringido ? '' : ' (o buscar)'}</div>
           <div>Descripción</div>
           <div className="text-center">Unidad</div>
           <div className="text-center">Cant. Sol.</div>
           <div className="text-center">Cant. Real</div>
           <div className="text-center">Módulos</div>
-          <div />
+          {!esRestringido && <div />}
         </div>
         <div className="space-y-2">
           {filas.map((f) => (
-            <div key={f.id} className="grid grid-cols-[150px_1fr_60px_75px_75px_75px_36px] items-center gap-2">
-              <ProductoAutocomplete
-                value={f.busqueda}
-                productos={productosGrupo ?? allProducts}
-                placeholder="Código o descripción…"
-                onChange={(v) => setFilas((prev) => prev.map((row) => (row.id === f.id ? { ...row, busqueda: v, producto: null } : row)))}
-                onSelect={(p) => onSelectProducto(f.id, p)}
-              />
+            <div key={f.id} className={`grid ${esRestringido ? 'grid-cols-[150px_1fr_60px_75px_75px_75px]' : 'grid-cols-[150px_1fr_60px_75px_75px_75px_36px]'} items-center gap-2`}>
+              {esRestringido ? (
+                <div className="truncate font-mono text-xs text-primary">{f.producto?.codigo}</div>
+              ) : (
+                <ProductoAutocomplete
+                  value={f.busqueda}
+                  productos={productosGrupo ?? allProducts}
+                  placeholder="Código o descripción…"
+                  onChange={(v) => setFilas((prev) => prev.map((row) => (row.id === f.id ? { ...row, busqueda: v, producto: null } : row)))}
+                  onSelect={(p) => onSelectProducto(f.id, p)}
+                />
+              )}
               <div className="truncate text-sm">{f.producto?.descripcion || ''}</div>
               <div className="text-center text-xs text-muted-foreground">{f.producto?.unidad || '—'}</div>
               <Input type="number" min="0" step="1" placeholder="0" value={f.cantidadSol} onChange={(e) => onCantSolChange(f.id, e.target.value)} title="Cant. Solicitada" />
@@ -435,15 +372,19 @@ export default function NuevaSolicitud() {
                 onChange={(e) => onModulosChange(f.id, e.target.value)}
                 title="Módulos: calcula la Cant. Real"
               />
-              <Button type="button" variant="ghost" size="icon" onClick={() => quitarFila(f.id)} title="Eliminar">
-                ✕
-              </Button>
+              {!esRestringido && (
+                <Button type="button" variant="ghost" size="icon" onClick={() => quitarFila(f.id)} title="Eliminar">
+                  ✕
+                </Button>
+              )}
             </div>
           ))}
         </div>
-        <Button type="button" variant="outline" size="sm" className="mt-3 w-full border-dashed" onClick={() => setFilas((prev) => [...prev, filaVacia()])}>
-          + Agregar producto
-        </Button>
+        {!esRestringido && (
+          <Button type="button" variant="outline" size="sm" className="mt-3 w-full border-dashed" onClick={() => setFilas((prev) => [...prev, filaVacia()])}>
+            + Agregar producto
+          </Button>
+        )}
       </div>
 
       <div className="rounded-md border p-4">
