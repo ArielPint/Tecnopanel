@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
@@ -29,6 +29,7 @@ export function useDespachosGD() {
   const [despachos, setDespachos] = useState<DespachoGD[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const channelNameRef = useRef(`logistica_despachos_gd_${Math.random().toString(36).slice(2)}`)
 
   const refetch = useCallback(async () => {
     setLoading(true)
@@ -48,7 +49,7 @@ export function useDespachosGD() {
   useEffect(() => {
     refetch()
     const channel = supabase
-      .channel('logistica_despachos_gd')
+      .channel(channelNameRef.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'despachos_gd' }, () => refetch())
       .subscribe()
     return () => {

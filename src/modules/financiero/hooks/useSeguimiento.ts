@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
@@ -11,6 +11,7 @@ export function useSeguimiento() {
   const [seguimiento, setSeguimiento] = useState<SeguimientoPresupuesto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const channelNameRef = useRef(`financiero_seguimiento_presupuesto_${Math.random().toString(36).slice(2)}`)
 
   const refetch = useCallback(async () => {
     setLoading(true)
@@ -30,7 +31,7 @@ export function useSeguimiento() {
     refetch()
 
     const channel = supabase
-      .channel('financiero_seguimiento_presupuesto')
+      .channel(channelNameRef.current)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'financiero_ordenes_compra' },

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
 import type { EstadoEP, EstadoPago } from '../types'
@@ -12,6 +12,7 @@ export function useEstadosPago() {
   const [estadosPago, setEstadosPago] = useState<EstadoPago[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const channelNameRef = useRef(`estados_pago_la_chacra_${Math.random().toString(36).slice(2)}`)
 
   const refetch = useCallback(async () => {
     setLoading(true)
@@ -30,7 +31,7 @@ export function useEstadosPago() {
   useEffect(() => {
     refetch()
     const channel = supabase
-      .channel('estados_pago_la_chacra')
+      .channel(channelNameRef.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'estados_pago' }, () => refetch())
       .subscribe()
     return () => {

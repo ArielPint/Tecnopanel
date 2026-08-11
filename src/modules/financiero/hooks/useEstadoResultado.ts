@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
@@ -11,6 +11,7 @@ export function useEstadoResultado() {
   const [estadoResultado, setEstadoResultado] = useState<EstadoResultadoMensual[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const channelNameRef = useRef(`financiero_estado_resultado_mensual_${Math.random().toString(36).slice(2)}`)
 
   const refetch = useCallback(async () => {
     setLoading(true)
@@ -31,7 +32,7 @@ export function useEstadoResultado() {
     refetch()
 
     const channel = supabase
-      .channel('financiero_estado_resultado_mensual')
+      .channel(channelNameRef.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'financiero_facturas' }, () => refetch())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'financiero_remuneraciones' }, () => refetch())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'financiero_ingresos' }, () => refetch())

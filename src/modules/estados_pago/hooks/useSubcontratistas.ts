@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import type { Subcontratista } from '../types'
 
@@ -8,6 +8,7 @@ export function useSubcontratistas() {
   const [subcontratistas, setSubcontratistas] = useState<Subcontratista[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const channelNameRef = useRef(`subcontratistas_all_${Math.random().toString(36).slice(2)}`)
 
   const refetch = useCallback(async () => {
     setLoading(true)
@@ -21,7 +22,7 @@ export function useSubcontratistas() {
   useEffect(() => {
     refetch()
     const channel = supabase
-      .channel('subcontratistas_all')
+      .channel(channelNameRef.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'subcontratistas' }, () => refetch())
       .subscribe()
     return () => {

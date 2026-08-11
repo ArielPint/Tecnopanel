@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
@@ -22,6 +22,7 @@ export function useResponsables() {
   const [responsables, setResponsables] = useState<Responsable[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const channelNameRef = useRef(`logistica_responsables_${Math.random().toString(36).slice(2)}`)
 
   const refetch = useCallback(async () => {
     setLoading(true)
@@ -43,7 +44,7 @@ export function useResponsables() {
   useEffect(() => {
     refetch()
     const channel = supabase
-      .channel('logistica_responsables')
+      .channel(channelNameRef.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'grupos' }, () => refetch())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'responsables' }, () => refetch())
       .subscribe()
