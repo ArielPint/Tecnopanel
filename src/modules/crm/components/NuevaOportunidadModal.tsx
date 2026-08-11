@@ -133,6 +133,11 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
     setShowNuevoCliente(false); setCreandoCliente(false)
   }
 
+  function handleConstructoraChange(valor: string) {
+    const match = clientes.find(c => c.razon_social === valor)
+    setForm(f => ({ ...f, nombre_constructora: valor, cliente_id: match ? match.id : '' }))
+  }
+
   function toggleFamiliaProducto(valor: string) {
     setForm(f => ({
       ...f,
@@ -220,41 +225,45 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18}/></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Nombre *</label>
-            <input value={form.nombre} onChange={e => setForm(f=>({...f,nombre:e.target.value}))} required
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-medium text-gray-700">Cliente</label>
-              <button type="button" onClick={() => setShowNuevoCliente(s => !s)} className="text-xs font-medium text-crm-red hover:underline">
-                {showNuevoCliente ? 'Cancelar' : '+ Crear cliente nuevo'}
-              </button>
+          {form.tipo_venta !== 'VIT' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Nombre *</label>
+              <input value={form.nombre} onChange={e => setForm(f=>({...f,nombre:e.target.value}))} required
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
             </div>
-            {showNuevoCliente ? (
-              <div className="bg-gray-50 rounded-lg p-3 space-y-2 mb-2">
-                <input value={nuevoCliente.razon_social} onChange={e => setNuevoCliente(c=>({...c,razon_social:e.target.value}))}
-                  placeholder="Razón social *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
-                <div className="grid grid-cols-2 gap-2">
-                  <input value={nuevoCliente.rut} onChange={e => setNuevoCliente(c=>({...c,rut:e.target.value}))}
-                    placeholder="RUT" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
-                  <input value={nuevoCliente.rubro} onChange={e => setNuevoCliente(c=>({...c,rubro:e.target.value}))}
-                    placeholder="Rubro" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
-                </div>
-                {errorCliente && <p className="text-xs text-red-600">{errorCliente}</p>}
-                <button type="button" onClick={crearClienteInline} disabled={creandoCliente}
-                  className="px-3 py-1 text-xs text-white rounded disabled:opacity-60" style={{background:'#ed3224'}}>
-                  {creandoCliente ? 'Creando...' : 'Crear y seleccionar'}
+          )}
+          {form.tipo_venta !== 'VIT' && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-gray-700">Cliente</label>
+                <button type="button" onClick={() => setShowNuevoCliente(s => !s)} className="text-xs font-medium text-crm-red hover:underline">
+                  {showNuevoCliente ? 'Cancelar' : '+ Crear cliente nuevo'}
                 </button>
               </div>
-            ) : null}
-            <select value={form.cliente_id} onChange={e => setForm(f=>({...f,cliente_id:e.target.value}))}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
-              <option value="">Sin cliente</option>
-              {clientes.map(c => <option key={c.id} value={c.id}>{c.razon_social}</option>)}
-            </select>
-          </div>
+              {showNuevoCliente ? (
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2 mb-2">
+                  <input value={nuevoCliente.razon_social} onChange={e => setNuevoCliente(c=>({...c,razon_social:e.target.value}))}
+                    placeholder="Razón social *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={nuevoCliente.rut} onChange={e => setNuevoCliente(c=>({...c,rut:e.target.value}))}
+                      placeholder="RUT" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
+                    <input value={nuevoCliente.rubro} onChange={e => setNuevoCliente(c=>({...c,rubro:e.target.value}))}
+                      placeholder="Rubro" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
+                  </div>
+                  {errorCliente && <p className="text-xs text-red-600">{errorCliente}</p>}
+                  <button type="button" onClick={crearClienteInline} disabled={creandoCliente}
+                    className="px-3 py-1 text-xs text-white rounded disabled:opacity-60" style={{background:'#ed3224'}}>
+                    {creandoCliente ? 'Creando...' : 'Crear y seleccionar'}
+                  </button>
+                </div>
+              ) : null}
+              <select value={form.cliente_id} onChange={e => setForm(f=>({...f,cliente_id:e.target.value}))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+                <option value="">Sin cliente</option>
+                {clientes.map(c => <option key={c.id} value={c.id}>{c.razon_social}</option>)}
+              </select>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
@@ -284,6 +293,11 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             <div className="space-y-3 bg-gray-50 rounded-lg p-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Clasificación VIT</p>
               <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Nombre del proyecto *</label>
+                <input value={form.nombre} onChange={e => setForm(f=>({...f,nombre:e.target.value}))} required
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              </div>
+              <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Nombre de la Entidad Patrocinante</label>
                 <input value={form.nombre_entidad_patrocinante} onChange={e => setForm(f=>({...f,nombre_entidad_patrocinante:e.target.value}))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
@@ -294,9 +308,13 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Nombre de la Constructora</label>
-                <input value={form.nombre_constructora} onChange={e => setForm(f=>({...f,nombre_constructora:e.target.value}))}
+                <label className="block text-xs font-medium text-gray-700 mb-1">Constructora</label>
+                <input value={form.nombre_constructora} onChange={e => handleConstructoraChange(e.target.value)}
+                  list="clientes-constructora" placeholder="Elige o escribe un nombre"
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                <datalist id="clientes-constructora">
+                  {clientes.map(c => <option key={c.id} value={c.razon_social} />)}
+                </datalist>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Zona Térmica del Proyecto</label>
@@ -324,17 +342,19 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={form.tipo_venta === 'VIT' ? '' : 'grid grid-cols-2 gap-3'}>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Monto estimado (CLP)</label>
               <input type="number" value={form.monto_estimado} onChange={e => setForm(f=>({...f,monto_estimado:e.target.value}))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Fecha de presentación</label>
-              <input type="date" value={form.fecha_cierre_est} onChange={e => setForm(f=>({...f,fecha_cierre_est:e.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
-            </div>
+            {form.tipo_venta !== 'VIT' && (
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Fecha de presentación</label>
+                <input type="date" value={form.fecha_cierre_est} onChange={e => setForm(f=>({...f,fecha_cierre_est:e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -356,63 +376,73 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={form.tipo_venta === 'VIT' ? '' : 'grid grid-cols-2 gap-3'}>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad de casas</label>
               <input type="number" min="0" value={form.cantidad_casas} onChange={e => setForm(f=>({...f,cantidad_casas:e.target.value}))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
             </div>
+            {form.tipo_venta !== 'VIT' && (
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad de tipos de casas</label>
+                <input type="number" min="0" value={form.cantidad_tipos_casas} onChange={e => setForm(f=>({...f,cantidad_tipos_casas:e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              </div>
+            )}
+          </div>
+
+          {form.tipo_venta !== 'VIT' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Fecha estimada de adjudicación</label>
+                <input type="date" value={form.fecha_adjudicacion_est} onChange={e => setForm(f=>({...f,fecha_adjudicacion_est:e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Fecha estimada inicio despachos</label>
+                <input type="date" value={form.fecha_inicio_despachos_est} onChange={e => setForm(f=>({...f,fecha_inicio_despachos_est:e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              </div>
+            </div>
+          )}
+
+          {form.tipo_venta !== 'VIT' && (
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad de tipos de casas</label>
-              <input type="number" min="0" value={form.cantidad_tipos_casas} onChange={e => setForm(f=>({...f,cantidad_tipos_casas:e.target.value}))}
+              <label className="block text-xs font-medium text-gray-700 mb-1">Duración estimada del proyecto (meses)</label>
+              <input type="number" min="0" value={form.duracion_meses_est} onChange={e => setForm(f=>({...f,duracion_meses_est:e.target.value}))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
             </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-3">
+          {form.tipo_venta !== 'VIT' && (
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Fecha estimada de adjudicación</label>
-              <input type="date" value={form.fecha_adjudicacion_est} onChange={e => setForm(f=>({...f,fecha_adjudicacion_est:e.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Familia de productos a cotizar</label>
+              <div className="flex flex-wrap gap-3">
+                {FAMILIA_PRODUCTOS_OPCIONES.map(opcion => (
+                  <label key={opcion} className="flex items-center gap-1.5 text-sm text-gray-600">
+                    <input type="checkbox" checked={form.familia_productos.includes(opcion)} onChange={() => toggleFamiliaProducto(opcion)}
+                      className="rounded border-gray-300 text-crm-red focus:ring-crm-red" />
+                    {opcion}
+                  </label>
+                ))}
+              </div>
             </div>
+          )}
+
+          {form.tipo_venta !== 'VIT' && (
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Fecha estimada inicio despachos</label>
-              <input type="date" value={form.fecha_inicio_despachos_est} onChange={e => setForm(f=>({...f,fecha_inicio_despachos_est:e.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Alcances</label>
+              <div className="flex flex-wrap gap-3">
+                {ALCANCES_OPCIONES.map(opcion => (
+                  <label key={opcion} className="flex items-center gap-1.5 text-sm text-gray-600">
+                    <input type="checkbox" checked={form.alcances.includes(opcion)} onChange={() => toggleAlcance(opcion)}
+                      className="rounded border-gray-300 text-crm-red focus:ring-crm-red" />
+                    {opcion}
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Duración estimada del proyecto (meses)</label>
-            <input type="number" min="0" value={form.duracion_meses_est} onChange={e => setForm(f=>({...f,duracion_meses_est:e.target.value}))}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Familia de productos a cotizar</label>
-            <div className="flex flex-wrap gap-3">
-              {FAMILIA_PRODUCTOS_OPCIONES.map(opcion => (
-                <label key={opcion} className="flex items-center gap-1.5 text-sm text-gray-600">
-                  <input type="checkbox" checked={form.familia_productos.includes(opcion)} onChange={() => toggleFamiliaProducto(opcion)}
-                    className="rounded border-gray-300 text-crm-red focus:ring-crm-red" />
-                  {opcion}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Alcances</label>
-            <div className="flex flex-wrap gap-3">
-              {ALCANCES_OPCIONES.map(opcion => (
-                <label key={opcion} className="flex items-center gap-1.5 text-sm text-gray-600">
-                  <input type="checkbox" checked={form.alcances.includes(opcion)} onChange={() => toggleAlcance(opcion)}
-                    className="rounded border-gray-300 text-crm-red focus:ring-crm-red" />
-                  {opcion}
-                </label>
-              ))}
-            </div>
-          </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Plano (PDF / DWG / Autocad)</label>
