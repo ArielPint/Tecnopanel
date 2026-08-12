@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { toast } from 'sonner'
 import { Building2 } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
@@ -8,6 +9,7 @@ import TableSkeleton from '@/modules/financiero/components/TableSkeleton'
 import { formatCLP } from '@/modules/financiero/utils/formatters'
 import { useSubcontratistas } from '../hooks/useSubcontratistas'
 import { useSubcontratos } from '../hooks/useSubcontratos'
+import { useEstadosPago } from '../hooks/useEstadosPago'
 import { useAuth } from '../hooks/useAuth'
 import FormularioSubcontratista from '../components/FormularioSubcontratista'
 import FormularioSubcontrato from '../components/FormularioSubcontrato'
@@ -16,9 +18,20 @@ export default function Subcontratos() {
   const { puedeCrear, puedeEditar, puedeAdministrar } = useAuth()
   const { subcontratistas, loading: loadingSc, crear: crearSc, actualizar: actualizarSc, eliminar: eliminarSc } = useSubcontratistas()
   const { subcontratos, loading: loadingSub, crear: crearSub, actualizar: actualizarSub, eliminar: eliminarSub } = useSubcontratos()
+  const { estadosPago } = useEstadosPago()
   const puedeEscribir = puedeCrear || puedeEditar
 
   const nombreSubcontratista = (id: string) => subcontratistas.find((s) => s.id === id)?.nombre ?? '—'
+
+  // Rechazado no descuenta del contrato — los demás estados (emitido, en_revision, aprobado, pagado) sí.
+  const consumidoPorSubcontrato = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const ep of estadosPago) {
+      if (ep.estado === 'rechazado') continue
+      map.set(ep.subcontrato_id, (map.get(ep.subcontrato_id) ?? 0) + ep.monto_neto)
+    }
+    return map
+  }, [estadosPago])
 
   async function onEliminarSubcontratista(id: string, nombre: string) {
     if (!confirm(`¿Eliminar el subcontratista "${nombre}"? Falla si tiene subcontratos asociados.`)) return
@@ -133,19 +146,26 @@ export default function Subcontratos() {
                   <TableHead>Subcontratista</TableHead>
                   <TableHead>Especialidad / Partida</TableHead>
                   <TableHead className="text-right">Monto contractual</TableHead>
+                  <TableHead className="text-right">EP acumulados</TableHead>
+                  <TableHead className="text-right">Saldo disponible</TableHead>
                   <TableHead>Estado</TableHead>
                   {(puedeEscribir || puedeAdministrar) && <TableHead />}
                 </TableRow>
               </TableHeader>
               {loadingSub ? (
-                <TableSkeleton columns={4 + (puedeEscribir || puedeAdministrar ? 1 : 0)} />
+                <TableSkeleton columns={6 + (puedeEscribir || puedeAdministrar ? 1 : 0)} />
               ) : (
                 <TableBody>
-                  {subcontratos.map((sc) => (
+                  {subcontratos.map((sc) => {
+                    const consumido = consumidoPorSubcontrato.get(sc.id) ?? 0
+                    const saldo = sc.monto_contractual - consumido
+                    return (
                     <TableRow key={sc.id}>
                       <TableCell className="font-medium">{nombreSubcontratista(sc.subcontratista_id)}</TableCell>
                       <TableCell>{sc.especialidad}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatCLP(sc.monto_contractual)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatCLP(consumido)}</TableCell>
+                      <TableCell className={`text-right tabular-nums ${saldo < 0 ? 'text-destructive' : ''}`}>{formatCLP(saldo)}</TableCell>
                       <TableCell>
                         <Badge variant={sc.estado === 'activo' ? 'success' : 'secondary'}>{sc.estado}</Badge>
                       </TableCell>
@@ -174,7 +194,8 @@ export default function Subcontratos() {
                         </TableCell>
                       )}
                     </TableRow>
-                  ))}
+                    )
+                  })}
                 </TableBody>
               )}
             </Table>
