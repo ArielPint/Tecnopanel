@@ -66,8 +66,9 @@ interface FormData {
   familia_productos: string[];
   alcances: string[];
   nombre_comite_vivienda: string; nombre_constructora: string;
-  zona_termica: ZonaTermicaVit | ''; tipologia_vit: string; venta_actual_uf: string;
+  zona_termica: ZonaTermicaVit | ''; valor_uf: string;
 }
+interface LineaTipologia { tipologia: string; cantidad_casas: string }
 const INIT: FormData = {
   nombre:'', cliente_id:'', tipo_venta:'Proyecto',
   monto_estimado:'', probabilidad:'50',
@@ -80,7 +81,7 @@ const INIT: FormData = {
   familia_productos: [],
   alcances: [],
   nombre_comite_vivienda: '', nombre_constructora: '',
-  zona_termica: '', tipologia_vit: '', venta_actual_uf: '',
+  zona_termica: '', valor_uf: '',
 }
 function genCodigo() { const d=new Date(); return 'OPP-'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+'-'+(crypto.getRandomValues(new Uint16Array(1))[0]%9000+1000) }
 
@@ -91,6 +92,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [tipologias, setTipologias] = useState<TipologiaVitPrecio[]>([])
   const [form, setForm] = useState<FormData>(INIT)
+  const [lineas, setLineas] = useState<LineaTipologia[]>([])
   const [archivo, setArchivo] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -101,7 +103,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
 
   useEffect(() => {
     if (!isOpen) return
-    setForm(INIT); setError(''); setArchivo(null)
+    setForm(INIT); setError(''); setArchivo(null); setLineas([])
     supabase.from('clientes').select('id,razon_social').order('razon_social')
       .then(({ data }) => setClientes((data as Cliente[]) ?? []))
     supabase.from('tipologia_vit_precios').select('tipologia,venta_actual_uf').order('venta_actual_uf')
@@ -111,10 +113,22 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
   const comunasDisponibles = form.region ? (REGIONES_COMUNAS[form.region] ?? []) : []
   const etapaInicial = ETAPA_INICIAL_POR_TIPO[form.tipo_venta]
 
-  function elegirTipologia(tipologia: string) {
-    const encontrada = tipologias.find(t => t.tipologia === tipologia)
-    setForm(f => ({ ...f, tipologia_vit: tipologia, venta_actual_uf: encontrada ? String(encontrada.venta_actual_uf) : f.venta_actual_uf }))
+  function agregarLinea() {
+    setLineas(ls => [...ls, { tipologia: '', cantidad_casas: '' }])
   }
+  function actualizarLinea(idx: number, cambios: Partial<LineaTipologia>) {
+    setLineas(ls => ls.map((l, i) => i === idx ? { ...l, ...cambios } : l))
+  }
+  function quitarLinea(idx: number) {
+    setLineas(ls => ls.filter((_, i) => i !== idx))
+  }
+  function precioLinea(l: LineaTipologia) {
+    return tipologias.find(t => t.tipologia === l.tipologia)?.venta_actual_uf ?? 0
+  }
+  const totalUnidades = lineas.reduce((s, l) => s + (Number(l.cantidad_casas) || 0), 0)
+  const totalUf = lineas.reduce((s, l) => s + (Number(l.cantidad_casas) || 0) * precioLinea(l), 0)
+  const valorUfNum = Number(form.valor_uf) || 0
+  const totalClp = totalUf * valorUfNum
 
   async function crearClienteInline() {
     if (!nuevoCliente.razon_social.trim()) { setErrorCliente('La razón social es requerida'); return }
@@ -174,8 +188,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
       nombre_comite_vivienda: form.tipo_venta === 'VIT' ? (form.nombre_comite_vivienda.trim() || null) : null,
       nombre_constructora: form.tipo_venta === 'VIT' ? (form.nombre_constructora.trim() || null) : null,
       zona_termica: form.tipo_venta === 'VIT' ? (form.zona_termica || null) : null,
-      tipologia_vit: form.tipo_venta === 'VIT' ? (form.tipologia_vit || null) : null,
-      venta_actual_uf: form.tipo_venta === 'VIT' && form.venta_actual_uf ? Number(form.venta_actual_uf) : null,
+      valor_uf: form.tipo_venta === 'VIT' && form.valor_uf ? Number(form.valor_uf) : null,
       region: form.region || null, comuna: form.comuna || null,
       cantidad_casas: form.cantidad_casas ? Number(form.cantidad_casas) : null,
       cantidad_tipos_casas: form.cantidad_tipos_casas ? Number(form.cantidad_tipos_casas) : null,
@@ -187,6 +200,12 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
     }).select('id').single()
     if (err) { setError(err.message); setSaving(false); return }
     const oportunidadId = (data as { id: string })?.id ?? null
+
+    if (form.tipo_venta === 'VIT' && oportunidadId && lineas.length) {
+      const filas = lineas.filter(l => l.tipologia && Number(l.cantidad_casas) > 0)
+        .map(l => ({ oportunidad_id: oportunidadId, tipologia: l.tipologia, precio_uf: precioLinea(l), cantidad_casas: Number(l.cantidad_casas) }))
+      if (filas.length) await supabase.from('oportunidad_tipologias').insert(filas)
+    }
 
     if (archivo && oportunidadId) {
       const ext = archivo.name.split('.').pop() ?? ''
@@ -324,21 +343,42 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
                   {ZONAS_TERMICAS.map(z => <option key={z} value={z}>{z}</option>)}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Tipología de VIT</label>
-                  <select value={form.tipologia_vit} onChange={e => elegirTipologia(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
-                    <option value="">Sin tipología</option>
-                    {tipologias.map(t => <option key={t.tipologia} value={t.tipologia}>{t.tipologia}</option>)}
-                  </select>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-medium text-gray-700">Tipologías</label>
+                  <button type="button" onClick={agregarLinea} className="text-xs font-medium text-crm-red hover:underline">+ Agregar tipología</button>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Venta actual (UF)</label>
-                  <input type="number" value={form.venta_actual_uf} onChange={e => setForm(f=>({...f,venta_actual_uf:e.target.value}))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                <div className="space-y-2">
+                  {lineas.map((l, idx) => (
+                    <div key={idx} className="flex gap-2 items-end">
+                      <select value={l.tipologia} onChange={e => actualizarLinea(idx, { tipologia: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+                        <option value="">Sin tipología</option>
+                        {tipologias.map(t => <option key={t.tipologia} value={t.tipologia}>{t.tipologia} ({t.venta_actual_uf} UF)</option>)}
+                      </select>
+                      <input type="number" min="0" placeholder="Cantidad" value={l.cantidad_casas}
+                        onChange={e => actualizarLinea(idx, { cantidad_casas: e.target.value })}
+                        className="w-24 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                      <button type="button" onClick={() => quitarLinea(idx)} className="px-2 py-2 text-gray-400 hover:text-red-600">
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Valor UF (CLP)</label>
+                <input type="number" value={form.valor_uf} onChange={e => setForm(f=>({...f,valor_uf:e.target.value}))}
+                  placeholder="ej. 39500"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              </div>
+              {lineas.length > 0 && (
+                <div className="bg-white rounded-lg p-3 text-xs text-gray-600 space-y-0.5 border border-gray-200">
+                  <p>Total Unidades: <span className="font-semibold text-gray-800">{totalUnidades}</span></p>
+                  <p>Total UF: <span className="font-semibold text-gray-800">{totalUf.toLocaleString('es-CL')}</span></p>
+                  <p>Total CLP: <span className="font-semibold text-gray-800">${totalClp.toLocaleString('es-CL')}</span></p>
+                </div>
+              )}
             </div>
           )}
 

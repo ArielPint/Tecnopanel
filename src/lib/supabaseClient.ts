@@ -17,6 +17,23 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
+// Logout diario por seguridad: sesión persistida se invalida si cambió el día local
+// desde la última validación.
+const LAST_SESSION_DATE_KEY = 'tp_last_session_date'
+const todayStr = () => new Date().toISOString().slice(0, 10)
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  if (!session) return
+  const today = todayStr()
+  const lastDate = localStorage.getItem(LAST_SESSION_DATE_KEY)
+  if (lastDate && lastDate !== today) {
+    localStorage.removeItem(LAST_SESSION_DATE_KEY)
+    void supabase.auth.signOut()
+    return
+  }
+  localStorage.setItem(LAST_SESSION_DATE_KEY, today)
+})
+
 // Query resultó falló silenciosamente en ~15+ call sites (solo se destructuraba `data`).
 // Tira en error para que llegue al error state de useCachedQuery / catch del caller.
 export async function unwrap<Q extends PromiseLike<{ data: unknown; error: { message: string } | null }>>(

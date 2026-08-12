@@ -75,6 +75,7 @@ export interface Oportunidad {
   zona_termica: ZonaTermicaVit | null
   tipologia_vit: string | null
   venta_actual_uf: number | null
+  valor_uf: number | null
   tipo_subsidio: TipoSubsidioVit | null
   programa: string | null
   fecha_ingreso_calificacion: string | null
@@ -88,6 +89,15 @@ export interface Oportunidad {
 export interface TipologiaVitPrecio {
   tipologia: string
   venta_actual_uf: number
+}
+
+export interface OportunidadTipologia {
+  id: string
+  oportunidad_id: string
+  tipologia: string
+  precio_uf: number
+  cantidad_casas: number
+  created_at: string
 }
 
 export interface OportunidadHistorialEtapa {
@@ -197,6 +207,7 @@ export type Database = {
       clientes: { Row: Cliente }
       oportunidades: { Row: Oportunidad }
       tipologia_vit_precios: { Row: TipologiaVitPrecio }
+      oportunidad_tipologias: { Row: OportunidadTipologia }
       tareas_ingenieria: { Row: TareaIngenieria }
       tarea_asignaciones: { Row: TareaAsignacion }
       oportunidad_historial_etapas: { Row: OportunidadHistorialEtapa }

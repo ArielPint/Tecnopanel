@@ -5,7 +5,7 @@ import jsPDF from 'jspdf'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
-import type { Oportunidad, Profile, OportunidadHistorialEtapa, OportunidadDocumento, OportunidadAsignacion, TareaIngenieria, MensajeOportunidad, Cierre, TipologiaVitPrecio, ZonaTermicaVit, TipoSubsidioVit } from '@/modules/crm/types/database'
+import type { Oportunidad, Profile, OportunidadHistorialEtapa, OportunidadDocumento, OportunidadAsignacion, TareaIngenieria, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit } from '@/modules/crm/types/database'
 import { FAMILIA_PRODUCTOS_OPCIONES, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
 
 const REGIONES = Object.keys(REGIONES_COMUNAS)
@@ -131,6 +131,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   const [etapaData, setEtapaData] = useState<Record<string, string>>({})
   const [costosData, setCostosData] = useState<Record<string, string>>({})
   const [tipologias, setTipologias] = useState<TipologiaVitPrecio[]>([])
+  const [lineas, setLineas] = useState<OportunidadTipologia[]>([])
   const [docs, setDocs] = useState<OportunidadDocumento[]>([])
   const [historial, setHistorial] = useState<OportunidadHistorialEtapa[]>([])
   const [tareas, setTareas] = useState<TareaIngenieria[]>([])
@@ -163,6 +164,30 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     supabase.from('tipologia_vit_precios').select('tipologia,venta_actual_uf').order('venta_actual_uf')
       .then(({ data }) => setTipologias((data as TipologiaVitPrecio[]) ?? []))
   }, [])
+
+  useEffect(() => {
+    supabase.from('oportunidad_tipologias').select('*').eq('oportunidad_id', oportunidad.id).order('created_at')
+      .then(({ data }) => setLineas((data as OportunidadTipologia[]) ?? []))
+  }, [oportunidad.id])
+
+  function agregarLinea() {
+    setLineas(ls => [...ls, { id: 'tmp-' + Date.now(), oportunidad_id: opp.id, tipologia: '', precio_uf: 0, cantidad_casas: 0, created_at: '' }])
+  }
+  function actualizarLinea(idx: number, cambios: Partial<OportunidadTipologia>) {
+    setLineas(ls => ls.map((l, i) => i === idx ? { ...l, ...cambios } : l))
+  }
+  function quitarLinea(idx: number) {
+    setLineas(ls => ls.filter((_, i) => i !== idx))
+  }
+  function precioLinea(tipologia: string) {
+    return tipologias.find(t => t.tipologia === tipologia)?.venta_actual_uf ?? 0
+  }
+  async function guardarLineas() {
+    await supabase.from('oportunidad_tipologias').delete().eq('oportunidad_id', opp.id)
+    const filas = lineas.filter(l => l.tipologia && l.cantidad_casas > 0)
+      .map(l => ({ oportunidad_id: opp.id, tipologia: l.tipologia, precio_uf: precioLinea(l.tipologia), cantidad_casas: l.cantidad_casas }))
+    if (filas.length) await supabase.from('oportunidad_tipologias').insert(filas)
+  }
 
   useEffect(() => {
     if (tab !== 'chat') return
@@ -431,16 +456,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       duracion_meses_est: opp.duracion_meses_est, nombre_entidad_patrocinante: opp.nombre_entidad_patrocinante,
       familia_productos: opp.familia_productos, alcances: opp.alcances,
       nombre_comite_vivienda: opp.nombre_comite_vivienda, nombre_constructora: opp.nombre_constructora,
-      zona_termica: opp.zona_termica, tipologia_vit: opp.tipologia_vit, venta_actual_uf: opp.venta_actual_uf,
+      zona_termica: opp.zona_termica, valor_uf: opp.valor_uf,
     }).eq('id', opp.id)
+    if (opp.tipo_venta === 'VIT') await guardarLineas()
     setSaving(false)
     if (handleSupabaseError(error, 'OportunidadDrawer.saveGeneral')) return
     onUpdate()
-  }
-
-  function elegirTipologia(tipologia: string) {
-    const encontrada = tipologias.find(t => t.tipologia === tipologia)
-    setOpp(o => ({ ...o, tipologia_vit: tipologia || null, venta_actual_uf: encontrada ? encontrada.venta_actual_uf : o.venta_actual_uf }))
   }
 
   // Guarda los campos de la etapa "Oportunidad" (columnas reales de oportunidades, no jsonb).
@@ -855,8 +876,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
             <p><span className="text-gray-400">Constructora:</span> {opp.nombre_constructora || '—'}</p>
             <p><span className="text-gray-400">Región / Comuna:</span> {[opp.region, opp.comuna].filter(Boolean).join(' / ') || '—'}</p>
             <p><span className="text-gray-400">Zona Térmica:</span> {opp.zona_termica || '—'}</p>
-            <p><span className="text-gray-400">Tipología VIT:</span> {opp.tipologia_vit || '—'}</p>
-            <p><span className="text-gray-400">Venta actual:</span> {opp.venta_actual_uf != null ? opp.venta_actual_uf + ' UF' : '—'}</p>
+            <p><span className="text-gray-400">Tipologías:</span> {lineas.length ? lineas.map(l => `${l.tipologia} x${l.cantidad_casas}`).join(', ') : '—'}</p>
+            <p><span className="text-gray-400">Valor UF:</span> {opp.valor_uf != null ? formatCLP(opp.valor_uf) : '—'}</p>
             <p><span className="text-gray-400">Tipo de Subsidio:</span> {opp.tipo_subsidio || '—'}</p>
             <p><span className="text-gray-400">Programa:</span> {opp.programa || '—'}</p>
             <p><span className="text-gray-400">Valor total del proyecto:</span> {opp.monto_estimado != null ? formatCLP(opp.monto_estimado) : '—'}</p>
@@ -982,8 +1003,10 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                     <option value="Kit">{TIPO_VENTA_LABELS.Kit}</option>
                     <option value="VIT">{TIPO_VENTA_LABELS.VIT}</option>
                   </select></div>
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Fecha de presentación</label>
-                  <input type="date" value={opp.fecha_cierre_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_cierre_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                {opp.tipo_venta !== 'VIT' && (
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Fecha de presentación</label>
+                    <input type="date" value={opp.fecha_cierre_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_cierre_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Monto estimado (CLP)</label>
@@ -1011,15 +1034,37 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                       <option value="">Sin zona</option>
                       {ZONAS_TERMICAS.map(z => <option key={z} value={z}>{z}</option>)}
                     </select></div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className="block text-xs font-medium text-gray-600 mb-1">Tipología VIT</label>
-                      <select value={opp.tipologia_vit ?? ''} onChange={e => elegirTipologia(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
-                        <option value="">Sin tipología</option>
-                        {tipologias.map(t => <option key={t.tipologia} value={t.tipologia}>{t.tipologia}</option>)}
-                      </select></div>
-                    <div><label className="block text-xs font-medium text-gray-600 mb-1">Venta actual (UF)</label>
-                      <input type="number" value={opp.venta_actual_uf ?? ''} onChange={e => setOpp(o => ({...o,venta_actual_uf:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-gray-600">Tipologías</label>
+                      <button type="button" onClick={agregarLinea} className="text-xs font-medium text-crm-red hover:underline">+ Agregar tipología</button>
+                    </div>
+                    <div className="space-y-2">
+                      {lineas.map((l, idx) => (
+                        <div key={l.id} className="flex gap-2 items-end">
+                          <select value={l.tipologia} onChange={e => actualizarLinea(idx, { tipologia: e.target.value })}
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+                            <option value="">Sin tipología</option>
+                            {tipologias.map(t => <option key={t.tipologia} value={t.tipologia}>{t.tipologia} ({t.venta_actual_uf} UF)</option>)}
+                          </select>
+                          <input type="number" min="0" placeholder="Cantidad" value={l.cantidad_casas || ''}
+                            onChange={e => actualizarLinea(idx, { cantidad_casas: e.target.value ? Number(e.target.value) : 0 })}
+                            className="w-24 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                          <button type="button" onClick={() => quitarLinea(idx)} className="px-2 py-2 text-gray-400 hover:text-red-600"><X size={16} /></button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Valor UF (CLP)</label>
+                    <input type="number" value={opp.valor_uf ?? ''} onChange={e => setOpp(o => ({...o,valor_uf:e.target.value?Number(e.target.value):null}))}
+                      placeholder="ej. 39500" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  {lineas.length > 0 && (
+                    <div className="bg-white rounded-lg p-3 text-xs text-gray-600 space-y-0.5 border border-gray-200">
+                      <p>Total Unidades: <span className="font-semibold text-gray-800">{lineas.reduce((s,l)=>s+(l.cantidad_casas||0),0)}</span></p>
+                      <p>Total UF: <span className="font-semibold text-gray-800">{lineas.reduce((s,l)=>s+(l.cantidad_casas||0)*precioLinea(l.tipologia),0).toLocaleString('es-CL')}</span></p>
+                      <p>Total CLP: <span className="font-semibold text-gray-800">${(lineas.reduce((s,l)=>s+(l.cantidad_casas||0)*precioLinea(l.tipologia),0)*(opp.valor_uf||0)).toLocaleString('es-CL')}</span></p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1043,39 +1088,45 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                   <input type="number" min="0" value={opp.cantidad_tipos_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_tipos_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Fecha estimada adjudicación</label>
-                  <input type="date" value={opp.fecha_adjudicacion_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_adjudicacion_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Fecha estimada inicio despachos</label>
-                  <input type="date" value={opp.fecha_inicio_despachos_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_inicio_despachos_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
-              </div>
+              {opp.tipo_venta !== 'VIT' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Fecha estimada adjudicación</label>
+                    <input type="date" value={opp.fecha_adjudicacion_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_adjudicacion_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Fecha estimada inicio despachos</label>
+                    <input type="date" value={opp.fecha_inicio_despachos_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_inicio_despachos_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                </div>
+              )}
 
               <div><label className="block text-xs font-medium text-gray-600 mb-1">Duración estimada (meses)</label>
                 <input type="number" min="0" value={opp.duracion_meses_est ?? ''} onChange={e => setOpp(o => ({...o,duracion_meses_est:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
 
-              <div><label className="block text-xs font-medium text-gray-600 mb-1.5">Familia de productos</label>
-                <div className="flex flex-wrap gap-3">
-                  {FAMILIA_PRODUCTOS_OPCIONES.map(opcion => (
-                    <label key={opcion} className="flex items-center gap-1.5 text-sm text-gray-600">
-                      <input type="checkbox" checked={(opp.familia_productos ?? []).includes(opcion)}
-                        onChange={() => setOpp(o => { const cur = o.familia_productos ?? []; const next = cur.includes(opcion) ? cur.filter(v=>v!==opcion) : [...cur,opcion]; return {...o, familia_productos: next.length?next:null} })}
-                        className="rounded border-gray-300 text-crm-red focus:ring-crm-red" />
-                      {opcion}
-                    </label>
-                  ))}
-                </div></div>
+              {opp.tipo_venta !== 'VIT' && (
+                <div><label className="block text-xs font-medium text-gray-600 mb-1.5">Familia de productos</label>
+                  <div className="flex flex-wrap gap-3">
+                    {FAMILIA_PRODUCTOS_OPCIONES.map(opcion => (
+                      <label key={opcion} className="flex items-center gap-1.5 text-sm text-gray-600">
+                        <input type="checkbox" checked={(opp.familia_productos ?? []).includes(opcion)}
+                          onChange={() => setOpp(o => { const cur = o.familia_productos ?? []; const next = cur.includes(opcion) ? cur.filter(v=>v!==opcion) : [...cur,opcion]; return {...o, familia_productos: next.length?next:null} })}
+                          className="rounded border-gray-300 text-crm-red focus:ring-crm-red" />
+                        {opcion}
+                      </label>
+                    ))}
+                  </div></div>
+              )}
 
-              <div><label className="block text-xs font-medium text-gray-600 mb-1.5">Alcances</label>
-                <div className="flex flex-wrap gap-3">
-                  {ALCANCES_OPCIONES.map(opcion => (
-                    <label key={opcion} className="flex items-center gap-1.5 text-sm text-gray-600">
-                      <input type="checkbox" checked={(opp.alcances ?? []).includes(opcion)}
-                        onChange={() => setOpp(o => { const cur = o.alcances ?? []; const next = cur.includes(opcion) ? cur.filter(v=>v!==opcion) : [...cur,opcion]; return {...o, alcances: next.length?next:null} })}
-                        className="rounded border-gray-300 text-crm-red focus:ring-crm-red" />
-                      {opcion}
-                    </label>
-                  ))}
-                </div></div>
+              {opp.tipo_venta !== 'VIT' && (
+                <div><label className="block text-xs font-medium text-gray-600 mb-1.5">Alcances</label>
+                  <div className="flex flex-wrap gap-3">
+                    {ALCANCES_OPCIONES.map(opcion => (
+                      <label key={opcion} className="flex items-center gap-1.5 text-sm text-gray-600">
+                        <input type="checkbox" checked={(opp.alcances ?? []).includes(opcion)}
+                          onChange={() => setOpp(o => { const cur = o.alcances ?? []; const next = cur.includes(opcion) ? cur.filter(v=>v!==opcion) : [...cur,opcion]; return {...o, alcances: next.length?next:null} })}
+                          className="rounded border-gray-300 text-crm-red focus:ring-crm-red" />
+                        {opcion}
+                      </label>
+                    ))}
+                  </div></div>
+              )}
 
               <button onClick={saveGeneral} disabled={saving} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
                 {saving && <Loader2 size={14} className="animate-spin" />}{saving ? 'Guardando...' : 'Guardar cambios'}
