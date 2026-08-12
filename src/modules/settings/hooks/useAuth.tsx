@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
@@ -25,12 +25,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [perfil, setPerfil] = useState<Perfil | null>(null)
 
+  const userIdRef = useRef<string | undefined>(undefined)
+
   useEffect(() => {
     let cancelado = false
 
     async function cargarPerfil() {
       const { data: sessionData } = await supabase.auth.getSession()
       const userId = sessionData.session?.user.id
+      userIdRef.current = userId
       if (!userId) {
         if (!cancelado) {
           setPerfil(null)
@@ -61,7 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     cargarPerfil()
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      const newUserId = session?.user.id
+      if (newUserId === userIdRef.current) return
       setLoading(true)
       cargarPerfil()
     })
