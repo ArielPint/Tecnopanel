@@ -51,6 +51,7 @@ export const PAGE_MAP: Record<PageId, PageDef> = {
       historial: 'Historial',
       receta: 'Receta por Grupo',
       stock: 'Stock (config.)',
+      catalogo: 'Catálogo de Productos',
     },
   },
   financiero: {

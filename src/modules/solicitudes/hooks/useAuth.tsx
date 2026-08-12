@@ -96,12 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const acceso = usePermisosProyecto(proyectoSlug!)
   const isAdmin = acceso.isAdmin
 
-  // 'catalogo' nunca estuvo en pageMap.ts (tabs de solicitudes = nueva/historial
-  // nomás) — es admin-only, no algo que se pueda otorgar por acceso a "solicitudes".
-  const puedeVer = (tab: SolicitudesTab): boolean => {
-    if (tab === 'catalogo') return isAdmin
-    return acceso.tieneAccion('solicitudes') && acceso.tieneAccion(`solicitudes:${tab}`)
-  }
+  const puedeVer = (tab: SolicitudesTab): boolean =>
+    acceso.tieneAccion('solicitudes') && acceso.tieneAccion(`solicitudes:${tab}`)
   // Ver la pestaña de recetas es un permiso de tab normal (otorgable); editarlas requiere
   // además el permiso extra "solicitudes:editar" (checkbox aparte en FormularioAcceso).
   const puedeEditar = acceso.tieneAccion('solicitudes', 'editar')
