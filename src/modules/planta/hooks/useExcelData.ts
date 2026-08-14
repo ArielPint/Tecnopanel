@@ -50,7 +50,9 @@ export function useExcelData() {
       setExcelData(parsed)
       toast.success('Archivo cargado y aplicado para todo el equipo')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo procesar el archivo')
+      const msg = e instanceof Error ? e.message : 'No se pudo procesar el archivo'
+      setError(msg)
+      toast.error(msg)
     } finally {
       setUploading(false)
     }

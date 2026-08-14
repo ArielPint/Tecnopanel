@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import * as XLSX from 'xlsx'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
 import { parseAvanceProduccion, seedPlantaModulos, type SeedResult } from '../lib/avanceProduccionParser'
@@ -27,7 +28,9 @@ export function useAvanceProduccionExcel() {
       if (upError) throw upError
       setLastResult(result)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo procesar el archivo')
+      const msg = e instanceof Error ? e.message : 'No se pudo procesar el archivo'
+      setError(msg)
+      toast.error(msg)
     } finally {
       setUploading(false)
     }

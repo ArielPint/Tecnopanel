@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/modules/financiero/c
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Avatar, AvatarFallback } from '@/modules/financiero/components/ui/avatar'
 import PortalShell from '@/modules/financiero/components/PortalShell'
+import { Toaster } from '@/modules/financiero/components/ui/sonner'
 import { useProyectoActual } from '@/hooks/useProyectoActual'
 import { useAuth } from '../hooks/useAuth'
 import Config from './Config'
@@ -52,6 +53,7 @@ export default function SettingsLayout() {
         </Tabs>
       </main>
     </div>
+    <Toaster />
     </PortalShell>
   )
 }
