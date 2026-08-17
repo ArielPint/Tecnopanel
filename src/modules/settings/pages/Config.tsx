@@ -6,10 +6,11 @@ import { Label } from '@/modules/financiero/components/ui/label'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
+import { invalidatePrefix } from '@/lib/queryCache'
 import { fmtM } from '@/modules/planta/lib/format'
 import { useExcelData } from '@/modules/planta/hooks/useExcelData'
 import { useAvanceProduccionExcel } from '@/modules/planta/hooks/useAvanceProduccionExcel'
-import { useConfigFinanciero, useRitmoProyeccion, useTablaAnual, useAvanceEconProy, MESES } from '../hooks/useConfig'
+import { useConfigFinanciero, useRitmoProyeccion, useTablaAnual, useAvanceEconProy, useForecastMensualSeleccionado, MESES } from '../hooks/useConfig'
 
 const ANIOS = [2026, 2027, 2028]
 
@@ -233,7 +234,21 @@ const FORECAST_COLORS = ['#4f8ef7', '#f2a340', '#a371f7', '#3fb950', '#f75f5f', 
 
 function AvanceEconProyCard() {
   const { anio, setAnio, columnas, loading, agregarColumna, actualizarLabel, actualizarValor, guardar } = useAvanceEconProy()
+  const { valor: forecastSeleccionado, guardar: guardarForecastSeleccionado } = useForecastMensualSeleccionado()
   const [guardando, setGuardando] = useState(false)
+
+  const ultimoForecast = columnas[columnas.length - 1]?.label ?? ''
+  const forecastActivo = forecastSeleccionado && columnas.some((c) => c.label === forecastSeleccionado) ? forecastSeleccionado : ultimoForecast
+
+  async function onCambiarForecastSeleccionado(label: string) {
+    try {
+      await guardarForecastSeleccionado(label)
+      invalidatePrefix('resumen_data')
+      toast.success('Forecast del gráfico mensual actualizado')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al guardar')
+    }
+  }
 
   async function onGuardar() {
     setGuardando(true)
@@ -254,20 +269,37 @@ function AvanceEconProyCard() {
         <CardDescription>% mensual proyectado — cada columna es un forecast y agrega su propia línea al gráfico del dashboard</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Label>Año</Label>
-          <Select value={String(anio)} onValueChange={(v) => setAnio(parseInt(v))}>
-            <SelectTrigger className="w-28">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ANIOS.map((a) => (
-                <SelectItem key={a} value={String(a)}>
-                  {a}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Label>Año</Label>
+            <Select value={String(anio)} onValueChange={(v) => setAnio(parseInt(v))}>
+              <SelectTrigger className="w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ANIOS.map((a) => (
+                  <SelectItem key={a} value={String(a)}>
+                    {a}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label>Forecast del gráfico mensual</Label>
+            <Select value={forecastActivo} onValueChange={onCambiarForecastSeleccionado} disabled={!columnas.length}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Sin forecasts" />
+              </SelectTrigger>
+              <SelectContent>
+                {columnas.map((c) => (
+                  <SelectItem key={c.key} value={c.label} disabled={!c.label}>
+                    {c.label || '(sin nombre)'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="overflow-x-auto rounded-md border">
           <Table>

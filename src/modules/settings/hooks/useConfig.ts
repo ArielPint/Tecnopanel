@@ -117,6 +117,31 @@ export function useProyExtraAvEcon() {
   return { valor, loading, guardar }
 }
 
+export function useForecastMensualSeleccionado() {
+  const [valor, setValor] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  const refetch = useCallback(async () => {
+    setLoading(true)
+    const { data, error } = await supabase.from('config').select('value').eq('key', 'forecast_mensual_seleccionado').maybeSingle()
+    if (error) toast.error(error.message)
+    setValor(data?.value || '')
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    refetch()
+  }, [refetch])
+
+  const guardar = useCallback(async (nuevoValor: string) => {
+    const { error } = await supabase.from('config').update({ value: nuevoValor }).eq('key', 'forecast_mensual_seleccionado')
+    if (error) throw new Error(error.message)
+    setValor(nuevoValor)
+  }, [])
+
+  return { valor, loading, guardar }
+}
+
 export interface FilaMensual {
   mes: number
   valor: number

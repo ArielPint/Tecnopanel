@@ -6,6 +6,11 @@ export async function loadPresupuestoTotal(): Promise<number | null> {
   return data?.value != null ? parseFloat(data.value) || null : null
 }
 
+export async function loadForecastMensualSeleccionado(): Promise<string | null> {
+  const data = await unwrap(supabase.from('config').select('value').eq('key', 'forecast_mensual_seleccionado').maybeSingle())
+  return data?.value || null
+}
+
 // Catálogo de ppto vigente por código — resuelto en vivo contra productos_custom,
 // igual que registro-gd.html (reemplaza el precio "foto" guardado en registro_compras.valor_ppto).
 export async function loadPptoCatalogo(): Promise<Record<string, number>> {

@@ -170,10 +170,10 @@ export function AvanceEconomicoChart({
             }
           />
           <Bar dataKey="real" barSize={BAR_SIZE} fill="var(--color-real)" radius={4}>
-            <LabelList dataKey="real" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
+            <LabelList dataKey="real" content={realBarLabel} />
           </Bar>
           <Line type="monotone" dataKey="proyectado" stroke="var(--color-proyectado)" strokeWidth={2.5} dot connectNulls>
-            <LabelList dataKey="proyectado" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
+            <LabelList dataKey="proyectado" content={lineaLabel} />
           </Line>
           <Bar dataKey="proyExtra" barSize={BAR_SIZE} fill="none" stroke="#f5a623" strokeWidth={2} strokeDasharray="4 3" radius={4}>
             <LabelList dataKey="proyExtra" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
