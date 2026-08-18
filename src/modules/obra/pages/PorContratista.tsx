@@ -4,7 +4,7 @@ import { Input } from '@/modules/financiero/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 import { useObraCrData } from '../hooks/useObraCrData'
 import { CATEGORY_DEFS } from '../lib/categorias'
-import { buildCategoryTable, type ModuloCombinado } from '../lib/matrix'
+import { buildCategoryTable, isModuloTerminado, type ModuloCombinado } from '../lib/matrix'
 import type { ObraCategoria } from '../lib/categorias'
 import type { ChipEstado } from '../lib/crParser'
 
@@ -102,7 +102,8 @@ function CategoriaSection({ cat, modulos }: { cat: ObraCategoria; modulos: Modul
 }
 
 export default function PorContratista() {
-  const { modulos, loading, hayCR } = useObraCrData()
+  const { modulos: todos, loading, hayCR } = useObraCrData()
+  const modulos = useMemo(() => todos.filter((m) => !isModuloTerminado(m)), [todos])
 
   const kpis = useMemo(() => {
     const porCat = ORDEN.map((cat) => ({ cat, tabla: buildCategoryTable(cat, modulos) }))
