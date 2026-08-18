@@ -10,6 +10,7 @@ export interface ObraCrModuloRow {
   tipo: 'SECO' | 'HUMEDO'
   // clave = nombre crudo de la partida (tal cual columna B del CR)
   estados: Record<string, ChipEstado>
+  terminado: boolean
 }
 
 // Portado de parseCR() en dashboard_avance_la_chacra_10.html — misma hoja "CR",
@@ -23,6 +24,7 @@ export function parseCR(wb: XLSX.WorkBook): ObraCrModuloRow[] {
   const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true }) as unknown[][]
 
   const ROW18 = data[17] || []
+  const ROW20 = data[19] || [] // fila 20 = "RF" (Recepción Final) por módulo cuando ya está terminado
   const ROW54 = data[53] || []
 
   interface Col { colIdx: number; num: number; tipo: 'SECO' | 'HUMEDO'; code: string }
@@ -77,7 +79,8 @@ export function parseCR(wb: XLSX.WorkBook): ObraCrModuloRow[] {
       const ok = val !== null && val !== undefined && String(val).trim() !== ''
       estados[pr.name] = ok ? 'ok' : 'no'
     }
-    return { moduloNum: col.num, code: col.code, tipo: col.tipo, estados }
+    const terminado = String(ROW20[col.colIdx] ?? '').trim().toUpperCase() === 'RF'
+    return { moduloNum: col.num, code: col.code, tipo: col.tipo, estados, terminado }
   })
 }
 
@@ -108,6 +111,7 @@ export async function seedObraCrModulos(proyectoId: string, rows: ObraCrModuloRo
     code: r.code,
     tipo: r.tipo,
     estados: r.estados,
+    terminado: r.terminado,
     activo: true,
     actualizado_at: new Date().toISOString(),
   }))

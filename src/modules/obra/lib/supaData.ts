@@ -6,13 +6,14 @@ export interface ObraCrModuloDb {
   code: string
   tipo: string
   estados: Record<string, ChipEstado>
+  terminado: boolean
 }
 
 export async function loadObraCrModulos(proyectoId: string): Promise<ObraCrModuloDb[]> {
   const data = await unwrap(
     supabase
       .from('obra_cr_modulos')
-      .select('modulo_num, code, tipo, estados')
+      .select('modulo_num, code, tipo, estados, terminado')
       .eq('proyecto_id', proyectoId)
       .eq('activo', true)
       .order('modulo_num', { ascending: true }),

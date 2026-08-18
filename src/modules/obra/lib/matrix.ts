@@ -7,13 +7,16 @@ export interface ModuloCombinado {
   code: string
   tipo: string
   estados: Record<string, ChipEstado>
+  terminado: boolean
   subcontrato: 'W' | 'C' | null
   fechaEntregaFinal: string | null
 }
 
-// Módulo terminado = ninguna partida del CR quedó marcada "no" (pendiente).
+// Terminado = fila 20 del CR marcada "RF" (Recepción Final) para ese módulo —
+// no se infiere del checklist de partidas porque hay columnas que quedan
+// vacías/"no" aunque el módulo ya esté con recepción final.
 export function isModuloTerminado(m: ModuloCombinado): boolean {
-  return Object.values(m.estados).every((s) => s !== 'no')
+  return m.terminado
 }
 
 export function combinarModulos(modulos: ObraCrModuloDb[], config: ObraCrConfigDb[]): ModuloCombinado[] {
@@ -26,6 +29,7 @@ export function combinarModulos(modulos: ObraCrModuloDb[], config: ObraCrConfigD
         code: m.code,
         tipo: m.tipo,
         estados: m.estados,
+        terminado: m.terminado,
         subcontrato: cfg?.subcontrato ?? null,
         fechaEntregaFinal: cfg?.fecha_entrega_final ?? null,
       }
