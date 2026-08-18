@@ -182,7 +182,20 @@ function AsignacionesCard() {
   }, [modulosCombinados, filtro])
 
   function confirmarCambio(cambio: ObraCrConfigCambio) {
-    setCambios((prev) => new Map(prev).set(claveCambio(cambio.moduloNum, cambio.categoria), cambio))
+    setCambios((prev) => {
+      const next = new Map(prev).set(claveCambio(cambio.moduloNum, cambio.categoria), cambio)
+      // Ventanas no tiene programación especial — sigue siempre la fecha de Terminaciones, asignada a Ingelagos.
+      if (cambio.categoria === 'terminaciones') {
+        const ventanas: ObraCrConfigCambio = {
+          moduloNum: cambio.moduloNum,
+          categoria: 'ventanas',
+          subcontrato: cambio.fechaEntrega ? 'INGELAGOS' : null,
+          fechaEntrega: cambio.fechaEntrega,
+        }
+        next.set(claveCambio(ventanas.moduloNum, ventanas.categoria), ventanas)
+      }
+      return next
+    })
     setDialogo(null)
   }
 

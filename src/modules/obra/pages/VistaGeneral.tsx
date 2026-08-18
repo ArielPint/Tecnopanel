@@ -7,10 +7,10 @@ import { buildViewCData, isModuloTerminado } from '../lib/matrix'
 import type { ChipEstado } from '../lib/crParser'
 
 function Chip({ status }: { status: ChipEstado }) {
-  if (status === 'na') return <span className="mx-auto flex size-4 items-center justify-center rounded-full bg-muted text-[.6rem] text-muted-foreground">–</span>
+  if (status === 'na') return <span className="mx-auto flex size-3 items-center justify-center rounded-full bg-muted text-[.55rem] text-muted-foreground">–</span>
   const ok = status === 'ok'
   return (
-    <span className={`mx-auto flex size-4 items-center justify-center rounded-full text-[.6rem] font-bold ${ok ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}`}>
+    <span className={`mx-auto flex size-3 items-center justify-center rounded-full text-[.55rem] font-bold ${ok ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}`}>
       {ok ? '✓' : '✕'}
     </span>
   )
@@ -56,10 +56,14 @@ export default function VistaGeneral() {
         </div>
 
         <div className="max-h-[75vh] overflow-auto rounded-md border">
-          <table className="w-full border-collapse text-xs">
+          <table className="border-collapse text-xs" style={{ tableLayout: 'fixed', width: `${64 + data.partidas.length * 20}px` }}>
+            <colgroup>
+              <col className="w-16" />
+              {data.partidas.map((p) => <col key={p.nombre} className="w-5" />)}
+            </colgroup>
             <thead>
               <tr>
-                <th rowSpan={2} className="sticky left-0 top-0 z-30 min-w-24 border-b bg-muted p-1 text-left">Módulo</th>
+                <th rowSpan={2} className="sticky left-0 top-0 z-30 min-w-16 border-b bg-muted p-1 text-left">Módulo</th>
                 {grupos.map((g, i) => (
                   <th key={i} colSpan={g.span} className="sticky top-0 z-20 border-b bg-muted p-1 text-[.6rem] font-bold tracking-wide text-muted-foreground uppercase" title={CAT_LABELS[g.categoria] ?? g.categoria}>
                     {g.span <= 2 ? (CAT_LABELS[g.categoria] ?? g.categoria).slice(0, 4).toUpperCase() : CAT_LABELS[g.categoria] ?? g.categoria}
@@ -68,8 +72,8 @@ export default function VistaGeneral() {
               </tr>
               <tr>
                 {data.partidas.map((p) => (
-                  <th key={p.nombre} className="sticky top-7 z-20 w-8 border-b bg-muted p-0.5 align-bottom" title={p.nombre}>
-                    <span className="block h-52 origin-bottom-left translate-x-3 -rotate-90 whitespace-nowrap text-[.6rem] font-normal text-muted-foreground">{p.nombre}</span>
+                  <th key={p.nombre} className="sticky top-7 z-20 w-5 border-b bg-muted p-0 align-bottom" title={p.nombre}>
+                    <span className="block h-40 origin-bottom-left translate-x-2 -rotate-90 whitespace-nowrap text-[.55rem] font-normal text-muted-foreground">{p.nombre}</span>
                   </th>
                 ))}
               </tr>
