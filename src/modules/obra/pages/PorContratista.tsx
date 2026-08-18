@@ -103,7 +103,7 @@ function CategoriaSection({ cat, modulos }: { cat: ObraCategoria; modulos: Modul
 
 export default function PorContratista() {
   const { modulos: todos, loading, hayCR } = useObraCrData()
-  const modulos = useMemo(() => todos.filter((m) => !isModuloTerminado(m)), [todos])
+  const modulos = useMemo(() => todos.filter((m) => !isModuloTerminado(m) && m.fechaEntregaFinal), [todos])
 
   const kpis = useMemo(() => {
     const porCat = ORDEN.map((cat) => ({ cat, tabla: buildCategoryTable(cat, modulos) }))
