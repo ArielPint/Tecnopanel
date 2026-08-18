@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useObraCrData } from '../hooks/useObraCrData'
 import { useObraCrExcel } from '../hooks/useObraCrExcel'
 import { useObraCrConfigSave } from '../hooks/useObraCrConfigSave'
+import { isModuloTerminado } from '../lib/matrix'
 
 const SUBCONTRATO_LABEL: Record<string, string> = { W: 'Wedo', C: 'Conbes', sin_asignar: 'Sin asignar' }
 
@@ -38,16 +39,17 @@ function ModulosConfigCard() {
   const [filtro, setFiltro] = useState('')
 
   const filtrados = useMemo(() => {
-    if (!filtro.trim()) return modulos
+    const pendientes = modulos.filter((m) => !isModuloTerminado(m))
+    if (!filtro.trim()) return pendientes
     const q = filtro.trim()
-    return modulos.filter((m) => String(m.moduloNum).includes(q))
+    return pendientes.filter((m) => String(m.moduloNum).includes(q))
   }, [modulos, filtro])
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>🏗️ Asignación de subcontrato y fecha de entrega final</CardTitle>
-        <CardDescription>Por módulo — reemplaza el Excel "Entrega Contratistas" del reporte original. Alimenta las secciones Wedo/Conbes y la grilla de Entrega a Cliente.</CardDescription>
+        <CardDescription>Por módulo pendiente de término — reemplaza el Excel "Entrega Contratistas" del reporte original. Alimenta las secciones Wedo/Conbes y la grilla de Entrega a Cliente.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <Input placeholder="Buscar módulo (ej: 093)" value={filtro} onChange={(e) => setFiltro(e.target.value)} className="h-8 w-52 text-xs" />
@@ -55,6 +57,8 @@ function ModulosConfigCard() {
           <p className="py-6 text-center text-sm text-muted-foreground">Cargando…</p>
         ) : !modulos.length ? (
           <p className="py-6 text-center text-sm text-muted-foreground">Sin módulos — subí primero el archivo CR.</p>
+        ) : !filtrados.length ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Sin módulos pendientes de término con este filtro.</p>
         ) : (
           <div className="max-h-[60vh] overflow-auto rounded-md border">
             <Table>

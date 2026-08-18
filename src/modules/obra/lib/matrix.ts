@@ -11,6 +11,11 @@ export interface ModuloCombinado {
   fechaEntregaFinal: string | null
 }
 
+// Módulo terminado = ninguna partida del CR quedó marcada "no" (pendiente).
+export function isModuloTerminado(m: ModuloCombinado): boolean {
+  return Object.values(m.estados).every((s) => s !== 'no')
+}
+
 export function combinarModulos(modulos: ObraCrModuloDb[], config: ObraCrConfigDb[]): ModuloCombinado[] {
   const configMap = new Map(config.map((c) => [c.modulo_num, c]))
   return modulos
