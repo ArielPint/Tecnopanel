@@ -1,6 +1,6 @@
 import { useComunicaciones } from '../hooks/useComunicaciones'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/modules/financiero/components/ui/card'
+import { Badge } from '@/modules/financiero/components/ui/badge'
 
 export default function Comunicaciones({ tieneCrm }: { tieneCrm: boolean }) {
   const { mensajes, loading, error } = useComunicaciones(tieneCrm)

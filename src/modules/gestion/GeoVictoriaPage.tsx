@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { RefreshCw, Search, Users as UsersIcon } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { supabase } from '@/lib/supabaseClient'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/components/ui/card'
 
 // Puerto de asistencia.html + geovictoria.js (standalone La Chacra) al hub.
 // Toda llamada a la API de GeoVictoria pasa por el Edge Function gv-proxy,

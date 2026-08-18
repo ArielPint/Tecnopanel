@@ -7,7 +7,7 @@ import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 import { KPI_LABELS } from './types'
 import KpiCard from './KpiCard'
 import { fmtM } from '@/modules/planta/lib/format'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/modules/financiero/components/ui/card'
 import {
   Table,
   TableBody,
@@ -15,7 +15,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from '@/modules/financiero/components/ui/table'
 
 function findKpi(kpis: { key: string; valor: number }[] | undefined, key: string): number | undefined {
   return kpis?.find((k) => k.key === key)?.valor

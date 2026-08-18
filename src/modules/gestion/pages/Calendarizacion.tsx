@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ProyectoObra } from '@/hooks/useAccesoUsuario'
 import { useProximosVencimientos } from '../hooks/useProximosVencimientos'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/modules/financiero/components/ui/card'
+import { Badge } from '@/modules/financiero/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 
 type Contexto = { tipo: 'crm' } | { tipo: 'proyecto'; proyectoId: string; proyectoSlug: string }
 

@@ -2,8 +2,8 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAccesos, type Acceso } from './useAccesos'
 import FormularioAcceso from './FormularioAcceso'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/modules/financiero/components/ui/card'
+import { Badge } from '@/modules/financiero/components/ui/badge'
 import { Button } from '@/modules/financiero/components/ui/button'
 import {
   Table,
@@ -12,7 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from '@/modules/financiero/components/ui/table'
 
 function formatUltimoIngreso(iso: string | null): { relativo: string; absoluto: string } | null {
   if (!iso) return null

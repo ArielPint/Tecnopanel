@@ -3,11 +3,11 @@ import { ExternalLink } from 'lucide-react'
 import type { ProyectoObra } from '@/hooks/useAccesoUsuario'
 import { supabase } from '@/lib/supabaseClient'
 import { useDocumentos, type DocumentoItem } from '../hooks/useDocumentos'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/modules/financiero/components/ui/card'
+import { Badge } from '@/modules/financiero/components/ui/badge'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 
 type Contexto = { tipo: 'crm' } | { tipo: 'proyecto'; proyectoId: string }
 

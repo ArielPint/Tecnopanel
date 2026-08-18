@@ -4,11 +4,11 @@ import type { ProyectoObra } from '@/hooks/useAccesoUsuario'
 import { useReportesFinancieros } from '../hooks/useReportesFinancieros'
 import { exportarExcel } from '@/modules/financiero/utils/exportExcel'
 import { formatCLP, formatPct } from '@/modules/financiero/utils/formatters'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent } from '@/modules/financiero/components/ui/card'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/modules/financiero/components/ui/tabs'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
