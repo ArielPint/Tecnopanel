@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
 import type { EstadoEP, EstadoPago } from '../types'
@@ -9,15 +10,16 @@ type NuevoEstadoPago = Pick<
 >
 
 export function useEstadosPago() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [estadosPago, setEstadosPago] = useState<EstadoPago[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const channelNameRef = useRef(`estados_pago_la_chacra_${Math.random().toString(36).slice(2)}`)
+  const channelNameRef = useRef(`estados_pago_${Math.random().toString(36).slice(2)}`)
 
   const refetch = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const proyectoId = await getProyectoId('la-chacra')
+    const proyectoId = await getProyectoId(proyectoSlug!)
     const { data, error } = await supabase
       .from('estados_pago')
       .select('*')
@@ -26,7 +28,7 @@ export function useEstadosPago() {
     if (error) setError(error.message)
     else setEstadosPago(data ?? [])
     setLoading(false)
-  }, [])
+  }, [proyectoSlug])
 
   useEffect(() => {
     refetch()
@@ -41,7 +43,7 @@ export function useEstadosPago() {
 
   const crear = useCallback(
     async (input: NuevoEstadoPago) => {
-      const proyectoId = await getProyectoId('la-chacra')
+      const proyectoId = await getProyectoId(proyectoSlug!)
       const { data: userData } = await supabase.auth.getUser()
       const { data, error } = await supabase
         .from('estados_pago')
@@ -52,7 +54,7 @@ export function useEstadosPago() {
       await refetch()
       return data as EstadoPago
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   const actualizar = useCallback(

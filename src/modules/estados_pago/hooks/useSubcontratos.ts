@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
 import type { Subcontrato } from '../types'
@@ -9,15 +10,16 @@ type NuevoSubcontrato = Pick<
 >
 
 export function useSubcontratos() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [subcontratos, setSubcontratos] = useState<Subcontrato[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const channelNameRef = useRef(`subcontratos_la_chacra_${Math.random().toString(36).slice(2)}`)
+  const channelNameRef = useRef(`subcontratos_${Math.random().toString(36).slice(2)}`)
 
   const refetch = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const proyectoId = await getProyectoId('la-chacra')
+    const proyectoId = await getProyectoId(proyectoSlug!)
     const { data, error } = await supabase
       .from('subcontratos')
       .select('*')
@@ -26,7 +28,7 @@ export function useSubcontratos() {
     if (error) setError(error.message)
     else setSubcontratos(data ?? [])
     setLoading(false)
-  }, [])
+  }, [proyectoSlug])
 
   useEffect(() => {
     refetch()
@@ -41,7 +43,7 @@ export function useSubcontratos() {
 
   const crear = useCallback(
     async (input: NuevoSubcontrato) => {
-      const proyectoId = await getProyectoId('la-chacra')
+      const proyectoId = await getProyectoId(proyectoSlug!)
       const { data, error } = await supabase
         .from('subcontratos')
         .insert({ ...input, proyecto_id: proyectoId })
@@ -51,7 +53,7 @@ export function useSubcontratos() {
       await refetch()
       return data as Subcontrato
     },
-    [refetch],
+    [refetch, proyectoSlug],
   )
 
   const actualizar = useCallback(
