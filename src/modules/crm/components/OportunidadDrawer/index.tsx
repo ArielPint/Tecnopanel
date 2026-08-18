@@ -680,7 +680,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Fecha de Ingreso a Calificación</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Fecha de Ingreso a Serviu</label>
             <input type="date" value={opp.fecha_ingreso_calificacion ?? ''} onChange={ev => setOpp(o => ({...o, fecha_ingreso_calificacion: ev.target.value || null}))}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
           </div>
