@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Card, CardContent } from '@/modules/financiero/components/ui/card'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { useObraCrData } from '../hooks/useObraCrData'
-import { CAT_LABELS } from '../lib/categorias'
+import { CAT_LABELS, CAT_LABELS_CORTO } from '../lib/categorias'
 import { buildViewCData, isModuloTerminado } from '../lib/matrix'
 import type { ChipEstado } from '../lib/crParser'
 
@@ -66,7 +66,7 @@ export default function VistaGeneral() {
                 <th rowSpan={2} className="sticky left-0 top-0 z-30 min-w-16 border-b bg-muted p-1 text-left">Módulo</th>
                 {grupos.map((g, i) => (
                   <th key={i} colSpan={g.span} className="sticky top-0 z-20 border-b bg-muted p-1 text-[.6rem] font-bold tracking-wide text-muted-foreground uppercase" title={CAT_LABELS[g.categoria] ?? g.categoria}>
-                    {g.span <= 2 ? (CAT_LABELS[g.categoria] ?? g.categoria).slice(0, 4).toUpperCase() : CAT_LABELS[g.categoria] ?? g.categoria}
+                    {CAT_LABELS_CORTO[g.categoria] ?? g.categoria}
                   </th>
                 ))}
               </tr>
