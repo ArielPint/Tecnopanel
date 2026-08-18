@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import { formatCLP } from '@/modules/financiero/utils/formatters'
-import type { Oportunidad, Profile, OportunidadHistorialEtapa, OportunidadDocumento, OportunidadAsignacion, TareaIngenieria, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit } from '@/modules/crm/types/database'
+import type { Oportunidad, Profile, OportunidadHistorialEtapa, OportunidadDocumento, TareaIngenieria, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit } from '@/modules/crm/types/database'
 import { FAMILIA_PRODUCTOS_OPCIONES, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
 
 const REGIONES = Object.keys(REGIONES_COMUNAS)
@@ -127,7 +127,6 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   const [tab, setTab] = useState<Tab>('general')
   const [opp, setOpp] = useState<Oportunidad>(oportunidad)
   const [usuarios, setUsuarios] = useState<Profile[]>([])
-  const [asignadosIds, setAsignadosIds] = useState<string[]>([])
   const [etapaData, setEtapaData] = useState<Record<string, string>>({})
   const [costosData, setCostosData] = useState<Record<string, string>>({})
   const [tipologias, setTipologias] = useState<TipologiaVitPrecio[]>([])
@@ -196,8 +195,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
 
   async function loadAll() {
     setLoading(true)
-    const [asigRes, etapaRes, costosRes, docsRes, histRes, usersRes, tareasRes, cierreRes] = await Promise.all([
-      supabase.from('oportunidad_asignaciones').select('*').eq('oportunidad_id', oportunidad.id).eq('etapa', oportunidad.etapa_actual),
+    const [etapaRes, costosRes, docsRes, histRes, usersRes, tareasRes, cierreRes] = await Promise.all([
       supabase.from('oportunidad_datos_etapa').select('*').eq('oportunidad_id', oportunidad.id).eq('etapa', oportunidad.etapa_actual).maybeSingle(),
       supabase.from('oportunidad_datos_etapa').select('*').eq('oportunidad_id', oportunidad.id).eq('etapa', 'Costos y Presupuestos').maybeSingle(),
       supabase.from('oportunidad_documentos').select('*').eq('oportunidad_id', oportunidad.id).order('created_at', { ascending: false }),
@@ -206,7 +204,6 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       supabase.from('tareas_ingenieria').select('*').eq('oportunidad_id', oportunidad.id).order('created_at', { ascending: false }),
       supabase.from('cierres').select('*').eq('oportunidad_id', oportunidad.id).maybeSingle(),
     ])
-    setAsignadosIds(((asigRes.data as OportunidadAsignacion[]) ?? []).map(a => a.usuario_id))
     setEtapaData(((etapaRes.data as {datos?:Record<string,string>}|null)?.datos) ?? {})
     setCostosData(((costosRes.data as {datos?:Record<string,string>}|null)?.datos) ?? {})
     setDocs((docsRes.data as OportunidadDocumento[]) ?? [])
@@ -492,35 +489,6 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     }, { onConflict: 'oportunidad_id,etapa' })
     setSaving(false)
     handleSupabaseError(error, 'OportunidadDrawer.saveEtapaData')
-  }
-
-  async function toggleAsignado(userId: string) {
-    if (asignadosIds.includes(userId)) {
-      setAsignadosIds(ids => ids.filter(id => id !== userId))
-      const { error } = await supabase.from('oportunidad_asignaciones').delete()
-        .eq('oportunidad_id', opp.id).eq('etapa', opp.etapa_actual).eq('usuario_id', userId)
-      if (handleSupabaseError(error, 'OportunidadDrawer.toggleAsignado.delete')) {
-        setAsignadosIds(ids => [...ids, userId])
-      }
-    } else {
-      setAsignadosIds(ids => [...ids, userId])
-      const { error } = await supabase.from('oportunidad_asignaciones').insert({
-        oportunidad_id: opp.id, etapa: opp.etapa_actual,
-        usuario_id: userId, asignado_por: profile?.id,
-      })
-      if (handleSupabaseError(error, 'OportunidadDrawer.toggleAsignado.insert')) {
-        setAsignadosIds(ids => ids.filter(id => id !== userId))
-        return
-      }
-      const { error: notifErr } = await supabase.from('notifications').insert({
-        user_id: userId,
-        tipo: 'asignacion',
-        titulo: `Te asignaron: ${opp.nombre}`,
-        mensaje: `${opp.codigo} · etapa ${opp.etapa_actual}`,
-        oportunidad_id: opp.id,
-      })
-      handleSupabaseError(notifErr, 'OportunidadDrawer.toggleAsignado.notify')
-    }
   }
 
   // Cierra el historial de la etapa actual, mueve oportunidades.etapa_actual y abre nuevo historial.
@@ -1143,17 +1111,6 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
 
               {opp.etapa_actual === 'Ingeniería' && (
                 <div className="pt-4 border-t border-gray-200 space-y-3">
-                  <div><label className="block text-xs font-medium text-gray-600 mb-1.5">Asignados (etapa actual)</label>
-                    <div className="space-y-1 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2">
-                      {filteredUsers.length === 0 ? <p className="text-xs text-gray-400 px-1">Sin usuarios disponibles para este rol</p> :
-                      filteredUsers.map(u => (
-                        <label key={u.id} className="flex items-center gap-2 text-sm text-gray-600 px-1 py-0.5">
-                          <input type="checkbox" checked={asignadosIds.includes(u.id)} onChange={() => toggleAsignado(u.id)}
-                            className="rounded border-gray-300 text-crm-red focus:ring-crm-red" />
-                          {u.nombre} {u.apellido} <span className="text-xs text-gray-400">({u.rol.replace(/_/g,' ')})</span>
-                        </label>
-                      ))}
-                    </div></div>
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tareas de ingeniería</p>
                     <button onClick={() => setShowCrearTarea(s => !s)} className="flex items-center gap-1 text-xs font-medium text-crm-red hover:underline">

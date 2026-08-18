@@ -184,7 +184,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
       monto_estimado: form.monto_estimado ? Number(form.monto_estimado) : null,
       probabilidad: Number(form.probabilidad), etapa_actual: etapaInicial,
       fecha_cierre_est: form.fecha_cierre_est || null, descripcion: form.descripcion || null,
-      nombre_entidad_patrocinante: (form.tipo_venta === 'Kit' || form.tipo_venta === 'VIT') ? (form.nombre_entidad_patrocinante.trim() || null) : null,
+      nombre_entidad_patrocinante: form.tipo_venta === 'VIT' ? (form.nombre_entidad_patrocinante.trim() || null) : null,
       nombre_comite_vivienda: form.tipo_venta === 'VIT' ? (form.nombre_comite_vivienda.trim() || null) : null,
       nombre_constructora: form.tipo_venta === 'VIT' ? (form.nombre_constructora.trim() || null) : null,
       zona_termica: form.tipo_venta === 'VIT' ? (form.zona_termica || null) : null,
@@ -290,7 +290,6 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
                 <option value="Proyecto">{TIPO_VENTA_LABELS.Proyecto}</option>
                 <option value="Producto">{TIPO_VENTA_LABELS.Producto}</option>
-                <option value="Kit">{TIPO_VENTA_LABELS.Kit}</option>
                 <option value="VIT">{TIPO_VENTA_LABELS.VIT}</option>
               </select>
             </div>
@@ -299,14 +298,6 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
               <input disabled value={etapaInicial} className="w-full px-3 py-2 border border-gray-200 bg-gray-50 text-gray-500 rounded-lg text-sm" />
             </div>
           </div>
-
-          {form.tipo_venta === 'Kit' && (
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Nombre entidad patrocinante</label>
-              <input value={form.nombre_entidad_patrocinante} onChange={e => setForm(f=>({...f,nombre_entidad_patrocinante:e.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
-            </div>
-          )}
 
           {form.tipo_venta === 'VIT' && (
             <div className="space-y-3 bg-gray-50 rounded-lg p-3">
@@ -382,20 +373,20 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             </div>
           )}
 
-          <div className={form.tipo_venta === 'VIT' ? '' : 'grid grid-cols-2 gap-3'}>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Monto estimado (CLP)</label>
-              <input type="number" value={form.monto_estimado} onChange={e => setForm(f=>({...f,monto_estimado:e.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
-            </div>
-            {form.tipo_venta !== 'VIT' && (
+          {form.tipo_venta !== 'VIT' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Monto estimado (CLP)</label>
+                <input type="number" value={form.monto_estimado} onChange={e => setForm(f=>({...f,monto_estimado:e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Fecha de presentación</label>
                 <input type="date" value={form.fecha_cierre_est} onChange={e => setForm(f=>({...f,fecha_cierre_est:e.target.value}))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -416,20 +407,20 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             </div>
           </div>
 
-          <div className={form.tipo_venta === 'VIT' ? '' : 'grid grid-cols-2 gap-3'}>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad de casas</label>
-              <input type="number" min="0" value={form.cantidad_casas} onChange={e => setForm(f=>({...f,cantidad_casas:e.target.value}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
-            </div>
-            {form.tipo_venta !== 'VIT' && (
+          {form.tipo_venta !== 'VIT' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad de casas</label>
+                <input type="number" min="0" value={form.cantidad_casas} onChange={e => setForm(f=>({...f,cantidad_casas:e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+              </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad de tipos de casas</label>
                 <input type="number" min="0" value={form.cantidad_tipos_casas} onChange={e => setForm(f=>({...f,cantidad_tipos_casas:e.target.value}))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {form.tipo_venta !== 'VIT' && (
             <div className="grid grid-cols-2 gap-3">
@@ -484,11 +475,13 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             </div>
           )}
 
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Plano (PDF / DWG / Autocad)</label>
-            <input type="file" accept=".pdf,.dwg,.dxf" onChange={e => setArchivo(e.target.files?.[0] ?? null)}
-              className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-200 file:text-xs file:font-medium file:bg-gray-50 hover:file:bg-gray-100" />
-          </div>
+          {form.tipo_venta !== 'VIT' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Plano (PDF / DWG / Autocad)</label>
+              <input type="file" accept=".pdf,.dwg,.dxf" onChange={e => setArchivo(e.target.files?.[0] ?? null)}
+                className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-200 file:text-xs file:font-medium file:bg-gray-50 hover:file:bg-gray-100" />
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Probabilidad: {form.probabilidad}%</label>
