@@ -24,7 +24,7 @@ export function parseCR(wb: XLSX.WorkBook): ObraCrModuloRow[] {
   const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true }) as unknown[][]
 
   const ROW18 = data[17] || []
-  const ROW20 = data[19] || [] // fila 20 = "RF" (Recepción Final) por módulo cuando ya está terminado
+  const ROW20 = data[19] || [] // fila 20 = "RF"/"R1" por módulo cuando ya está terminado (recepción)
   const ROW54 = data[53] || []
 
   interface Col { colIdx: number; num: number; tipo: 'SECO' | 'HUMEDO'; code: string }
@@ -79,7 +79,8 @@ export function parseCR(wb: XLSX.WorkBook): ObraCrModuloRow[] {
       const ok = val !== null && val !== undefined && String(val).trim() !== ''
       estados[pr.name] = ok ? 'ok' : 'no'
     }
-    const terminado = String(ROW20[col.colIdx] ?? '').trim().toUpperCase() === 'RF'
+    const marcaFila20 = String(ROW20[col.colIdx] ?? '').trim().toUpperCase()
+    const terminado = marcaFila20 === 'RF' || marcaFila20 === 'R1'
     return { moduloNum: col.num, code: col.code, tipo: col.tipo, estados, terminado }
   })
 }
