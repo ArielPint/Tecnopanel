@@ -56,10 +56,10 @@ export default function VistaGeneral() {
         </div>
 
         <div className="max-h-[75vh] overflow-auto rounded-md border">
-          <table className="border-collapse text-xs" style={{ tableLayout: 'fixed', width: `${64 + data.partidas.length * 20}px` }}>
+          <table className="border-collapse text-xs" style={{ tableLayout: 'fixed', width: '100%' }}>
             <colgroup>
-              <col className="w-16" />
-              {data.partidas.map((p) => <col key={p.nombre} className="w-5" />)}
+              <col style={{ width: 64 }} />
+              {data.partidas.map((p) => <col key={p.nombre} />)}
             </colgroup>
             <thead>
               <tr>
