@@ -11,7 +11,9 @@ import { useCrearProyecto } from './useCrearProyecto'
 // Mismo catálogo cerrado que ya usa proyecto_modulos para La Chacra — el admin
 // elige cuáles habilitar en vez de copiarlos todos a ciegas.
 const MODULOS_DISPONIBLES = [
-  { key: 'dashboard', label: 'Producción' },
+  { key: 'dashboard', label: 'Principal' },
+  { key: 'produccion', label: 'Producción' },
+  { key: 'obra', label: 'Avance Obra' },
   { key: 'logistica', label: 'Logística' },
   { key: 'solicitudes', label: 'Solicitudes' },
   { key: 'financiero', label: 'Financiero' },
