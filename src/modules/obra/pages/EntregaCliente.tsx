@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useObraCrData } from '../hooks/useObraCrData'
+import { useObraCrEntregadoToggle } from '../hooks/useObraCrConfigSave'
 import { buildEntregasFlat } from '../lib/matrix'
 import { ASIGNACION_DEFS, ASIGNACION_ORDER, SUBCONTRATO_LABEL, type AsignacionCategoria } from '../lib/categorias'
 import CalendarioEntregas from '../components/CalendarioEntregas'
@@ -12,6 +13,7 @@ function tituloCategoria(cat: AsignacionCategoria): string {
 
 export default function EntregaCliente() {
   const { modulos, loading, hayCR } = useObraCrData()
+  const { toggle } = useObraCrEntregadoToggle()
   const entregas = useMemo(() => buildEntregasFlat(modulos), [modulos])
 
   const porCategoria = useMemo(
@@ -28,7 +30,11 @@ export default function EntregaCliente() {
       {porCategoria.map(({ cat, entregas: entregasCat }) => (
         <div key={cat} className="space-y-2">
           <h3 className="text-sm font-semibold">{tituloCategoria(cat)}</h3>
-          <CalendarioEntregas entregas={entregasCat} emptyMessage="Ningún módulo tiene fecha de entrega cargada en Configuración para esta categoría." />
+          <CalendarioEntregas
+            entregas={entregasCat}
+            onToggleEntregado={(item) => toggle(item.moduloNum, item.categoria, !item.entregado)}
+            emptyMessage="Ningún módulo tiene fecha de entrega cargada en Configuración para esta categoría."
+          />
         </div>
       ))}
     </div>

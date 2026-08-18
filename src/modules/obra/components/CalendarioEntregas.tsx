@@ -26,11 +26,12 @@ interface CalendarioEntregasProps {
   entregas: EntregaItem[]
   onEntregaClick?: (item: EntregaItem) => void
   onDiaClick?: (fecha: string) => void
+  onToggleEntregado?: (item: EntregaItem) => void
   esPendiente?: (item: EntregaItem) => boolean
   emptyMessage?: string
 }
 
-export default function CalendarioEntregas({ entregas, onEntregaClick, onDiaClick, esPendiente, emptyMessage }: CalendarioEntregasProps) {
+export default function CalendarioEntregas({ entregas, onEntregaClick, onDiaClick, onToggleEntregado, esPendiente, emptyMessage }: CalendarioEntregasProps) {
   const semanas = buildEntregaSemanas(entregas)
 
   if (!semanas.length) {
@@ -57,9 +58,19 @@ export default function CalendarioEntregas({ entregas, onEntregaClick, onDiaClic
                     {dia.items.map((item) => (
                       <div
                         key={`${item.moduloNum}:${item.categoria}`}
-                        className={`flex items-center justify-between gap-1 rounded bg-muted px-1.5 py-1 text-[.7rem] ${onEntregaClick ? 'cursor-pointer hover:bg-muted-foreground/15' : ''} ${esPendiente?.(item) ? 'ring-1 ring-warning' : ''}`}
+                        className={`flex items-center justify-between gap-1 rounded px-1.5 py-1 text-[.7rem] ${onToggleEntregado && item.entregado ? 'bg-success/15' : 'bg-muted'} ${onEntregaClick ? 'cursor-pointer hover:bg-muted-foreground/15' : ''} ${esPendiente?.(item) ? 'ring-1 ring-warning' : ''}`}
                         onClick={onEntregaClick ? (e) => { e.stopPropagation(); onEntregaClick(item) } : undefined}
                       >
+                        {onToggleEntregado && (
+                          <input
+                            type="checkbox"
+                            checked={item.entregado}
+                            onChange={(e) => { e.stopPropagation(); onToggleEntregado(item) }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="size-3 shrink-0 accent-success"
+                            title="Entregado"
+                          />
+                        )}
                         <span className="truncate">{item.code}</span>
                         <span className="flex shrink-0 items-center gap-0.5">
                           <span className="text-[.6rem] text-muted-foreground">{CAT_CORTA[item.categoria]}</span>

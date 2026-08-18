@@ -164,7 +164,7 @@ function AsignacionesCard() {
         const asignaciones = { ...m.asignaciones } as Asignaciones
         for (const cat of ASIGNACION_ORDER) {
           const c = cambios.get(claveCambio(m.moduloNum, cat))
-          if (c) asignaciones[cat] = { subcontrato: c.subcontrato, fechaEntrega: c.fechaEntrega }
+          if (c) asignaciones[cat] = { subcontrato: c.subcontrato, fechaEntrega: c.fechaEntrega, entregado: asignaciones[cat].entregado }
         }
         return { ...m, asignaciones }
       }),
@@ -240,7 +240,12 @@ function AsignacionesCard() {
                       onClick={() => setDialogo({ moduloNum: m.moduloNum, categoria: null, nuevo: true })}
                       className="flex w-full items-center justify-between gap-1 rounded-md border px-2 py-1.5 text-left text-xs hover:bg-accent/40"
                     >
-                      <span className="font-medium">{m.code}</span>
+                      <span className="flex items-center gap-1 font-medium">
+                        {m.code}
+                        <Badge variant={m.tipo === 'HUMEDO' ? 'default' : 'secondary'} className="px-1 py-0 text-[.55rem]">
+                          {m.tipo === 'HUMEDO' ? 'Húmedo' : 'Seco'}
+                        </Badge>
+                      </span>
                       <span className="flex flex-wrap justify-end gap-0.5">
                         {faltantes.map((cat) => (
                           <Badge key={cat} variant="outline" className="px-1 py-0 text-[.55rem]">{ASIGNACION_DEFS[cat].label.slice(0, 4)}</Badge>

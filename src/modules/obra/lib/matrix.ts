@@ -5,6 +5,7 @@ import type { ObraCrConfigDb, ObraCrModuloDb } from './supaData'
 export interface AsignacionModulo {
   subcontrato: ObraSubcontrato | null
   fechaEntrega: string | null
+  entregado: boolean
 }
 
 export type Asignaciones = Record<AsignacionCategoria, AsignacionModulo>
@@ -26,7 +27,7 @@ export function isModuloTerminado(m: ModuloCombinado): boolean {
 }
 
 function asignacionesVacias(): Asignaciones {
-  return Object.fromEntries(ASIGNACION_ORDER.map((cat) => [cat, { subcontrato: null, fechaEntrega: null }])) as Asignaciones
+  return Object.fromEntries(ASIGNACION_ORDER.map((cat) => [cat, { subcontrato: null, fechaEntrega: null, entregado: false }])) as Asignaciones
 }
 
 function primeraFecha(a: Asignaciones): string | null {
@@ -38,7 +39,7 @@ export function combinarModulos(modulos: ObraCrModuloDb[], config: ObraCrConfigD
   const asignacionesPorModulo = new Map<number, Asignaciones>()
   for (const c of config) {
     const a = asignacionesPorModulo.get(c.modulo_num) ?? asignacionesVacias()
-    a[c.categoria] = { subcontrato: c.subcontrato, fechaEntrega: c.fecha_entrega_final }
+    a[c.categoria] = { subcontrato: c.subcontrato, fechaEntrega: c.fecha_entrega_final, entregado: c.entregado }
     asignacionesPorModulo.set(c.modulo_num, a)
   }
 
@@ -154,6 +155,7 @@ export interface EntregaItem {
   categoria: AsignacionCategoria
   subcontrato: ObraSubcontrato | null
   fecha: string
+  entregado: boolean
 }
 
 // Aplana las asignaciones de todos los módulos a una lista de entregas (una por
@@ -164,7 +166,7 @@ export function buildEntregasFlat(modulos: ModuloCombinado[]): EntregaItem[] {
   for (const m of modulos) {
     for (const cat of ASIGNACION_ORDER) {
       const a = m.asignaciones[cat]
-      if (a.fechaEntrega) out.push({ moduloNum: m.moduloNum, code: m.code, categoria: cat, subcontrato: a.subcontrato, fecha: a.fechaEntrega })
+      if (a.fechaEntrega) out.push({ moduloNum: m.moduloNum, code: m.code, categoria: cat, subcontrato: a.subcontrato, fecha: a.fechaEntrega, entregado: a.entregado })
     }
   }
   return out

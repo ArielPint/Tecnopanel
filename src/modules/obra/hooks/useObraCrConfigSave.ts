@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { getProyectoId } from '@/lib/proyectoIds'
-import { guardarObraCrConfigBatch, type ObraCrConfigCambio } from '../lib/supaData'
+import { guardarObraCrConfigBatch, marcarEntregado, type ObraCrConfigCambio } from '../lib/supaData'
+import type { AsignacionCategoria } from '../lib/categorias'
 import { invalidateObraCr } from './useObraCrData'
 
 export function useObraCrConfigBatchSave() {
@@ -25,4 +26,25 @@ export function useObraCrConfigBatchSave() {
   }
 
   return { guardarTodo, guardando }
+}
+
+export function useObraCrEntregadoToggle() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
+  const [guardandoKey, setGuardandoKey] = useState<string | null>(null)
+
+  async function toggle(moduloNum: number, categoria: AsignacionCategoria, entregado: boolean) {
+    const key = `${moduloNum}:${categoria}`
+    setGuardandoKey(key)
+    try {
+      const proyectoId = await getProyectoId(proyectoSlug!)
+      await marcarEntregado(proyectoId, moduloNum, categoria, entregado)
+      invalidateObraCr(proyectoSlug!)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo actualizar')
+    } finally {
+      setGuardandoKey(null)
+    }
+  }
+
+  return { toggle, guardandoKey }
 }
