@@ -5,6 +5,7 @@ import jsPDF from 'jspdf'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
+import { formatCLP } from '@/modules/financiero/utils/formatters'
 import type { Oportunidad, Profile, OportunidadHistorialEtapa, OportunidadDocumento, OportunidadAsignacion, TareaIngenieria, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit } from '@/modules/crm/types/database'
 import { FAMILIA_PRODUCTOS_OPCIONES, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
 
@@ -98,7 +99,6 @@ const STAGE_ROLES: Record<string, string[]> = {
   'Negociación': ['admin','gerente_ventas','vendedor','finanzas'],
 }
 
-function formatCLP(n: number) { return '$' + n.toLocaleString('es-CL') }
 function formatMM(n: number) { return (n / 1_000_000).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' MM' }
 function diffDias(from: string) {
   return Math.floor((new Date().getTime() - new Date(from).getTime()) / 86400000)
