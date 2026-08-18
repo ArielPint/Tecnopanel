@@ -72,8 +72,13 @@ export default function VistaGeneral() {
               </tr>
               <tr>
                 {data.partidas.map((p) => (
-                  <th key={p.nombre} className="sticky top-7 z-20 w-5 border-b bg-muted p-0 align-bottom" title={p.nombre}>
-                    <span className="block h-40 origin-bottom-left translate-x-2 -rotate-90 whitespace-nowrap text-[.55rem] font-normal text-muted-foreground">{p.nombre}</span>
+                  <th key={p.nombre} className="sticky top-7 z-20 border-b bg-muted px-0 py-1 text-center align-bottom" title={p.nombre}>
+                    <span
+                      className="inline-block whitespace-nowrap text-[.55rem] font-normal text-muted-foreground"
+                      style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+                    >
+                      {p.nombre}
+                    </span>
                   </th>
                 ))}
               </tr>
