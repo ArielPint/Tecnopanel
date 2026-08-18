@@ -147,24 +147,27 @@ export default function Subcontratos() {
                   <TableHead>Especialidad / Partida</TableHead>
                   <TableHead className="text-right">Monto contractual</TableHead>
                   <TableHead className="text-right">EP acumulados</TableHead>
+                  <TableHead className="text-right">% Avance</TableHead>
                   <TableHead className="text-right">Saldo disponible</TableHead>
                   <TableHead>Estado</TableHead>
                   {(puedeEscribir || puedeAdministrar) && <TableHead />}
                 </TableRow>
               </TableHeader>
               {loadingSub ? (
-                <TableSkeleton columns={6 + (puedeEscribir || puedeAdministrar ? 1 : 0)} />
+                <TableSkeleton columns={7 + (puedeEscribir || puedeAdministrar ? 1 : 0)} />
               ) : (
                 <TableBody>
                   {subcontratos.map((sc) => {
                     const consumido = consumidoPorSubcontrato.get(sc.id) ?? 0
                     const saldo = sc.monto_contractual - consumido
+                    const avance = sc.monto_contractual > 0 ? (consumido / sc.monto_contractual) * 100 : 0
                     return (
                     <TableRow key={sc.id}>
                       <TableCell className="font-medium">{nombreSubcontratista(sc.subcontratista_id)}</TableCell>
                       <TableCell>{sc.especialidad}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatCLP(sc.monto_contractual)}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatCLP(consumido)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{avance.toFixed(1)}%</TableCell>
                       <TableCell className={`text-right tabular-nums ${saldo < 0 ? 'text-destructive' : ''}`}>{formatCLP(saldo)}</TableCell>
                       <TableCell>
                         <Badge variant={sc.estado === 'activo' ? 'success' : 'secondary'}>{sc.estado}</Badge>
