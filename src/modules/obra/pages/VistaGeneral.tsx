@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/modules/financiero/components/ui/card'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { useObraCrData } from '../hooks/useObraCrData'
 import { CAT_LABELS } from '../lib/categorias'
-import { buildViewCData } from '../lib/matrix'
+import { buildViewCData, isModuloTerminado } from '../lib/matrix'
 import type { ChipEstado } from '../lib/crParser'
 
 function Chip({ status }: { status: ChipEstado }) {
@@ -17,9 +17,10 @@ function Chip({ status }: { status: ChipEstado }) {
 }
 
 export default function VistaGeneral() {
-  const { modulos, loading, hayCR } = useObraCrData()
+  const { modulos: todos, loading, hayCR } = useObraCrData()
   const [filtro, setFiltro] = useState('')
 
+  const modulos = useMemo(() => todos.filter((m) => !isModuloTerminado(m)), [todos])
   const data = useMemo(() => buildViewCData(modulos), [modulos])
 
   const grupos = useMemo(() => {
