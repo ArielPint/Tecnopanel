@@ -12,6 +12,7 @@ import CrmLoginPage from './modules/crm/pages/Login'
 import FinancieroApp from './modules/financiero/FinancieroApp'
 import DashboardPlantaApp from './modules/planta/DashboardPlantaApp'
 import ProduccionApp from './modules/planta/ProduccionApp'
+import ObraApp from './modules/obra/ObraApp'
 import LogisticaApp from './modules/logistica/LogisticaApp'
 import SolicitudesApp from './modules/solicitudes/SolicitudesApp'
 import EstadosPagoApp from './modules/estados_pago/EstadosPagoApp'
@@ -62,6 +63,14 @@ export default function App() {
           element={
             <ProtectedRoute requiere="proyecto">
               <ProduccionApp />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/proyectos/:proyectoSlug/obra/*"
+          element={
+            <ProtectedRoute requiere="proyecto">
+              <ObraApp />
             </ProtectedRoute>
           }
         />

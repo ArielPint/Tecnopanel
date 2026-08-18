@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 const ITEMS = [
   { key: 'dashboard', label: 'Principal' },
   { key: 'produccion', label: 'Producción' },
+  { key: 'obra', label: 'Avance Obra' },
   { key: 'logistica', label: 'Logística' },
   { key: 'solicitudes', label: 'Solicitudes' },
   { key: 'financiero', label: 'Financiero' },

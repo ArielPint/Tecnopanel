@@ -1,7 +1,7 @@
 // Mapa de páginas/pestañas del hub gateadas por user_profiles.permissions.pages.<id>.{access,tabs[]}.
 // Solo incluye módulos que hoy consumen ese permiso (ver useAuth.tsx de cada módulo) — crm y planta
 // quedan afuera porque usan `profiles` propia o no llegaron a esta fase (layout/producción/geovictoria).
-export type PageId = 'financiero' | 'dashboard' | 'produccion' | 'logistica' | 'solicitudes' | 'estados_pago'
+export type PageId = 'financiero' | 'dashboard' | 'produccion' | 'obra' | 'logistica' | 'solicitudes' | 'estados_pago'
 
 export interface PageDef {
   label: string
@@ -34,6 +34,15 @@ export const PAGE_MAP: Record<PageId, PageDef> = {
       partidas: 'Partidas',
       alertas: 'Alertas',
       detalle: 'Detalle',
+    },
+  },
+  obra: {
+    label: 'Avance Obra',
+    tabs: {
+      contratista: 'Por Contratista',
+      general: 'Vista General',
+      entrega: 'Entrega a Cliente',
+      configuracion: 'Configuración',
     },
   },
   logistica: {
