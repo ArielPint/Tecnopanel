@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/modules/financiero/components/ui/card'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 import { useObraCrData } from '../hooks/useObraCrData'
-import { CATEGORY_DEFS } from '../lib/categorias'
+import { ASIGNACION_POR_CR_CATEGORIA, CATEGORY_DEFS } from '../lib/categorias'
 import { buildCategoryTable, isModuloTerminado, type ModuloCombinado } from '../lib/matrix'
 import type { ObraCategoria } from '../lib/categorias'
 import type { ChipEstado } from '../lib/crParser'
@@ -40,6 +40,7 @@ function CategoriaSection({ cat, modulos }: { cat: ObraCategoria; modulos: Modul
   const [filtro, setFiltro] = useState('')
   const tabla = useMemo(() => buildCategoryTable(cat, modulos), [cat, modulos])
   const pct = tabla.total ? ((100 * tabla.done) / tabla.total).toFixed(1) : '0.0'
+  const asigCat = ASIGNACION_POR_CR_CATEGORIA[cat]
 
   const colsVisibles = useMemo(() => {
     if (!filtro.trim()) return tabla.cols.map((_, i) => i)
@@ -72,9 +73,10 @@ function CategoriaSection({ cat, modulos }: { cat: ObraCategoria; modulos: Modul
                   <TableHead className="sticky left-0 top-0 z-20 min-w-52 bg-background">Partida</TableHead>
                   {colsVisibles.map((i) => {
                     const c = tabla.cols[i]
+                    const fecha = c.asignaciones[asigCat].fechaEntrega
                     return (
                       <TableHead key={c.moduloNum} className="sticky top-0 z-10 bg-background text-center">
-                        {c.fechaEntregaFinal && <span className="block text-[.65rem] text-muted-foreground">{fmtFecha(c.fechaEntregaFinal)}</span>}
+                        {fecha && <span className="block text-[.65rem] text-muted-foreground">{fmtFecha(fecha)}</span>}
                         {c.code}
                       </TableHead>
                     )
@@ -103,7 +105,7 @@ function CategoriaSection({ cat, modulos }: { cat: ObraCategoria; modulos: Modul
 
 export default function PorContratista() {
   const { modulos: todos, loading, hayCR } = useObraCrData()
-  const modulos = useMemo(() => todos.filter((m) => !isModuloTerminado(m) && m.fechaEntregaFinal), [todos])
+  const modulos = useMemo(() => todos.filter((m) => !isModuloTerminado(m)), [todos])
 
   const kpis = useMemo(() => {
     const porCat = ORDEN.map((cat) => ({ cat, tabla: buildCategoryTable(cat, modulos) }))

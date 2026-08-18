@@ -2,26 +2,27 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { getProyectoId } from '@/lib/proyectoIds'
-import { guardarObraCrConfig } from '../lib/supaData'
+import { guardarObraCrConfigBatch, type ObraCrConfigCambio } from '../lib/supaData'
 import { invalidateObraCr } from './useObraCrData'
 
-export function useObraCrConfigSave() {
+export function useObraCrConfigBatchSave() {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  const [guardandoNum, setGuardandoNum] = useState<number | null>(null)
+  const [guardando, setGuardando] = useState(false)
 
-  async function guardar(moduloNum: number, cambios: { subcontrato: 'W' | 'C' | null; fechaEntregaFinal: string | null }) {
-    setGuardandoNum(moduloNum)
+  async function guardarTodo(cambios: ObraCrConfigCambio[]) {
+    setGuardando(true)
     try {
       const proyectoId = await getProyectoId(proyectoSlug!)
-      await guardarObraCrConfig(proyectoId, moduloNum, cambios)
+      await guardarObraCrConfigBatch(proyectoId, cambios)
       invalidateObraCr(proyectoSlug!)
-      toast.success(`Módulo M-${String(moduloNum).padStart(5, '0')} actualizado`)
+      toast.success(`${cambios.length} asignación(es) guardada(s)`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo guardar')
+      throw e
     } finally {
-      setGuardandoNum(null)
+      setGuardando(false)
     }
   }
 
-  return { guardar, guardandoNum }
+  return { guardarTodo, guardando }
 }

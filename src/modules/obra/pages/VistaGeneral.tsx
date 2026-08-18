@@ -20,7 +20,7 @@ export default function VistaGeneral() {
   const { modulos: todos, loading, hayCR } = useObraCrData()
   const [filtro, setFiltro] = useState('')
 
-  const modulos = useMemo(() => todos.filter((m) => !isModuloTerminado(m) && m.fechaEntregaFinal), [todos])
+  const modulos = useMemo(() => todos.filter((m) => !isModuloTerminado(m)), [todos])
   const data = useMemo(() => buildViewCData(modulos), [modulos])
 
   const grupos = useMemo(() => {

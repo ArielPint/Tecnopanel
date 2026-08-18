@@ -1,6 +1,13 @@
-import { CATEGORY_DEFS, VIEWC_ORDER_NORM, findCategoriaForPartida, normalize, type ObraCategoria } from './categorias'
+import { ASIGNACION_ORDER, ASIGNACION_POR_CR_CATEGORIA, CATEGORY_DEFS, VIEWC_ORDER_NORM, findCategoriaForPartida, normalize, type AsignacionCategoria, type ObraCategoria, type ObraSubcontrato } from './categorias'
 import type { ChipEstado } from './crParser'
 import type { ObraCrConfigDb, ObraCrModuloDb } from './supaData'
+
+export interface AsignacionModulo {
+  subcontrato: ObraSubcontrato | null
+  fechaEntrega: string | null
+}
+
+export type Asignaciones = Record<AsignacionCategoria, AsignacionModulo>
 
 export interface ModuloCombinado {
   moduloNum: number
@@ -8,8 +15,7 @@ export interface ModuloCombinado {
   tipo: string
   estados: Record<string, ChipEstado>
   terminado: boolean
-  subcontrato: 'W' | 'C' | null
-  fechaEntregaFinal: string | null
+  asignaciones: Asignaciones
 }
 
 // Terminado = fila 20 del CR marcada "RF" (Recepción Final) para ese módulo —
@@ -19,25 +25,38 @@ export function isModuloTerminado(m: ModuloCombinado): boolean {
   return m.terminado
 }
 
+function asignacionesVacias(): Asignaciones {
+  return Object.fromEntries(ASIGNACION_ORDER.map((cat) => [cat, { subcontrato: null, fechaEntrega: null }])) as Asignaciones
+}
+
+function primeraFecha(a: Asignaciones): string | null {
+  const fechas = ASIGNACION_ORDER.map((cat) => a[cat].fechaEntrega).filter((f): f is string => !!f)
+  return fechas.length ? fechas.sort()[0] : null
+}
+
 export function combinarModulos(modulos: ObraCrModuloDb[], config: ObraCrConfigDb[]): ModuloCombinado[] {
-  const configMap = new Map(config.map((c) => [c.modulo_num, c]))
+  const asignacionesPorModulo = new Map<number, Asignaciones>()
+  for (const c of config) {
+    const a = asignacionesPorModulo.get(c.modulo_num) ?? asignacionesVacias()
+    a[c.categoria] = { subcontrato: c.subcontrato, fechaEntrega: c.fecha_entrega_final }
+    asignacionesPorModulo.set(c.modulo_num, a)
+  }
+
   return modulos
-    .map((m) => {
-      const cfg = configMap.get(m.modulo_num)
-      return {
-        moduloNum: m.modulo_num,
-        code: m.code,
-        tipo: m.tipo,
-        estados: m.estados,
-        terminado: m.terminado,
-        subcontrato: cfg?.subcontrato ?? null,
-        fechaEntregaFinal: cfg?.fecha_entrega_final ?? null,
-      }
-    })
+    .map((m) => ({
+      moduloNum: m.modulo_num,
+      code: m.code,
+      tipo: m.tipo,
+      estados: m.estados,
+      terminado: m.terminado,
+      asignaciones: asignacionesPorModulo.get(m.modulo_num) ?? asignacionesVacias(),
+    }))
     .sort((a, b) => {
-      if (a.fechaEntregaFinal && b.fechaEntregaFinal) return a.fechaEntregaFinal < b.fechaEntregaFinal ? -1 : 1
-      if (a.fechaEntregaFinal) return -1
-      if (b.fechaEntregaFinal) return 1
+      const fa = primeraFecha(a.asignaciones)
+      const fb = primeraFecha(b.asignaciones)
+      if (fa && fb) return fa < fb ? -1 : 1
+      if (fa) return -1
+      if (fb) return 1
       return a.moduloNum - b.moduloNum
     })
 }
@@ -63,15 +82,21 @@ export interface CategoryTable {
   total: number
 }
 
-// Equivalente a buildCategoryMatrix() del html — para Wedo/Conbes solo entran los
-// módulos con subcontrato asignado en Configuración (obra_cr_config.subcontrato);
-// Eléctrico/Sanitario/Ventanas muestran todos los módulos del último CR subido.
+// Equivalente a buildCategoryMatrix() del html — solo entran los módulos que ya
+// tienen fecha de entrega asignada en SU categoría de asignación (Configuración);
+// si la categoría es splitTeam (wedo/conbes) también exige que el subcontrato
+// asignado coincida con el del team de esta sección.
 export function buildCategoryTable(cat: ObraCategoria, modulos: ModuloCombinado[]): CategoryTable {
   const def = CATEGORY_DEFS[cat]
   const nombresDisponibles = new Set(modulos.flatMap((m) => Object.keys(m.estados)))
   const partidaNames = partidasDeCategoria(cat, nombresDisponibles)
 
-  const cols = def.splitTeam ? modulos.filter((m) => m.subcontrato === def.splitTeam) : modulos
+  const asigCat = ASIGNACION_POR_CR_CATEGORIA[cat]
+  const cols = modulos.filter((m) => {
+    const a = m.asignaciones[asigCat]
+    if (!a.fechaEntrega) return false
+    return def.splitTeam ? a.subcontrato === def.splitTeam : true
+  })
 
   let done = 0
   let total = 0
@@ -99,8 +124,11 @@ export interface ViewCData {
 
 // Equivalente a la preparación de datos de renderViewC(): módulos en filas,
 // partidas en columnas (orden fijo VIEWC_ORDER), agrupadas por categoría.
+// Solo entran módulos con al menos 1 categoría de asignación con fecha puesta.
 export function buildViewCData(modulos: ModuloCombinado[]): ViewCData {
-  const nombresDisponibles = new Set(modulos.flatMap((m) => Object.keys(m.estados)))
+  const conFecha = modulos.filter((m) => ASIGNACION_ORDER.some((cat) => m.asignaciones[cat].fechaEntrega))
+
+  const nombresDisponibles = new Set(conFecha.flatMap((m) => Object.keys(m.estados)))
   const partidas: ViewCPartidaCol[] = [...nombresDisponibles]
     .map((nombre) => {
       const cat = findCategoriaForPartida(nombre)
@@ -117,12 +145,34 @@ export function buildViewCData(modulos: ModuloCombinado[]): ViewCData {
       return 0
     })
 
-  return { partidas, modulos: [...modulos].sort((a, b) => a.moduloNum - b.moduloNum) }
+  return { partidas, modulos: [...conFecha].sort((a, b) => a.moduloNum - b.moduloNum) }
+}
+
+export interface EntregaItem {
+  moduloNum: number
+  code: string
+  categoria: AsignacionCategoria
+  subcontrato: ObraSubcontrato | null
+  fecha: string
+}
+
+// Aplana las asignaciones de todos los módulos a una lista de entregas (una por
+// categoría con fecha puesta) — insumo tanto del calendario de solo lectura
+// (Entrega a Cliente) como del editable (Configuración).
+export function buildEntregasFlat(modulos: ModuloCombinado[]): EntregaItem[] {
+  const out: EntregaItem[] = []
+  for (const m of modulos) {
+    for (const cat of ASIGNACION_ORDER) {
+      const a = m.asignaciones[cat]
+      if (a.fechaEntrega) out.push({ moduloNum: m.moduloNum, code: m.code, categoria: cat, subcontrato: a.subcontrato, fecha: a.fechaEntrega })
+    }
+  }
+  return out
 }
 
 export interface EntregaDia {
   fecha: string // YYYY-MM-DD
-  modulos: ModuloCombinado[]
+  items: EntregaItem[]
 }
 
 export interface EntregaSemana {
@@ -140,21 +190,18 @@ function lunesDeSemana(fecha: Date): Date {
   return d
 }
 
-// Reemplaza la grilla semanal que en el html original venía del Excel "Entrega
-// Contratistas" — ahora se arma en el cliente a partir de fecha_entrega_final
-// (obra_cr_config), cargada por semana/día directamente en la pestaña Configuración.
-export function buildEntregaSemanas(modulos: ModuloCombinado[]): EntregaSemana[] {
-  const conFecha = modulos.filter((m): m is ModuloCombinado & { fechaEntregaFinal: string } => !!m.fechaEntregaFinal)
-  if (!conFecha.length) return []
+// Arma la grilla semanal a partir de las entregas aplanadas (buildEntregasFlat).
+export function buildEntregaSemanas(entregas: EntregaItem[]): EntregaSemana[] {
+  if (!entregas.length) return []
 
-  const porSemana = new Map<string, Map<string, ModuloCombinado[]>>()
-  for (const m of conFecha) {
-    const fecha = new Date(m.fechaEntregaFinal + 'T12:00:00')
+  const porSemana = new Map<string, Map<string, EntregaItem[]>>()
+  for (const item of entregas) {
+    const fecha = new Date(item.fecha + 'T12:00:00')
     const inicio = lunesDeSemana(fecha).toISOString().slice(0, 10)
     if (!porSemana.has(inicio)) porSemana.set(inicio, new Map())
     const porDia = porSemana.get(inicio)!
-    if (!porDia.has(m.fechaEntregaFinal)) porDia.set(m.fechaEntregaFinal, [])
-    porDia.get(m.fechaEntregaFinal)!.push(m)
+    if (!porDia.has(item.fecha)) porDia.set(item.fecha, [])
+    porDia.get(item.fecha)!.push(item)
   }
 
   return [...porSemana.entries()]
@@ -165,7 +212,7 @@ export function buildEntregaSemanas(modulos: ModuloCombinado[]): EntregaSemana[]
         const d = new Date(inicioDate)
         d.setDate(d.getDate() + i)
         const fecha = d.toISOString().slice(0, 10)
-        return { fecha, modulos: (porDia.get(fecha) ?? []).sort((a, b) => a.moduloNum - b.moduloNum) }
+        return { fecha, items: (porDia.get(fecha) ?? []).sort((a, b) => a.moduloNum - b.moduloNum) }
       })
       return { inicio, dias }
     })

@@ -131,3 +131,38 @@ export const CAT_LABELS: Record<string, string> = {
   wedo_conbes: 'Wedo / Conbes',
   ventanas: 'Ventanas',
 }
+
+// Subcontratos que ejecutan el trabajo en obra. 'terminaciones' se reparte entre
+// We Do y Conbes (elegible por módulo); las otras 3 categorías tienen un único
+// subcontrato fijo — igual se guarda en obra_cr_config para no tener que
+// hardcodear la relación categoria->subcontrato en cada lugar que lo consume.
+export type ObraSubcontrato = 'W' | 'C' | 'ICG' | 'PDUARTE' | 'INGELAGOS'
+
+export const SUBCONTRATO_LABEL: Record<ObraSubcontrato, string> = {
+  W: 'We Do',
+  C: 'Conbes',
+  ICG: 'ICG',
+  PDUARTE: 'Pduarte',
+  INGELAGOS: 'Ingelagos',
+}
+
+export type AsignacionCategoria = 'terminaciones' | 'electrico' | 'sanitario' | 'ventanas'
+
+export const ASIGNACION_DEFS: Record<AsignacionCategoria, { label: string; subcontratoFijo: ObraSubcontrato | null }> = {
+  terminaciones: { label: 'Terminaciones', subcontratoFijo: null },
+  electrico: { label: 'Eléctrico', subcontratoFijo: 'ICG' },
+  sanitario: { label: 'Sanitario', subcontratoFijo: 'PDUARTE' },
+  ventanas: { label: 'Ventanas', subcontratoFijo: 'INGELAGOS' },
+}
+
+export const ASIGNACION_ORDER: AsignacionCategoria[] = ['terminaciones', 'electrico', 'sanitario', 'ventanas']
+
+// Mapea las categorías del checklist CR (electrico/sanitario/wedo/conbes/ventanas)
+// a su categoría de asignación de subcontrato+fecha (wedo y conbes comparten 'terminaciones').
+export const ASIGNACION_POR_CR_CATEGORIA: Record<ObraCategoria, AsignacionCategoria> = {
+  electrico: 'electrico',
+  sanitario: 'sanitario',
+  wedo: 'terminaciones',
+  conbes: 'terminaciones',
+  ventanas: 'ventanas',
+}
