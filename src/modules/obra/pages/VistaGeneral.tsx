@@ -6,11 +6,18 @@ import { CAT_LABELS, CAT_LABELS_CORTO } from '../lib/categorias'
 import { buildViewCData, isModuloTerminado } from '../lib/matrix'
 import type { ChipEstado } from '../lib/crParser'
 
+const GRUPO_COLOR: Record<string, string> = {
+  sanitario: 'bg-sky-500',
+  electrico: 'bg-teal-500',
+  wedo_conbes: 'bg-purple-500',
+  ventanas: 'bg-orange-500',
+}
+
 function Chip({ status }: { status: ChipEstado }) {
-  if (status === 'na') return <span className="mx-auto flex size-3 items-center justify-center rounded-full bg-muted text-[.55rem] text-muted-foreground">–</span>
+  if (status === 'na') return <span className="mx-auto flex size-5 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">–</span>
   const ok = status === 'ok'
   return (
-    <span className={`mx-auto flex size-3 items-center justify-center rounded-full text-[.55rem] font-bold ${ok ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}`}>
+    <span className={`mx-auto flex size-5 items-center justify-center rounded-full text-xs font-bold text-white ${ok ? 'bg-success' : 'bg-destructive'}`}>
       {ok ? '✓' : '✕'}
     </span>
   )
@@ -62,19 +69,24 @@ export default function VistaGeneral() {
               {data.partidas.map((p) => <col key={p.nombre} />)}
             </colgroup>
             <thead>
-              <tr>
-                <th rowSpan={2} className="sticky left-0 top-0 z-30 min-w-16 border-b bg-muted p-1 text-left">Módulo</th>
+              <tr className="h-9">
+                <th rowSpan={2} className="sticky left-0 top-0 z-30 min-w-16 border-b bg-muted p-2 text-left text-xs font-bold text-foreground uppercase">Módulo</th>
                 {grupos.map((g, i) => (
-                  <th key={i} colSpan={g.span} className="sticky top-0 z-20 border-b bg-muted p-1 text-[.6rem] font-bold tracking-wide text-muted-foreground uppercase" title={CAT_LABELS[g.categoria] ?? g.categoria}>
+                  <th
+                    key={i}
+                    colSpan={g.span}
+                    className={`sticky top-0 z-20 border-b border-background/40 p-2 text-[.65rem] font-bold tracking-wide text-white uppercase ${GRUPO_COLOR[g.categoria] ?? 'bg-muted-foreground'}`}
+                    title={CAT_LABELS[g.categoria] ?? g.categoria}
+                  >
                     {CAT_LABELS_CORTO[g.categoria] ?? g.categoria}
                   </th>
                 ))}
               </tr>
               <tr>
                 {data.partidas.map((p) => (
-                  <th key={p.nombre} className="sticky top-7 z-20 border-b bg-muted px-0 py-1 text-center align-bottom" title={p.nombre}>
+                  <th key={p.nombre} className="sticky top-9 z-20 border-b bg-muted px-0 py-2 text-center align-bottom" title={p.nombre}>
                     <span
-                      className="inline-block whitespace-nowrap text-[.55rem] font-normal text-muted-foreground"
+                      className="inline-block whitespace-nowrap text-xs font-normal text-muted-foreground"
                       style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
                     >
                       {p.nombre}
@@ -86,9 +98,9 @@ export default function VistaGeneral() {
             <tbody>
               {modulosFiltrados.map((m) => (
                 <tr key={m.moduloNum} className="border-b">
-                  <td className="sticky left-0 z-10 bg-background p-1 font-medium">{m.code}</td>
+                  <td className="sticky left-0 z-10 bg-background p-2 font-semibold text-sky-600 dark:text-sky-400">{m.code}</td>
                   {data.partidas.map((p) => (
-                    <td key={p.nombre} className="p-0.5 text-center">
+                    <td key={p.nombre} className="p-1.5 text-center">
                       <Chip status={m.estados[p.nombre] ?? 'na'} />
                     </td>
                   ))}
