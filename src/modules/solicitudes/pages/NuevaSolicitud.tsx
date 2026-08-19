@@ -51,7 +51,7 @@ interface LastSaved {
   observacion: string | null
 }
 
-const DRAFT_KEY = 'tecnopanel_solicitud_draft'
+const DRAFT_KEY_BASE = 'tecnopanel_solicitud_draft'
 
 interface Draft {
   grupoId: string
@@ -60,9 +60,9 @@ interface Draft {
   observacion: string
 }
 
-function cargarDraft(): Draft | null {
+function cargarDraft(key: string): Draft | null {
   try {
-    const raw = sessionStorage.getItem(DRAFT_KEY)
+    const raw = sessionStorage.getItem(key)
     return raw ? (JSON.parse(raw) as Draft) : null
   } catch {
     return null
@@ -83,8 +83,12 @@ export default function NuevaSolicitud() {
   const { grupos, responsables, cargarReceta } = useGruposResponsables()
   const { crear, marcarUsada } = useSolicitudes()
 
+  // Namespaced por usuario: sessionStorage sobrevive cambios de cuenta en la misma
+  // pestaña/navegador, y un borrador de otro usuario no debe filtrarse al siguiente.
+  const draftKey = `${DRAFT_KEY_BASE}_${perfil?.id ?? 'anon'}`
+
   const [draft] = useState(() => {
-    const d = cargarDraft()
+    const d = cargarDraft(draftKey)
     if (d?.filas?.length) rowSeq = Math.max(rowSeq, ...d.filas.map((f) => f.id))
     return d
   })
@@ -102,25 +106,33 @@ export default function NuevaSolicitud() {
 
   useEffect(() => {
     const data: Draft = { grupoId, responsableId, filas, observacion }
-    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(data))
-  }, [grupoId, responsableId, filas, observacion])
+    sessionStorage.setItem(draftKey, JSON.stringify(data))
+  }, [draftKey, grupoId, responsableId, filas, observacion])
 
   useEffect(() => {
     if (!grupoId || !allProducts.length || productosGrupo !== null) return
     cargarProductosGrupo(Number(grupoId), allProducts, cargarReceta).then(setProductosGrupo)
   }, [grupoId, allProducts, productosGrupo, cargarReceta])
 
-  // Modo restringido: grupo fijo por perfil, sin selector manual.
+  // Modo restringido: grupo fijo por perfil, sin selector manual. Se fuerza siempre
+  // (no solo si grupoId está vacío) para no arrastrar un borrador de otra cuenta —
+  // y se resetea productosGrupo para que se recargue la receta del grupo correcto.
   useEffect(() => {
-    if (!esRestringido || !grupoFijo || grupoId) return
-    setGrupoId(String(grupoFijo))
+    if (!esRestringido || !grupoFijo) return
+    if (grupoId !== String(grupoFijo)) {
+      setGrupoId(String(grupoFijo))
+      setProductosGrupo(null)
+    }
   }, [esRestringido, grupoFijo, grupoId])
 
   // Precarga toda la receta del grupo como filas fijas (solo cantidades editables).
+  // Solo respeta un borrador guardado si es del mismo grupo fijo — evita arrastrar
+  // filas de otro grupo si el borrador quedó de una sesión/cuenta distinta.
   useEffect(() => {
-    if (!esRestringido || !productosGrupo || draft?.filas?.length) return
+    if (!esRestringido || !productosGrupo) return
+    if (draft?.grupoId === String(grupoFijo) && draft?.filas?.length) return
     setFilas(productosGrupo.length ? productosGrupo.map((p) => filaVacia(p)) : [])
-  }, [esRestringido, productosGrupo, draft])
+  }, [esRestringido, productosGrupo, draft, grupoFijo])
 
   async function onGrupoChange(id: string) {
     setGrupoId(id)
@@ -203,7 +215,7 @@ export default function NuevaSolicitud() {
     setFilas(esRestringido && productosGrupo?.length ? productosGrupo.map((p) => filaVacia(p)) : [filaVacia()])
     setObservacion('')
     setIntentoGuardar(false)
-    sessionStorage.removeItem(DRAFT_KEY)
+    sessionStorage.removeItem(draftKey)
   }
 
   async function guardar() {
