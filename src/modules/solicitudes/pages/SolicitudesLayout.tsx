@@ -8,6 +8,7 @@ import { useProyectoActual } from '@/hooks/useProyectoActual'
 import Catalogo from '@/modules/logistica/pages/Catalogo'
 import { AuthProvider as LogisticaAuthProvider } from '@/modules/logistica/hooks/useAuth'
 import { useAuth, type SolicitudesTab } from '../hooks/useAuth'
+import NotificationsBell from '../components/NotificationsBell'
 import NuevaSolicitud from './NuevaSolicitud'
 import Historial from './Historial'
 import RecetaGrupo from './RecetaGrupo'
@@ -27,7 +28,7 @@ function iniciales(nombre: string | undefined) {
 }
 
 export default function SolicitudesLayout() {
-  const { perfil, puedeVer, signOut } = useAuth()
+  const { perfil, puedeVer, puedeEditar, isAdmin, signOut } = useAuth()
   const { nombre: nombreProyecto } = useProyectoActual()
   const visibles = TABS.filter((t) => puedeVer(t.value))
   const primerTab = visibles[0]?.value ?? 'nueva'
@@ -42,6 +43,7 @@ export default function SolicitudesLayout() {
           <p className="text-sm font-bold leading-none">Solicitud de Materiales</p>
         </div>
         <div className="ml-auto flex items-center gap-3">
+          {(puedeEditar || isAdmin) && <NotificationsBell />}
           <Avatar className="size-8">
             <AvatarFallback className="text-xs">{iniciales(perfil?.name)}</AvatarFallback>
           </Avatar>

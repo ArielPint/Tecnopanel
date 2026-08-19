@@ -13,7 +13,7 @@ export function buildMailtoSubject(numero: number, grupoNombre: string) {
   return `Solicitud de materiales N° ${numero} · ${grupoNombre} · ${now}`
 }
 
-export function buildMailto(numero: number, grupoNombre: string, responsableNombre: string, items: ItemSolicitud[], observacion: string | null) {
+function buildBodyBloque(numero: number, grupoNombre: string, responsableNombre: string, items: ItemSolicitud[], observacion: string | null) {
   const now = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
   const colProy = 12
   const colWip = 8
@@ -25,7 +25,7 @@ export function buildMailto(numero: number, grupoNombre: string, responsableNomb
   const lineas = items.map(
     (it) => padCol(PROYECTO_CONST, colProy) + padCol(WIP_CONST, colWip) + padCol(it.codigo, colCod) + padCol(it.descripcion, colDesc) + padCol(it.unidad, colUnid) + it.cantidad_real,
   )
-  const body = [
+  return [
     `N° Solicitud: ${numero}`,
     `Grupo: ${grupoNombre}`,
     `Para: ${responsableNombre}`,
@@ -37,7 +37,32 @@ export function buildMailto(numero: number, grupoNombre: string, responsableNomb
     '',
     observacion ? `Observaciones: ${observacion}` : '',
   ].join('\n')
+}
+
+export function buildMailto(numero: number, grupoNombre: string, responsableNombre: string, items: ItemSolicitud[], observacion: string | null) {
+  const body = buildBodyBloque(numero, grupoNombre, responsableNombre, items, observacion)
   return `mailto:?subject=${encodeURIComponent(buildMailtoSubject(numero, grupoNombre))}&body=${encodeURIComponent(body)}`
+}
+
+export interface SolicitudParaEmail {
+  numero: number
+  grupoNombre: string
+  responsableNombre: string
+  items: ItemSolicitud[]
+  observacion: string | null
+}
+
+export function buildMailtoSubjectAgrupado(numeros: number[]) {
+  const now = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return `Solicitudes de materiales N° ${numeros.join(', ')} · ${now}`
+}
+
+export function buildMailtoAgrupado(solicitudes: SolicitudParaEmail[]) {
+  const body = solicitudes
+    .map((s) => buildBodyBloque(s.numero, s.grupoNombre, s.responsableNombre, s.items, s.observacion))
+    .join(`\n\n${'='.repeat(40)}\n\n`)
+  const subject = buildMailtoSubjectAgrupado(solicitudes.map((s) => s.numero))
+  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 
 function escHtml(s: string) {
@@ -80,6 +105,13 @@ export function buildEmailHtmlTable(numero: number, grupoNombre: string, respons
       </table>
       ${observacion ? `<p>Observaciones: ${escHtml(observacion)}</p>` : ''}
     </div>`
+}
+
+export function buildEmailHtmlTableAgrupado(solicitudes: SolicitudParaEmail[]) {
+  const bloques = solicitudes
+    .map((s) => buildEmailHtmlTable(s.numero, s.grupoNombre, s.responsableNombre, s.items, s.observacion))
+    .join('<hr style="margin:16px 0;border:none;border-top:1px solid #ccc">')
+  return `<div>${bloques}</div>`
 }
 
 export async function copyHtmlTableToClipboard(html: string): Promise<boolean> {

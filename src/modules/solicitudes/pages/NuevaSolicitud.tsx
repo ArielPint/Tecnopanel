@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Input } from '@/modules/financiero/components/ui/input'
@@ -12,6 +13,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useGruposResponsables } from '../hooks/useGruposResponsables'
 import { useSolicitudes, type ItemSolicitud } from '../hooks/useSolicitudes'
 import { buildMailto, buildMailtoSubject, buildEmailHtmlTable, copyHtmlTableToClipboard, PROYECTO_CONST, WIP_CONST } from '../lib/email'
+import { notificarNuevaSolicitud } from '../lib/notificaciones'
+import { getProyectoId } from '@/lib/proyectoIds'
 
 interface FilaSolicitud {
   id: number
@@ -79,6 +82,7 @@ async function cargarProductosGrupo(grupoId: number, allProducts: Producto[], ca
 export default function NuevaSolicitud() {
   const { perfil, esRestringido } = useAuth()
   const grupoFijo = perfil?.grupoId ?? null
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const { allProducts } = useCatalogoGD()
   const { grupos, responsables, cargarReceta } = useGruposResponsables()
   const { crear, marcarUsada } = useSolicitudes()
@@ -250,6 +254,9 @@ export default function NuevaSolicitud() {
       if (esRestringido) {
         limpiarItems()
         toast.success(`Solicitud N° ${saved.numero} guardada.`)
+        if (proyectoSlug) {
+          getProyectoId(proyectoSlug).then((proyectoId) => notificarNuevaSolicitud(proyectoId, saved.numero, grupo.nombre, perfil!.name))
+        }
       } else {
         setLastSaved({ id: saved.id, numero: saved.numero, grupoNombre: grupo.nombre, responsableNombre: responsable!.nombre, items: itemsValidos, observacion: observacion.trim() || null })
         toast.success(`Solicitud N° ${saved.numero} guardada. Pulsa "Enviar correo" para completarla.`)

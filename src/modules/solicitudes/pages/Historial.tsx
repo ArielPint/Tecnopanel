@@ -4,6 +4,7 @@ import { FileText } from 'lucide-react'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Badge } from '@/modules/financiero/components/ui/badge'
+import { Checkbox } from '@/modules/financiero/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 import EmptyState from '@/modules/financiero/components/EmptyState'
@@ -12,7 +13,15 @@ import ProductoAutocomplete from '@/modules/logistica/components/ProductoAutocom
 import { useAuth } from '../hooks/useAuth'
 import { useGruposResponsables } from '../hooks/useGruposResponsables'
 import { useSolicitudes, type EstadoSolicitud, type ItemSolicitud, type Solicitud } from '../hooks/useSolicitudes'
-import { buildMailto, buildMailtoSubject, buildEmailHtmlTable, copyHtmlTableToClipboard } from '../lib/email'
+import {
+  buildMailto,
+  buildMailtoSubject,
+  buildEmailHtmlTable,
+  buildMailtoAgrupado,
+  buildMailtoSubjectAgrupado,
+  buildEmailHtmlTableAgrupado,
+  copyHtmlTableToClipboard,
+} from '../lib/email'
 
 const ESTADO_LABEL: Record<EstadoSolicitud, string> = {
   pendiente: 'No usada',
@@ -40,6 +49,8 @@ export default function Historial() {
   const [estadoFiltro, setEstadoFiltro] = useState('')
   const [expandido, setExpandido] = useState<string | null>(null)
   const [enviandoId, setEnviandoId] = useState<string | null>(null)
+  const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
+  const [enviandoAgrupado, setEnviandoAgrupado] = useState(false)
 
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [itemsEdit, setItemsEdit] = useState<ItemSolicitud[]>([])
@@ -120,6 +131,47 @@ export default function Historial() {
     }
   }
 
+  function toggleSeleccion(id: string) {
+    setSeleccion((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function onEnviarAgrupado() {
+    const items = solicitudes.filter((s) => seleccion.has(s.id) && s.estado === 'pendiente')
+    if (items.length < 2) return
+    setEnviandoAgrupado(true)
+    try {
+      const paraEmail = items.map((s) => ({
+        numero: s.numero,
+        grupoNombre: grupoNombre(s.grupo_id),
+        responsableNombre: responsableNombre(s.responsable_id),
+        items: s.items,
+        observacion: s.observacion,
+      }))
+      const numeros = items.map((s) => s.numero)
+      const html = buildEmailHtmlTableAgrupado(paraEmail)
+      const copiado = await copyHtmlTableToClipboard(html)
+      if (copiado) {
+        const subject = buildMailtoSubjectAgrupado(numeros)
+        const body = `Solicitudes agrupadas: N° ${numeros.join(', ')}\n\n(Pega aquí la tabla copiada: Ctrl+V)`
+        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+        toast.success('Tabla agrupada copiada al portapapeles. Pégala (Ctrl+V) en el cuerpo del correo.')
+      } else {
+        window.location.href = buildMailtoAgrupado(paraEmail)
+      }
+      await Promise.all(items.map((s) => marcarUsada(s.id)))
+      setSeleccion(new Set())
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo enviar agrupado')
+    } finally {
+      setEnviandoAgrupado(false)
+    }
+  }
+
   const filtradas = useMemo(() => {
     let data = solicitudes
     if (!isAdmin && !puedeEditar) data = data.filter((s) => s.usuario_id === perfil?.id)
@@ -181,6 +233,20 @@ export default function Historial() {
         </Select>
       </div>
 
+      {seleccion.size >= 2 && (
+        <div className="flex items-center justify-between rounded-md border bg-muted/20 px-3 py-2">
+          <span className="text-xs text-muted-foreground">{seleccion.size} solicitudes seleccionadas para agrupar</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSeleccion(new Set())}>
+              Limpiar selección
+            </Button>
+            <Button size="sm" onClick={onEnviarAgrupado} disabled={enviandoAgrupado}>
+              ✉ {enviandoAgrupado ? 'Enviando…' : `Enviar agrupadas (${seleccion.size})`}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {filtradas.length === 0 ? (
         <EmptyState icon={FileText} title="No hay solicitudes que coincidan" />
       ) : (
@@ -188,6 +254,7 @@ export default function Historial() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-6" />
                 <TableHead className="w-6" />
                 <TableHead className="w-14">N°</TableHead>
                 <TableHead>Fecha</TableHead>
@@ -208,6 +275,11 @@ export default function Historial() {
                 return (
                   <Fragment key={s.id}>
                     <TableRow className="cursor-pointer" onClick={() => setExpandido((cur) => (cur === s.id ? null : s.id))}>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {puedeEnviar && (
+                          <Checkbox checked={seleccion.has(s.id)} onCheckedChange={() => toggleSeleccion(s.id)} aria-label="Seleccionar para agrupar" />
+                        )}
+                      </TableCell>
                       <TableCell className="text-center text-muted-foreground">{expandido === s.id ? '▼' : '▶'}</TableCell>
                       <TableCell className="text-center text-xs">{s.numero}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleDateString('es-CL')}</TableCell>
@@ -237,7 +309,7 @@ export default function Historial() {
                     </TableRow>
                     {expandido === s.id && (
                       <TableRow>
-                        <TableCell colSpan={8} className="bg-muted/30 p-0">
+                        <TableCell colSpan={9} className="bg-muted/30 p-0">
                           {editando ? (
                             <div className="space-y-2 p-3" onClick={(e) => e.stopPropagation()}>
                               <Table>
