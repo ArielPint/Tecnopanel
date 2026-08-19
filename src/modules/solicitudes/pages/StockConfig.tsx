@@ -9,17 +9,18 @@ import { useStock } from '../hooks/useStock'
 import { useCatalogoGD } from '@/modules/logistica/hooks/useCatalogoGD'
 import { normCod } from '@/modules/logistica/lib/calc'
 
-function observacion(equivMod: number | null): { label: string; className: string } | null {
+function observacion(equivMod: number | null): { label: string; className: string; rank: number } | null {
   if (equivMod == null) return null
-  if (equivMod < 15) return { label: 'Stock Crítico', className: 'text-destructive' }
-  if (equivMod < 25) return { label: 'Stock Medio', className: 'text-warning' }
-  return { label: 'Stock Bueno', className: 'text-success' }
+  if (equivMod < 15) return { label: 'Stock Crítico', className: 'text-destructive', rank: 0 }
+  if (equivMod < 25) return { label: 'Stock Medio', className: 'text-warning', rank: 1 }
+  return { label: 'Stock Bueno', className: 'text-success', rank: 2 }
 }
 
 export default function StockConfig() {
   const { stock, loading, uploading, error, lastResult, handleFile } = useStock()
   const { allProducts } = useCatalogoGD()
   const [busqueda, setBusqueda] = useState('')
+  const [obsDir, setObsDir] = useState<1 | -1 | null>(null)
 
   const cpmPorCodigo = new Map(allProducts.map((p) => [normCod(p.codigo), p.cantidad_por_modulo]))
 
@@ -33,6 +34,14 @@ export default function StockConfig() {
       const equivMod = cpm ? s.cantidad_disponible / cpm : null
       return { ...s, equivMod, obs: observacion(equivMod) }
     })
+
+  if (obsDir != null) {
+    filtrado.sort((a, b) => ((a.obs?.rank ?? 3) - (b.obs?.rank ?? 3)) * obsDir)
+  }
+
+  function toggleObsSort() {
+    setObsDir((d) => (d === null ? 1 : d === 1 ? -1 : null))
+  }
 
   return (
     <div className="space-y-4">
@@ -83,7 +92,9 @@ export default function StockConfig() {
                 <TableHead>Unidad</TableHead>
                 <TableHead className="text-right">Stock</TableHead>
                 <TableHead className="text-right">Equiv. Módulos</TableHead>
-                <TableHead>Observación</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={toggleObsSort}>
+                  Observación{obsDir === 1 ? ' ▲' : obsDir === -1 ? ' ▼' : ''}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
