@@ -202,7 +202,7 @@ export default function Historial() {
               {filtradas.map((s) => {
                 const isOwn = s.usuario_id === perfil?.id
                 const puedeEliminar = isAdmin || (isOwn && s.estado !== 'usada')
-                const puedeRetomar = s.estado === 'pendiente' && (isAdmin || isOwn)
+                const puedeRetomar = s.estado === 'pendiente' && (isAdmin || puedeEditar || isOwn)
                 const puedeEnviar = s.estado === 'pendiente' && (isAdmin || puedeEditar)
                 const editando = editandoId === s.id
                 return (
