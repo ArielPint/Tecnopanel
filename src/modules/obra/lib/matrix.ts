@@ -5,7 +5,6 @@ import type { ObraCrConfigDb, ObraCrModuloDb } from './supaData'
 export interface AsignacionModulo {
   subcontrato: ObraSubcontrato | null
   fechaEntrega: string | null
-  entregado: boolean
 }
 
 export type Asignaciones = Record<AsignacionCategoria, AsignacionModulo>
@@ -19,15 +18,16 @@ export interface ModuloCombinado {
   asignaciones: Asignaciones
 }
 
-// Terminado = fila 20 del CR marcada "RF" (Recepción Final) para ese módulo —
-// no se infiere del checklist de partidas porque hay columnas que quedan
+// Terminado = fila 20 del CR marcada "RF" (Recepción Final) para ese módulo — "R1"
+// (recepción intermedia) NO cuenta como terminado, sigue apareciendo en las vistas
+// activas. No se infiere del checklist de partidas porque hay columnas que quedan
 // vacías/"no" aunque el módulo ya esté con recepción final.
 export function isModuloTerminado(m: ModuloCombinado): boolean {
   return m.terminado
 }
 
 function asignacionesVacias(): Asignaciones {
-  return Object.fromEntries(ASIGNACION_ORDER.map((cat) => [cat, { subcontrato: null, fechaEntrega: null, entregado: false }])) as Asignaciones
+  return Object.fromEntries(ASIGNACION_ORDER.map((cat) => [cat, { subcontrato: null, fechaEntrega: null }])) as Asignaciones
 }
 
 function primeraFecha(a: Asignaciones): string | null {
@@ -39,7 +39,7 @@ export function combinarModulos(modulos: ObraCrModuloDb[], config: ObraCrConfigD
   const asignacionesPorModulo = new Map<number, Asignaciones>()
   for (const c of config) {
     const a = asignacionesPorModulo.get(c.modulo_num) ?? asignacionesVacias()
-    a[c.categoria] = { subcontrato: c.subcontrato, fechaEntrega: c.fecha_entrega_final, entregado: c.entregado }
+    a[c.categoria] = { subcontrato: c.subcontrato, fechaEntrega: c.fecha_entrega_final }
     asignacionesPorModulo.set(c.modulo_num, a)
   }
 
@@ -69,6 +69,26 @@ function partidasDeCategoria(cat: ObraCategoria, nombresDisponibles: Set<string>
   const def = CATEGORY_DEFS[cat]
   const objetivo = new Set(def.partidas ?? [])
   return [...nombresDisponibles].filter((nombre) => objetivo.has(normalize(nombre)))
+}
+
+// Categoría del checklist CR que gobierna cada categoría de asignación — inverso de
+// ASIGNACION_POR_CR_CATEGORIA. Para 'terminaciones' da lo mismo usar 'wedo' o
+// 'conbes': comparten exactamente el mismo listado de partidas.
+const CR_CATEGORIA_POR_ASIGNACION: Record<AsignacionCategoria, ObraCategoria> = {
+  terminaciones: 'wedo',
+  electrico: 'electrico',
+  sanitario: 'sanitario',
+  ventanas: 'ventanas',
+}
+
+// El ticket de "entregado" es automático: una categoría de un módulo se considera
+// entregada cuando TODAS sus partidas aplicables (no "na") están en "ok". No depende
+// de ningún dato cargado a mano — se recalcula siempre desde el checklist del CR.
+export function categoriaCompleta(m: ModuloCombinado, asigCat: AsignacionCategoria): boolean {
+  const cat = CR_CATEGORIA_POR_ASIGNACION[asigCat]
+  const nombres = partidasDeCategoria(cat, new Set(Object.keys(m.estados)))
+  const aplicables = nombres.map((n) => m.estados[n]).filter((status) => status !== 'na')
+  return aplicables.length > 0 && aplicables.every((status) => status === 'ok')
 }
 
 export interface CategoryTableRow {
@@ -166,7 +186,7 @@ export function buildEntregasFlat(modulos: ModuloCombinado[]): EntregaItem[] {
   for (const m of modulos) {
     for (const cat of ASIGNACION_ORDER) {
       const a = m.asignaciones[cat]
-      if (a.fechaEntrega) out.push({ moduloNum: m.moduloNum, code: m.code, categoria: cat, subcontrato: a.subcontrato, fecha: a.fechaEntrega, entregado: a.entregado })
+      if (a.fechaEntrega) out.push({ moduloNum: m.moduloNum, code: m.code, categoria: cat, subcontrato: a.subcontrato, fecha: a.fechaEntrega, entregado: categoriaCompleta(m, cat) })
     }
   }
   return out

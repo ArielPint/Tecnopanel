@@ -27,14 +27,13 @@ export interface ObraCrConfigDb {
   categoria: AsignacionCategoria
   subcontrato: ObraSubcontrato | null
   fecha_entrega_final: string | null
-  entregado: boolean
 }
 
 export async function loadObraCrConfig(proyectoId: string): Promise<ObraCrConfigDb[]> {
   const data = await unwrap(
     supabase
       .from('obra_cr_config')
-      .select('modulo_num, categoria, subcontrato, fecha_entrega_final, entregado')
+      .select('modulo_num, categoria, subcontrato, fecha_entrega_final')
       .eq('proyecto_id', proyectoId),
   )
   return (data ?? []) as ObraCrConfigDb[]
@@ -59,18 +58,5 @@ export async function guardarObraCrConfigBatch(proyectoId: string, cambios: Obra
     actualizado_at: ahora,
   }))
   const { error } = await supabase.from('obra_cr_config').upsert(rows, { onConflict: 'proyecto_id,modulo_num,categoria' })
-  if (error) throw new Error(error.message)
-}
-
-export async function marcarEntregado(
-  proyectoId: string,
-  moduloNum: number,
-  categoria: AsignacionCategoria,
-  entregado: boolean,
-): Promise<void> {
-  const { error } = await supabase
-    .from('obra_cr_config')
-    .update({ entregado, actualizado_at: new Date().toISOString() })
-    .match({ proyecto_id: proyectoId, modulo_num: moduloNum, categoria })
   if (error) throw new Error(error.message)
 }

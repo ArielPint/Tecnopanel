@@ -164,7 +164,7 @@ function AsignacionesCard() {
         const asignaciones = { ...m.asignaciones } as Asignaciones
         for (const cat of ASIGNACION_ORDER) {
           const c = cambios.get(claveCambio(m.moduloNum, cat))
-          if (c) asignaciones[cat] = { subcontrato: c.subcontrato, fechaEntrega: c.fechaEntrega, entregado: asignaciones[cat].entregado }
+          if (c) asignaciones[cat] = { subcontrato: c.subcontrato, fechaEntrega: c.fechaEntrega }
         }
         return { ...m, asignaciones }
       }),

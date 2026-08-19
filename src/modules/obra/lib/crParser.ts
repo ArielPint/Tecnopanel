@@ -79,8 +79,11 @@ export function parseCR(wb: XLSX.WorkBook): ObraCrModuloRow[] {
       const ok = val !== null && val !== undefined && String(val).trim() !== ''
       estados[pr.name] = ok ? 'ok' : 'no'
     }
+    // Solo "RF" (Recepción Final) oculta el módulo de las vistas activas. "R1" es
+    // una recepción intermedia — el módulo sigue en curso y debe seguir apareciendo
+    // (Por Contratista/Vista General/Configuración) hasta que llegue a RF.
     const marcaFila20 = String(ROW20[col.colIdx] ?? '').trim().toUpperCase()
-    const terminado = marcaFila20 === 'RF' || marcaFila20 === 'R1'
+    const terminado = marcaFila20 === 'RF'
     return { moduloNum: col.num, code: col.code, tipo: col.tipo, estados, terminado }
   })
 }
