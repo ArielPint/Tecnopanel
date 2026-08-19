@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Card, CardContent } from '@/modules/financiero/components/ui/card'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { useObraCrData } from '../hooks/useObraCrData'
-import { CAT_LABELS, CAT_LABELS_CORTO } from '../lib/categorias'
+import { CAT_LABELS } from '../lib/categorias'
 import { buildViewCData, isModuloTerminado } from '../lib/matrix'
 import type { ChipEstado } from '../lib/crParser'
 
@@ -69,22 +69,22 @@ export default function VistaGeneral() {
               {data.partidas.map((p) => <col key={p.nombre} />)}
             </colgroup>
             <thead>
-              <tr className="h-9">
-                <th rowSpan={2} className="sticky left-0 top-0 z-30 min-w-16 border-b bg-muted p-2 text-left text-xs font-bold text-foreground uppercase">Módulo</th>
+              <tr className="sticky top-0 z-20 h-16 bg-muted">
+                <th rowSpan={2} className="sticky left-0 z-30 min-w-16 border-b bg-muted p-2 text-left text-xs font-bold text-foreground uppercase">Módulo</th>
                 {grupos.map((g, i) => (
                   <th
                     key={i}
                     colSpan={g.span}
-                    className={`sticky top-0 z-20 border-b border-background/40 p-2 text-[.65rem] font-bold tracking-wide text-white uppercase ${GRUPO_COLOR[g.categoria] ?? 'bg-muted-foreground'}`}
+                    className={`overflow-hidden border-b border-background/40 p-1 text-[.6rem] leading-tight font-bold break-words tracking-wide text-white uppercase ${GRUPO_COLOR[g.categoria] ?? 'bg-muted-foreground'}`}
                     title={CAT_LABELS[g.categoria] ?? g.categoria}
                   >
-                    {CAT_LABELS_CORTO[g.categoria] ?? g.categoria}
+                    {CAT_LABELS[g.categoria] ?? g.categoria}
                   </th>
                 ))}
               </tr>
-              <tr>
+              <tr className="sticky top-16 z-20 bg-muted">
                 {data.partidas.map((p) => (
-                  <th key={p.nombre} className="sticky top-9 z-20 border-b bg-muted px-0 py-2 text-center align-bottom" title={p.nombre}>
+                  <th key={p.nombre} className="border-b bg-muted px-0 py-2 text-center align-bottom" title={p.nombre}>
                     <span
                       className="inline-block whitespace-nowrap text-xs font-normal text-muted-foreground"
                       style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}

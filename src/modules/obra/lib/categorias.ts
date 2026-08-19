@@ -132,16 +132,6 @@ export const CAT_LABELS: Record<string, string> = {
   ventanas: 'Ventanas',
 }
 
-// Abreviatura fija por categoría para el header agrupado de Vista General —
-// siempre el mismo texto sin importar cuántas columnas abarque el grupo,
-// para que no cambie de "ELÉC" a "Eléctrico" según el ancho disponible.
-export const CAT_LABELS_CORTO: Record<string, string> = {
-  electrico: 'ELÉC',
-  sanitario: 'SANIT',
-  wedo_conbes: 'W/C',
-  ventanas: 'VENT',
-}
-
 // Subcontratos que ejecutan el trabajo en obra. 'terminaciones' se reparte entre
 // We Do y Conbes (elegible por módulo); las otras 3 categorías tienen un único
 // subcontrato fijo — igual se guarda en obra_cr_config para no tener que
