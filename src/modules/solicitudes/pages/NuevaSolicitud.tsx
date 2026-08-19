@@ -354,7 +354,8 @@ export default function NuevaSolicitud() {
         ) : esRestringido && productosGrupo != null && productosGrupo.length === 0 ? (
           <p className="mb-2 text-xs text-muted-foreground">Tu grupo aún no tiene una receta de productos cargada. Avisa a un administrador.</p>
         ) : null}
-        <div className={`grid ${esRestringido ? 'grid-cols-[150px_1fr_60px_75px_75px_75px]' : 'grid-cols-[150px_1fr_60px_75px_75px_75px_36px]'} items-center gap-2 px-1 pb-1 text-[11px] font-medium text-muted-foreground`}>
+        <div className="overflow-x-auto">
+        <div className={`grid ${esRestringido ? 'grid-cols-[150px_1fr_60px_75px_75px_75px]' : 'grid-cols-[150px_1fr_60px_75px_75px_75px_36px]'} items-center gap-2 px-1 pb-1 text-[11px] font-medium text-muted-foreground min-w-[520px]`}>
           <div>Código{esRestringido ? '' : ' (o buscar)'}</div>
           <div>Descripción</div>
           <div className="text-center">Unidad</div>
@@ -363,7 +364,7 @@ export default function NuevaSolicitud() {
           <div className="text-center">Módulos</div>
           {!esRestringido && <div />}
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-[520px]">
           {filas.map((f) => (
             <div key={f.id} className={`grid ${esRestringido ? 'grid-cols-[150px_1fr_60px_75px_75px_75px]' : 'grid-cols-[150px_1fr_60px_75px_75px_75px_36px]'} items-center gap-2`}>
               {esRestringido ? (
@@ -398,6 +399,7 @@ export default function NuevaSolicitud() {
               )}
             </div>
           ))}
+        </div>
         </div>
         {!esRestringido && (
           <Button type="button" variant="outline" size="sm" className="mt-3 w-full border-dashed" onClick={() => setFilas((prev) => [...prev, filaVacia()])}>

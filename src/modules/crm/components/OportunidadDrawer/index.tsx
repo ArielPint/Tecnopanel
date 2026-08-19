@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import { formatCLP } from '@/modules/financiero/utils/formatters'
+import MontoInput from '@/modules/crm/components/MontoInput'
 import type { Oportunidad, Profile, OportunidadHistorialEtapa, OportunidadDocumento, TareaIngenieria, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit } from '@/modules/crm/types/database'
 import { FAMILIA_PRODUCTOS_OPCIONES, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
 
@@ -172,6 +173,9 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   function agregarLinea() {
     setLineas(ls => [...ls, { id: 'tmp-' + Date.now(), oportunidad_id: opp.id, tipologia: '', precio_uf: 0, cantidad_casas: 0, created_at: '' }])
   }
+  useEffect(() => {
+    if (opp.tipo_venta === 'VIT' && lineas.length === 0) agregarLinea()
+  }, [opp.tipo_venta])
   function actualizarLinea(idx: number, cambios: Partial<OportunidadTipologia>) {
     setLineas(ls => ls.map((l, i) => i === idx ? { ...l, ...cambios } : l))
   }
@@ -268,7 +272,10 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     const costoItemsTotal = items.reduce((s, i) => s + i.costo_total, 0)
     const costoTotalInterno = costoItemsTotal + costoCerchas + costoFlete
     const montoNetoCliente = Number(costosData['monto_neto_cliente'] || 0)
-    const factor = costoTotalInterno > 0 && montoNetoCliente > 0 ? montoNetoCliente / costoTotalInterno : 1
+    // El margen cargado en Revision Vendedor manda sobre el "Monto neto cliente"
+    // tipeado a mano: define el factor que se aplica a cada item del presupuesto.
+    const factor = opp.margen_porcentaje != null ? 1 + opp.margen_porcentaje / 100
+      : (costoTotalInterno > 0 && montoNetoCliente > 0 ? montoNetoCliente / costoTotalInterno : 1)
     const proyecto = costosData['cubicacion_proyecto'] || opp.nombre
     const clienteNombre = (opp.cliente as { razon_social?: string } | undefined)?.razon_social || costosData['cubicacion_cliente'] || ''
 
@@ -675,10 +682,10 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Valor total del proyecto (CLP)</label>
-          <input type="number" value={opp.monto_estimado ?? ''} onChange={ev => setOpp(o => ({...o, monto_estimado: ev.target.value ? Number(ev.target.value) : null}))}
+          <MontoInput value={opp.monto_estimado} onChange={v => setOpp(o => ({...o, monto_estimado: v}))}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Fecha de Ingreso a Serviu</label>
             <input type="date" value={opp.fecha_ingreso_calificacion ?? ''} onChange={ev => setOpp(o => ({...o, fecha_ingreso_calificacion: ev.target.value || null}))}
@@ -690,7 +697,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Estimación Inicio Despachos</label>
             <input type="date" value={opp.fecha_inicio_despachos_est ?? ''} onChange={ev => setOpp(o => ({...o, fecha_inicio_despachos_est: ev.target.value || null}))}
@@ -772,7 +779,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
             <div className="bg-gray-50 rounded-lg p-3 space-y-2 mt-2">
               <input value={itemManual.categoria} onChange={ev => setItemManual(m => ({...m, categoria: ev.target.value}))} placeholder="Categoría (ej. PANELES)" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
               <input value={itemManual.nombre} onChange={ev => setItemManual(m => ({...m, nombre: ev.target.value}))} placeholder="Descripción *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <input type="number" value={itemManual.costo_unitario} onChange={ev => setItemManual(m => ({...m, costo_unitario: ev.target.value}))} placeholder="Costo unitario *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
                 <input type="number" value={itemManual.cantidad} onChange={ev => setItemManual(m => ({...m, cantidad: ev.target.value}))} placeholder="Cantidad" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
               </div>
@@ -780,7 +787,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
             </div>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {field('costo_cerchas', 'Cerchas (CLP, manual)', 'number', '0')}
           {field('costo_flete', 'Flete (CLP, manual)', 'number', '0')}
         </div>
@@ -808,6 +815,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     if (e === 'Revisión Vendedor') {
       let costosItems: CubicacionItem[] = []
       try { costosItems = JSON.parse(costosData['cubicacion_items_json'] || '[]') } catch { costosItems = [] }
+      const factorMargen = 1 + (opp.margen_porcentaje ?? 0) / 100
+      const gruposConMargen = new Map<string, CubicacionItem[]>()
+      for (const it of costosItems) {
+        if (!gruposConMargen.has(it.categoria)) gruposConMargen.set(it.categoria, [])
+        gruposConMargen.get(it.categoria)!.push(it)
+      }
       return (
         <div className="space-y-3">
           <div>
@@ -815,7 +828,26 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
             <input type="number" defaultValue={opp.margen_porcentaje ?? ''}
               onBlur={ev => { const v = ev.target.value ? Number(ev.target.value) : null; if (v !== opp.margen_porcentaje) saveMargen(v) }}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+            <p className="text-[11px] text-gray-400 mt-1">Se aplica a cada item de la cubicacion para calcular el precio de venta.</p>
           </div>
+          {costosItems.length > 0 && (
+            <div className="space-y-2 text-xs">
+              {[...gruposConMargen.entries()].map(([categoria, group]) => (
+                <div key={categoria} className="border border-gray-200 rounded-lg p-2">
+                  <p className="font-semibold text-gray-600 mb-1">{categoria}</p>
+                  {group.map((it, idx) => (
+                    <div key={idx} className="flex justify-between text-gray-500">
+                      <span className="truncate">{it.nombre}</span>
+                      <span className="flex-shrink-0 ml-2">{formatCLP(it.costo_total)} → <span className="font-medium text-gray-700">{formatCLP(it.costo_total * factorMargen)}</span></span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+              <p className="font-semibold text-gray-700 border-t border-gray-200 pt-2">
+                Total con margen: {formatCLP(costosItems.reduce((s, i) => s + i.costo_total, 0) * factorMargen)}
+              </p>
+            </div>
+          )}
           {ta('condiciones_comerciales','Condiciones comerciales','Formas de pago, garantias...')}{ta('notas_revision','Notas del vendedor','')}
           <div className="pt-3 border-t border-gray-200">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pb-2">Presupuesto final</p>
@@ -880,7 +912,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
               className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-200 file:text-xs file:font-medium file:bg-gray-50 hover:file:bg-gray-100" />
             {cierre?.storage_oc_path && !ocFile && <p className="text-xs text-gray-400 mt-1">Ya hay un PDF cargado.</p>}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className="block text-xs font-medium text-gray-600 mb-1">Número OC</label>
               <input value={ocForm.numero_oc} onChange={ev => setOcForm(f => ({...f, numero_oc: ev.target.value}))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
@@ -946,10 +978,10 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 flex-shrink-0">
+        <div className="flex overflow-x-auto border-b border-gray-200 flex-shrink-0">
           {([['general','General'],['etapa', isTerminal ? 'Datos' : opp.etapa_actual],['docs','Docs ('+docs.length+')'],['chat','Chat'],['historial','Historial']] as [Tab,string][]).map(([k,label]) => (
             <button key={k} onClick={() => setTab(k)}
-              className={['flex-1 text-xs font-medium py-2.5 border-b-2 transition-colors truncate px-1', tab===k ? 'border-red-500 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'].join(' ')}>
+              className={['shrink-0 whitespace-nowrap text-xs font-medium py-2.5 border-b-2 transition-colors px-3 sm:flex-1 sm:shrink', tab===k ? 'border-red-500 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'].join(' ')}>
               {label}
             </button>
           ))}
@@ -963,7 +995,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
             <div className="space-y-4">
               <div><label className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
                 <input value={opp.nombre} onChange={e => setOpp(o => ({...o,nombre:e.target.value}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Tipo venta</label>
                   <select value={opp.tipo_venta} onChange={e => setOpp(o => ({...o,tipo_venta:e.target.value as 'Proyecto'|'Producto'|'Kit'|'VIT'}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
                     <option value="Proyecto">{TIPO_VENTA_LABELS.Proyecto}</option>
@@ -976,9 +1008,9 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                     <input type="date" value={opp.fecha_cierre_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_cierre_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Monto estimado (CLP)</label>
-                  <input type="number" value={opp.monto_estimado ?? ''} onChange={e => setOpp(o => ({...o,monto_estimado:e.target.value ? Number(e.target.value) : null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  <MontoInput value={opp.monto_estimado} onChange={v => setOpp(o => ({...o,monto_estimado:v}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Probabilidad: {opp.probabilidad}%</label>
                   <input type="range" min="0" max="100" step="5" value={opp.probabilidad} onChange={e => setOpp(o => ({...o,probabilidad:Number(e.target.value)}))} className="w-full mt-2" /></div>
               </div>
@@ -1003,10 +1035,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                       {ZONAS_TERMICAS.map(z => <option key={z} value={z}>{z}</option>)}
                     </select></div>
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-medium text-gray-600">Tipologías</label>
-                      <button type="button" onClick={agregarLinea} className="text-xs font-medium text-crm-red hover:underline">+ Agregar tipología</button>
-                    </div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Tipologías</label>
                     <div className="space-y-2">
                       {lineas.map((l, idx) => (
                         <div key={l.id} className="flex gap-2 items-end">
@@ -1022,6 +1051,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                         </div>
                       ))}
                     </div>
+                    <button type="button" onClick={agregarLinea} className="mt-1.5 text-xs font-medium text-crm-red hover:underline">+ Agregar tipología</button>
                   </div>
                   <div><label className="block text-xs font-medium text-gray-600 mb-1">Valor UF (CLP)</label>
                     <input type="number" value={opp.valor_uf ?? ''} onChange={e => setOpp(o => ({...o,valor_uf:e.target.value?Number(e.target.value):null}))}
@@ -1036,7 +1066,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Región</label>
                   <select value={opp.region ?? ''} onChange={e => setOpp(o => ({...o,region:e.target.value||null,comuna:null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
                     <option value="">Sin región</option>
@@ -1049,7 +1079,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                   </select></div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de casas</label>
                   <input type="number" min="0" value={opp.cantidad_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de tipos de casas</label>
@@ -1057,7 +1087,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
               </div>
 
               {opp.tipo_venta !== 'VIT' && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div><label className="block text-xs font-medium text-gray-600 mb-1">Fecha estimada adjudicación</label>
                     <input type="date" value={opp.fecha_adjudicacion_est ?? ''} onChange={e => setOpp(o => ({...o,fecha_adjudicacion_est:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
                   <div><label className="block text-xs font-medium text-gray-600 mb-1">Fecha estimada inicio despachos</label>

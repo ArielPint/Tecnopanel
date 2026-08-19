@@ -103,7 +103,7 @@ export default function FormularioOC({ oc, gdsIniciales, monto, onGuardar, onEli
         <DialogHeader>
           <DialogTitle>{esEdicion ? 'Editar OC' : 'Nueva OC'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="grid grid-cols-2 gap-3">
+        <form onSubmit={onSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="oc-numero">N° OC</Label>
             <Input id="oc-numero" value={numero} onChange={(e) => setNumero(e.target.value)} required />

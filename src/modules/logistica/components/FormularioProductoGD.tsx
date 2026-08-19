@@ -83,7 +83,7 @@ export default function FormularioProductoGD({ producto, existentes, onGuardar }
         <DialogHeader>
           <DialogTitle>{esEdicion ? 'Editar producto' : 'Nuevo producto'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="grid grid-cols-2 gap-3">
+        <form onSubmit={onSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="codigo">Código</Label>
             <Input id="codigo" value={codigo} onChange={(e) => setCodigo(e.target.value)} disabled={esEdicion} required />

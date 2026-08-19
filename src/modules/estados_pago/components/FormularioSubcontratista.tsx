@@ -70,7 +70,7 @@ export default function FormularioSubcontratista({ subcontratista, trigger, onCr
             <Label htmlFor="sc-nombre">Nombre / Razón social</Label>
             <Input id="sc-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} autoFocus required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="sc-rut">RUT</Label>
               <Input id="sc-rut" value={rut ?? ''} onChange={(e) => setRut(e.target.value)} />
@@ -80,7 +80,7 @@ export default function FormularioSubcontratista({ subcontratista, trigger, onCr
               <Input id="sc-giro" value={giro ?? ''} onChange={(e) => setGiro(e.target.value)} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="sc-telefono">Teléfono</Label>
               <Input id="sc-telefono" value={telefono ?? ''} onChange={(e) => setTelefono(e.target.value)} />

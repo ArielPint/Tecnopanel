@@ -98,7 +98,7 @@ export default function Auditoria() {
                               {nombreTabla(entry.tabla_afectada)} — {entry.accion}
                             </DialogTitle>
                           </DialogHeader>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <p className="mb-1 text-xs font-medium text-muted-foreground">Antes</p>
                               <pre className="max-h-96 overflow-auto rounded-md border bg-muted p-2 text-xs">

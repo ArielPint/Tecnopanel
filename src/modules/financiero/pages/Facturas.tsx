@@ -60,7 +60,7 @@ export default function Facturas() {
     <div className="space-y-4">
       {haySuperapaso && <AlertaSobreepaso />}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <FiltrosFinanciero
           search={search}
           onSearchChange={setSearch}

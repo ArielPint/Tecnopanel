@@ -120,7 +120,7 @@ export default function FinancieroLayout() {
 
   return (
     <PortalShell actual="financiero" hideAside>
-    <div className="flex flex-1">
+    <div className="flex min-w-0 flex-1">
       {/* Sidebar — visible desde md hacia arriba, ocultable con el botón de menú */}
       <aside
         className={cn(

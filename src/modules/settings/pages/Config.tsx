@@ -139,7 +139,7 @@ function PresupuestoCard() {
         <CardDescription>Total comprado calculado desde Supabase · Presupuesto editable</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <p className="text-xs text-muted-foreground">Total comprado</p>
             <p className="text-lg font-semibold">{loading ? '—' : fmtM(totalComprado)}</p>
@@ -210,7 +210,7 @@ function RitmoCard() {
         <CardDescription>Parámetros del cálculo de escenarios en la pestaña Proyección del dashboard</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="inp-ritmo-tope">Ritmo tope del proyecto (mód/semana)</Label>
             <Input id="inp-ritmo-tope" type="number" min={0} step={0.5} placeholder="ej. 15" value={vTope} onChange={(e) => setTope(e.target.value)} />

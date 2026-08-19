@@ -281,7 +281,7 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
           <DialogTitle>{esEdicion ? `Editar guía ${registro?.gd ?? ''}` : 'Nueva entrada'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label>Fecha Guía</Label>
               <Input type="date" value={fechaGuia} onChange={(e) => setFechaGuia(e.target.value)} required />
@@ -344,8 +344,8 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="sm:col-span-2">
                     <ProductoAutocomplete
                       value={l.codigo}
                       productos={allProducts}
@@ -356,7 +356,7 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
                   <Input value={l.unidad} readOnly placeholder="UND" className="text-muted-foreground" />
                 </div>
                 <Input value={l.descripcion} readOnly placeholder="Descripción (auto)" className="text-xs text-muted-foreground" />
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div className="flex flex-col gap-1">
                     <Label className="text-xs">Cant. Sol.</Label>
                     <Input type="number" step="any" min="0" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value={l.cantidad_sol || ''} onChange={(e) => actualizarLinea(idx, { cantidad_sol: parseFloat(e.target.value) || 0 })} />
@@ -404,7 +404,7 @@ function LineaCalc({ linea }: { linea: LineaEditable }) {
   const dt = calcDifT(row, linea.ppto)
   const pct = calcPct(row, linea.ppto)
   return (
-    <div className="grid grid-cols-3 gap-x-2 gap-y-1 border-t pt-2 text-[.7rem] text-muted-foreground">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-1 border-t pt-2 text-[.7rem] text-muted-foreground">
       <span>Cant. Rec.: <b className="text-foreground">{cr.toLocaleString('es-CL')}</b></span>
       <span>Val. Unit.: <b className="text-foreground">{vu ? formatCLP(vu) : '—'}</b></span>
       <span>Ppto.: <b className="text-foreground">{linea.ppto ? formatCLP(linea.ppto) : '—'}</b></span>

@@ -254,7 +254,7 @@ export default function ReporteGrupo() {
                     {gObs > 0 && <span className="text-warning">Obs: <b>{gObs}</b></span>}
                   </span>
                 </summary>
-                <div className="border-t">
+                <div className="overflow-x-auto border-t">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-muted/40 text-left text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">
@@ -291,6 +291,7 @@ export default function ReporteGrupo() {
                             {open && (
                               <tr className="bg-muted/20">
                                 <td colSpan={9} className="px-3 py-2">
+                                  <div className="overflow-x-auto">
                                   <table className="w-full text-xs">
                                     <thead>
                                       <tr className="text-left text-muted-foreground">
@@ -318,6 +319,7 @@ export default function ReporteGrupo() {
                                       </tr>
                                     </tbody>
                                   </table>
+                                  </div>
                                 </td>
                               </tr>
                             )}

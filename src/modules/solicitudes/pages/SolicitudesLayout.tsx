@@ -35,7 +35,7 @@ export default function SolicitudesLayout() {
 
   return (
     <PortalShell actual="solicitudes">
-    <div className="flex flex-1 flex-col">
+    <div className="flex min-w-0 flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4 md:px-6">
         <img src={isologo} alt="" className="size-7 shrink-0" />
         <div className="min-w-0">

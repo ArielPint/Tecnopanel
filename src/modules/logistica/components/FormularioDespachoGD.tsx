@@ -129,7 +129,7 @@ export default function FormularioDespachoGD({ despacho, despachos, catalogo, mo
         <DialogHeader>
           <DialogTitle>{esEdicion ? 'Editar Entrada' : 'Nueva Entrada'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={(e) => onSubmit(e, false)} className="grid grid-cols-2 gap-3">
+        <form onSubmit={(e) => onSubmit(e, false)} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="fecha_gd">Fecha GD</Label>
             <Input id="fecha_gd" type="date" value={fechaGd} onChange={(e) => setFechaGd(e.target.value)} required />

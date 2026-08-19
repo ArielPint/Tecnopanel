@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Loader2, X } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
+import MontoInput from '@/modules/crm/components/MontoInput'
 import type { TipoVenta, TipoSubsidioVit, ZonaTermicaVit, TipologiaVitPrecio } from '@/modules/crm/types/database'
 
 interface Cliente { id: string; razon_social: string }
@@ -113,6 +114,12 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
   const comunasDisponibles = form.region ? (REGIONES_COMUNAS[form.region] ?? []) : []
   const etapaInicial = ETAPA_INICIAL_POR_TIPO[form.tipo_venta]
 
+  useEffect(() => {
+    if (form.tipo_venta === 'VIT' && lineas.length === 0) {
+      setLineas([{ tipologia: '', cantidad_casas: '' }])
+    }
+  }, [form.tipo_venta])
+
   function agregarLinea() {
     setLineas(ls => [...ls, { tipologia: '', cantidad_casas: '' }])
   }
@@ -178,10 +185,16 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
     }
     setSaving(true); setError('')
     const codigo = genCodigo()
+    // VIT no pide "Monto estimado" a mano: el valor del proyecto ya queda
+    // definido por las tipologias + Valor UF cargadas en esta misma etapa,
+    // asi la etapa Oportunidad no lo vuelve a pedir.
+    const montoEstimado = form.tipo_venta === 'VIT'
+      ? (totalClp > 0 ? Math.round(totalClp) : null)
+      : (form.monto_estimado ? Number(form.monto_estimado) : null)
     const { data, error: err } = await supabase.from('oportunidades').insert({
       codigo, nombre: form.nombre.trim(), cliente_id: form.cliente_id || null,
       vendedor_id: profile?.id ?? null, tipo_venta: form.tipo_venta,
-      monto_estimado: form.monto_estimado ? Number(form.monto_estimado) : null,
+      monto_estimado: montoEstimado,
       probabilidad: Number(form.probabilidad), etapa_actual: etapaInicial,
       fecha_cierre_est: form.fecha_cierre_est || null, descripcion: form.descripcion || null,
       nombre_entidad_patrocinante: form.tipo_venta === 'VIT' ? (form.nombre_entidad_patrocinante.trim() || null) : null,
@@ -232,7 +245,9 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
       mensaje: `${codigo} · etapa inicial: ${etapaInicial}`,
       oportunidad_id: oportunidadId,
     })
-    setSaving(false); onSuccess(); onClose()
+    setSaving(false)
+    window.dispatchEvent(new CustomEvent('crm:oportunidad-creada'))
+    onSuccess(); onClose()
   }
 
   if (!isOpen) return null
@@ -244,6 +259,21 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18}/></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
+              <select value={form.tipo_venta} onChange={e => setForm(f=>({...f,tipo_venta:e.target.value as TipoVenta}))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+                <option value="Proyecto">{TIPO_VENTA_LABELS.Proyecto}</option>
+                <option value="Producto">{TIPO_VENTA_LABELS.Producto}</option>
+                <option value="VIT">{TIPO_VENTA_LABELS.VIT}</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Etapa inicial</label>
+              <input disabled value={etapaInicial} className="w-full px-3 py-2 border border-gray-200 bg-gray-50 text-gray-500 rounded-lg text-sm" />
+            </div>
+          </div>
           {form.tipo_venta !== 'VIT' && (
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Nombre *</label>
@@ -263,7 +293,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
                 <div className="bg-gray-50 rounded-lg p-3 space-y-2 mb-2">
                   <input value={nuevoCliente.razon_social} onChange={e => setNuevoCliente(c=>({...c,razon_social:e.target.value}))}
                     placeholder="Razón social *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input value={nuevoCliente.rut} onChange={e => setNuevoCliente(c=>({...c,rut:e.target.value}))}
                       placeholder="RUT" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
                     <input value={nuevoCliente.rubro} onChange={e => setNuevoCliente(c=>({...c,rubro:e.target.value}))}
@@ -283,22 +313,6 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
               </select>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
-              <select value={form.tipo_venta} onChange={e => setForm(f=>({...f,tipo_venta:e.target.value as TipoVenta}))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
-                <option value="Proyecto">{TIPO_VENTA_LABELS.Proyecto}</option>
-                <option value="Producto">{TIPO_VENTA_LABELS.Producto}</option>
-                <option value="VIT">{TIPO_VENTA_LABELS.VIT}</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Etapa inicial</label>
-              <input disabled value={etapaInicial} className="w-full px-3 py-2 border border-gray-200 bg-gray-50 text-gray-500 rounded-lg text-sm" />
-            </div>
-          </div>
-
           {form.tipo_venta === 'VIT' && (
             <div className="space-y-3 bg-gray-50 rounded-lg p-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Clasificación VIT</p>
@@ -335,10 +349,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
                 </select>
               </div>
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-medium text-gray-700">Tipologías</label>
-                  <button type="button" onClick={agregarLinea} className="text-xs font-medium text-crm-red hover:underline">+ Agregar tipología</button>
-                </div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">Tipologías</label>
                 <div className="space-y-2">
                   {lineas.map((l, idx) => (
                     <div key={idx} className="flex gap-2 items-end">
@@ -356,6 +367,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
                     </div>
                   ))}
                 </div>
+                <button type="button" onClick={agregarLinea} className="mt-1.5 text-xs font-medium text-crm-red hover:underline">+ Agregar tipología</button>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Valor UF (CLP)</label>
@@ -374,10 +386,11 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
           )}
 
           {form.tipo_venta !== 'VIT' && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Monto estimado (CLP)</label>
-                <input type="number" value={form.monto_estimado} onChange={e => setForm(f=>({...f,monto_estimado:e.target.value}))}
+                <MontoInput value={form.monto_estimado ? Number(form.monto_estimado) : null}
+                  onChange={v => setForm(f=>({...f,monto_estimado: v != null ? String(v) : ''}))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
               </div>
               <div>
@@ -388,7 +401,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Región</label>
               <select value={form.region} onChange={e => setForm(f=>({...f,region:e.target.value,comuna:''}))}
@@ -408,7 +421,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
           </div>
 
           {form.tipo_venta !== 'VIT' && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad de casas</label>
                 <input type="number" min="0" value={form.cantidad_casas} onChange={e => setForm(f=>({...f,cantidad_casas:e.target.value}))}
@@ -423,7 +436,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
           )}
 
           {form.tipo_venta !== 'VIT' && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Fecha estimada de adjudicación</label>
                 <input type="date" value={form.fecha_adjudicacion_est} onChange={e => setForm(f=>({...f,fecha_adjudicacion_est:e.target.value}))}

@@ -130,7 +130,7 @@ export default function FormularioEstadoPago({ estadoPago, subcontratos, trigger
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ep-numero">N° de EP</Label>
               <Input id="ep-numero" value={numeroEp} onChange={(e) => setNumeroEp(e.target.value)} required />
@@ -140,7 +140,7 @@ export default function FormularioEstadoPago({ estadoPago, subcontratos, trigger
               <Input id="ep-periodo" value={periodo ?? ''} onChange={(e) => setPeriodo(e.target.value)} placeholder="Ej: Julio 2026" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ep-emision">Fecha de emisión</Label>
               <Input id="ep-emision" type="date" value={fechaEmision ?? ''} onChange={(e) => setFechaEmision(e.target.value)} />
@@ -150,7 +150,7 @@ export default function FormularioEstadoPago({ estadoPago, subcontratos, trigger
               <Input id="ep-recepcion" type="date" value={fechaRecepcion ?? ''} onChange={(e) => setFechaRecepcion(e.target.value)} />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ep-bruto">Monto bruto</Label>
               <Input id="ep-bruto" type="number" min="0" value={montoBruto} onChange={(e) => setMontoBruto(e.target.value)} required />

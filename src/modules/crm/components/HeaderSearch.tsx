@@ -62,7 +62,7 @@ export default function HeaderSearch() {
   }, [])
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative min-w-0 flex-1 sm:flex-none">
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         <input
@@ -70,7 +70,7 @@ export default function HeaderSearch() {
           onChange={e => setQ(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
           placeholder="Buscar oportunidad..."
-          className="w-64 pl-8 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red focus:bg-white transition-all"
+          className="w-full sm:w-64 pl-8 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red focus:bg-white transition-all"
         />
         {loading && (
           <Loader2 size={12} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-gray-400" />
@@ -78,7 +78,7 @@ export default function HeaderSearch() {
       </div>
 
       {open && results.length > 0 && (
-        <div className="absolute left-0 top-11 w-96 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+        <div className="absolute left-0 top-11 w-[min(24rem,90vw)] bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
           <p className="text-[10px] text-gray-400 px-4 pt-2.5 pb-1 font-medium uppercase tracking-wide">
             {results.length} resultado{results.length !== 1 ? 's' : ''}
           </p>

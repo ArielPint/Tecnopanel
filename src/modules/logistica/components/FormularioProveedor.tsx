@@ -62,7 +62,7 @@ export default function FormularioProveedor({ onGuardar, onCreado }: Props) {
         <DialogHeader>
           <DialogTitle>Agregar proveedor</DialogTitle>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="grid grid-cols-2 gap-3">
+        <form onSubmit={onSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="col-span-2 flex flex-col gap-1.5">
             <Label htmlFor="prov-nombre">Nombre / Razón social</Label>
             <Input id="prov-nombre" value={form.nombre} onChange={(e) => set('nombre', e.target.value)} autoFocus required />

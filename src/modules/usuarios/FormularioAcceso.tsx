@@ -133,7 +133,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
         </DialogHeader>
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <Tabs defaultValue="cuenta">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
               <TabsTrigger value="cuenta">Cuenta</TabsTrigger>
               <TabsTrigger value="proyecto">Accesos Proyecto</TabsTrigger>
               <TabsTrigger value="crm">Accesos CRM</TabsTrigger>
