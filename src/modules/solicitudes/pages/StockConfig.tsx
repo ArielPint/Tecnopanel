@@ -6,15 +6,33 @@ import { Input } from '@/modules/financiero/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 import EmptyState from '@/modules/financiero/components/EmptyState'
 import { useStock } from '../hooks/useStock'
+import { useCatalogoGD } from '@/modules/logistica/hooks/useCatalogoGD'
+import { normCod } from '@/modules/logistica/lib/calc'
+
+function observacion(equivMod: number | null): { label: string; className: string } | null {
+  if (equivMod == null) return null
+  if (equivMod < 15) return { label: 'Stock Crítico', className: 'text-destructive' }
+  if (equivMod < 25) return { label: 'Stock Medio', className: 'text-warning' }
+  return { label: 'Stock Bueno', className: 'text-success' }
+}
 
 export default function StockConfig() {
   const { stock, loading, uploading, error, lastResult, handleFile } = useStock()
+  const { allProducts } = useCatalogoGD()
   const [busqueda, setBusqueda] = useState('')
 
-  const filtrado = stock.filter((s) => {
-    const q = busqueda.toLowerCase()
-    return !q || s.codigo.toLowerCase().includes(q) || s.descripcion.toLowerCase().includes(q)
-  })
+  const cpmPorCodigo = new Map(allProducts.map((p) => [normCod(p.codigo), p.cantidad_por_modulo]))
+
+  const filtrado = stock
+    .filter((s) => {
+      const q = busqueda.toLowerCase()
+      return !q || s.codigo.toLowerCase().includes(q) || s.descripcion.toLowerCase().includes(q)
+    })
+    .map((s) => {
+      const cpm = cpmPorCodigo.get(normCod(s.codigo)) ?? null
+      const equivMod = cpm ? s.cantidad_disponible / cpm : null
+      return { ...s, equivMod, obs: observacion(equivMod) }
+    })
 
   return (
     <div className="space-y-4">
@@ -64,6 +82,8 @@ export default function StockConfig() {
                 <TableHead>Descripción</TableHead>
                 <TableHead>Unidad</TableHead>
                 <TableHead className="text-right">Stock</TableHead>
+                <TableHead className="text-right">Equiv. Módulos</TableHead>
+                <TableHead>Observación</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -73,6 +93,10 @@ export default function StockConfig() {
                   <TableCell className="text-sm">{s.descripcion}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{s.unidad}</TableCell>
                   <TableCell className="text-right">{s.cantidad_disponible}</TableCell>
+                  <TableCell className="text-right">{s.equivMod != null ? s.equivMod.toFixed(2) : '—'}</TableCell>
+                  <TableCell className={s.obs ? `text-xs font-semibold ${s.obs.className}` : 'text-xs text-muted-foreground'}>
+                    {s.obs?.label ?? '—'}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

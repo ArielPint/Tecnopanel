@@ -14,7 +14,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 4.2
+    "cantidad_por_modulo": 3
   },
   {
     "codigo": "302010",
@@ -22,7 +22,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PZA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 34.9125
+    "cantidad_por_modulo": 66.5
   },
   {
     "codigo": "302028",
@@ -30,7 +30,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PZA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 138.175
+    "cantidad_por_modulo": 329
   },
   {
     "codigo": "302046",
@@ -38,7 +38,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PZA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 36.75
+    "cantidad_por_modulo": 70
   },
   {
     "codigo": "302048",
@@ -46,7 +46,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PZA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 35.175
+    "cantidad_por_modulo": 67
   },
   {
     "codigo": "302054",
@@ -62,7 +62,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PZA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 8.925
+    "cantidad_por_modulo": 17
   },
   {
     "codigo": "302249",
@@ -70,7 +70,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PZA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 6.3
+    "cantidad_por_modulo": 12
   },
   {
     "codigo": "304002",
@@ -78,7 +78,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 23.1
+    "cantidad_por_modulo": 44
   },
   {
     "codigo": "304007",
@@ -86,7 +86,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 8.2688
+    "cantidad_por_modulo": 15.75
   },
   {
     "codigo": "304012",
@@ -94,7 +94,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 2.1
+    "cantidad_por_modulo": 4
   },
   {
     "codigo": "304049",
@@ -102,7 +102,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 24.3231
+    "cantidad_por_modulo": 46.33
   },
   {
     "codigo": "304101",
@@ -110,7 +110,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 46.9875
+    "cantidad_por_modulo": 89.5
   },
   {
     "codigo": "307030",
@@ -118,7 +118,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 7.35
+    "cantidad_por_modulo": 14
   },
   {
     "codigo": "307031",
@@ -126,7 +126,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 15.8656
+    "cantidad_por_modulo": 30.22
   },
   {
     "codigo": "307032",
@@ -134,7 +134,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "TRA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 8.4
+    "cantidad_por_modulo": 16
   },
   {
     "codigo": "307033",
@@ -142,7 +142,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 7.875
+    "cantidad_por_modulo": 15
   },
   {
     "codigo": "307096",
@@ -150,7 +150,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "TRA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 65.1
+    "cantidad_por_modulo": 124
   },
   {
     "codigo": "404252",
@@ -158,7 +158,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 3.675
+    "cantidad_por_modulo": 7
   },
   {
     "codigo": "404745",
@@ -166,7 +166,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "404793",
@@ -174,7 +174,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "407010",
@@ -182,7 +182,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 65.625
+    "cantidad_por_modulo": 125
   },
   {
     "codigo": "407011",
@@ -190,7 +190,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 609
+    "cantidad_por_modulo": 1160
   },
   {
     "codigo": "407049",
@@ -198,7 +198,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 31.5
+    "cantidad_por_modulo": 60
   },
   {
     "codigo": "407115",
@@ -206,7 +206,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 4.2
+    "cantidad_por_modulo": 8
   },
   {
     "codigo": "407170",
@@ -214,7 +214,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 151.2
+    "cantidad_por_modulo": 288
   },
   {
     "codigo": "407185",
@@ -222,7 +222,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 966
+    "cantidad_por_modulo": 1840
   },
   {
     "codigo": "407307",
@@ -230,7 +230,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 65.625
+    "cantidad_por_modulo": 125
   },
   {
     "codigo": "407423",
@@ -238,7 +238,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 788.55
+    "cantidad_por_modulo": 1502
   },
   {
     "codigo": "407427",
@@ -246,7 +246,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "CJA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.105
+    "cantidad_por_modulo": 0.2
   },
   {
     "codigo": "407795",
@@ -254,7 +254,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "408014",
@@ -262,7 +262,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "CJA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.1428
+    "cantidad_por_modulo": 0.272
   },
   {
     "codigo": "408017",
@@ -270,7 +270,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "CJA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.0525
+    "cantidad_por_modulo": 0.1
   },
   {
     "codigo": "408034",
@@ -278,7 +278,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "CJA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.0712
+    "cantidad_por_modulo": 0.5448
   },
   {
     "codigo": "408042",
@@ -286,7 +286,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "CJA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.1787
+    "cantidad_por_modulo": 2.245
   },
   {
     "codigo": "408088",
@@ -294,7 +294,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "CJA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.1259
+    "cantidad_por_modulo": 0.24
   },
   {
     "codigo": "409011",
@@ -302,7 +302,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "TRA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.1313
+    "cantidad_por_modulo": 0.25
   },
   {
     "codigo": "410045",
@@ -310,7 +310,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 16.8
+    "cantidad_por_modulo": 32
   },
   {
     "codigo": "410046",
@@ -318,7 +318,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 8.4
+    "cantidad_por_modulo": 16
   },
   {
     "codigo": "410126",
@@ -326,7 +326,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 10.5
+    "cantidad_por_modulo": 20
   },
   {
     "codigo": "412016",
@@ -334,7 +334,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "412132",
@@ -350,7 +350,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 5.25
+    "cantidad_por_modulo": 10
   },
   {
     "codigo": "412280",
@@ -358,7 +358,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 8.925
+    "cantidad_por_modulo": 16.5
   },
   {
     "codigo": "412281",
@@ -366,7 +366,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.8375
+    "cantidad_por_modulo": 3.5
   },
   {
     "codigo": "412301",
@@ -374,7 +374,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 16.8
+    "cantidad_por_modulo": 32
   },
   {
     "codigo": "412302",
@@ -382,7 +382,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.05
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "412313",
@@ -390,7 +390,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "CJA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.8653
+    "cantidad_por_modulo": 1.648
   },
   {
     "codigo": "412630",
@@ -398,7 +398,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "601047",
@@ -406,7 +406,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "TIN",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.1575
+    "cantidad_por_modulo": 0.9
   },
   {
     "codigo": "602254",
@@ -414,7 +414,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "TIN",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.5775
+    "cantidad_por_modulo": 1.1
   },
   {
     "codigo": "602255",
@@ -422,7 +422,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "TIN",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "602256",
@@ -430,7 +430,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "TIN",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.0262
+    "cantidad_por_modulo": 0.05
   },
   {
     "codigo": "602257",
@@ -438,7 +438,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "TIN",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.21
+    "cantidad_por_modulo": 0.4
   },
   {
     "codigo": "602258",
@@ -446,7 +446,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "TIN",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.0919
+    "cantidad_por_modulo": 0.175
   },
   {
     "codigo": "608013",
@@ -454,7 +454,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.105
+    "cantidad_por_modulo": 0.2
   },
   {
     "codigo": "609008",
@@ -462,7 +462,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "LTS",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.05
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "617016",
@@ -470,7 +470,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 4.2
+    "cantidad_por_modulo": 8
   },
   {
     "codigo": "617055",
@@ -478,7 +478,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 2.1
+    "cantidad_por_modulo": 4
   },
   {
     "codigo": "617057",
@@ -486,7 +486,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.575
+    "cantidad_por_modulo": 3
   },
   {
     "codigo": "701015",
@@ -494,7 +494,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 4.725
+    "cantidad_por_modulo": 9
   },
   {
     "codigo": "701040",
@@ -502,7 +502,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 2.8875
+    "cantidad_por_modulo": 5.5
   },
   {
     "codigo": "701043",
@@ -510,7 +510,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 7.0875
+    "cantidad_por_modulo": 13.5
   },
   {
     "codigo": "701084",
@@ -518,7 +518,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.6981
+    "cantidad_por_modulo": 1.33
   },
   {
     "codigo": "701096",
@@ -526,7 +526,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 31.2375
+    "cantidad_por_modulo": 59.5
   },
   {
     "codigo": "704021",
@@ -534,7 +534,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 21
+    "cantidad_por_modulo": 40
   },
   {
     "codigo": "704022",
@@ -542,7 +542,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 14.175
+    "cantidad_por_modulo": 27
   },
   {
     "codigo": "704023",
@@ -550,7 +550,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 23.625
+    "cantidad_por_modulo": 45
   },
   {
     "codigo": "704024",
@@ -558,7 +558,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 4.2
+    "cantidad_por_modulo": 8
   },
   {
     "codigo": "704025",
@@ -566,7 +566,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 4.2
+    "cantidad_por_modulo": 8
   },
   {
     "codigo": "704046",
@@ -574,7 +574,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "RLL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.8847
+    "cantidad_por_modulo": 1.6852
   },
   {
     "codigo": "704079",
@@ -582,7 +582,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "RLL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.4484
+    "cantidad_por_modulo": 0.8542
   },
   {
     "codigo": "705028",
@@ -590,7 +590,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 3.3469
+    "cantidad_por_modulo": 7.5
   },
   {
     "codigo": "707023",
@@ -598,7 +598,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 3.15
+    "cantidad_por_modulo": 6
   },
   {
     "codigo": "810007",
@@ -606,7 +606,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "TRA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.05
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "907031",
@@ -614,7 +614,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "RLL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.7113
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "1003500",
@@ -630,7 +630,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "ML",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1103074",
@@ -638,7 +638,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 2.1
+    "cantidad_por_modulo": 4
   },
   {
     "codigo": "1103076",
@@ -646,7 +646,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 3.15
+    "cantidad_por_modulo": 6
   },
   {
     "codigo": "1103086",
@@ -654,7 +654,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1103087",
@@ -662,7 +662,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1103088",
@@ -670,7 +670,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "TRA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.05
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "1206002",
@@ -678,7 +678,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1405006",
@@ -686,7 +686,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 30.45
+    "cantidad_por_modulo": 58
   },
   {
     "codigo": "1405025",
@@ -694,7 +694,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1405039",
@@ -702,7 +702,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1405040",
@@ -710,7 +710,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.575
+    "cantidad_por_modulo": 3
   },
   {
     "codigo": "1610007",
@@ -718,7 +718,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "KG",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.05
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "1610023",
@@ -726,7 +726,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "KG",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1701154",
@@ -734,7 +734,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1703006",
@@ -742,7 +742,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1801229",
@@ -750,7 +750,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1801230",
@@ -758,7 +758,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 3
   },
   {
     "codigo": "1801735",
@@ -766,7 +766,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1802162",
@@ -774,7 +774,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1802164",
@@ -782,7 +782,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1802165",
@@ -790,7 +790,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1802166",
@@ -798,7 +798,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1802167",
@@ -806,7 +806,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1802169",
@@ -814,7 +814,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1802170",
@@ -822,7 +822,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1802171",
@@ -830,7 +830,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1802172",
@@ -838,7 +838,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1802173",
@@ -846,7 +846,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1802174",
@@ -854,7 +854,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1802175",
@@ -862,7 +862,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1802176",
@@ -870,7 +870,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1802517",
@@ -878,7 +878,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "1802659",
@@ -886,7 +886,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1803044",
@@ -894,7 +894,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "KIT",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.05
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "1803045",
@@ -902,7 +902,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "KIT",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.05
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "1805340",
@@ -910,7 +910,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.05
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "1808003",
@@ -918,7 +918,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.9187
+    "cantidad_por_modulo": 1.75
   },
   {
     "codigo": "1808006",
@@ -926,7 +926,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.6562
+    "cantidad_por_modulo": 1.25
   },
   {
     "codigo": "1808144",
@@ -934,7 +934,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1808145",
@@ -942,7 +942,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1808146",
@@ -950,7 +950,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1808147",
@@ -958,7 +958,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1808148",
@@ -966,7 +966,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1808156",
@@ -974,7 +974,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "1901008",
@@ -982,7 +982,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "M2",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 62.4303
+    "cantidad_por_modulo": 118.9149
   },
   {
     "codigo": "1901038",
@@ -990,7 +990,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "M2",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 17.01
+    "cantidad_por_modulo": 32.4
   },
   {
     "codigo": "1901086",
@@ -998,7 +998,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "M2",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 31.7944
+    "cantidad_por_modulo": 60.5608
   },
   {
     "codigo": "1901466",
@@ -1006,7 +1006,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "M2",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 29.5294
+    "cantidad_por_modulo": 56.2462
   },
   {
     "codigo": "1901505",
@@ -1014,7 +1014,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "KG",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.2337
+    "cantidad_por_modulo": 2.35
   },
   {
     "codigo": "1902003",
@@ -1022,7 +1022,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "RLL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.4147
+    "cantidad_por_modulo": 0.7898
   },
   {
     "codigo": "1902013",
@@ -1030,7 +1030,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "RLL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 2.1078
+    "cantidad_por_modulo": 4.015
   },
   {
     "codigo": "1902014",
@@ -1038,7 +1038,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 5.8616
+    "cantidad_por_modulo": 11.165
   },
   {
     "codigo": "2302017",
@@ -1046,7 +1046,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "TIN",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.7875
+    "cantidad_por_modulo": 1.5
   },
   {
     "codigo": "2302024",
@@ -1054,7 +1054,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "GAL",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.7875
+    "cantidad_por_modulo": 1.5
   },
   {
     "codigo": "2302044",
@@ -1062,7 +1062,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "SAC",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.0669
+    "cantidad_por_modulo": 0.1276
   },
   {
     "codigo": "2302045",
@@ -1070,7 +1070,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "TIN",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.0669
+    "cantidad_por_modulo": 0.1276
   },
   {
     "codigo": "2302098",
@@ -1078,7 +1078,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "TIN",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "2302118",
@@ -1086,7 +1086,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.3119
+    "cantidad_por_modulo": 0.5938
   },
   {
     "codigo": "2302119",
@@ -1094,7 +1094,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 6.3
+    "cantidad_por_modulo": 14
   },
   {
     "codigo": "2304002",
@@ -1102,7 +1102,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 2.9312
+    "cantidad_por_modulo": 1.5
   },
   {
     "codigo": "2304003",
@@ -1118,7 +1118,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.05
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "2304053",
@@ -1126,7 +1126,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 4.2
+    "cantidad_por_modulo": 18
   },
   {
     "codigo": "2304056",
@@ -1134,7 +1134,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.7875
+    "cantidad_por_modulo": 7.5
   },
   {
     "codigo": "2505058",
@@ -1142,7 +1142,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 2.1
+    "cantidad_por_modulo": 4
   },
   {
     "codigo": "2505426",
@@ -1150,7 +1150,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "2508169",
@@ -1158,7 +1158,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "2508985",
@@ -1166,7 +1166,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "KIT",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.2625
+    "cantidad_por_modulo": 0.5
   },
   {
     "codigo": "2508986",
@@ -1174,7 +1174,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "KIT",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.2625
+    "cantidad_por_modulo": 0.5
   },
   {
     "codigo": "2508987",
@@ -1182,7 +1182,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "KIT",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.2625
+    "cantidad_por_modulo": 0.5
   },
   {
     "codigo": "2508988",
@@ -1190,7 +1190,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "KIT",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.2625
+    "cantidad_por_modulo": 0.5
   },
   {
     "codigo": "2508990",
@@ -1198,7 +1198,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.05
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "2508991",
@@ -1206,7 +1206,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.05
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "2508992",
@@ -1214,7 +1214,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "JGO",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.7875
+    "cantidad_por_modulo": 1.5
   },
   {
     "codigo": "2508993",
@@ -1222,7 +1222,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "JGO",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.05
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "2508994",
@@ -1230,7 +1230,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "4212234",
@@ -1238,7 +1238,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "4212254",
@@ -1246,7 +1246,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "5309018",
@@ -1254,7 +1254,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "MTS",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 34.65
+    "cantidad_por_modulo": 66
   },
   {
     "codigo": "5314002",
@@ -1262,7 +1262,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.2625
+    "cantidad_por_modulo": 0.5
   },
   {
     "codigo": "5316483",
@@ -1270,7 +1270,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.05
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "5316484",
@@ -1278,7 +1278,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 1.05
+    "cantidad_por_modulo": 2
   },
   {
     "codigo": "5316507",
@@ -1286,7 +1286,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.525
+    "cantidad_por_modulo": 1
   },
   {
     "codigo": "5316508",
@@ -1294,7 +1294,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.2625
+    "cantidad_por_modulo": 0.5
   },
   {
     "codigo": "5316509",
@@ -1302,7 +1302,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.2625
+    "cantidad_por_modulo": 0.5
   },
   {
     "codigo": "030253X",
@@ -1310,7 +1310,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "PZA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 6.3
+    "cantidad_por_modulo": 12
   },
   {
     "codigo": "040748x",
@@ -1318,7 +1318,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "CJA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.6884
+    "cantidad_por_modulo": 1.3111
   },
   {
     "codigo": "040801X",
@@ -1326,7 +1326,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "CJA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.0838
+    "cantidad_por_modulo": 0.1596
   },
   {
     "codigo": "040814X",
@@ -1334,7 +1334,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "CJA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.0547
+    "cantidad_por_modulo": 0.1042
   },
   {
     "codigo": "040815X",
@@ -1342,7 +1342,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "CJA",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 3.4541
+    "cantidad_por_modulo": 6.579
   },
   {
     "codigo": "081009x",
@@ -1350,7 +1350,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "M2",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 7.6125
+    "cantidad_por_modulo": 14.5
   },
   {
     "codigo": "081010x",
@@ -1358,7 +1358,7 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "ML",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 0.65
+    "cantidad_por_modulo": 0.062
   },
   {
     "codigo": "140209X",
@@ -1366,6 +1366,6 @@ export const PRODUCTOS_BASE: ProductoBase[] = [
     "unidad": "UND",
     "grupo": "",
     "subgrupo": "",
-    "cantidad_por_modulo": 3.15
+    "cantidad_por_modulo": 6
   }
 ]
