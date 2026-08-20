@@ -78,8 +78,8 @@ async function syncAccesos(userId: string, input: AccesoInput) {
       ...Object.fromEntries(Object.entries(pa.estadosPagoAcciones).map(([accion, on]) => [`estados_pago:${accion}`, on])),
       'logistica:editar': pa.logisticaEdit,
       'solicitudes:editar': pa.solicitudesEdit,
-      'solicitudes:catalogo_crear_editar': pa.solicitudesCatalogoCrearEditar,
-      'solicitudes:catalogo_eliminar': pa.solicitudesCatalogoEliminar,
+      'solicitudes:catalogo:editar': pa.solicitudesCatalogoCrearEditar,
+      'solicitudes:catalogo:eliminar': pa.solicitudesCatalogoEliminar,
     }
     return [
       syncPermisosProyecto(
@@ -179,10 +179,10 @@ export function useAccesos() {
           if (x.modulo_key === 'solicitudes' && x.accion === 'editar') {
             solicitudesEdit = true
           }
-          if (x.modulo_key === 'solicitudes' && x.accion === 'catalogo_crear_editar') {
+          if (x.modulo_key === 'solicitudes:catalogo' && x.accion === 'editar') {
             solicitudesCatalogoCrearEditar = true
           }
-          if (x.modulo_key === 'solicitudes' && x.accion === 'catalogo_eliminar') {
+          if (x.modulo_key === 'solicitudes:catalogo' && x.accion === 'eliminar') {
             solicitudesCatalogoEliminar = true
           }
           if (x.accion === 'ver' && x.modulo_key.includes(':')) {

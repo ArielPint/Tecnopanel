@@ -105,8 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Ver la pestaña de recetas es un permiso de tab normal (otorgable); editarlas requiere
   // además el permiso extra "solicitudes:editar" (checkbox aparte en FormularioAcceso).
   const puedeEditar = acceso.tieneAccion('solicitudes', 'editar')
-  const puedeCrearEditarCatalogo = puedeEditar || acceso.tieneAccion('solicitudes', 'catalogo_crear_editar')
-  const puedeEliminarCatalogo = puedeEditar || acceso.tieneAccion('solicitudes', 'catalogo_eliminar')
+  const puedeCrearEditarCatalogo = puedeEditar || acceso.tieneAccion('solicitudes:catalogo', 'editar')
+  const puedeEliminarCatalogo = puedeEditar || acceso.tieneAccion('solicitudes:catalogo', 'eliminar')
   const perfilConRol = perfil ? { ...perfil, role: acceso.rolNegocio ?? '' } : null
   // Grupo fijo + sin permiso de edición => solo crea, sin elegir grupo/responsable ni enviar.
   const esRestringido = !!perfil?.grupoId && !puedeEditar
