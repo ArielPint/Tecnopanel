@@ -225,6 +225,10 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
       toast.error('Agrega al menos un producto')
       return
     }
+    if (lineas.some((l) => l.codigo && (!l.cantidad_sol || l.cantidad_sol <= 0))) {
+      toast.error('Hay producto(s) con Cant. Sol. en 0 — completa la cantidad antes de guardar')
+      return
+    }
     setEnviando(true)
     try {
       const meta: MetaEntrada = { fechaGuia, fechaSol, obs, gd, oc: gdOCMap[gd] ?? '', responsable }

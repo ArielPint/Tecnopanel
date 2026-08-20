@@ -198,8 +198,8 @@ export default function Registro() {
                         <TableCell className="text-right tabular-nums">{calcCR(r).toLocaleString('es-CL')}</TableCell>
                         <TableCell className="text-right font-semibold tabular-nums">{formatCLP(getVTI(r))}</TableCell>
                         <TableCell className="text-right tabular-nums text-muted-foreground">{ppto ? formatCLP(ppto) : '—'}</TableCell>
-                        <TableCell className={`text-right tabular-nums ${difT > 0 ? 'text-success' : difT < 0 ? 'text-destructive' : ''}`}>{difT ? formatCLP(difT) : '—'}</TableCell>
-                        <TableCell className={`text-right tabular-nums ${pct != null && pct > 0 ? 'text-success' : pct != null && pct < 0 ? 'text-destructive' : ''}`}>{pct != null ? pct.toFixed(1) + '%' : '—'}</TableCell>
+                        <TableCell className={`text-right tabular-nums ${difT < 0 ? 'text-success' : difT > 0 ? 'text-destructive' : ''}`}>{difT ? formatCLP(difT) : '—'}</TableCell>
+                        <TableCell className={`text-right tabular-nums ${pct != null && pct < 0 ? 'text-success' : pct != null && pct > 0 ? 'text-destructive' : ''}`}>{pct != null ? pct.toFixed(1) + '%' : '—'}</TableCell>
                         <TableCell className="text-xs">{r.responsable || '—'}</TableCell>
                         <TableCell>{r.tipo_producto ? <Badge variant={esCritico ? 'destructive' : 'secondary'}>{esCritico ? 'Crítico' : 'No crítico'}</Badge> : '—'}</TableCell>
                         <TableCell className="text-right font-semibold tabular-nums text-success">{formatCLP(montoPorGD[r.gd] || 0)}</TableCell>
@@ -229,7 +229,7 @@ export default function Registro() {
                       <TableCell className="text-right tabular-nums">{totales.sumCantRec.toLocaleString('es-CL')}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatCLP(totales.sumVTI)}</TableCell>
                       <TableCell className="text-right tabular-nums text-muted-foreground">{totales.pptoAvg ? formatCLP(totales.pptoAvg) : '—'}</TableCell>
-                      <TableCell className={`text-right tabular-nums ${totales.sumDifT > 0 ? 'text-success' : totales.sumDifT < 0 ? 'text-destructive' : ''}`}>{formatCLP(totales.sumDifT)}</TableCell>
+                      <TableCell className={`text-right tabular-nums ${totales.sumDifT < 0 ? 'text-success' : totales.sumDifT > 0 ? 'text-destructive' : ''}`}>{formatCLP(totales.sumDifT)}</TableCell>
                       <TableCell className="text-right tabular-nums">{totales.pctAvg != null ? totales.pctAvg.toFixed(1) + '%' : '—'}</TableCell>
                       <TableCell colSpan={2} />
                       <TableCell className="text-right tabular-nums text-success">{formatCLP(totales.sumMontoGD)}</TableCell>
@@ -242,7 +242,7 @@ export default function Registro() {
                         <TableCell className="text-right tabular-nums">{totalesGeneral.sumCantRec.toLocaleString('es-CL')}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatCLP(totalesGeneral.sumVTI)}</TableCell>
                         <TableCell className="text-right tabular-nums text-muted-foreground">{totalesGeneral.pptoAvg ? formatCLP(totalesGeneral.pptoAvg) : '—'}</TableCell>
-                        <TableCell className={`text-right tabular-nums ${totalesGeneral.sumDifT > 0 ? 'text-success' : totalesGeneral.sumDifT < 0 ? 'text-destructive' : ''}`}>{formatCLP(totalesGeneral.sumDifT)}</TableCell>
+                        <TableCell className={`text-right tabular-nums ${totalesGeneral.sumDifT < 0 ? 'text-success' : totalesGeneral.sumDifT > 0 ? 'text-destructive' : ''}`}>{formatCLP(totalesGeneral.sumDifT)}</TableCell>
                         <TableCell className="text-right tabular-nums">{totalesGeneral.pctAvg != null ? totalesGeneral.pctAvg.toFixed(1) + '%' : '—'}</TableCell>
                         <TableCell colSpan={2} />
                         <TableCell className="text-right tabular-nums text-success">{formatCLP(totalesGeneral.sumMontoGD)}</TableCell>
