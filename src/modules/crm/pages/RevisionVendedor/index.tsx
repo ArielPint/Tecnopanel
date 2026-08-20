@@ -14,19 +14,19 @@ export default function RevisionVendedor(){
   const [sel,setSel]=useState<Oportunidad|null>(null)
 
   async function load(){
-    const {data:paso,error:pasoErr}=await supabase.from('oportunidad_historial_etapas').select('oportunidad_id').eq('etapa','Revisión Vendedor')
+    const {data:paso,error:pasoErr}=await supabase.from('oportunidad_historial_etapas').select('oportunidad_id').eq('etapa','Ventas')
     handleSupabaseError(pasoErr,'RevisionVendedor.load.paso')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const idsPaso=[...new Set((paso||[]).map((p:any)=>p.oportunidad_id))]
     if(!idsPaso.length){setOpps([]);setLoading(false);return}
-    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').in('id',idsPaso).in('etapa_actual',['Revisión Vendedor','Ganado']).order('updated_at',{ascending:false})
+    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').in('id',idsPaso).in('etapa_actual',['Ventas','Ganado']).order('updated_at',{ascending:false})
     handleSupabaseError(error,'RevisionVendedor.load')
     const base=(data as Oportunidad[])||[]
     if(!base.length){setOpps([]);setLoading(false);return}
     const ids=base.map(o=>o.id)
     const [{data:asigs,error:asigsErr},{data:hist,error:histErr}]=await Promise.all([
-      supabase.from('oportunidad_asignaciones').select('oportunidad_id,usuario_id').in('oportunidad_id',ids).eq('etapa','Revisión Vendedor'),
-      supabase.from('oportunidad_historial_etapas').select('oportunidad_id,fecha_entrada').in('oportunidad_id',ids).eq('etapa','Revisión Vendedor').is('fecha_salida',null),
+      supabase.from('oportunidad_asignaciones').select('oportunidad_id,usuario_id').in('oportunidad_id',ids).eq('etapa','Ventas'),
+      supabase.from('oportunidad_historial_etapas').select('oportunidad_id,fecha_entrada').in('oportunidad_id',ids).eq('etapa','Ventas').is('fecha_salida',null),
     ])
     handleSupabaseError(asigsErr,'RevisionVendedor.load.asignaciones')
     handleSupabaseError(histErr,'RevisionVendedor.load.historial')

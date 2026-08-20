@@ -57,11 +57,11 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 
 const ETAPAS_ORDER = [
   'Clasificación','Ingeniería','Desarrollo','Costos y Presupuestos',
-  'Revisión Vendedor','Negociación',
+  'Ventas','Negociación',
 ]
 
 // Flujo corto exclusivo de tipo_venta = VIT: Clasificacion -> Oportunidad -> Negociacion,
-// sin pasar por Ingenieria/Desarrollo/Costos y Presupuestos/Revision Vendedor.
+// sin pasar por Ingenieria/Desarrollo/Costos y Presupuestos/Ventas.
 const ETAPAS_ORDER_VIT = ['Clasificación', 'Oportunidad', 'Negociación']
 
 const CAMPOS_OPORTUNIDAD_REQUERIDOS = ['tipo_subsidio', 'programa', 'monto_estimado', 'fecha_ingreso_calificacion', 'estimacion_calificacion', 'fecha_inicio_despachos_est', 'duracion_meses_est'] as const
@@ -72,7 +72,7 @@ const ETAPAS_LABELS: Record<string,string> = {
   'Ingeniería': 'Ingeniería',
   'Desarrollo': 'Desarrollo',
   'Costos y Presupuestos': 'Costos y Presupuestos',
-  'Revisión Vendedor': 'Revisión Vendedor',
+  'Ventas': 'Ventas',
   'Negociación': 'Negociación',
 }
 
@@ -96,7 +96,7 @@ const STAGE_ROLES: Record<string, string[]> = {
   'Ingeniería': ['admin','jefe_ingenieria','ingeniero'],
   'Desarrollo': ['admin','jefe_ingenieria','desarrollador'],
   'Costos y Presupuestos': ['admin','cubicador','presupuestista'],
-  'Revisión Vendedor': ['admin','gerente_ventas','vendedor'],
+  'Ventas': ['admin','gerente_ventas','vendedor'],
   'Negociación': ['admin','gerente_ventas','vendedor','finanzas'],
 }
 
@@ -272,7 +272,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     const costoItemsTotal = items.reduce((s, i) => s + i.costo_total, 0)
     const costoTotalInterno = costoItemsTotal + costoCerchas + costoFlete
     const montoNetoCliente = Number(costosData['monto_neto_cliente'] || 0)
-    // El margen cargado en Revision Vendedor manda sobre el "Monto neto cliente"
+    // El margen cargado en Ventas manda sobre el "Monto neto cliente"
     // tipeado a mano: define el factor que se aplica a cada item del presupuesto.
     const factor = opp.margen_porcentaje != null ? 1 + opp.margen_porcentaje / 100
       : (costoTotalInterno > 0 && montoNetoCliente > 0 ? montoNetoCliente / costoTotalInterno : 1)
@@ -803,7 +803,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
             onChange={ev => setEtapaData(d => ({ ...d, condiciones_tecnicas: ev.target.value }))} rows={5}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" />
         </div>
-        <p className="text-xs text-gray-400">El PDF se genera en la etapa Revisión Vendedor, luego de revisar toda la información.</p>
+        <p className="text-xs text-gray-400">El PDF se genera en la etapa Ventas, luego de revisar toda la información.</p>
 
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-2">Cubicación manual (si no aplica Excel)</p>
         {field('acero_kg','Acero estructural (kg)','number','0')}{field('paneles_m2','Paneles (m²)','number','0')}{field('cubierta_m2','Cubierta (m²)','number','0')}{field('pilares_und','Pilares (und)','number','0')}{ta('lista_materiales','Materiales adicionales','Otros componentes...')}{ta('observaciones','Observaciones cubicación','')}
@@ -812,7 +812,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       </div>
       )
     }
-    if (e === 'Revisión Vendedor') {
+    if (e === 'Ventas') {
       let costosItems: CubicacionItem[] = []
       try { costosItems = JSON.parse(costosData['cubicacion_items_json'] || '[]') } catch { costosItems = [] }
       const factorMargen = 1 + (opp.margen_porcentaje ?? 0) / 100

@@ -12,14 +12,14 @@ export const ROL_META: Record<string, { label: string; badge: string; descripcio
   desarrollador:   { label:'Desarrollador',      badge:'bg-fuchsia-100 text-fuchsia-700', descripcion:'Entrega de planos y fichas en etapa Desarrollo' },
 }
 
-export const MODULOS = ['Dashboard','Oportunidades','Ingeniería','Ganadas y Perdidas','Desarrollo','Costos y Presupuestos','Negociación','Revisión Vendedor','Clientes','Usuarios']
+export const MODULOS = ['Dashboard','Oportunidades','Ingeniería','Ganadas y Perdidas','Desarrollo','Costos y Presupuestos','Negociación','Ventas','Clientes','Usuarios']
 
 // Permisos de página que trae un rol por defecto al crearlo (el admin luego puede ajustar por usuario)
 export const DEFAULT_MODULOS: Record<string, string[]> = {
   admin:           MODULOS,
-  gerente_general: ['Dashboard','Oportunidades','Ingeniería','Ganadas y Perdidas','Desarrollo','Costos y Presupuestos','Negociación','Revisión Vendedor','Clientes'],
-  gerente_ventas:  ['Dashboard','Oportunidades','Clientes','Revisión Vendedor'],
-  vendedor:        ['Dashboard','Oportunidades','Clientes','Revisión Vendedor'],
+  gerente_general: ['Dashboard','Oportunidades','Ingeniería','Ganadas y Perdidas','Desarrollo','Costos y Presupuestos','Negociación','Ventas','Clientes'],
+  gerente_ventas:  ['Dashboard','Oportunidades','Clientes','Ventas'],
+  vendedor:        ['Dashboard','Oportunidades','Clientes','Ventas'],
   jefe_ingenieria: ['Dashboard','Ingeniería','Ganadas y Perdidas','Desarrollo'],
   ingeniero:       ['Dashboard','Ingeniería','Ganadas y Perdidas'],
   cubicador:       ['Dashboard','Costos y Presupuestos'],

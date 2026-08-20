@@ -76,7 +76,7 @@ function CrmRoutes() {
         <Route path="desarrollo" element={<ProtectedModule modulo="Desarrollo"><Desarrollo /></ProtectedModule>} />
         <Route path="cubicacion" element={<ProtectedModule modulo="Costos y Presupuestos"><Cubicacion /></ProtectedModule>} />
         <Route path="negociacion" element={<ProtectedModule modulo="Negociación"><Negociacion /></ProtectedModule>} />
-        <Route path="revision-vendedor" element={<ProtectedModule modulo="Revisión Vendedor"><RevisionVendedor /></ProtectedModule>} />
+        <Route path="revision-vendedor" element={<ProtectedModule modulo="Ventas"><RevisionVendedor /></ProtectedModule>} />
         <Route path="clientes" element={<ProtectedModule modulo="Clientes"><Clientes /></ProtectedModule>} />
         <Route path="usuarios" element={<Navigate to="/usuarios" replace />} />
       </Route>

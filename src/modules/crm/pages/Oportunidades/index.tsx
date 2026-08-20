@@ -8,7 +8,7 @@ import { useAuth } from '@/modules/crm/contexts/AuthContext'
 
 const ETAPAS: EtapaOportunidad[] = [
   'Clasificación','Oportunidad','Ingeniería','Desarrollo','Costos y Presupuestos',
-  'Revisión Vendedor','Negociación',
+  'Ventas','Negociación',
 ]
 
 const TIPO_COLOR: Record<TipoVenta, string> = {

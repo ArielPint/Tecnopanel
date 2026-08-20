@@ -16,7 +16,7 @@ const MODULO_RUTA: Record<string, string> = {
   'Desarrollo': '/crm/desarrollo',
   'Costos y Presupuestos': '/crm/cubicacion',
   'Negociación': '/crm/negociacion',
-  'Revisión Vendedor': '/crm/revision-vendedor',
+  'Ventas': '/crm/revision-vendedor',
   Clientes: '/crm/clientes',
   Usuarios: '/crm/usuarios',
 }
@@ -29,14 +29,14 @@ const MODULO_ICON: Record<string, React.ReactNode> = {
   'Desarrollo': <Hammer size={16} />,
   'Costos y Presupuestos': <Ruler size={16} />,
   'Negociación': <Landmark size={16} />,
-  'Revisión Vendedor': <ClipboardCheck size={16} />,
+  'Ventas': <ClipboardCheck size={16} />,
   Clientes:     <Building2 size={16} />,
   Usuarios:     <Users size={16} />,
 }
 
 const GRUPOS = [
   { label: 'Principal', modulos: ['Dashboard', 'Ganadas y Perdidas', 'Oportunidades'] },
-  { label: 'Módulos',   modulos: ['Ingeniería', 'Desarrollo', 'Costos y Presupuestos', 'Revisión Vendedor', 'Negociación'] },
+  { label: 'Módulos',   modulos: ['Ingeniería', 'Desarrollo', 'Costos y Presupuestos', 'Ventas', 'Negociación'] },
   { label: 'Sistema',   modulos: ['Clientes', 'Usuarios'] },
 ]
 

@@ -17,7 +17,7 @@ const ETAPA_DOT: Record<string, string> = {
   'Ingeniería': '#3b82f6',
   'Desarrollo': '#8b5cf6',
   'Costos y Presupuestos': '#f97316',
-  'Revisión Vendedor': '#f59e0b',
+  'Ventas': '#f59e0b',
   'Negociación': '#ef4444',
 }
 

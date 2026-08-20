@@ -6,7 +6,7 @@ import type { Oportunidad, OportunidadHistorialEtapa } from '@/modules/crm/types
 
 const ETAPAS = [
   'Clasificación','Oportunidad','Ingeniería','Desarrollo','Costos y Presupuestos',
-  'Revisión Vendedor','Negociación',
+  'Ventas','Negociación',
 ]
 
 const ETAPA_COLORS: Record<string, string> = {
@@ -15,7 +15,7 @@ const ETAPA_COLORS: Record<string, string> = {
   'Ingeniería':             '#3b82f6',
   'Desarrollo':             '#8b5cf6',
   'Costos y Presupuestos':  '#f97316',
-  'Revisión Vendedor':      '#f59e0b',
+  'Ventas':      '#f59e0b',
   'Negociación':            '#ef4444',
 }
 
