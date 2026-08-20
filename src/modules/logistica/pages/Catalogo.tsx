@@ -15,14 +15,18 @@ import FormularioProductoGD from '../components/FormularioProductoGD'
 const normCod = (c: string) => String(c || '').trim().toUpperCase()
 
 interface CatalogoProps {
-  /** Permiso adicional para habilitar edición aunque el usuario no tenga logistica:editar
-   * (ej. acceso restringido a Solicitudes con permiso propio de catálogo). */
-  puedeEditarExtra?: boolean
+  /** Permisos adicionales para habilitar acciones aunque el usuario no tenga logistica:editar
+   * (ej. acceso restringido a Solicitudes con permisos propios de catálogo, separados en
+   * crear/editar y eliminar). */
+  puedeCrearEditarExtra?: boolean
+  puedeEliminarExtra?: boolean
 }
 
-export default function Catalogo({ puedeEditarExtra }: CatalogoProps = {}) {
+export default function Catalogo({ puedeCrearEditarExtra, puedeEliminarExtra }: CatalogoProps = {}) {
   const { perfil, puedeEditar: puedeEditarLogistica } = useAuth()
-  const puedeEditar = puedeEditarLogistica || !!puedeEditarExtra
+  const puedeCrearEditar = puedeEditarLogistica || !!puedeCrearEditarExtra
+  const puedeEliminar = puedeEditarLogistica || !!puedeEliminarExtra
+  const puedeAlgo = puedeCrearEditar || puedeEliminar
   const { allProducts, customCodes, pppMap, loading, error, guardar, ocultar } = useCatalogoGD()
   const [search, setSearch] = useState('')
 
@@ -65,7 +69,7 @@ export default function Catalogo({ puedeEditarExtra }: CatalogoProps = {}) {
         <span className="ml-auto text-xs text-muted-foreground">
           {filtrados.length} producto{filtrados.length !== 1 ? 's' : ''} · {totales.conPrecio} con precio · {formatCLP(totales.monto)} comprado total
         </span>
-        {puedeEditar && (
+        {puedeCrearEditar && (
           <FormularioProductoGD
             existentes={allProducts}
             onGuardar={(input) => guardar(input, perfil?.username ?? 'admin')}
@@ -88,11 +92,11 @@ export default function Catalogo({ puedeEditarExtra }: CatalogoProps = {}) {
                 <TableHead className="text-right">Presupuesto</TableHead>
                 <TableHead className="text-right">PPP</TableHead>
                 <TableHead>Fuente</TableHead>
-                {puedeEditar && <TableHead />}
+                {puedeAlgo && <TableHead />}
               </TableRow>
             </TableHeader>
             {loading ? (
-              <TableSkeleton columns={8 + (puedeEditar ? 1 : 0)} />
+              <TableSkeleton columns={8 + (puedeAlgo ? 1 : 0)} />
             ) : (
               <TableBody>
                 {filtrados.map((p) => {
@@ -113,15 +117,19 @@ export default function Catalogo({ puedeEditarExtra }: CatalogoProps = {}) {
                       <TableCell>
                         <Badge variant={esCustom ? 'secondary' : 'outline'}>{esCustom ? 'Custom' : 'Base'}</Badge>
                       </TableCell>
-                      {puedeEditar && (
+                      {puedeAlgo && (
                         <TableCell>
                           <div className="flex gap-2">
-                            <FormularioProductoGD
-                              producto={p}
-                              existentes={allProducts}
-                              onGuardar={(input) => guardar(input, perfil?.username ?? 'admin')}
-                            />
-                            <Button variant="outline" size="sm" onClick={() => onOcultar(p)}>✕</Button>
+                            {puedeCrearEditar && (
+                              <FormularioProductoGD
+                                producto={p}
+                                existentes={allProducts}
+                                onGuardar={(input) => guardar(input, perfil?.username ?? 'admin')}
+                              />
+                            )}
+                            {puedeEliminar && (
+                              <Button variant="outline" size="sm" onClick={() => onOcultar(p)}>✕</Button>
+                            )}
                           </div>
                         </TableCell>
                       )}

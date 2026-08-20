@@ -271,14 +271,23 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                           />
                           Puede ver todas las solicitudes (no solo las propias), editarlas, enviarlas y editar la receta por grupo
                         </label>
-                        {!pa.solicitudesEdit && pa.tabs.solicitudes?.includes('catalogo') && (
-                          <label className="flex items-center gap-1.5 text-xs">
-                            <Checkbox
-                              checked={pa.solicitudesCatalogoEdit}
-                              onCheckedChange={(v) => setProyectoAcceso(proy.id, { solicitudesCatalogoEdit: !!v })}
-                            />
-                            Puede agregar, editar y ocultar productos del catálogo (sin necesitar acceso a Logística)
-                          </label>
+                        {pa.tabs.solicitudes?.includes('catalogo') && (
+                          <>
+                            <label className="flex items-center gap-1.5 text-xs">
+                              <Checkbox
+                                checked={pa.solicitudesCatalogoCrearEditar}
+                                onCheckedChange={(v) => setProyectoAcceso(proy.id, { solicitudesCatalogoCrearEditar: !!v })}
+                              />
+                              Puede agregar y editar productos del catálogo (sin necesitar acceso a Logística)
+                            </label>
+                            <label className="flex items-center gap-1.5 text-xs">
+                              <Checkbox
+                                checked={pa.solicitudesCatalogoEliminar}
+                                onCheckedChange={(v) => setProyectoAcceso(proy.id, { solicitudesCatalogoEliminar: !!v })}
+                              />
+                              Puede eliminar (ocultar) productos del catálogo (sin necesitar acceso a Logística)
+                            </label>
+                          </>
                         )}
                         {!pa.solicitudesEdit && (
                           <div className="flex flex-col gap-1.5 pt-1">

@@ -28,7 +28,7 @@ function iniciales(nombre: string | undefined) {
 }
 
 export default function SolicitudesLayout() {
-  const { perfil, puedeVer, puedeEditar, puedeEditarCatalogo, isAdmin, signOut } = useAuth()
+  const { perfil, puedeVer, puedeEditar, puedeCrearEditarCatalogo, puedeEliminarCatalogo, isAdmin, signOut } = useAuth()
   const { nombre: nombreProyecto } = useProyectoActual()
   const visibles = TABS.filter((t) => puedeVer(t.value))
   const primerTab = visibles[0]?.value ?? 'nueva'
@@ -76,7 +76,7 @@ export default function SolicitudesLayout() {
           </TabsContent>
           <TabsContent value="catalogo">
             <LogisticaAuthProvider>
-              <Catalogo puedeEditarExtra={puedeEditarCatalogo} />
+              <Catalogo puedeCrearEditarExtra={puedeCrearEditarCatalogo} puedeEliminarExtra={puedeEliminarCatalogo} />
             </LogisticaAuthProvider>
           </TabsContent>
         </Tabs>

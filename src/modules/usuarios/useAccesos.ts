@@ -17,9 +17,12 @@ export interface ProyectoAcceso {
   estadosPagoAcciones: Record<string, boolean>
   logisticaEdit: boolean
   solicitudesEdit: boolean
-  /** Puede agregar, editar y eliminar productos del catálogo desde la pestaña Solicitudes,
+  /** Puede agregar y editar productos del catálogo desde la pestaña Solicitudes,
    * sin necesitar logistica:editar (independiente de solicitudesEdit). */
-  solicitudesCatalogoEdit: boolean
+  solicitudesCatalogoCrearEditar: boolean
+  /** Puede ocultar/eliminar productos del catálogo desde la pestaña Solicitudes,
+   * sin necesitar logistica:editar (independiente de solicitudesEdit). */
+  solicitudesCatalogoEliminar: boolean
 }
 
 export function proyectoAccesoVacio(): ProyectoAcceso {
@@ -31,7 +34,8 @@ export function proyectoAccesoVacio(): ProyectoAcceso {
     estadosPagoAcciones: {},
     logisticaEdit: false,
     solicitudesEdit: false,
-    solicitudesCatalogoEdit: false,
+    solicitudesCatalogoCrearEditar: false,
+    solicitudesCatalogoEliminar: false,
   }
 }
 
@@ -74,7 +78,8 @@ async function syncAccesos(userId: string, input: AccesoInput) {
       ...Object.fromEntries(Object.entries(pa.estadosPagoAcciones).map(([accion, on]) => [`estados_pago:${accion}`, on])),
       'logistica:editar': pa.logisticaEdit,
       'solicitudes:editar': pa.solicitudesEdit,
-      'solicitudes:catalogo_editar': pa.solicitudesCatalogoEdit,
+      'solicitudes:catalogo_crear_editar': pa.solicitudesCatalogoCrearEditar,
+      'solicitudes:catalogo_eliminar': pa.solicitudesCatalogoEliminar,
     }
     return [
       syncPermisosProyecto(
@@ -158,7 +163,8 @@ export function useAccesos() {
         const estadosPagoAcciones: Record<string, boolean> = {}
         let logisticaEdit = false
         let solicitudesEdit = false
-        let solicitudesCatalogoEdit = false
+        let solicitudesCatalogoCrearEditar = false
+        let solicitudesCatalogoEliminar = false
         for (const x of misPermisos) {
           if (x.proyecto_id !== proy.id) continue
           if (x.accion === 'editar' && x.modulo_key.startsWith('financiero:')) {
@@ -173,8 +179,11 @@ export function useAccesos() {
           if (x.modulo_key === 'solicitudes' && x.accion === 'editar') {
             solicitudesEdit = true
           }
-          if (x.modulo_key === 'solicitudes' && x.accion === 'catalogo_editar') {
-            solicitudesCatalogoEdit = true
+          if (x.modulo_key === 'solicitudes' && x.accion === 'catalogo_crear_editar') {
+            solicitudesCatalogoCrearEditar = true
+          }
+          if (x.modulo_key === 'solicitudes' && x.accion === 'catalogo_eliminar') {
+            solicitudesCatalogoEliminar = true
           }
           if (x.accion === 'ver' && x.modulo_key.includes(':')) {
             const [modulo, tab] = x.modulo_key.split(':')
@@ -189,7 +198,8 @@ export function useAccesos() {
           estadosPagoAcciones,
           logisticaEdit,
           solicitudesEdit,
-          solicitudesCatalogoEdit,
+          solicitudesCatalogoCrearEditar,
+          solicitudesCatalogoEliminar,
         }
       }
 
