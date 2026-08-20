@@ -260,6 +260,7 @@ export default function Historial() {
                 <TableHead>Fecha</TableHead>
                 <TableHead>Solicitante</TableHead>
                 <TableHead>Grupo</TableHead>
+                <TableHead>Para quién</TableHead>
                 <TableHead className="text-center">Items</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Acciones</TableHead>
@@ -285,6 +286,7 @@ export default function Historial() {
                       <TableCell className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleDateString('es-CL')}</TableCell>
                       <TableCell className="text-sm">{s.nombre}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{grupoNombre(s.grupo_id)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{responsableNombre(s.responsable_id)}</TableCell>
                       <TableCell className="text-center">{s.items.length}</TableCell>
                       <TableCell>
                         <Badge variant={ESTADO_BADGE[s.estado]}>{ESTADO_LABEL[s.estado]}</Badge>
@@ -309,7 +311,7 @@ export default function Historial() {
                     </TableRow>
                     {expandido === s.id && (
                       <TableRow>
-                        <TableCell colSpan={9} className="bg-muted/30 p-0">
+                        <TableCell colSpan={10} className="bg-muted/30 p-0">
                           {editando ? (
                             <div className="space-y-2 p-3" onClick={(e) => e.stopPropagation()}>
                               <Table>

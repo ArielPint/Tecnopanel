@@ -236,6 +236,10 @@ export default function NuevaSolicitud() {
       toast.error('Selecciona para quién se solicita')
       return
     }
+    if (esRestringido && !observacion.trim()) {
+      toast.error('Las observaciones son obligatorias')
+      return
+    }
     setEnviando(true)
     try {
       const grupo = grupos.find((g) => String(g.id) === grupoId)!
@@ -454,10 +458,10 @@ export default function NuevaSolicitud() {
           </div>
         )}
         <div className="mt-4">
-          <Label htmlFor="obs-solicitud">Observaciones (opcional)</Label>
+          <Label htmlFor="obs-solicitud">Observaciones{esRestringido ? ' *' : ' (opcional)'}</Label>
           <Textarea
             id="obs-solicitud"
-            className="mt-1.5"
+            className={`mt-1.5 ${esRestringido && intentoGuardar && !observacion.trim() ? 'border-destructive' : ''}`}
             value={observacion}
             onChange={(e) => setObservacion(e.target.value)}
             placeholder="Instrucciones especiales, urgencia, destino, etc."
