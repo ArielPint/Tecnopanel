@@ -14,8 +14,15 @@ import FormularioProductoGD from '../components/FormularioProductoGD'
 
 const normCod = (c: string) => String(c || '').trim().toUpperCase()
 
-export default function Catalogo() {
-  const { perfil, puedeEditar } = useAuth()
+interface CatalogoProps {
+  /** Permiso adicional para habilitar edición aunque el usuario no tenga logistica:editar
+   * (ej. acceso restringido a Solicitudes con permiso propio de catálogo). */
+  puedeEditarExtra?: boolean
+}
+
+export default function Catalogo({ puedeEditarExtra }: CatalogoProps = {}) {
+  const { perfil, puedeEditar: puedeEditarLogistica } = useAuth()
+  const puedeEditar = puedeEditarLogistica || !!puedeEditarExtra
   const { allProducts, customCodes, pppMap, loading, error, guardar, ocultar } = useCatalogoGD()
   const [search, setSearch] = useState('')
 

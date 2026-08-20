@@ -17,10 +17,22 @@ export interface ProyectoAcceso {
   estadosPagoAcciones: Record<string, boolean>
   logisticaEdit: boolean
   solicitudesEdit: boolean
+  /** Puede agregar, editar y eliminar productos del catálogo desde la pestaña Solicitudes,
+   * sin necesitar logistica:editar (independiente de solicitudesEdit). */
+  solicitudesCatalogoEdit: boolean
 }
 
 export function proyectoAccesoVacio(): ProyectoAcceso {
-  return { rolNegocio: '', modulos: [], tabs: {}, financieroEdit: {}, estadosPagoAcciones: {}, logisticaEdit: false, solicitudesEdit: false }
+  return {
+    rolNegocio: '',
+    modulos: [],
+    tabs: {},
+    financieroEdit: {},
+    estadosPagoAcciones: {},
+    logisticaEdit: false,
+    solicitudesEdit: false,
+    solicitudesCatalogoEdit: false,
+  }
 }
 
 export interface Acceso {
@@ -62,6 +74,7 @@ async function syncAccesos(userId: string, input: AccesoInput) {
       ...Object.fromEntries(Object.entries(pa.estadosPagoAcciones).map(([accion, on]) => [`estados_pago:${accion}`, on])),
       'logistica:editar': pa.logisticaEdit,
       'solicitudes:editar': pa.solicitudesEdit,
+      'solicitudes:catalogo_editar': pa.solicitudesCatalogoEdit,
     }
     return [
       syncPermisosProyecto(
@@ -145,6 +158,7 @@ export function useAccesos() {
         const estadosPagoAcciones: Record<string, boolean> = {}
         let logisticaEdit = false
         let solicitudesEdit = false
+        let solicitudesCatalogoEdit = false
         for (const x of misPermisos) {
           if (x.proyecto_id !== proy.id) continue
           if (x.accion === 'editar' && x.modulo_key.startsWith('financiero:')) {
@@ -159,6 +173,9 @@ export function useAccesos() {
           if (x.modulo_key === 'solicitudes' && x.accion === 'editar') {
             solicitudesEdit = true
           }
+          if (x.modulo_key === 'solicitudes' && x.accion === 'catalogo_editar') {
+            solicitudesCatalogoEdit = true
+          }
           if (x.accion === 'ver' && x.modulo_key.includes(':')) {
             const [modulo, tab] = x.modulo_key.split(':')
             tabs[modulo] = [...(tabs[modulo] ?? []), tab]
@@ -172,6 +189,7 @@ export function useAccesos() {
           estadosPagoAcciones,
           logisticaEdit,
           solicitudesEdit,
+          solicitudesCatalogoEdit,
         }
       }
 
