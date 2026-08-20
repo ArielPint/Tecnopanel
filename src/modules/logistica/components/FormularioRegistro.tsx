@@ -39,11 +39,12 @@ function lineaVacia(): LineaEditable {
 }
 
 function lineaDesdeRegistro(r: RegistroCompra, allProducts: Producto[]): LineaEditable {
+  const prod = allProducts.find((p) => normCod(p.codigo) === normCod(r.codigo))
   return {
     id: r.id,
     codigo: r.codigo,
-    descripcion: r.descripcion ?? '',
-    unidad: r.unidad ?? '',
+    descripcion: r.descripcion || prod?.descripcion || '',
+    unidad: r.unidad || prod?.unidad || '',
     tipo_producto: r.tipo_producto ?? '',
     ppto: pptoDeCatalogo(r.codigo, allProducts, r.valor_ppto ?? 0),
     cantidad_sol: r.cantidad_sol ?? 0,
