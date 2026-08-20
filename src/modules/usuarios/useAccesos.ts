@@ -132,7 +132,8 @@ export function useAccesos() {
       { data: access, error: accessError },
       loginsResp,
     ] = await Promise.all([
-      supabase.from('profiles').select('id, nombre, apellido, email, activo, is_super_admin, rol, grupo_id').order('nombre'),
+      // is_root excluida: cuenta root oculta del listado, ver comentario en la columna.
+      supabase.from('profiles').select('id, nombre, apellido, email, activo, is_super_admin, rol, grupo_id').eq('is_root', false).order('nombre'),
       supabase.from('permisos').select('user_id, proyecto_id, modulo_key, accion'),
       supabase.from('project_access').select('user_id, proyecto_id, rol_negocio'),
       supabase.functions.invoke('manage-access', { body: { action: 'list_last_logins' } }),

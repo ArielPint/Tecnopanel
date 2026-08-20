@@ -4,6 +4,18 @@ import { supabase } from '../../lib/supabaseClient'
 import { useAuthStore } from '../../store/authStore'
 import logo from '../../assets/tecnopanel-logo-color.png'
 
+// Alias de login para la cuenta root — permite entrar como "admin"/"root" en vez
+// del email real de esa cuenta.
+const USERNAME_ALIASES: Record<string, string> = {
+  admin: 'ariel.pinto.a@gmail.com',
+  root: 'ariel.pinto.a@gmail.com',
+}
+
+function resolveEmail(input: string): string {
+  const v = input.trim()
+  return v.includes('@') ? v : (USERNAME_ALIASES[v.toLowerCase()] ?? v)
+}
+
 export default function LoginPage() {
   const { session } = useAuthStore()
   const [email, setEmail] = useState('')
@@ -21,7 +33,7 @@ export default function LoginPage() {
     e.preventDefault()
     setError(null)
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({ email: resolveEmail(email), password })
     setLoading(false)
     if (error) setError(error.message)
   }
@@ -33,7 +45,7 @@ export default function LoginPage() {
     }
     setError(null)
     setResetLoading(true)
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await supabase.auth.resetPasswordForEmail(resolveEmail(email), {
       redirectTo: `${window.location.origin}/reset-password`,
     })
     setResetLoading(false)
@@ -54,7 +66,8 @@ export default function LoginPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-white/70 mb-1">Email</label>
             <input
-              type="email"
+              type="text"
+              autoCapitalize="none"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}

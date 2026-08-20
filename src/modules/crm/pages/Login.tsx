@@ -3,6 +3,17 @@ import { Navigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/store/authStore'
 
+// Alias de login para la cuenta root — mismo criterio que usuarios/LoginPage.tsx.
+const USERNAME_ALIASES: Record<string, string> = {
+  admin: 'ariel.pinto.a@gmail.com',
+  root: 'ariel.pinto.a@gmail.com',
+}
+
+function resolveEmail(input: string): string {
+  const v = input.trim()
+  return v.includes('@') ? v : (USERNAME_ALIASES[v.toLowerCase()] ?? v)
+}
+
 export default function Login() {
   const { session } = useAuthStore()
   const [email, setEmail] = useState('')
@@ -18,7 +29,7 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({ email: resolveEmail(email), password })
     if (error) {
       setError('Correo o contraseña incorrectos.')
       setLoading(false)
@@ -47,7 +58,8 @@ export default function Login() {
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Correo electrónico</label>
             <input
-              type="email"
+              type="text"
+              autoCapitalize="none"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="usuario@tecnopanel.cl"

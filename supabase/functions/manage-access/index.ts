@@ -104,6 +104,8 @@ Deno.serve(async (req) => {
       const { userId } = body
       if (!userId) return json({ error: 'Falta userId' }, 400)
       if (userId === callerUser.user.id) return json({ error: 'No puedes eliminar tu propio usuario' }, 400)
+      const { data: target } = await admin.from('profiles').select('is_root').eq('id', userId).single()
+      if (target?.is_root) return json({ error: 'Esta cuenta no se puede eliminar' }, 400)
       const { error } = await admin.auth.admin.deleteUser(userId)
       if (error) return json({ error: error.message }, 400)
       return json({ ok: true })
