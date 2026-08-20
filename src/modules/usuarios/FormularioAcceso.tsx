@@ -359,24 +359,12 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Módulos con acceso</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {CRM_MODULOS.map((m) => {
-                    const on = form.crmModulos.includes(m)
-                    return (
-                      <button
-                        type="button"
-                        key={m}
-                        onClick={() => toggleCrmModulo(m, !on)}
-                        className={
-                          'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ' +
-                          (on ? 'border-primary bg-primary/10 text-primary' : 'border-muted bg-muted/40 text-muted-foreground hover:bg-muted')
-                        }
-                      >
-                        {m}
-                      </button>
-                    )
-                  })}
-                </div>
+                {CRM_MODULOS.map((m) => (
+                  <label key={m} className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={form.crmModulos.includes(m)} onCheckedChange={(v) => toggleCrmModulo(m, !!v)} />
+                    {m}
+                  </label>
+                ))}
               </div>
             </TabsContent>
           </Tabs>
