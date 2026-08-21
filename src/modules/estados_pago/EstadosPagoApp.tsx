@@ -1,10 +1,12 @@
-import { AuthProvider, useAuth } from './hooks/useAuth'
+import { AuthProvider as AuthProviderProveedores, useAuth as useAuthProveedores } from './hooks/useAuth'
+import { AuthProvider as AuthProviderIngresos, useAuth as useAuthIngresos } from '@/modules/estados_pago_ingresos/hooks/useAuth'
 import EstadosPagoLayout from './pages/EstadosPagoLayout'
 
 function EstadosPagoGate() {
-  const { loading, puedeVer } = useAuth()
+  const proveedores = useAuthProveedores()
+  const ingresos = useAuthIngresos()
 
-  if (loading) {
+  if (proveedores.loading || ingresos.loading) {
     return (
       <div className="flex min-h-svh items-center justify-center text-muted-foreground">
         Cargando…
@@ -12,7 +14,7 @@ function EstadosPagoGate() {
     )
   }
 
-  if (!puedeVer) {
+  if (!proveedores.puedeVer && !ingresos.puedeVer) {
     return (
       <div className="flex min-h-svh items-center justify-center text-center text-sm text-muted-foreground">
         No tienes acceso a Estados de Pago.
@@ -25,8 +27,10 @@ function EstadosPagoGate() {
 
 export default function EstadosPagoApp() {
   return (
-    <AuthProvider>
-      <EstadosPagoGate />
-    </AuthProvider>
+    <AuthProviderProveedores>
+      <AuthProviderIngresos>
+        <EstadosPagoGate />
+      </AuthProviderIngresos>
+    </AuthProviderProveedores>
   )
 }

@@ -15,6 +15,7 @@ export interface ProyectoAcceso {
   tabs: Record<string, string[]>
   financieroEdit: Record<string, boolean>
   estadosPagoAcciones: Record<string, boolean>
+  estadosPagoIngresosAcciones: Record<string, boolean>
   logisticaEdit: boolean
   solicitudesEdit: boolean
   /** Puede agregar y editar productos del catálogo desde la pestaña Solicitudes,
@@ -32,6 +33,7 @@ export function proyectoAccesoVacio(): ProyectoAcceso {
     tabs: {},
     financieroEdit: {},
     estadosPagoAcciones: {},
+    estadosPagoIngresosAcciones: {},
     logisticaEdit: false,
     solicitudesEdit: false,
     solicitudesCatalogoCrearEditar: false,
@@ -76,6 +78,7 @@ async function syncAccesos(userId: string, input: AccesoInput) {
   const syncsProyectos = Object.entries(input.proyectos).flatMap(([proyectoId, pa]) => {
     const accionesExtra = {
       ...Object.fromEntries(Object.entries(pa.estadosPagoAcciones).map(([accion, on]) => [`estados_pago:${accion}`, on])),
+      ...Object.fromEntries(Object.entries(pa.estadosPagoIngresosAcciones).map(([accion, on]) => [`estados_pago_ingresos:${accion}`, on])),
       'logistica:editar': pa.logisticaEdit,
       'solicitudes:editar': pa.solicitudesEdit,
       'solicitudes:catalogo:editar': pa.solicitudesCatalogoCrearEditar,
@@ -162,6 +165,7 @@ export function useAccesos() {
         const tabs: Record<string, string[]> = {}
         const financieroEdit: Record<string, boolean> = {}
         const estadosPagoAcciones: Record<string, boolean> = {}
+        const estadosPagoIngresosAcciones: Record<string, boolean> = {}
         let logisticaEdit = false
         let solicitudesEdit = false
         let solicitudesCatalogoCrearEditar = false
@@ -173,6 +177,9 @@ export function useAccesos() {
           }
           if (x.modulo_key === 'estados_pago' && x.accion !== 'ver') {
             estadosPagoAcciones[x.accion] = true
+          }
+          if (x.modulo_key === 'estados_pago_ingresos' && x.accion !== 'ver') {
+            estadosPagoIngresosAcciones[x.accion] = true
           }
           if (x.modulo_key === 'logistica' && x.accion === 'editar') {
             logisticaEdit = true
@@ -197,6 +204,7 @@ export function useAccesos() {
           tabs,
           financieroEdit,
           estadosPagoAcciones,
+          estadosPagoIngresosAcciones,
           logisticaEdit,
           solicitudesEdit,
           solicitudesCatalogoCrearEditar,

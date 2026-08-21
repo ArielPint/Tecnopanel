@@ -18,6 +18,7 @@ const MODULOS_DISPONIBLES = [
   { key: 'solicitudes', label: 'Solicitudes' },
   { key: 'financiero', label: 'Financiero' },
   { key: 'estados_pago', label: 'Estados de Pago' },
+  { key: 'estados_pago_ingresos', label: 'Estados de Pago (Ingresos)' },
   { key: 'settings', label: 'Configuración' },
 ] as const
 

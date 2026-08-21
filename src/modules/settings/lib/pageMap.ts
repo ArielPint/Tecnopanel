@@ -1,7 +1,7 @@
 // Mapa de páginas/pestañas del hub gateadas por user_profiles.permissions.pages.<id>.{access,tabs[]}.
 // Solo incluye módulos que hoy consumen ese permiso (ver useAuth.tsx de cada módulo) — crm y planta
 // quedan afuera porque usan `profiles` propia o no llegaron a esta fase (layout/producción/geovictoria).
-export type PageId = 'financiero' | 'dashboard' | 'produccion' | 'obra' | 'logistica' | 'solicitudes' | 'estados_pago'
+export type PageId = 'financiero' | 'dashboard' | 'produccion' | 'obra' | 'logistica' | 'solicitudes' | 'estados_pago' | 'estados_pago_ingresos'
 
 export interface PageDef {
   label: string
@@ -86,6 +86,14 @@ export const PAGE_MAP: Record<PageId, PageDef> = {
       subcontratos: 'Subcontratos',
     },
   },
+  estados_pago_ingresos: {
+    label: 'Estados de Pago (Ingresos)',
+    restricted: true,
+    tabs: {
+      listado: 'Listado',
+      configuracion: 'Configuración',
+    },
+  },
 }
 
 // Pestañas de Financiero con edición propia — un mismo flag habilita edición
@@ -105,6 +113,14 @@ export const ESTADOS_PAGO_ACCION_GROUPS: { key: string; label: string }[] = [
   { key: 'editar', label: 'Puede revisar y observar Estados de Pago' },
   { key: 'aprobar', label: 'Puede aprobar o rechazar Estados de Pago' },
   { key: 'eliminar', label: 'Puede administrar (eliminar/exportar) Estados de Pago' },
+]
+
+// Mismo mapeo de acciones que Estados de Pago (proveedores), aplicado a Ingresos.
+export const ESTADOS_PAGO_INGRESOS_ACCION_GROUPS: { key: string; label: string }[] = [
+  { key: 'crear', label: 'Puede crear y cargar Estados de Pago de Ingresos' },
+  { key: 'editar', label: 'Puede revisar y observar Estados de Pago de Ingresos' },
+  { key: 'aprobar', label: 'Puede aprobar o rechazar Estados de Pago de Ingresos' },
+  { key: 'eliminar', label: 'Puede administrar (eliminar/exportar) Estados de Pago de Ingresos' },
 ]
 
 export const ROLES: { value: string; label: string }[] = [

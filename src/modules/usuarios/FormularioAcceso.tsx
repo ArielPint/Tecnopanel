@@ -8,7 +8,7 @@ import { Checkbox } from '@/modules/financiero/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/modules/financiero/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/modules/financiero/components/ui/tabs'
-import { PAGE_MAP, FINANCIERO_EDIT_GROUPS, ESTADOS_PAGO_ACCION_GROUPS, ROLES } from '@/modules/settings/lib/pageMap'
+import { PAGE_MAP, FINANCIERO_EDIT_GROUPS, ESTADOS_PAGO_ACCION_GROUPS, ESTADOS_PAGO_INGRESOS_ACCION_GROUPS, ROLES } from '@/modules/settings/lib/pageMap'
 import { ROL_META, MODULOS as CRM_MODULOS } from '@/modules/crm/lib/roles'
 import { proyectoAccesoVacio, type Acceso, type AccesoInput, type ProyectoAcceso, type ProyectoObra } from './useAccesos'
 
@@ -323,6 +323,22 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                               checked={pa.estadosPagoAcciones[g.key] ?? false}
                               onCheckedChange={(v) =>
                                 setProyectoAcceso(proy.id, { estadosPagoAcciones: { ...pa.estadosPagoAcciones, [g.key]: !!v } })
+                              }
+                            />
+                            {g.label}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    {pa.modulos.includes('estados_pago_ingresos') && (
+                      <div className="flex flex-col gap-1.5 rounded-md border p-3">
+                        <Label className="text-xs text-muted-foreground">Acciones en Estados de Pago (Ingresos)</Label>
+                        {ESTADOS_PAGO_INGRESOS_ACCION_GROUPS.map((g) => (
+                          <label key={g.key} className="flex items-center gap-1.5 text-xs">
+                            <Checkbox
+                              checked={pa.estadosPagoIngresosAcciones[g.key] ?? false}
+                              onCheckedChange={(v) =>
+                                setProyectoAcceso(proy.id, { estadosPagoIngresosAcciones: { ...pa.estadosPagoIngresosAcciones, [g.key]: !!v } })
                               }
                             />
                             {g.label}
