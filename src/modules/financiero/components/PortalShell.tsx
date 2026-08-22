@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-react'
+import { LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-react'
 import isologo from '@/modules/financiero/assets/tecnopanel-isologo-color.png'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/modules/financiero/components/ui/sheet'
@@ -8,6 +8,7 @@ import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
 import { useProyectoActual } from '@/hooks/useProyectoActual'
 import { useThemeStore } from '@/store/themeStore'
+import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/lib/utils'
 
 // Sidebar del portal de proyecto — hasta ahora cada módulo (Financiero/Planta/
@@ -58,6 +59,7 @@ export default function PortalShell({ actual, children, hideAside }: { actual: M
   const [mobileOpen, setMobileOpen] = useState(false)
   const mode = useThemeStore((s) => s.mode)
   const toggleMode = useThemeStore((s) => s.toggleMode)
+  const signOut = useAuthStore((s) => s.signOut)
 
   if (acceso.loading) {
     return <div className="flex min-h-svh items-center justify-center text-muted-foreground">Cargando…</div>
@@ -135,6 +137,9 @@ export default function PortalShell({ actual, children, hideAside }: { actual: M
             )}
             <Button variant="ghost" size="icon" onClick={toggleMode} aria-label="Cambiar tema">
               {mode === 'dark' ? <Sun className="size-5" /> : <Moon className="size-5" />}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => signOut()} aria-label="Cerrar sesión" title="Cerrar sesión">
+              <LogOut className="size-5" />
             </Button>
           </div>
         </div>
