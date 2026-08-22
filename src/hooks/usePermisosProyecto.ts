@@ -39,7 +39,7 @@ export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
     let cancelado = false
     setEstado((prev) => ({ ...prev, loading: true }))
 
-    async function resolver() {
+    async function resolver(intento = 0) {
       try {
         const proyectoId = await getProyectoId(proyectoSlug)
         const [
@@ -75,6 +75,14 @@ export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
         })
       } catch (err) {
         if (cancelado) return
+        // Mismo race de token de primer login del día que useAccesoUsuario — un 401 espurio
+        // acá vacía `granted` y hace que el aterrizaje automático mande a un módulo que el
+        // usuario en realidad sí tiene, pero que la respuesta con error hizo ver como vacío.
+        if (intento === 0) {
+          await new Promise((r) => setTimeout(r, 500))
+          if (!cancelado) resolver(1)
+          return
+        }
         console.error('usePermisosProyecto: error al resolver permisos', err)
         setEstado({ loading: false, isAdmin: false, activo: false, rolNegocio: null, granted: new Set() })
       }

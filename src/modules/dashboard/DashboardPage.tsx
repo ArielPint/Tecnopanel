@@ -50,6 +50,7 @@ function PercentBar({ value }: { value: number | undefined }) {
 // asume por defecto: un usuario con solo 'solicitudes' rebotaba sin acceso (ver DashboardPlantaGate).
 const MODULOS_ATERRIZAJE: { modulo: string; ruta: string }[] = [
   { modulo: 'dashboard', ruta: 'dashboard' },
+  { modulo: 'obra', ruta: 'obra' },
   { modulo: 'produccion', ruta: 'produccion' },
   { modulo: 'logistica', ruta: 'logistica' },
   { modulo: 'solicitudes', ruta: 'solicitudes' },
@@ -88,8 +89,11 @@ export default function DashboardPage() {
       )
     }
     const aterrizaje = MODULOS_ATERRIZAJE.find((m) => permisosSoloProyecto.tieneAccion(m.modulo))
-    const ruta = aterrizaje?.ruta ?? 'dashboard'
-    return <Navigate to={`/proyectos/${soloProyectoSlug}/${ruta}`} replace />
+    // Sin ningún módulo del listado con acceso real, no hay ruta segura a la que mandarlo
+    // dentro del proyecto (asumir 'dashboard' repetía el mismo dead-end que este listado
+    // existe para evitar) — al selector de proyectos en vez de adivinar.
+    if (!aterrizaje) return <Navigate to="/proyectos" replace />
+    return <Navigate to={`/proyectos/${soloProyectoSlug}/${aterrizaje.ruta}`} replace />
   }
 
   if (acceso.escenario === 'sin_acceso') {
