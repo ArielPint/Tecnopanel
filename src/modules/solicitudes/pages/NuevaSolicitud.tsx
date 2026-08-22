@@ -256,8 +256,12 @@ export default function NuevaSolicitud() {
       })
       setIntentoGuardar(false)
       if (esRestringido) {
+        const responsableNombre = grupo.responsable_default_id
+          ? responsables.find((r) => r.id === grupo.responsable_default_id)?.nombre ?? '—'
+          : '—'
+        setLastSaved({ id: saved.id, numero: saved.numero, grupoNombre: grupo.nombre, responsableNombre, items: itemsValidos, observacion: observacion.trim() || null })
         limpiarItems()
-        toast.success(`Solicitud N° ${saved.numero} guardada.`)
+        toast.success(`✅ Solicitud N° ${saved.numero} generada`)
         if (proyectoSlug) {
           getProyectoId(proyectoSlug).then((proyectoId) => notificarNuevaSolicitud(proyectoId, saved.numero, grupo.nombre, perfil!.name))
         }
@@ -293,6 +297,20 @@ export default function NuevaSolicitud() {
     limpiarItems()
     setGrupoId('')
     setResponsableId('')
+  }
+
+  async function enviarmeCopia() {
+    if (!lastSaved || !perfil?.email) return
+    const html = buildEmailHtmlTable(lastSaved.numero, lastSaved.grupoNombre, lastSaved.responsableNombre, lastSaved.items, lastSaved.observacion)
+    const copiado = await copyHtmlTableToClipboard(html)
+    if (copiado) {
+      const subject = buildMailtoSubject(lastSaved.numero, lastSaved.grupoNombre)
+      const body = `N° Solicitud: ${lastSaved.numero}\nGrupo: ${lastSaved.grupoNombre}\n\n(Pega aquí la tabla copiada: Ctrl+V)`
+      window.location.href = `mailto:${encodeURIComponent(perfil.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+      toast.success('Tabla copiada al portapapeles. Pégala (Ctrl+V) en el cuerpo del correo.')
+    } else {
+      window.location.href = buildMailto(lastSaved.numero, lastSaved.grupoNombre, lastSaved.responsableNombre, lastSaved.items, lastSaved.observacion, perfil.email)
+    }
   }
 
   return (
@@ -359,18 +377,18 @@ export default function NuevaSolicitud() {
           <p className="mb-2 text-xs text-muted-foreground">Tu grupo aún no tiene una receta de productos cargada. Avisa a un administrador.</p>
         ) : null}
         <div className="overflow-x-auto">
-        <div className={`grid ${esRestringido ? 'grid-cols-[150px_1fr_60px_75px_75px_75px]' : 'grid-cols-[150px_1fr_60px_75px_75px_75px_36px]'} items-center gap-2 px-1 pb-1 text-[11px] font-medium text-muted-foreground min-w-[520px]`}>
+        <div className={`grid ${esRestringido ? 'grid-cols-[150px_1fr_60px_75px_75px]' : 'grid-cols-[150px_1fr_60px_75px_75px_75px_36px]'} items-center gap-2 px-1 pb-1 text-[11px] font-medium text-muted-foreground min-w-[520px]`}>
           <div>Código{esRestringido ? '' : ' (o buscar)'}</div>
           <div>Descripción</div>
           <div className="text-center">Unidad</div>
           <div className="text-center">Cant. Sol.</div>
-          <div className="text-center">Cant. Real</div>
+          {!esRestringido && <div className="text-center">Cant. Real</div>}
           <div className="text-center">Módulos</div>
           {!esRestringido && <div />}
         </div>
         <div className="space-y-2 min-w-[520px]">
           {filas.map((f) => (
-            <div key={f.id} className={`grid ${esRestringido ? 'grid-cols-[150px_1fr_60px_75px_75px_75px]' : 'grid-cols-[150px_1fr_60px_75px_75px_75px_36px]'} items-center gap-2`}>
+            <div key={f.id} className={`grid ${esRestringido ? 'grid-cols-[150px_1fr_60px_75px_75px]' : 'grid-cols-[150px_1fr_60px_75px_75px_75px_36px]'} items-center gap-2`}>
               {esRestringido ? (
                 <div className="truncate font-mono text-xs text-primary">{f.producto?.codigo}</div>
               ) : (
@@ -385,7 +403,9 @@ export default function NuevaSolicitud() {
               <div className="truncate text-sm">{f.producto?.descripcion || ''}</div>
               <div className="text-center text-xs text-muted-foreground">{f.producto?.unidad || '—'}</div>
               <Input type="number" min="0" step="1" placeholder="0" value={f.cantidadSol} onChange={(e) => onCantSolChange(f.id, e.target.value)} title="Cant. Solicitada" />
-              <Input type="number" min="0" step="1" placeholder="0" value={f.cantidadReal} onChange={(e) => onCantRealChange(f.id, e.target.value)} title="Cant. Real (va al correo)" />
+              {!esRestringido && (
+                <Input type="number" min="0" step="1" placeholder="0" value={f.cantidadReal} onChange={(e) => onCantRealChange(f.id, e.target.value)} title="Cant. Real (va al correo)" />
+              )}
               <Input
                 type="number"
                 min="0"
@@ -427,7 +447,7 @@ export default function NuevaSolicitud() {
                   <TableHead>Código</TableHead>
                   <TableHead>Descripción</TableHead>
                   <TableHead className="text-center">Cant. Sol.</TableHead>
-                  <TableHead className="text-center">Cant. Real</TableHead>
+                  {!esRestringido && <TableHead className="text-center">Cant. Real</TableHead>}
                   <TableHead>Unidad</TableHead>
                   <TableHead className="text-center">Módulos</TableHead>
                 </TableRow>
@@ -444,7 +464,7 @@ export default function NuevaSolicitud() {
                       <TableCell className="font-mono text-xs text-primary">{it.codigo}</TableCell>
                       <TableCell className="text-sm">{it.descripcion}</TableCell>
                       <TableCell className="text-center">{it.cantidad}</TableCell>
-                      <TableCell className="text-center">{it.cantidad_real}</TableCell>
+                      {!esRestringido && <TableCell className="text-center">{it.cantidad_real}</TableCell>}
                       <TableCell className="text-xs text-muted-foreground">{it.unidad}</TableCell>
                       <TableCell className={`text-center font-semibold ${alerta ? 'text-destructive' : 'text-primary'}`}>
                         {alerta ? '⚠ ' : ''}
@@ -469,11 +489,27 @@ export default function NuevaSolicitud() {
         </div>
       </div>
 
+      {esRestringido && lastSaved && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/20 px-3 py-2 text-sm">
+          <span>✅ Solicitud N° {lastSaved.numero} generada.</span>
+          <div className="flex gap-2">
+            {perfil?.email && (
+              <Button type="button" variant="outline" size="sm" onClick={enviarmeCopia}>
+                📧 Enviarme copia por correo
+              </Button>
+            )}
+            <Button type="button" variant="ghost" size="sm" onClick={() => setLastSaved(null)}>
+              ✕
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={limpiarItems}>
           🗑 Limpiar
         </Button>
-        {lastSaved ? (
+        {!esRestringido && lastSaved ? (
           <Button type="button" onClick={enviarCorreo}>
             ✉ Enviar correo
           </Button>

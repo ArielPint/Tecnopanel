@@ -39,9 +39,9 @@ function buildBodyBloque(numero: number, grupoNombre: string, responsableNombre:
   ].join('\n')
 }
 
-export function buildMailto(numero: number, grupoNombre: string, responsableNombre: string, items: ItemSolicitud[], observacion: string | null) {
+export function buildMailto(numero: number, grupoNombre: string, responsableNombre: string, items: ItemSolicitud[], observacion: string | null, to = '') {
   const body = buildBodyBloque(numero, grupoNombre, responsableNombre, items, observacion)
-  return `mailto:?subject=${encodeURIComponent(buildMailtoSubject(numero, grupoNombre))}&body=${encodeURIComponent(body)}`
+  return `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(buildMailtoSubject(numero, grupoNombre))}&body=${encodeURIComponent(body)}`
 }
 
 export interface SolicitudParaEmail {

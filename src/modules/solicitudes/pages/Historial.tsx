@@ -38,7 +38,10 @@ const ESTADO_BADGE: Record<EstadoSolicitud, 'warning' | 'success' | 'destructive
 }
 
 export default function Historial() {
-  const { perfil, isAdmin, puedeEditar } = useAuth()
+  const { perfil, isAdmin, puedeEditar, esRestringido } = useAuth()
+  // El admin de Solicitudes (ver todas/editar/enviar) solo ajusta cantidades reales
+  // al retomar una solicitud — no agrega/quita productos ni toca la cantidad solicitada.
+  const soloCantidadReal = isAdmin || puedeEditar
   const { grupos, responsables } = useGruposResponsables()
   const { solicitudes, eliminar, actualizarItems, marcarUsada } = useSolicitudes()
   const { allProducts } = useCatalogoGD()
@@ -175,6 +178,8 @@ export default function Historial() {
   const filtradas = useMemo(() => {
     let data = solicitudes
     if (!isAdmin && !puedeEditar) data = data.filter((s) => s.usuario_id === perfil?.id)
+    // Acceso restringido: recién ven su propia solicitud una vez que el admin la usó/envió.
+    if (esRestringido) data = data.filter((s) => s.estado === 'usada')
     if (grupoFiltro) data = data.filter((s) => String(s.grupo_id) === grupoFiltro)
     const q = busqueda.toLowerCase()
     if (q) {
@@ -188,7 +193,7 @@ export default function Historial() {
     if (fechaFiltro) data = data.filter((s) => s.created_at?.startsWith(fechaFiltro))
     if (estadoFiltro) data = data.filter((s) => s.estado === estadoFiltro)
     return data
-  }, [solicitudes, isAdmin, puedeEditar, perfil, grupoFiltro, busqueda, fechaFiltro, estadoFiltro])
+  }, [solicitudes, isAdmin, puedeEditar, esRestringido, perfil, grupoFiltro, busqueda, fechaFiltro, estadoFiltro])
 
   async function onEliminar(id: string) {
     if (!confirm('¿Eliminar esta solicitud? Esta acción no se puede deshacer.')) return
@@ -323,7 +328,7 @@ export default function Historial() {
                                     <TableHead className="text-center">Cant. Sol.</TableHead>
                                     <TableHead className="text-center">Cant. Real</TableHead>
                                     <TableHead>Unidad</TableHead>
-                                    <TableHead className="w-10" />
+                                    {!soloCantidadReal && <TableHead className="w-10" />}
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -333,7 +338,11 @@ export default function Historial() {
                                       <TableCell className="font-mono text-xs text-primary">{it.codigo}</TableCell>
                                       <TableCell className="text-sm">{it.descripcion}</TableCell>
                                       <TableCell className="text-center">
-                                        <Input type="number" min="0" step="1" className="h-8 w-20" value={it.cantidad} onChange={(e) => cambiarCantidad(i, 'cantidad', e.target.value)} />
+                                        {soloCantidadReal ? (
+                                          it.cantidad
+                                        ) : (
+                                          <Input type="number" min="0" step="1" className="h-8 w-20" value={it.cantidad} onChange={(e) => cambiarCantidad(i, 'cantidad', e.target.value)} />
+                                        )}
                                       </TableCell>
                                       <TableCell className="text-center">
                                         <Input
@@ -346,24 +355,28 @@ export default function Historial() {
                                         />
                                       </TableCell>
                                       <TableCell className="text-xs text-muted-foreground">{it.unidad}</TableCell>
-                                      <TableCell>
-                                        <Button variant="ghost" size="icon" onClick={() => quitarItemEdit(i)} title="Quitar">
-                                          ✕
-                                        </Button>
-                                      </TableCell>
+                                      {!soloCantidadReal && (
+                                        <TableCell>
+                                          <Button variant="ghost" size="icon" onClick={() => quitarItemEdit(i)} title="Quitar">
+                                            ✕
+                                          </Button>
+                                        </TableCell>
+                                      )}
                                     </TableRow>
                                   ))}
                                 </TableBody>
                               </Table>
-                              <div className="max-w-sm">
-                                <ProductoAutocomplete
-                                  value={nuevaBusqueda}
-                                  productos={allProducts}
-                                  placeholder="Agregar producto…"
-                                  onChange={setNuevaBusqueda}
-                                  onSelect={agregarProductoEdit}
-                                />
-                              </div>
+                              {!soloCantidadReal && (
+                                <div className="max-w-sm">
+                                  <ProductoAutocomplete
+                                    value={nuevaBusqueda}
+                                    productos={allProducts}
+                                    placeholder="Agregar producto…"
+                                    onChange={setNuevaBusqueda}
+                                    onSelect={agregarProductoEdit}
+                                  />
+                                </div>
+                              )}
                               <div className="flex justify-end gap-2 pt-1">
                                 <Button type="button" variant="outline" size="sm" onClick={cancelarEdicion}>
                                   Cancelar

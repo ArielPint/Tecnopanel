@@ -7,6 +7,7 @@ interface Perfil {
   id: string
   username: string
   name: string
+  email: string
   role: string
   active: boolean
   permissions: Record<string, unknown>
@@ -56,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, username, nombre, apellido, activo, permissions, grupo_id')
+          .select('id, username, nombre, apellido, email, activo, permissions, grupo_id')
           .eq('id', userId)
           .single()
         if (error) throw error
@@ -67,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   id: data.id,
                   username: data.username ?? '',
                   name: [data.nombre, data.apellido].filter(Boolean).join(' '),
+                  email: data.email ?? '',
                   role: '',
                   active: data.activo,
                   permissions: data.permissions,
