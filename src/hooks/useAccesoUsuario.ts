@@ -56,7 +56,7 @@ export function useAccesoUsuario(): AccesoUsuario {
     let cancelado = false
     setEstado((prev) => ({ ...prev, loading: true }))
 
-    async function resolver() {
+    async function resolver(intento = 0) {
       try {
         const [
           { data: profile, error: profileErr },
@@ -105,6 +105,14 @@ export function useAccesoUsuario(): AccesoUsuario {
         setEstado({ loading: false, escenario, isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, proyectosObra })
       } catch (err) {
         if (cancelado) return
+        // Mismo race de token que getProyectoId (ver comentario ahí): profiles/permisos no
+        // tenían retry propio, así que un 401 espurio ahí caía directo a "sin acceso" para
+        // cualquiera, admin incluido. Un retry a nivel resolver cubre las tres queries a la vez.
+        if (intento === 0) {
+          await new Promise((r) => setTimeout(r, 500))
+          if (!cancelado) resolver(1)
+          return
+        }
         console.error('useAccesoUsuario: error al resolver acceso', err)
         setEstado({ loading: false, escenario: 'sin_acceso', isAdmin: false, isSuperAdmin: false, tieneCrm: false, tieneProyecto: false, tieneGestion: false, proyectosObra: [] })
       }
