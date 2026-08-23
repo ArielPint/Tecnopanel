@@ -47,13 +47,13 @@ export default function Historial() {
 
   // Usuarios con grupo_id (acceso restringido) — "Para quién" replica su propio nombre
   // en vez del responsable, ya que ellos no eligen responsable al crear la solicitud.
+  // Vía RPC (no select directo): profiles_select_own bloquea leer el grupo_id de OTROS
+  // usuarios salvo rol admin/gerente_* — el admin de Solicitudes no siempre tiene eso.
   const [restringidos, setRestringidos] = useState<Set<string>>(new Set())
   useEffect(() => {
     supabase
-      .from('profiles')
-      .select('id')
-      .not('grupo_id', 'is', null)
-      .then(({ data }) => setRestringidos(new Set((data ?? []).map((p) => p.id as string))))
+      .rpc('usuarios_restringidos_solicitudes')
+      .then(({ data }) => setRestringidos(new Set((data as string[] | null) ?? [])))
   }, [])
   const { solicitudes, eliminar, actualizarItems, marcarUsada } = useSolicitudes()
   const { allProducts } = useCatalogoGD()
