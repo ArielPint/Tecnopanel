@@ -7,6 +7,7 @@ import { Label } from '@/modules/financiero/components/ui/label'
 import { Textarea } from '@/modules/financiero/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
+import { supabase } from '@/lib/supabaseClient'
 import { useCatalogoGD, type Producto } from '@/modules/logistica/hooks/useCatalogoGD'
 import ProductoAutocomplete from '@/modules/logistica/components/ProductoAutocomplete'
 import { useAuth } from '../hooks/useAuth'
@@ -259,12 +260,23 @@ export default function NuevaSolicitud() {
         const responsableNombre = grupo.responsable_default_id
           ? responsables.find((r) => r.id === grupo.responsable_default_id)?.nombre ?? '—'
           : '—'
-        setLastSaved({ id: saved.id, numero: saved.numero, grupoNombre: grupo.nombre, responsableNombre, items: itemsValidos, observacion: observacion.trim() || null })
+        const datosGuardados: LastSaved = {
+          id: saved.id,
+          numero: saved.numero,
+          grupoNombre: grupo.nombre,
+          responsableNombre,
+          items: itemsValidos,
+          observacion: observacion.trim() || null,
+        }
         limpiarItems()
         toast.success(`✅ Solicitud N° ${saved.numero} generada`)
         if (proyectoSlug) {
           getProyectoId(proyectoSlug).then((proyectoId) => notificarNuevaSolicitud(proyectoId, saved.numero, grupo.nombre, perfil!.name))
         }
+        // Copia automática por correo — si falla (ej. SMTP sin configurar todavía),
+        // se deja el botón manual como respaldo en vez de perder silenciosamente el aviso.
+        const enviado = await enviarCopiaAutomatica(datosGuardados)
+        if (!enviado) setLastSaved(datosGuardados)
       } else {
         setLastSaved({ id: saved.id, numero: saved.numero, grupoNombre: grupo.nombre, responsableNombre: responsable!.nombre, items: itemsValidos, observacion: observacion.trim() || null })
         toast.success(`Solicitud N° ${saved.numero} guardada. Pulsa "Enviar correo" para completarla.`)
@@ -297,6 +309,24 @@ export default function NuevaSolicitud() {
     limpiarItems()
     setGrupoId('')
     setResponsableId('')
+  }
+
+  // Envío automático (Edge Function send-email-copia, vía SMTP) — solo a la casilla del
+  // propio usuario autenticado. Si el SMTP todavía no está configurado, devuelve false y
+  // el llamador cae al botón manual (mailto) como respaldo.
+  async function enviarCopiaAutomatica(data: LastSaved): Promise<boolean> {
+    try {
+      const html = buildEmailHtmlTable(data.numero, data.grupoNombre, data.responsableNombre, data.items, data.observacion)
+      const { data: resp, error } = await supabase.functions.invoke('send-email-copia', {
+        body: { subject: buildMailtoSubject(data.numero, data.grupoNombre), html },
+      })
+      if (error || resp?.error) throw new Error(resp?.error ?? error?.message)
+      toast.success('📧 Te enviamos una copia por correo')
+      return true
+    } catch (err) {
+      console.warn('No se pudo enviar la copia automática', err)
+      return false
+    }
   }
 
   async function enviarmeCopia() {
@@ -491,7 +521,7 @@ export default function NuevaSolicitud() {
 
       {esRestringido && lastSaved && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/20 px-3 py-2 text-sm">
-          <span>✅ Solicitud N° {lastSaved.numero} generada.</span>
+          <span>⚠ No pudimos enviarte la copia automática de la solicitud N° {lastSaved.numero}.</span>
           <div className="flex gap-2">
             {perfil?.email && (
               <Button type="button" variant="outline" size="sm" onClick={enviarmeCopia}>
