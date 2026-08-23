@@ -1,6 +1,7 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { FileText } from 'lucide-react'
+import { supabase } from '@/lib/supabaseClient'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Badge } from '@/modules/financiero/components/ui/badge'
@@ -39,10 +40,21 @@ const ESTADO_BADGE: Record<EstadoSolicitud, 'warning' | 'success' | 'destructive
 
 export default function Historial() {
   const { perfil, isAdmin, puedeEditar, esRestringido } = useAuth()
-  // El admin de Solicitudes (ver todas/editar/enviar) solo ajusta cantidades reales
-  // al retomar una solicitud — no agrega/quita productos ni toca la cantidad solicitada.
+  // El admin de Solicitudes (ver todas/editar/enviar) al retomar una solicitud puede
+  // agregar productos, pero no toca la cantidad solicitada — solo la cantidad real.
   const soloCantidadReal = isAdmin || puedeEditar
   const { grupos, responsables } = useGruposResponsables()
+
+  // Usuarios con grupo_id (acceso restringido) — "Para quién" replica su propio nombre
+  // en vez del responsable, ya que ellos no eligen responsable al crear la solicitud.
+  const [restringidos, setRestringidos] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    supabase
+      .from('profiles')
+      .select('id')
+      .not('grupo_id', 'is', null)
+      .then(({ data }) => setRestringidos(new Set((data ?? []).map((p) => p.id as string))))
+  }, [])
   const { solicitudes, eliminar, actualizarItems, marcarUsada } = useSolicitudes()
   const { allProducts } = useCatalogoGD()
 
@@ -110,12 +122,14 @@ export default function Historial() {
 
   const grupoNombre = (id: number | null) => grupos.find((g) => g.id === id)?.nombre ?? '—'
   const responsableNombre = (id: number | null) => responsables.find((r) => r.id === id)?.nombre ?? '—'
+  // Acceso restringido: no eligen responsable — se muestra su propio nombre en su lugar.
+  const paraQuien = (s: Solicitud) => (restringidos.has(s.usuario_id) ? s.nombre : responsableNombre(s.responsable_id))
 
   async function onEnviar(s: Solicitud) {
     setEnviandoId(s.id)
     try {
       const grupoN = grupoNombre(s.grupo_id)
-      const respN = responsableNombre(s.responsable_id)
+      const respN = paraQuien(s)
       const html = buildEmailHtmlTable(s.numero, grupoN, respN, s.items, s.observacion)
       const copiado = await copyHtmlTableToClipboard(html)
       if (copiado) {
@@ -151,7 +165,7 @@ export default function Historial() {
       const paraEmail = items.map((s) => ({
         numero: s.numero,
         grupoNombre: grupoNombre(s.grupo_id),
-        responsableNombre: responsableNombre(s.responsable_id),
+        responsableNombre: paraQuien(s),
         items: s.items,
         observacion: s.observacion,
       }))
@@ -207,36 +221,38 @@ export default function Historial() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Input placeholder="🔍 Buscar por usuario o producto…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="h-9 max-w-xs flex-1" />
-        <Select value={grupoFiltro || '__all'} onValueChange={(v) => setGrupoFiltro(v === '__all' ? '' : v)}>
-          <SelectTrigger className="h-9 w-44">
-            <SelectValue placeholder="Todos los grupos" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all">Todos los grupos</SelectItem>
-            {grupos.map((g) => (
-              <SelectItem key={g.id} value={String(g.id)}>
-                {g.nombre}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input type="date" value={fechaFiltro} onChange={(e) => setFechaFiltro(e.target.value)} className="h-9 w-40" />
-        <Select value={estadoFiltro || '__all'} onValueChange={(v) => setEstadoFiltro(v === '__all' ? '' : v)}>
-          <SelectTrigger className="h-9 w-40">
-            <SelectValue placeholder="Todos los estados" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all">Todos los estados</SelectItem>
-            {(Object.keys(ESTADO_LABEL) as EstadoSolicitud[]).map((e) => (
-              <SelectItem key={e} value={e}>
-                {ESTADO_LABEL[e]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {!esRestringido && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input placeholder="🔍 Buscar por usuario o producto…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="h-9 max-w-xs flex-1" />
+          <Select value={grupoFiltro || '__all'} onValueChange={(v) => setGrupoFiltro(v === '__all' ? '' : v)}>
+            <SelectTrigger className="h-9 w-44">
+              <SelectValue placeholder="Todos los grupos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos los grupos</SelectItem>
+              {grupos.map((g) => (
+                <SelectItem key={g.id} value={String(g.id)}>
+                  {g.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input type="date" value={fechaFiltro} onChange={(e) => setFechaFiltro(e.target.value)} className="h-9 w-40" />
+          <Select value={estadoFiltro || '__all'} onValueChange={(v) => setEstadoFiltro(v === '__all' ? '' : v)}>
+            <SelectTrigger className="h-9 w-40">
+              <SelectValue placeholder="Todos los estados" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos los estados</SelectItem>
+              {(Object.keys(ESTADO_LABEL) as EstadoSolicitud[]).map((e) => (
+                <SelectItem key={e} value={e}>
+                  {ESTADO_LABEL[e]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {seleccion.size >= 2 && (
         <div className="flex items-center justify-between rounded-md border bg-muted/20 px-3 py-2">
@@ -291,7 +307,7 @@ export default function Historial() {
                       <TableCell className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleDateString('es-CL')}</TableCell>
                       <TableCell className="text-sm">{s.nombre}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{grupoNombre(s.grupo_id)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{responsableNombre(s.responsable_id)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{paraQuien(s)}</TableCell>
                       <TableCell className="text-center">{s.items.length}</TableCell>
                       <TableCell>
                         <Badge variant={ESTADO_BADGE[s.estado]}>{ESTADO_LABEL[s.estado]}</Badge>
@@ -319,6 +335,9 @@ export default function Historial() {
                         <TableCell colSpan={10} className="bg-muted/30 p-0">
                           {editando ? (
                             <div className="space-y-2 p-3" onClick={(e) => e.stopPropagation()}>
+                              {s.observacion && (
+                                <p className="text-xs text-muted-foreground">📝 Observación: {s.observacion}</p>
+                              )}
                               <Table>
                                 <TableHeader>
                                   <TableRow>
@@ -366,17 +385,15 @@ export default function Historial() {
                                   ))}
                                 </TableBody>
                               </Table>
-                              {!soloCantidadReal && (
-                                <div className="max-w-sm">
-                                  <ProductoAutocomplete
-                                    value={nuevaBusqueda}
-                                    productos={allProducts}
-                                    placeholder="Agregar producto…"
-                                    onChange={setNuevaBusqueda}
-                                    onSelect={agregarProductoEdit}
-                                  />
-                                </div>
-                              )}
+                              <div className="max-w-sm">
+                                <ProductoAutocomplete
+                                  value={nuevaBusqueda}
+                                  productos={allProducts}
+                                  placeholder="Agregar producto…"
+                                  onChange={setNuevaBusqueda}
+                                  onSelect={agregarProductoEdit}
+                                />
+                              </div>
                               <div className="flex justify-end gap-2 pt-1">
                                 <Button type="button" variant="outline" size="sm" onClick={cancelarEdicion}>
                                   Cancelar
