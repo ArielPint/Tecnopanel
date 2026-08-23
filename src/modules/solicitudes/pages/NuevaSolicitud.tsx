@@ -15,6 +15,7 @@ import { useGruposResponsables } from '../hooks/useGruposResponsables'
 import { useSolicitudes, type ItemSolicitud } from '../hooks/useSolicitudes'
 import { buildMailto, buildMailtoSubject, buildEmailHtmlTable, copyHtmlTableToClipboard, PROYECTO_CONST, WIP_CONST } from '../lib/email'
 import { notificarNuevaSolicitud } from '../lib/notificaciones'
+import { descargarSolicitudPdf } from '../lib/pdf'
 import { getProyectoId } from '@/lib/proyectoIds'
 
 interface FilaSolicitud {
@@ -106,6 +107,7 @@ export default function NuevaSolicitud() {
   const [observacion, setObservacion] = useState(draft?.observacion ?? '')
   const [enviando, setEnviando] = useState(false)
   const [lastSaved, setLastSaved] = useState<LastSaved | null>(null)
+  const [emailAutoFallo, setEmailAutoFallo] = useState(false)
 
   const responsablesGrupo = useMemo(() => responsables.filter((r) => String(r.grupo_id) === grupoId), [responsables, grupoId])
 
@@ -273,10 +275,11 @@ export default function NuevaSolicitud() {
         if (proyectoSlug) {
           getProyectoId(proyectoSlug).then((proyectoId) => notificarNuevaSolicitud(proyectoId, saved.numero, grupo.nombre, perfil!.name))
         }
-        // Copia automática por correo — si falla (ej. SMTP sin configurar todavía),
-        // se deja el botón manual como respaldo en vez de perder silenciosamente el aviso.
+        // Se guarda siempre (habilita el botón de descargar PDF) independiente de si el
+        // correo automático funciona — el PDF no depende de ningún proveedor externo.
+        setLastSaved(datosGuardados)
         const enviado = await enviarCopiaAutomatica(datosGuardados)
-        if (!enviado) setLastSaved(datosGuardados)
+        setEmailAutoFallo(!enviado)
       } else {
         setLastSaved({ id: saved.id, numero: saved.numero, grupoNombre: grupo.nombre, responsableNombre: responsable!.nombre, items: itemsValidos, observacion: observacion.trim() || null })
         toast.success(`Solicitud N° ${saved.numero} guardada. Pulsa "Enviar correo" para completarla.`)
@@ -521,9 +524,16 @@ export default function NuevaSolicitud() {
 
       {esRestringido && lastSaved && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/20 px-3 py-2 text-sm">
-          <span>⚠ No pudimos enviarte la copia automática de la solicitud N° {lastSaved.numero}.</span>
+          <span>
+            {emailAutoFallo
+              ? `⚠ No pudimos enviarte la copia automática de la solicitud N° ${lastSaved.numero}.`
+              : `✅ Solicitud N° ${lastSaved.numero} generada.`}
+          </span>
           <div className="flex gap-2">
-            {perfil?.email && (
+            <Button type="button" variant="outline" size="sm" onClick={() => descargarSolicitudPdf(lastSaved)}>
+              📄 Descargar PDF
+            </Button>
+            {emailAutoFallo && perfil?.email && (
               <Button type="button" variant="outline" size="sm" onClick={enviarmeCopia}>
                 📧 Enviarme copia por correo
               </Button>
