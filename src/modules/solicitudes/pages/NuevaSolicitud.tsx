@@ -7,7 +7,6 @@ import { Label } from '@/modules/financiero/components/ui/label'
 import { Textarea } from '@/modules/financiero/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
-import { supabase } from '@/lib/supabaseClient'
 import { useCatalogoGD, type Producto } from '@/modules/logistica/hooks/useCatalogoGD'
 import ProductoAutocomplete from '@/modules/logistica/components/ProductoAutocomplete'
 import { useAuth } from '../hooks/useAuth'
@@ -107,7 +106,6 @@ export default function NuevaSolicitud() {
   const [observacion, setObservacion] = useState(draft?.observacion ?? '')
   const [enviando, setEnviando] = useState(false)
   const [lastSaved, setLastSaved] = useState<LastSaved | null>(null)
-  const [emailAutoFallo, setEmailAutoFallo] = useState(false)
 
   const responsablesGrupo = useMemo(() => responsables.filter((r) => String(r.grupo_id) === grupoId), [responsables, grupoId])
 
@@ -275,11 +273,8 @@ export default function NuevaSolicitud() {
         if (proyectoSlug) {
           getProyectoId(proyectoSlug).then((proyectoId) => notificarNuevaSolicitud(proyectoId, saved.numero, grupo.nombre, perfil!.name))
         }
-        // Se guarda siempre (habilita el botón de descargar PDF) independiente de si el
-        // correo automático funciona — el PDF no depende de ningún proveedor externo.
+        // Se guarda para habilitar el botón de descargar PDF.
         setLastSaved(datosGuardados)
-        const enviado = await enviarCopiaAutomatica(datosGuardados)
-        setEmailAutoFallo(!enviado)
       } else {
         setLastSaved({ id: saved.id, numero: saved.numero, grupoNombre: grupo.nombre, responsableNombre: responsable!.nombre, items: itemsValidos, observacion: observacion.trim() || null })
         toast.success(`Solicitud N° ${saved.numero} guardada. Pulsa "Enviar correo" para completarla.`)
@@ -312,38 +307,6 @@ export default function NuevaSolicitud() {
     limpiarItems()
     setGrupoId('')
     setResponsableId('')
-  }
-
-  // Envío automático (Edge Function send-email-copia, vía SMTP) — solo a la casilla del
-  // propio usuario autenticado. Si el SMTP todavía no está configurado, devuelve false y
-  // el llamador cae al botón manual (mailto) como respaldo.
-  async function enviarCopiaAutomatica(data: LastSaved): Promise<boolean> {
-    try {
-      const html = buildEmailHtmlTable(data.numero, data.grupoNombre, data.responsableNombre, data.items, data.observacion)
-      const { data: resp, error } = await supabase.functions.invoke('send-email-copia', {
-        body: { subject: buildMailtoSubject(data.numero, data.grupoNombre), html },
-      })
-      if (error || resp?.error) throw new Error(resp?.error ?? error?.message)
-      toast.success('📧 Te enviamos una copia por correo')
-      return true
-    } catch (err) {
-      console.warn('No se pudo enviar la copia automática', err)
-      return false
-    }
-  }
-
-  async function enviarmeCopia() {
-    if (!lastSaved || !perfil?.email) return
-    const html = buildEmailHtmlTable(lastSaved.numero, lastSaved.grupoNombre, lastSaved.responsableNombre, lastSaved.items, lastSaved.observacion)
-    const copiado = await copyHtmlTableToClipboard(html)
-    if (copiado) {
-      const subject = buildMailtoSubject(lastSaved.numero, lastSaved.grupoNombre)
-      const body = `N° Solicitud: ${lastSaved.numero}\nGrupo: ${lastSaved.grupoNombre}\n\n(Pega aquí la tabla copiada: Ctrl+V)`
-      window.location.href = `mailto:${encodeURIComponent(perfil.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-      toast.success('Tabla copiada al portapapeles. Pégala (Ctrl+V) en el cuerpo del correo.')
-    } else {
-      window.location.href = buildMailto(lastSaved.numero, lastSaved.grupoNombre, lastSaved.responsableNombre, lastSaved.items, lastSaved.observacion, perfil.email)
-    }
   }
 
   return (
@@ -524,20 +487,11 @@ export default function NuevaSolicitud() {
 
       {esRestringido && lastSaved && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/20 px-3 py-2 text-sm">
-          <span>
-            {emailAutoFallo
-              ? `⚠ No pudimos enviarte la copia automática de la solicitud N° ${lastSaved.numero}.`
-              : `✅ Solicitud N° ${lastSaved.numero} generada.`}
-          </span>
+          <span>✅ Solicitud N° {lastSaved.numero} generada.</span>
           <div className="flex gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => descargarSolicitudPdf(lastSaved)}>
               📄 Descargar PDF
             </Button>
-            {emailAutoFallo && perfil?.email && (
-              <Button type="button" variant="outline" size="sm" onClick={enviarmeCopia}>
-                📧 Enviarme copia por correo
-              </Button>
-            )}
             <Button type="button" variant="ghost" size="sm" onClick={() => setLastSaved(null)}>
               ✕
             </Button>
