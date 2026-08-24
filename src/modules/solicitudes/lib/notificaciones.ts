@@ -6,15 +6,13 @@ import { supabase } from '@/lib/supabaseClient'
 // guarda una solicitud (nunca la puede enviar él mismo).
 export async function notificarNuevaSolicitud(proyectoId: string, numero: number, grupoNombre: string, nombreUsuario: string) {
   try {
-    const { data: admins, error: permError } = await supabase
-      .from('permisos')
-      .select('user_id')
-      .eq('proyecto_id', proyectoId)
-      .eq('modulo_key', 'solicitudes')
-      .eq('accion', 'editar')
+    // RLS de `permisos` solo deja ver las filas propias — el usuario restringido que
+    // dispara esto no puede leer quién tiene solicitudes:editar directamente, por eso
+    // pasa por esta función (SECURITY DEFINER) en vez de consultar la tabla.
+    const { data: admins, error: permError } = await supabase.rpc('solicitudes_admin_ids', { p_proyecto_id: proyectoId })
     if (permError || !admins?.length) return
 
-    const rows = admins.map((a) => ({
+    const rows = (admins as { user_id: string }[]).map((a) => ({
       user_id: a.user_id,
       tipo: 'solicitud_nueva',
       titulo: `Nueva solicitud N° ${numero} · ${grupoNombre}`,
