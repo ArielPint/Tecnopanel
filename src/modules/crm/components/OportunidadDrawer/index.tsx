@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { X, ChevronRight, Upload, Link2, FileText, Clock, User, Loader2, Trash2, ExternalLink, MessageCircle, Send, Plus, FileSpreadsheet } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
+import tecnopanelLogo from '@/assets/tecnopanel-logo-color.png'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
@@ -14,9 +15,9 @@ const REGIONES = Object.keys(REGIONES_COMUNAS)
 
 interface CubicacionItem { categoria: string; nombre: string; costo_unitario: number; cantidad: number; costo_total: number; tipologia?: string }
 
-const CONDICIONES_TECNICAS_DEFAULT = 'Estructura Paneles: Pino Radiata estructural, calibrado, impregnado con sales CCA, doble secado y rotulado, según norma Nch 819.\nRevestimiento: Paneles exteriores OSB 11.1\nUniones: Clavo helicoidal de disparo 31/2” alta resistencia. Clavo 2” anillado, galvanizado de disparo, para unión bastidor-tablero SP.\nDiseño: Software MITEK 2000, basado en la norma Nch 1198 y TPI 1-1995.\nMedianeros no consideran revestimiento.'
+const CONDICIONES_TECNICAS_DEFAULT = 'De acuerdo a su solicitud y en función de los antecedentes aportados, hemos desarrollado una propuesta técnico – económica para el suministro de estructuras prefabricadas.\nEn efecto, nuestra oferta consta de un KIT de estructuras prefabricadas, todas debidamente detalladas en la propuesta económica.\nLos elementos de acero prefabricados Tecno Truss S.A se producen utilizando tecnología de punta, junto con acero y uniones de la más alta calidad disponible en el mercado. Nuestra línea productiva está totalmente integrada para proporcionar la solución más eficiente para todas sus necesidades: cerchas, muros y una amplia gama de soluciones constructivas en acero.\nLos elementos complementarios necesarios para la instalación de nuestros productos serán de cargo del cliente, Tecno Truss S.A solamente suministra las estructuras prefabricadas que se detallan en la oferta económica.'
 
-const TERMINOS_CONDICIONES_DEFAULT = 'TÉRMINOS Y CONDICIONES FINANCIERAS\n\n- La cotización es válida por un período de 15 días, contados desde la fecha de entrega de la misma.\n- Periodo de suministro: máximo 120 días una vez recibida la orden de compra.\n- No se incluyen elementos complementarios no especificados expresamente en este presupuesto.\n- Cotización con definición de anteproyecto, sujeta a modificaciones técnicas y económicas según solicitud del cliente.\n- Forma de pago: a convenir.'
+const TERMINOS_CONDICIONES_DEFAULT = 'La cotización es válida por un período de 20 días, contados desde la fecha de entrega de la misma, después de este período estará sujeta a variaciones del tipo de cambio y/o cambio de condiciones de mercado.\nPresupuesto en base a Ingeniería Tecno Truss.\nDentro de las partidas de cerchas prefabricadas Tecno Truss S.A no ha incluido ningún tipo de elementos complementarios tales como costaneras, arriostamientos, cruces de San Andres, limatesas, cadenetas, conectores hurrican, tornillos, clavos, empalmes de piezas, vigas, canes falsos, tapacanes, fijaciones, anclajes y cualquier otro elemento que no este expresamente especificado en este presupuesto.\nCotización con definición de anteproyecto. Sujeta a modificaciones técnicas y económicas según solicitud de cliente y modificación de antecedentes.\nTecno Truss S.A respalda los diseños de sus estructuras a través de sus propios ingenieros, si el cliente requiere aprobar las estructuras presupuestadas por sus propios ingenieros y/o técnicos deberá cerciorarse de que la propuesta técnica este debidamente aprobada antes del inicio del suministro.\nTecno Truss S.A. utiliza en sus estructuras Acero Estructural Galvanizado G340 Z275, perfil Omega de 40x51x0,85 en cerchas y perfil C de 90x38x0,85 o de 63x38x0,85 en Muros y Frontones.\nForma de pago: Factura a 30 días.'
 
 // Calcula el resumen de costos desde la hoja "ANALISIS" (agrupa por Nombre Estructura,
 // costo_total = suma(Cantidad Total * PPTO) del grupo, costo_unitario = costo_total / Cantidad Estructura).
@@ -163,15 +164,6 @@ function drawSeccionTipologia(doc: jsPDF, y: number, cliente: string, tituloCabe
   return { y: y + 9, total }
 }
 
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
-}
-
 const ETAPAS_ORDER = [
   'Clasificación','Ingeniería','Desarrollo','Costos y Presupuestos',
   'Ventas','Negociación',
@@ -287,11 +279,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       .then(({ data }) => setLineas((data as OportunidadTipologia[]) ?? []))
   }, [oportunidad.id])
 
+  const tieneTipologias = opp.tipo_venta === 'VIT' || opp.tipo_venta === 'Proyecto' || opp.tipo_venta === 'Kit'
   function agregarLinea() {
     setLineas(ls => [...ls, { id: 'tmp-' + Date.now(), oportunidad_id: opp.id, tipologia: '', precio_uf: 0, cantidad_casas: 0, created_at: '' }])
   }
   useEffect(() => {
-    if ((opp.tipo_venta === 'VIT' || opp.tipo_venta === 'Proyecto' || opp.tipo_venta === 'Kit') && lineas.length === 0) agregarLinea()
+    if (tieneTipologias && lineas.length === 0) agregarLinea()
   }, [opp.tipo_venta])
   function actualizarLinea(idx: number, cambios: Partial<OportunidadTipologia>) {
     setLineas(ls => ls.map((l, i) => i === idx ? { ...l, ...cambios } : l))
@@ -308,6 +301,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       .map(l => ({ oportunidad_id: opp.id, tipologia: l.tipologia, precio_uf: precioLinea(l.tipologia), cantidad_casas: l.cantidad_casas }))
     if (filas.length) await supabase.from('oportunidad_tipologias').insert(filas)
   }
+  // "Cantidad de tipos de casas" se deriva de las líneas cargadas — evita mostrar el campo manual duplicado.
+  useEffect(() => {
+    if (!tieneTipologias) return
+    const n = lineas.filter(l => l.tipologia && l.tipologia.trim()).length
+    if (opp.cantidad_tipos_casas !== n) setOpp(o => ({ ...o, cantidad_tipos_casas: n }))
+  }, [lineas, tieneTipologias])
 
   useEffect(() => {
     if (tab !== 'chat') return
@@ -408,23 +407,41 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     const fecha = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')
 
     const doc = new jsPDF()
-    try {
-      const logoBlob = await fetch('/logo-horizontal.png').then(r => r.blob())
-      const logoDataUrl = await blobToDataUrl(logoBlob)
-      doc.addImage(logoDataUrl, 'PNG', 15, 10, 55, 18)
-    } catch { /* logo opcional, PDF sigue sin el */ }
-    doc.setDrawColor(237, 50, 36); doc.setLineWidth(1); doc.line(15, 32, 195, 32)
+    doc.addImage(tecnopanelLogo, 'PNG', 15, 12, 32, 23)
+    doc.setDrawColor(237, 50, 36); doc.setLineWidth(1); doc.line(15, 42, 195, 42)
 
-    doc.setFontSize(10)
-    doc.text(`Santiago, ${new Date().toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}`, 130, 42)
-    doc.setFont('helvetica', 'bold')
-    doc.text(clienteNombre.toUpperCase(), 15, 55)
-    doc.setFont('helvetica', 'normal')
-    doc.text(`REF: PRESUPUESTO ${String(proyecto).toUpperCase()}`, 15, 65)
-    doc.text(doc.splitTextToSize(costosData['condiciones_tecnicas'] || CONDICIONES_TECNICAS_DEFAULT, 180), 15, 78)
+    const refPresupuesto = costosData['ref_presupuesto'] || String(proyecto)
+    const obra = costosData['obra']
+    const destinatario = obra ? `${clienteNombre.toUpperCase()}, OBRA ${obra.toUpperCase()}` : clienteNombre.toUpperCase()
+
+    doc.setFont('helvetica', 'italic'); doc.setFontSize(10)
+    doc.text(`Santiago, ${new Date().toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}`, 195, 55, { align: 'right' })
+
+    let y = 70
+    doc.text('Señores', 15, y); y += 11
+    doc.setFont('helvetica', 'bolditalic')
+    doc.text(destinatario, 15, y); y += 6
+    doc.text('Presente', 15, y); doc.line(15, y + 0.8, 15 + doc.getTextWidth('Presente'), y + 0.8); y += 11
+
+    doc.setFont('helvetica', 'italic')
+    const refLines = doc.splitTextToSize(refPresupuesto.toUpperCase(), 155)
+    doc.text('Ref.: PRESUPUESTO', 15, y)
+    doc.setFont('helvetica', 'bolditalic')
+    doc.text(refLines, 55, y)
+    refLines.forEach((_: string, i: number) => doc.line(55, y + i * 5.5 + 0.8, 55 + doc.getTextWidth(refLines[i]), y + i * 5.5 + 0.8))
+    y += refLines.length * 5.5 + 11
+
+    doc.setFont('helvetica', 'italic')
+    doc.text('Estimado Señor:', 15, y); y += 11
+
+    for (const parrafo of (costosData['condiciones_tecnicas'] || CONDICIONES_TECNICAS_DEFAULT).split('\n')) {
+      const lineas = doc.splitTextToSize(parrafo, 180)
+      doc.text(lineas, 15, y)
+      y += lineas.length * 5.2 + 2.5
+    }
 
     doc.addPage()
-    let y = 20
+    y = 20
 
     // Agrupa items por tipología (orden = orden en que están cargadas las tipologías de la oportunidad),
     // y dentro de cada tipología por bloque (categoria), preservando el orden de aparición.
@@ -468,8 +485,26 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     doc.setTextColor(0, 0, 0); doc.setFont('helvetica', 'normal')
 
     doc.addPage()
+    doc.setFont('helvetica', 'bolditalic'); doc.setFontSize(10)
+    doc.text('TÉRMINOS Y CONDICIONES FINANCIERAS', 15, 20)
+    y = 32
     doc.setFontSize(9)
-    doc.text(doc.splitTextToSize(TERMINOS_CONDICIONES_DEFAULT, 180), 15, 20)
+    for (const bullet of (costosData['terminos_condiciones'] || TERMINOS_CONDICIONES_DEFAULT).split('\n')) {
+      doc.setFont('helvetica', 'bolditalic')
+      doc.text('-', 15, y)
+      doc.setFont('helvetica', 'italic')
+      const lineas = doc.splitTextToSize(bullet, 172)
+      doc.text(lineas, 20, y)
+      y += lineas.length * 5 + 3
+    }
+    y += 12
+    doc.setFont('helvetica', 'italic')
+    doc.text('Agradeciendo su interés por contar con nuestro sistema, se despide atentamente', 15, y)
+    y += 20
+    doc.setFont('helvetica', 'bolditalic')
+    doc.text(`${profile?.nombre ?? ''} ${profile?.apellido ?? ''}`.trim() || 'Equipo Comercial', 25, y)
+    doc.setFont('helvetica', 'italic')
+    doc.text('Tecno Truss S.A.', 25, y + 10)
 
     const blob = doc.output('blob')
     const path = opp.id + '/presupuesto-' + Date.now() + '.pdf'
@@ -584,7 +619,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       nombre_comite_vivienda: opp.nombre_comite_vivienda, nombre_constructora: opp.nombre_constructora,
       zona_termica: opp.zona_termica, valor_uf: opp.valor_uf,
     }).eq('id', opp.id)
-    if (opp.tipo_venta === 'VIT' || opp.tipo_venta === 'Proyecto' || opp.tipo_venta === 'Kit') await guardarLineas()
+    if (tieneTipologias) await guardarLineas()
     setSaving(false)
     if (handleSupabaseError(error, 'OportunidadDrawer.saveGeneral')) return
     onUpdate()
@@ -937,8 +972,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
 
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-2">Presupuesto para el cliente</p>
         {field('monto_neto_cliente', 'Monto neto cliente (CLP)', 'number', '0')}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {field('obra', 'Obra (opcional, ej. LLACOLEN r4)')}
+          {field('ref_presupuesto', 'Ref. del presupuesto (para el PDF)', 'text', 'ej. Paneles de 90CA085...')}
+        </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Condiciones técnicas (para el PDF)</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Carta de presentación (para el PDF)</label>
           <textarea value={etapaData['condiciones_tecnicas'] ?? CONDICIONES_TECNICAS_DEFAULT}
             onChange={ev => setEtapaData(d => ({ ...d, condiciones_tecnicas: ev.target.value }))} rows={5}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" />
@@ -1180,7 +1219,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                 </div>
               )}
 
-              {(opp.tipo_venta === 'VIT' || opp.tipo_venta === 'Proyecto' || opp.tipo_venta === 'Kit') && (
+              {tieneTipologias && (
                 <div className="space-y-3 bg-gray-50 rounded-lg p-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1.5">Tipos de casa</label>
@@ -1232,11 +1271,13 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                   </select></div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className={tieneTipologias ? '' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de casas</label>
                   <input type="number" min="0" value={opp.cantidad_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de tipos de casas</label>
-                  <input type="number" min="0" value={opp.cantidad_tipos_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_tipos_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                {!tieneTipologias && (
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de tipos de casas</label>
+                    <input type="number" min="0" value={opp.cantidad_tipos_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_tipos_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                )}
               </div>
 
               {opp.tipo_venta !== 'VIT' && (
