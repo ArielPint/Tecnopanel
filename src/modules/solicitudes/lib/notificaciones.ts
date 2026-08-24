@@ -1,9 +1,8 @@
 import { supabase } from '@/lib/supabaseClient'
 
-// Misma tabla `notifications` que usa la campanita del CRM (id, user_id, tipo,
-// titulo, mensaje, leida, created_at) — acá se reusa para avisar a los usuarios
-// con permiso solicitudes:editar de esa obra cuando un usuario restringido
-// guarda una solicitud (nunca la puede enviar él mismo).
+// Tabla propia `solicitudes_notificaciones` (independiente de `notifications`,
+// la del CRM) — avisa a los usuarios con permiso solicitudes:editar de esa obra
+// cuando un usuario restringido guarda una solicitud (nunca la puede enviar él mismo).
 export async function notificarNuevaSolicitud(proyectoId: string, numero: number, grupoNombre: string, nombreUsuario: string) {
   try {
     // RLS de `permisos` solo deja ver las filas propias — el usuario restringido que
@@ -18,7 +17,7 @@ export async function notificarNuevaSolicitud(proyectoId: string, numero: number
       titulo: `Nueva solicitud N° ${numero} · ${grupoNombre}`,
       mensaje: `${nombreUsuario} guardó una solicitud pendiente de envío.`,
     }))
-    const { error } = await supabase.from('notifications').insert(rows)
+    const { error } = await supabase.from('solicitudes_notificaciones').insert(rows)
     if (error) console.warn('No se pudo crear la notificación de solicitud', error.message)
   } catch (err) {
     console.warn('No se pudo crear la notificación de solicitud', err)

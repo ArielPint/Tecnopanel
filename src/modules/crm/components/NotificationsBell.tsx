@@ -43,6 +43,7 @@ export default function NotificationsBell() {
     const { data, error } = await supabase
       .from('notifications')
       .select('id,tipo,titulo,mensaje,leida,created_at')
+      .eq('user_id', profile.id)
       .order('created_at', { ascending: false })
       .limit(20)
     handleSupabaseError(error, 'NotificationsBell.load')
@@ -61,7 +62,7 @@ export default function NotificationsBell() {
 
   async function markAllRead() {
     if (!profile?.id) return
-    const { error } = await supabase.from('notifications').update({ leida: true }).eq('leida', false)
+    const { error } = await supabase.from('notifications').update({ leida: true }).eq('user_id', profile.id).eq('leida', false)
     if (handleSupabaseError(error, 'NotificationsBell.markAllRead')) return
     setNotifs(n => n.map(x => ({ ...x, leida: true })))
   }
