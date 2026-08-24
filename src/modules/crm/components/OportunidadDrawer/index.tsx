@@ -12,38 +12,155 @@ import { FAMILIA_PRODUCTOS_OPCIONES, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_
 
 const REGIONES = Object.keys(REGIONES_COMUNAS)
 
-interface CubicacionItem { categoria: string; nombre: string; costo_unitario: number; cantidad: number; costo_total: number }
+interface CubicacionItem { categoria: string; nombre: string; costo_unitario: number; cantidad: number; costo_total: number; tipologia?: string }
 
 const CONDICIONES_TECNICAS_DEFAULT = 'Estructura Paneles: Pino Radiata estructural, calibrado, impregnado con sales CCA, doble secado y rotulado, según norma Nch 819.\nRevestimiento: Paneles exteriores OSB 11.1\nUniones: Clavo helicoidal de disparo 31/2” alta resistencia. Clavo 2” anillado, galvanizado de disparo, para unión bastidor-tablero SP.\nDiseño: Software MITEK 2000, basado en la norma Nch 1198 y TPI 1-1995.\nMedianeros no consideran revestimiento.'
 
 const TERMINOS_CONDICIONES_DEFAULT = 'TÉRMINOS Y CONDICIONES FINANCIERAS\n\n- La cotización es válida por un período de 15 días, contados desde la fecha de entrega de la misma.\n- Periodo de suministro: máximo 120 días una vez recibida la orden de compra.\n- No se incluyen elementos complementarios no especificados expresamente en este presupuesto.\n- Cotización con definición de anteproyecto, sujeta a modificaciones técnicas y económicas según solicitud del cliente.\n- Forma de pago: a convenir.'
 
-function parseCostoExcel(ws: XLSX.WorkSheet): { cliente: string | null; proyecto: string | null; items: CubicacionItem[] } {
-  const items: CubicacionItem[] = []
-  let currentTitle = ''
+// Calcula el resumen de costos desde la hoja "ANALISIS" (agrupa por Nombre Estructura,
+// costo_total = suma(Cantidad Total * PPTO) del grupo, costo_unitario = costo_total / Cantidad Estructura).
+function parseAnalisisExcel(ws: XLSX.WorkSheet, tipologiaLabel: string): { items: CubicacionItem[]; viviendasDetectadas: string[] } {
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1')
   const cell = (r: number, c: number) => ws[XLSX.utils.encode_cell({ r, c })]?.v
-  const cliente = typeof cell(1, 1) === 'string' ? String(cell(1, 1)) : null
-  const proyecto = typeof cell(1, 2) === 'string' ? String(cell(1, 2)) : null
-
-  for (let r = range.s.r; r <= range.e.r; r++) {
-    const b = cell(r, 1)
-    const c = cell(r, 2)
-    const d = cell(r, 3)
-    const e = cell(r, 4)
-    if (typeof b !== 'string' || !b.trim()) continue
-    const bLower = b.trim().toLowerCase()
-    if (bLower.startsWith('descrip')) {
-      const prevB = cell(r - 1, 1)
-      currentTitle = typeof prevB === 'string' && prevB.trim() ? prevB.trim() : `Bloque ${items.length + 1}`
-      continue
-    }
-    if (bLower.startsWith('total')) continue
-    if (typeof c === 'number' && typeof e === 'number') {
-      items.push({ categoria: currentTitle || 'General', nombre: b.trim(), costo_unitario: c, cantidad: typeof d === 'number' ? d : 1, costo_total: e })
-    }
+  const headerRow = range.s.r
+  const headers: Record<string, number> = {}
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const h = cell(headerRow, c)
+    if (typeof h === 'string' && h.trim()) headers[h.trim().toLowerCase()] = c
   }
-  return { cliente, proyecto, items }
+  const cVivienda = headers['vivienda']
+  const cEstructura = headers['estructura']
+  const cNombreEstructura = headers['nombre estructura']
+  const cCantidadEstructura = headers['cantidad estructura']
+  const cCantidadTotal = headers['cantidad total']
+  const cPpto = headers['ppto']
+  if ([cVivienda, cEstructura, cNombreEstructura, cCantidadEstructura, cCantidadTotal, cPpto].some(c => c == null)) {
+    return { items: [], viviendasDetectadas: [] }
+  }
+
+  type Fila = { vivienda: string; estructura: string; nombreEstructura: string; cantidadEstructura: number; cantidadTotal: number; ppto: number }
+  const filas: Fila[] = []
+  const viviendasSet = new Set<string>()
+  for (let r = headerRow + 1; r <= range.e.r; r++) {
+    const vivienda = cell(r, cVivienda)
+    const nombreEstructura = cell(r, cNombreEstructura)
+    if (typeof vivienda !== 'string' || !vivienda.trim() || typeof nombreEstructura !== 'string' || !nombreEstructura.trim()) continue
+    viviendasSet.add(vivienda.trim())
+    const cantidadTotal = cell(r, cCantidadTotal)
+    const ppto = cell(r, cPpto)
+    if (typeof cantidadTotal !== 'number' || typeof ppto !== 'number') continue
+    const estructura = cell(r, cEstructura)
+    const cantidadEstructura = cell(r, cCantidadEstructura)
+    filas.push({
+      vivienda: vivienda.trim(),
+      estructura: typeof estructura === 'string' ? estructura.trim() : '',
+      nombreEstructura: nombreEstructura.trim(),
+      cantidadEstructura: typeof cantidadEstructura === 'number' && cantidadEstructura > 0 ? cantidadEstructura : 1,
+      cantidadTotal, ppto,
+    })
+  }
+
+  const viviendasDetectadas = [...viviendasSet]
+  let filtradas = filas
+  if (viviendasDetectadas.length > 1) {
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const target = norm(tipologiaLabel)
+    const match = filas.filter(f => norm(f.vivienda).includes(target) || target.includes(norm(f.vivienda)))
+    if (match.length) filtradas = match
+  }
+
+  const orden: string[] = []
+  const grupos = new Map<string, Fila[]>()
+  for (const f of filtradas) {
+    if (!grupos.has(f.nombreEstructura)) { grupos.set(f.nombreEstructura, []); orden.push(f.nombreEstructura) }
+    grupos.get(f.nombreEstructura)!.push(f)
+  }
+  const items: CubicacionItem[] = orden.map(nombre => {
+    const grupo = grupos.get(nombre)!
+    const costo_total = grupo.reduce((s, f) => s + f.cantidadTotal * f.ppto, 0)
+    const cantidad = grupo[0].cantidadEstructura
+    return { categoria: grupo[0].estructura || 'General', nombre, costo_unitario: cantidad ? costo_total / cantidad : costo_total, cantidad, costo_total }
+  })
+  return { items, viviendasDetectadas }
+}
+
+function money(n: number) { return formatCLP(Math.round(n)) }
+
+// Dibuja una tabla de costos (titulo + encabezado + items + subtotal) tipo la del presupuesto de referencia.
+function drawBloqueCostos(doc: jsPDF, x: number, y: number, w: number, titulo: string, items: CubicacionItem[], factor: number): { y: number; subtotal: number } {
+  const rowH = 5.5
+  const colDesc = x + 2
+  const colUnit = x + w * 0.58
+  const colCant = x + w * 0.74
+  const colTotal = x + w - 2
+  doc.setDrawColor(190); doc.setLineWidth(0.2)
+
+  doc.setFillColor(243, 243, 243); doc.rect(x, y, w, rowH, 'FD')
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
+  doc.text(titulo, x + w / 2, y + rowH - 1.7, { align: 'center' })
+  y += rowH
+
+  doc.rect(x, y, w, rowH, 'S')
+  doc.text('Descripción', colDesc, y + rowH - 1.7)
+  doc.text('Costo unitario', colUnit, y + rowH - 1.7, { align: 'right' })
+  doc.text('Cantidad', colCant, y + rowH - 1.7, { align: 'center' })
+  doc.text('Costo total', colTotal, y + rowH - 1.7, { align: 'right' })
+  y += rowH
+
+  doc.setFont('helvetica', 'normal')
+  let subtotal = 0
+  for (const it of items) {
+    if (y > 280) { doc.addPage(); y = 20 }
+    const total = it.costo_total * factor
+    subtotal += total
+    doc.rect(x, y, w, rowH, 'S')
+    doc.text(it.nombre, colDesc, y + rowH - 1.7)
+    doc.text(money(it.costo_unitario * factor), colUnit, y + rowH - 1.7, { align: 'right' })
+    doc.text(it.cantidad.toLocaleString('es-CL'), colCant, y + rowH - 1.7, { align: 'center' })
+    doc.text(money(total), colTotal, y + rowH - 1.7, { align: 'right' })
+    y += rowH
+  }
+
+  const tituloUpper = titulo.toUpperCase()
+  const label = tituloUpper.includes('PANEL') ? 'TOTAL PANELES SIP' : tituloUpper.includes('CERCHA') ? 'TOTAL CERCHAS' : `TOTAL ${titulo}`
+  doc.setFillColor(230, 230, 230); doc.rect(x, y, w, rowH, 'FD')
+  doc.setFont('helvetica', 'bold')
+  doc.text(label, x + w * 0.37, y + rowH - 1.7, { align: 'center' })
+  doc.text(money(subtotal), colTotal, y + rowH - 1.7, { align: 'right' })
+  doc.setFont('helvetica', 'normal')
+  return { y: y + rowH + 3, subtotal }
+}
+
+// Dibuja la sección completa de una tipología: barra de cabecera (cliente | tipología-proyecto | fecha) + sus bloques.
+function drawSeccionTipologia(doc: jsPDF, y: number, cliente: string, tituloCabecera: string, fecha: string, grupos: [string, CubicacionItem[]][], factor: number): { y: number; total: number } {
+  const x = 15, w = 180
+  if (y > 250) { doc.addPage(); y = 20 }
+  doc.setFillColor(237, 50, 36); doc.rect(x, y, w, 7, 'F')
+  doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
+  doc.text(cliente.toUpperCase(), x + 2, y + 4.8)
+  doc.text(tituloCabecera.toUpperCase(), x + w / 2, y + 4.8, { align: 'center' })
+  doc.text(fecha, x + w - 2, y + 4.8, { align: 'right' })
+  doc.setTextColor(0, 0, 0)
+  y += 10
+
+  let total = 0
+  for (const [titulo, items] of grupos) {
+    if (y > 260) { doc.addPage(); y = 20 }
+    const r = drawBloqueCostos(doc, x, y, w, titulo, items, factor)
+    y = r.y; total += r.subtotal
+  }
+
+  if (y > 265) { doc.addPage(); y = 20 }
+  doc.setFillColor(237, 50, 36); doc.rect(x, y, w, 7, 'F')
+  doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(9)
+  doc.text('TOTAL', x + 3, y + 4.8)
+  doc.text(money(total), x + w - 3, y + 4.8, { align: 'right' })
+  doc.setTextColor(0, 0, 0); y += 7
+  doc.setFont('helvetica', 'italic'); doc.setFontSize(7)
+  doc.text('MAS IVA', x + w - 3, y + 4, { align: 'right' })
+  doc.setFont('helvetica', 'normal')
+  return { y: y + 9, total }
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -174,7 +291,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     setLineas(ls => [...ls, { id: 'tmp-' + Date.now(), oportunidad_id: opp.id, tipologia: '', precio_uf: 0, cantidad_casas: 0, created_at: '' }])
   }
   useEffect(() => {
-    if (opp.tipo_venta === 'VIT' && lineas.length === 0) agregarLinea()
+    if ((opp.tipo_venta === 'VIT' || opp.tipo_venta === 'Proyecto' || opp.tipo_venta === 'Kit') && lineas.length === 0) agregarLinea()
   }, [opp.tipo_venta])
   function actualizarLinea(idx: number, cambios: Partial<OportunidadTipologia>) {
     setLineas(ls => ls.map((l, i) => i === idx ? { ...l, ...cambios } : l))
@@ -227,27 +344,42 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     setLoading(false)
   }
 
-  async function handleCubicacionExcel(file: File) {
+  async function handleTipologiaExcel(file: File, tipologiaKey: string, tipologiaLabel: string) {
     setParsingExcel(true); setExcelError('')
     try {
       const buf = await file.arrayBuffer()
       const wb = XLSX.read(buf, { type: 'array', cellDates: true })
-      const sheetName = wb.SheetNames.includes('COSTO') ? 'COSTO' : wb.SheetNames[0]
-      const parsed = parseCostoExcel(wb.Sheets[sheetName])
-      if (parsed.items.length === 0) {
-        setExcelError('No se reconocieron ítems en la hoja "COSTO" de este Excel. Revisa el formato o ingresa los costos manualmente.')
+      const sheetName = wb.SheetNames.find(n => n.trim().toUpperCase().startsWith('ANALISIS'))
+      if (!sheetName) {
+        setExcelError('No se encontró la hoja "ANALISIS" en este Excel.')
+        setParsingExcel(false); return
+      }
+      const { items, viviendasDetectadas } = parseAnalisisExcel(wb.Sheets[sheetName], tipologiaLabel)
+      if (items.length === 0) {
+        setExcelError(`No se reconocieron ítems en la hoja "ANALISIS" para "${tipologiaLabel}".` + (viviendasDetectadas.length ? ` Viviendas en el archivo: ${viviendasDetectadas.join(', ')}.` : ''))
       } else {
-        setEtapaData(d => ({
-          ...d,
-          cubicacion_items_json: JSON.stringify(parsed.items),
-          cubicacion_cliente: parsed.cliente ?? d.cubicacion_cliente ?? '',
-          cubicacion_proyecto: parsed.proyecto ?? d.cubicacion_proyecto ?? '',
-        }))
+        const taggedItems: CubicacionItem[] = items.map(it => ({ ...it, tipologia: tipologiaKey }))
+        setEtapaData(d => {
+          let prev: CubicacionItem[] = []
+          try { prev = JSON.parse(d['cubicacion_items_json'] || '[]') } catch { prev = [] }
+          const resto = prev.filter(it => it.tipologia !== tipologiaKey)
+          return { ...d, cubicacion_items_json: JSON.stringify([...resto, ...taggedItems]) }
+        })
       }
     } catch {
-      setExcelError('No se pudo leer el archivo. Verifica que sea el Excel de cubicación (.xlsx) con hoja "COSTO".')
+      setExcelError('No se pudo leer el archivo. Verifica que sea el Excel de costeo (.xlsx) con hoja "ANALISIS".')
     }
     setParsingExcel(false)
+  }
+
+  function renombrarBloque(tipologiaVieja: string | undefined, categoriaVieja: string, nuevoTitulo: string) {
+    if (!nuevoTitulo.trim() || nuevoTitulo === categoriaVieja) return
+    setEtapaData(d => {
+      let items: CubicacionItem[] = []
+      try { items = JSON.parse(d['cubicacion_items_json'] || '[]') } catch { items = [] }
+      const actualizados = items.map(it => (it.categoria === categoriaVieja && it.tipologia === tipologiaVieja) ? { ...it, categoria: nuevoTitulo.trim() } : it)
+      return { ...d, cubicacion_items_json: JSON.stringify(actualizados) }
+    })
   }
 
   function agregarItemManual() {
@@ -269,15 +401,11 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     setGenerandoPdf(true); setPresupuestoPdfUrl('')
     const costoCerchas = Number(costosData['costo_cerchas'] || 0)
     const costoFlete = Number(costosData['costo_flete'] || 0)
-    const costoItemsTotal = items.reduce((s, i) => s + i.costo_total, 0)
-    const costoTotalInterno = costoItemsTotal + costoCerchas + costoFlete
     const montoNetoCliente = Number(costosData['monto_neto_cliente'] || 0)
-    // El margen cargado en Ventas manda sobre el "Monto neto cliente"
-    // tipeado a mano: define el factor que se aplica a cada item del presupuesto.
-    const factor = opp.margen_porcentaje != null ? 1 + opp.margen_porcentaje / 100
-      : (costoTotalInterno > 0 && montoNetoCliente > 0 ? montoNetoCliente / costoTotalInterno : 1)
+    const factor = opp.margen_porcentaje != null ? 1 + opp.margen_porcentaje / 100 : 1
     const proyecto = costosData['cubicacion_proyecto'] || opp.nombre
     const clienteNombre = (opp.cliente as { razon_social?: string } | undefined)?.razon_social || costosData['cubicacion_cliente'] || ''
+    const fecha = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')
 
     const doc = new jsPDF()
     try {
@@ -297,52 +425,46 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
 
     doc.addPage()
     let y = 20
-    doc.setFillColor(26, 26, 27); doc.rect(15, y, 180, 8, 'F')
-    doc.setTextColor(255, 255, 255); doc.setFontSize(9); doc.setFont('helvetica', 'bold')
-    doc.text(clienteNombre, 17, y + 5.5)
-    doc.text(String(proyecto), 105, y + 5.5)
-    doc.setTextColor(0, 0, 0)
-    y += 14
 
-    const grouped = new Map<string, CubicacionItem[]>()
+    // Agrupa items por tipología (orden = orden en que están cargadas las tipologías de la oportunidad),
+    // y dentro de cada tipología por bloque (categoria), preservando el orden de aparición.
+    const tipologiasOrden = lineas.filter(l => l.tipologia).map(l => l.tipologia)
+    for (const it of items) if (it.tipologia && !tipologiasOrden.includes(it.tipologia)) tipologiasOrden.push(it.tipologia)
+    const porTipologia = new Map<string, CubicacionItem[]>()
+    const sinTipologia: CubicacionItem[] = []
     for (const it of items) {
-      if (!grouped.has(it.categoria)) grouped.set(it.categoria, [])
-      grouped.get(it.categoria)!.push(it)
+      if (it.tipologia) { if (!porTipologia.has(it.tipologia)) porTipologia.set(it.tipologia, []); porTipologia.get(it.tipologia)!.push(it) }
+      else sinTipologia.push(it)
     }
+
     let totalGeneral = 0
-    for (const [categoria, group] of grouped) {
+    for (const tipologia of tipologiasOrden) {
+      const itemsTip = porTipologia.get(tipologia)
+      if (!itemsTip?.length) continue
+      const grupos = new Map<string, CubicacionItem[]>()
+      for (const it of itemsTip) { if (!grupos.has(it.categoria)) grupos.set(it.categoria, []); grupos.get(it.categoria)!.push(it) }
+      const r = drawSeccionTipologia(doc, y, clienteNombre, `${tipologia} - ${proyecto}`, fecha, [...grupos.entries()], factor)
+      y = r.y; totalGeneral += r.total
+    }
+    if (sinTipologia.length > 0) {
+      const grupos = new Map<string, CubicacionItem[]>()
+      for (const it of sinTipologia) { if (!grupos.has(it.categoria)) grupos.set(it.categoria, []); grupos.get(it.categoria)!.push(it) }
+      const r = drawSeccionTipologia(doc, y, clienteNombre, String(proyecto), fecha, [...grupos.entries()], factor)
+      y = r.y; totalGeneral += r.total
+    }
+
+    if (costoCerchas > 0 || costoFlete > 0) {
       if (y > 260) { doc.addPage(); y = 20 }
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9)
-      doc.text(categoria, 15, y); y += 6
-      doc.text('Descripción', 15, y); doc.text('Costo unitario', 100, y); doc.text('Cantidad', 145, y); doc.text('Costo total', 165, y); y += 5
-      doc.setFont('helvetica', 'normal')
-      let subtotal = 0
-      for (const it of group) {
-        if (y > 275) { doc.addPage(); y = 20 }
-        const total = it.costo_total * factor
-        subtotal += total
-        doc.text(it.nombre, 15, y)
-        doc.text(formatCLP(Math.round(it.costo_unitario * factor)), 100, y)
-        doc.text(String(it.cantidad), 145, y)
-        doc.text(formatCLP(Math.round(total)), 165, y)
-        y += 5
-      }
-      totalGeneral += subtotal
-      doc.setFont('helvetica', 'bold')
-      doc.text('Total neto', 100, y); doc.text(formatCLP(Math.round(subtotal)), 165, y)
-      doc.setFont('helvetica', 'normal')
-      y += 9
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal')
+      if (costoCerchas > 0) { doc.text('Cerchas (manual)', 17, y); doc.text(money(costoCerchas * factor), 193, y, { align: 'right' }); y += 5; totalGeneral += costoCerchas * factor }
+      if (costoFlete > 0) { doc.text('FLETE', 17, y); doc.text(money(costoFlete * factor), 193, y, { align: 'right' }); y += 5; totalGeneral += costoFlete * factor }
+      y += 3
     }
-    if (costoCerchas > 0) {
-      doc.text('Cerchas', 15, y); doc.text(formatCLP(Math.round(costoCerchas * factor)), 165, y); y += 6
-      totalGeneral += costoCerchas * factor
-    }
-    doc.text('FLETE', 15, y); doc.text(formatCLP(Math.round(costoFlete * factor)), 165, y); y += 6
-    totalGeneral += costoFlete * factor
-    doc.setFont('helvetica', 'bold')
-    doc.setFillColor(237, 50, 36); doc.rect(15, y - 4, 180, 8, 'F'); doc.setTextColor(255, 255, 255)
-    doc.text(`TOTAL ${String(proyecto).toUpperCase()} NETO`, 17, y + 1.5)
-    doc.text(formatCLP(Math.round(montoNetoCliente || totalGeneral)), 165, y + 1.5)
+    if (y > 262) { doc.addPage(); y = 20 }
+    doc.setFillColor(26, 26, 27); doc.rect(15, y, 180, 8, 'F'); doc.setTextColor(255, 255, 255)
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9)
+    doc.text(`TOTAL ${String(proyecto).toUpperCase()} NETO`, 17, y + 5.5)
+    doc.text(money(montoNetoCliente || totalGeneral), 193, y + 5.5, { align: 'right' })
     doc.setTextColor(0, 0, 0); doc.setFont('helvetica', 'normal')
 
     doc.addPage()
@@ -462,7 +584,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       nombre_comite_vivienda: opp.nombre_comite_vivienda, nombre_constructora: opp.nombre_constructora,
       zona_termica: opp.zona_termica, valor_uf: opp.valor_uf,
     }).eq('id', opp.id)
-    if (opp.tipo_venta === 'VIT') await guardarLineas()
+    if (opp.tipo_venta === 'VIT' || opp.tipo_venta === 'Proyecto' || opp.tipo_venta === 'Kit') await guardarLineas()
     setSaving(false)
     if (handleSupabaseError(error, 'OportunidadDrawer.saveGeneral')) return
     onUpdate()
@@ -732,32 +854,50 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     if (e === 'Costos y Presupuestos') {
       let cubicacionItems: CubicacionItem[] = []
       try { cubicacionItems = JSON.parse(etapaData['cubicacion_items_json'] || '[]') } catch { cubicacionItems = [] }
-      const gruposItems = new Map<string, CubicacionItem[]>()
+      const gruposItems = new Map<string, { tipologia?: string; categoria: string; items: CubicacionItem[] }>()
       for (const it of cubicacionItems) {
-        if (!gruposItems.has(it.categoria)) gruposItems.set(it.categoria, [])
-        gruposItems.get(it.categoria)!.push(it)
+        const key = `${it.tipologia ?? ''}|||${it.categoria}`
+        if (!gruposItems.has(key)) gruposItems.set(key, { tipologia: it.tipologia, categoria: it.categoria, items: [] })
+        gruposItems.get(key)!.items.push(it)
       }
       const costoCerchas = Number(etapaData['costo_cerchas'] || 0)
       const costoFlete = Number(etapaData['costo_flete'] || 0)
       const costoTotalInterno = cubicacionItems.reduce((s, i) => s + i.costo_total, 0) + costoCerchas + costoFlete
+      const lineasReq = lineas.filter(l => l.tipologia && l.tipologia.trim())
+      const tipologiasSubidas = new Set(cubicacionItems.map(it => it.tipologia).filter(Boolean))
       return (
       <div className="space-y-3">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Cubicación desde Excel</p>
-        <div>
-          <label className="flex items-center gap-2 text-xs font-medium text-gray-700 mb-1 cursor-pointer">
-            <FileSpreadsheet size={14} /> Subir Excel de cubicación (hoja "COSTO")
-          </label>
-          <input type="file" accept=".xlsx,.xls" disabled={parsingExcel}
-            onChange={ev => { const f = ev.target.files?.[0]; if (f) handleCubicacionExcel(f); ev.target.value = '' }}
-            className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-200 file:text-xs file:font-medium file:bg-gray-50 hover:file:bg-gray-100" />
-          {parsingExcel && <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Loader2 size={11} className="animate-spin" /> Leyendo Excel...</p>}
-          {excelError && <p className="text-xs text-red-600 bg-red-50 rounded-lg p-2 mt-1">{excelError}</p>}
-        </div>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Cubicación desde Excel (hoja "ANALISIS")</p>
+        {lineasReq.length === 0 ? (
+          <p className="text-xs text-gray-400 bg-gray-50 rounded-lg p-2">Esta oportunidad no tiene tipos de casa (tipologías) cargados todavía. Agrégalos primero para saber cuántos archivos subir.</p>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500">Se {lineasReq.length === 1 ? 'requiere' : 'requieren'} {lineasReq.length} {lineasReq.length === 1 ? 'archivo' : 'archivos'} (uno por tipo de casa) — subidos: {lineasReq.filter(l => tipologiasSubidas.has(l.tipologia)).length}/{lineasReq.length}</p>
+            {lineasReq.map(l => {
+              const subido = tipologiasSubidas.has(l.tipologia)
+              return (
+                <div key={l.id} className="border border-gray-200 rounded-lg p-2">
+                  <label className="flex items-center gap-2 text-xs font-medium text-gray-700 mb-1 cursor-pointer">
+                    <FileSpreadsheet size={14} /> {l.tipologia} (x{l.cantidad_casas} casas)
+                    {subido && <span className="text-green-600 font-normal">— cargado</span>}
+                  </label>
+                  <input type="file" accept=".xlsx,.xls" disabled={parsingExcel}
+                    onChange={ev => { const f = ev.target.files?.[0]; if (f) handleTipologiaExcel(f, l.tipologia, l.tipologia); ev.target.value = '' }}
+                    className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-200 file:text-xs file:font-medium file:bg-gray-50 hover:file:bg-gray-100" />
+                </div>
+              )
+            })}
+            {parsingExcel && <p className="text-xs text-gray-400 flex items-center gap-1"><Loader2 size={11} className="animate-spin" /> Leyendo Excel...</p>}
+            {excelError && <p className="text-xs text-red-600 bg-red-50 rounded-lg p-2">{excelError}</p>}
+          </div>
+        )}
         {cubicacionItems.length > 0 && (
           <div className="space-y-2 text-xs">
-            {[...gruposItems.entries()].map(([categoria, group]) => (
-              <div key={categoria} className="border border-gray-200 rounded-lg p-2">
-                <p className="font-semibold text-gray-600 mb-1">{categoria}</p>
+            {[...gruposItems.entries()].map(([key, { tipologia, categoria, items: group }]) => (
+              <div key={key} className="border border-gray-200 rounded-lg p-2">
+                {tipologia && <p className="text-[10px] font-semibold text-crm-red uppercase mb-0.5">{tipologia}</p>}
+                <input defaultValue={categoria} onBlur={ev => renombrarBloque(tipologia, categoria, ev.target.value)}
+                  className="font-semibold text-gray-600 mb-1 w-full bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-crm-red rounded px-1 -mx-1" />
                 {group.map((it, idx) => (
                   <div key={idx} className="flex justify-between text-gray-500">
                     <span className="truncate">{it.nombre}</span>
@@ -1034,16 +1174,30 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                       <option value="">Sin zona</option>
                       {ZONAS_TERMICAS.map(z => <option key={z} value={z}>{z}</option>)}
                     </select></div>
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Valor UF (CLP)</label>
+                    <input type="number" value={opp.valor_uf ?? ''} onChange={e => setOpp(o => ({...o,valor_uf:e.target.value?Number(e.target.value):null}))}
+                      placeholder="ej. 39500" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                </div>
+              )}
+
+              {(opp.tipo_venta === 'VIT' || opp.tipo_venta === 'Proyecto' || opp.tipo_venta === 'Kit') && (
+                <div className="space-y-3 bg-gray-50 rounded-lg p-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Tipologías</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Tipos de casa</label>
                     <div className="space-y-2">
                       {lineas.map((l, idx) => (
                         <div key={l.id} className="flex gap-2 items-end">
-                          <select value={l.tipologia} onChange={e => actualizarLinea(idx, { tipologia: e.target.value })}
-                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
-                            <option value="">Sin tipología</option>
-                            {tipologias.map(t => <option key={t.tipologia} value={t.tipologia}>{t.tipologia} ({t.venta_actual_uf} UF)</option>)}
-                          </select>
+                          {opp.tipo_venta === 'VIT' ? (
+                            <select value={l.tipologia} onChange={e => actualizarLinea(idx, { tipologia: e.target.value })}
+                              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+                              <option value="">Sin tipología</option>
+                              {tipologias.map(t => <option key={t.tipologia} value={t.tipologia}>{t.tipologia} ({t.venta_actual_uf} UF)</option>)}
+                            </select>
+                          ) : (
+                            <input value={l.tipologia} onChange={e => actualizarLinea(idx, { tipologia: e.target.value })}
+                              placeholder="Nombre del tipo de casa (ej. NOGAL BASE)"
+                              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                          )}
                           <input type="number" min="0" placeholder="Cantidad" value={l.cantidad_casas || ''}
                             onChange={e => actualizarLinea(idx, { cantidad_casas: e.target.value ? Number(e.target.value) : 0 })}
                             className="w-24 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
@@ -1051,16 +1205,15 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                         </div>
                       ))}
                     </div>
-                    <button type="button" onClick={agregarLinea} className="mt-1.5 text-xs font-medium text-crm-red hover:underline">+ Agregar tipología</button>
+                    <button type="button" onClick={agregarLinea} className="mt-1.5 text-xs font-medium text-crm-red hover:underline">+ Agregar tipo de casa</button>
                   </div>
-                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Valor UF (CLP)</label>
-                    <input type="number" value={opp.valor_uf ?? ''} onChange={e => setOpp(o => ({...o,valor_uf:e.target.value?Number(e.target.value):null}))}
-                      placeholder="ej. 39500" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
                   {lineas.length > 0 && (
                     <div className="bg-white rounded-lg p-3 text-xs text-gray-600 space-y-0.5 border border-gray-200">
                       <p>Total Unidades: <span className="font-semibold text-gray-800">{lineas.reduce((s,l)=>s+(l.cantidad_casas||0),0)}</span></p>
-                      <p>Total UF: <span className="font-semibold text-gray-800">{lineas.reduce((s,l)=>s+(l.cantidad_casas||0)*precioLinea(l.tipologia),0).toLocaleString('es-CL')}</span></p>
-                      <p>Total CLP: <span className="font-semibold text-gray-800">${(lineas.reduce((s,l)=>s+(l.cantidad_casas||0)*precioLinea(l.tipologia),0)*(opp.valor_uf||0)).toLocaleString('es-CL')}</span></p>
+                      {opp.tipo_venta === 'VIT' && <>
+                        <p>Total UF: <span className="font-semibold text-gray-800">{lineas.reduce((s,l)=>s+(l.cantidad_casas||0)*precioLinea(l.tipologia),0).toLocaleString('es-CL')}</span></p>
+                        <p>Total CLP: <span className="font-semibold text-gray-800">${(lineas.reduce((s,l)=>s+(l.cantidad_casas||0)*precioLinea(l.tipologia),0)*(opp.valor_uf||0)).toLocaleString('es-CL')}</span></p>
+                      </>}
                     </div>
                   )}
                 </div>

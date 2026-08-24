@@ -5,6 +5,7 @@ import {
   Building2,
   ChevronLeft,
   ClipboardList,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -14,9 +15,17 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useThemeStore } from '../store/themeStore'
+import ChangePasswordDialog from './ChangePasswordDialog'
 import GlobalSearch from './GlobalSearch'
 import { TecnopanelMark, TecnopanelWordmark } from './TecnopanelLogo'
 import { Avatar, AvatarFallback } from '@/modules/financiero/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/modules/financiero/components/ui/dropdown-menu'
 import { Sheet, SheetContent } from '@/modules/financiero/components/ui/sheet'
 import { Toaster } from '@/modules/financiero/components/ui/sonner'
 import { cn } from '@/lib/utils'
@@ -112,6 +121,7 @@ export default function Layout() {
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
 
   const initials = (user?.email ?? '?').slice(0, 2).toUpperCase()
   const pageTitle = pageTitles[location.pathname] ?? 'TecnoPanel'
@@ -193,26 +203,36 @@ export default function Layout() {
             >
               {isDark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
             </button>
-            <div className="mx-1 hidden items-center gap-2.5 rounded-full py-1 pl-1 pr-1 sm:flex">
-              <Avatar className="h-7 w-7">
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
-              <span className="max-w-[160px] truncate text-[12.5px] font-semibold">{user?.email}</span>
-            </div>
-            <button
-              onClick={() => signOut()}
-              className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-              aria-label="Cerrar sesión"
-              title="Cerrar sesión"
-            >
-              <LogOut className="h-[18px] w-[18px]" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="mx-1 flex items-center gap-2.5 rounded-full py-1 pl-1 pr-2 hover:bg-accent">
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  </Avatar>
+                  <span className="hidden max-w-[160px] truncate text-[12.5px] font-semibold sm:inline">
+                    {user?.email}
+                  </span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setChangePasswordOpen(true)}>
+                  <KeyRound className="h-4 w-4" />
+                  Cambiar contraseña
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onSelect={() => signOut()}>
+                  <LogOut className="h-4 w-4" />
+                  Cerrar sesión
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
         <main className="flex-1 bg-background p-4 md:p-6">
           <Outlet />
         </main>
       </div>
+      <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
       <Toaster />
     </div>
   )

@@ -1,8 +1,16 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun } from 'lucide-react'
+import { KeyRound, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun, User } from 'lucide-react'
 import isologo from '@/modules/financiero/assets/tecnopanel-isologo-color.png'
+import ChangePasswordDialog from '@/components/ChangePasswordDialog'
 import { Button } from '@/modules/financiero/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/modules/financiero/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/modules/financiero/components/ui/sheet'
 import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
@@ -57,6 +65,7 @@ export default function PortalShell({ actual, children, hideAside }: { actual: M
   const { nombre } = useProyectoActual()
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1')
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
   const mode = useThemeStore((s) => s.mode)
   const toggleMode = useThemeStore((s) => s.toggleMode)
   const signOut = useAuthStore((s) => s.signOut)
@@ -138,13 +147,29 @@ export default function PortalShell({ actual, children, hideAside }: { actual: M
             <Button variant="ghost" size="icon" onClick={toggleMode} aria-label="Cambiar tema">
               {mode === 'dark' ? <Sun className="size-5" /> : <Moon className="size-5" />}
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => signOut()} aria-label="Cerrar sesión" title="Cerrar sesión">
-              <LogOut className="size-5" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Cuenta" title="Cuenta">
+                  <User className="size-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setChangePasswordOpen(true)}>
+                  <KeyRound className="h-4 w-4" />
+                  Cambiar contraseña
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onSelect={() => signOut()}>
+                  <LogOut className="h-4 w-4" />
+                  Cerrar sesión
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         <div className="flex min-h-0 min-w-0 flex-1">{children}</div>
       </div>
+      <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
     </div>
   )
 }
