@@ -394,7 +394,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     const clienteNombre = (opp.cliente as { razon_social?: string } | undefined)?.razon_social || costosData['cubicacion_cliente'] || ''
     const fecha = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')
 
-    const doc = new jsPDF()
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
     doc.addImage(tecnopanelLogo, 'PNG', 15, 12, 32, 23)
     doc.setDrawColor(237, 50, 36); doc.setLineWidth(1); doc.line(15, 42, 195, 42)
 
