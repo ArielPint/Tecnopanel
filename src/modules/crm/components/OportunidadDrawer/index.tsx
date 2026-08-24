@@ -13,7 +13,7 @@ import { FAMILIA_PRODUCTOS_OPCIONES, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_
 
 const REGIONES = Object.keys(REGIONES_COMUNAS)
 
-interface CubicacionItem { categoria: string; nombre: string; costo_unitario: number; cantidad: number; costo_total: number; tipologia?: string }
+interface CubicacionItem { categoria: string; nombre: string; costo_unitario: number; cantidad: number; costo_total: number; tipologia?: string; slot?: number }
 
 const CONDICIONES_TECNICAS_DEFAULT = 'De acuerdo a su solicitud y en función de los antecedentes aportados, hemos desarrollado una propuesta técnico – económica para el suministro de estructuras prefabricadas.\nEn efecto, nuestra oferta consta de un KIT de estructuras prefabricadas, todas debidamente detalladas en la propuesta económica.\nLos elementos de acero prefabricados Tecno Truss S.A se producen utilizando tecnología de punta, junto con acero y uniones de la más alta calidad disponible en el mercado. Nuestra línea productiva está totalmente integrada para proporcionar la solución más eficiente para todas sus necesidades: cerchas, muros y una amplia gama de soluciones constructivas en acero.\nLos elementos complementarios necesarios para la instalación de nuestros productos serán de cargo del cliente, Tecno Truss S.A solamente suministra las estructuras prefabricadas que se detallan en la oferta económica.'
 
@@ -21,7 +21,7 @@ const TERMINOS_CONDICIONES_DEFAULT = 'La cotización es válida por un período 
 
 // Calcula el resumen de costos desde la hoja "ANALISIS" (agrupa por Nombre Estructura,
 // costo_total = suma(Cantidad Total * PPTO) del grupo, costo_unitario = costo_total / Cantidad Estructura).
-function parseAnalisisExcel(ws: XLSX.WorkSheet, tipologiaLabel: string): { items: CubicacionItem[]; viviendasDetectadas: string[] } {
+function parseAnalisisExcel(ws: XLSX.WorkSheet): { items: CubicacionItem[]; viviendasDetectadas: string[] } {
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1')
   const cell = (r: number, c: number) => ws[XLSX.utils.encode_cell({ r, c })]?.v
   const headerRow = range.s.r
@@ -47,10 +47,10 @@ function parseAnalisisExcel(ws: XLSX.WorkSheet, tipologiaLabel: string): { items
     const vivienda = cell(r, cVivienda)
     const nombreEstructura = cell(r, cNombreEstructura)
     if (typeof vivienda !== 'string' || !vivienda.trim() || typeof nombreEstructura !== 'string' || !nombreEstructura.trim()) continue
-    viviendasSet.add(vivienda.trim())
     const cantidadTotal = cell(r, cCantidadTotal)
     const ppto = cell(r, cPpto)
     if (typeof cantidadTotal !== 'number' || typeof ppto !== 'number') continue
+    viviendasSet.add(vivienda.trim())
     const estructura = cell(r, cEstructura)
     const cantidadEstructura = cell(r, cCantidadEstructura)
     filas.push({
@@ -63,17 +63,10 @@ function parseAnalisisExcel(ws: XLSX.WorkSheet, tipologiaLabel: string): { items
   }
 
   const viviendasDetectadas = [...viviendasSet]
-  let filtradas = filas
-  if (viviendasDetectadas.length > 1) {
-    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
-    const target = norm(tipologiaLabel)
-    const match = filas.filter(f => norm(f.vivienda).includes(target) || target.includes(norm(f.vivienda)))
-    if (match.length) filtradas = match
-  }
 
   const orden: string[] = []
   const grupos = new Map<string, Fila[]>()
-  for (const f of filtradas) {
+  for (const f of filas) {
     if (!grupos.has(f.nombreEstructura)) { grupos.set(f.nombreEstructura, []); orden.push(f.nombreEstructura) }
     grupos.get(f.nombreEstructura)!.push(f)
   }
@@ -279,7 +272,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       .then(({ data }) => setLineas((data as OportunidadTipologia[]) ?? []))
   }, [oportunidad.id])
 
-  const tieneTipologias = opp.tipo_venta === 'VIT' || opp.tipo_venta === 'Proyecto' || opp.tipo_venta === 'Kit'
+  const tieneTipologias = opp.tipo_venta === 'VIT'
   function agregarLinea() {
     setLineas(ls => [...ls, { id: 'tmp-' + Date.now(), oportunidad_id: opp.id, tipologia: '', precio_uf: 0, cantidad_casas: 0, created_at: '' }])
   }
@@ -301,12 +294,6 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       .map(l => ({ oportunidad_id: opp.id, tipologia: l.tipologia, precio_uf: precioLinea(l.tipologia), cantidad_casas: l.cantidad_casas }))
     if (filas.length) await supabase.from('oportunidad_tipologias').insert(filas)
   }
-  // "Cantidad de tipos de casas" se deriva de las líneas cargadas — evita mostrar el campo manual duplicado.
-  useEffect(() => {
-    if (!tieneTipologias) return
-    const n = lineas.filter(l => l.tipologia && l.tipologia.trim()).length
-    if (opp.cantidad_tipos_casas !== n) setOpp(o => ({ ...o, cantidad_tipos_casas: n }))
-  }, [lineas, tieneTipologias])
 
   useEffect(() => {
     if (tab !== 'chat') return
@@ -343,7 +330,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     setLoading(false)
   }
 
-  async function handleTipologiaExcel(file: File, tipologiaKey: string, tipologiaLabel: string) {
+  async function handleTipologiaExcel(file: File, slot: number) {
     setParsingExcel(true); setExcelError('')
     try {
       const buf = await file.arrayBuffer()
@@ -353,15 +340,16 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
         setExcelError('No se encontró la hoja "ANALISIS" en este Excel.')
         setParsingExcel(false); return
       }
-      const { items, viviendasDetectadas } = parseAnalisisExcel(wb.Sheets[sheetName], tipologiaLabel)
+      const { items, viviendasDetectadas } = parseAnalisisExcel(wb.Sheets[sheetName])
       if (items.length === 0) {
-        setExcelError(`No se reconocieron ítems en la hoja "ANALISIS" para "${tipologiaLabel}".` + (viviendasDetectadas.length ? ` Viviendas en el archivo: ${viviendasDetectadas.join(', ')}.` : ''))
+        setExcelError('No se reconocieron ítems en la hoja "ANALISIS" de este Excel.')
       } else {
-        const taggedItems: CubicacionItem[] = items.map(it => ({ ...it, tipologia: tipologiaKey }))
+        const tipologia = viviendasDetectadas.join(' / ') || `Tipo ${slot + 1}`
+        const taggedItems: CubicacionItem[] = items.map(it => ({ ...it, tipologia, slot }))
         setEtapaData(d => {
           let prev: CubicacionItem[] = []
           try { prev = JSON.parse(d['cubicacion_items_json'] || '[]') } catch { prev = [] }
-          const resto = prev.filter(it => it.tipologia !== tipologiaKey)
+          const resto = prev.filter(it => it.slot !== slot)
           return { ...d, cubicacion_items_json: JSON.stringify([...resto, ...taggedItems]) }
         })
       }
@@ -371,12 +359,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     setParsingExcel(false)
   }
 
-  function renombrarBloque(tipologiaVieja: string | undefined, categoriaVieja: string, nuevoTitulo: string) {
+  function renombrarBloque(slot: number | undefined, categoriaVieja: string, nuevoTitulo: string) {
     if (!nuevoTitulo.trim() || nuevoTitulo === categoriaVieja) return
     setEtapaData(d => {
       let items: CubicacionItem[] = []
       try { items = JSON.parse(d['cubicacion_items_json'] || '[]') } catch { items = [] }
-      const actualizados = items.map(it => (it.categoria === categoriaVieja && it.tipologia === tipologiaVieja) ? { ...it, categoria: nuevoTitulo.trim() } : it)
+      const actualizados = items.map(it => (it.categoria === categoriaVieja && it.slot === slot) ? { ...it, categoria: nuevoTitulo.trim() } : it)
       return { ...d, cubicacion_items_json: JSON.stringify(actualizados) }
     })
   }
@@ -444,20 +432,20 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     y = 20
 
     // Agrupa items por tipología (orden = orden en que están cargadas las tipologías de la oportunidad),
-    // y dentro de cada tipología por bloque (categoria), preservando el orden de aparición.
-    const tipologiasOrden = lineas.filter(l => l.tipologia).map(l => l.tipologia)
-    for (const it of items) if (it.tipologia && !tipologiasOrden.includes(it.tipologia)) tipologiasOrden.push(it.tipologia)
-    const porTipologia = new Map<string, CubicacionItem[]>()
+    // y dentro de cada archivo por bloque (categoria), preservando el orden de aparición.
+    const slotsOrden = [...new Set(items.map(it => it.slot).filter((s): s is number => s != null))].sort((a, b) => a - b)
+    const porSlot = new Map<number, CubicacionItem[]>()
     const sinTipologia: CubicacionItem[] = []
     for (const it of items) {
-      if (it.tipologia) { if (!porTipologia.has(it.tipologia)) porTipologia.set(it.tipologia, []); porTipologia.get(it.tipologia)!.push(it) }
+      if (it.slot != null) { if (!porSlot.has(it.slot)) porSlot.set(it.slot, []); porSlot.get(it.slot)!.push(it) }
       else sinTipologia.push(it)
     }
 
     let totalGeneral = 0
-    for (const tipologia of tipologiasOrden) {
-      const itemsTip = porTipologia.get(tipologia)
+    for (const slot of slotsOrden) {
+      const itemsTip = porSlot.get(slot)
       if (!itemsTip?.length) continue
+      const tipologia = itemsTip[0].tipologia || `Tipo ${slot + 1}`
       const grupos = new Map<string, CubicacionItem[]>()
       for (const it of itemsTip) { if (!grupos.has(it.categoria)) grupos.set(it.categoria, []); grupos.get(it.categoria)!.push(it) }
       const r = drawSeccionTipologia(doc, y, clienteNombre, `${tipologia} - ${proyecto}`, fecha, [...grupos.entries()], factor)
@@ -889,35 +877,35 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     if (e === 'Costos y Presupuestos') {
       let cubicacionItems: CubicacionItem[] = []
       try { cubicacionItems = JSON.parse(etapaData['cubicacion_items_json'] || '[]') } catch { cubicacionItems = [] }
-      const gruposItems = new Map<string, { tipologia?: string; categoria: string; items: CubicacionItem[] }>()
+      const gruposItems = new Map<string, { slot?: number; tipologia?: string; categoria: string; items: CubicacionItem[] }>()
       for (const it of cubicacionItems) {
-        const key = `${it.tipologia ?? ''}|||${it.categoria}`
-        if (!gruposItems.has(key)) gruposItems.set(key, { tipologia: it.tipologia, categoria: it.categoria, items: [] })
+        const key = `${it.slot ?? ''}|||${it.categoria}`
+        if (!gruposItems.has(key)) gruposItems.set(key, { slot: it.slot, tipologia: it.tipologia, categoria: it.categoria, items: [] })
         gruposItems.get(key)!.items.push(it)
       }
       const costoCerchas = Number(etapaData['costo_cerchas'] || 0)
       const costoFlete = Number(etapaData['costo_flete'] || 0)
       const costoTotalInterno = cubicacionItems.reduce((s, i) => s + i.costo_total, 0) + costoCerchas + costoFlete
-      const lineasReq = lineas.filter(l => l.tipologia && l.tipologia.trim())
-      const tipologiasSubidas = new Set(cubicacionItems.map(it => it.tipologia).filter(Boolean))
+      const numArchivos = opp.cantidad_tipos_casas ?? 0
+      const slotsSubidos = new Set(cubicacionItems.map(it => it.slot).filter(s => s != null))
       return (
       <div className="space-y-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Cubicación desde Excel (hoja "ANALISIS")</p>
-        {lineasReq.length === 0 ? (
-          <p className="text-xs text-gray-400 bg-gray-50 rounded-lg p-2">Esta oportunidad no tiene tipos de casa (tipologías) cargados todavía. Agrégalos primero para saber cuántos archivos subir.</p>
+        {numArchivos === 0 ? (
+          <p className="text-xs text-gray-400 bg-gray-50 rounded-lg p-2">Seteá "Cantidad de tipos de casas" en la pestaña General para saber cuántos archivos subir.</p>
         ) : (
           <div className="space-y-2">
-            <p className="text-xs text-gray-500">Se {lineasReq.length === 1 ? 'requiere' : 'requieren'} {lineasReq.length} {lineasReq.length === 1 ? 'archivo' : 'archivos'} (uno por tipo de casa) — subidos: {lineasReq.filter(l => tipologiasSubidas.has(l.tipologia)).length}/{lineasReq.length}</p>
-            {lineasReq.map(l => {
-              const subido = tipologiasSubidas.has(l.tipologia)
+            <p className="text-xs text-gray-500">Se {numArchivos === 1 ? 'requiere' : 'requieren'} {numArchivos} {numArchivos === 1 ? 'archivo' : 'archivos'} (uno por tipo de casa) — subidos: {slotsSubidos.size}/{numArchivos}</p>
+            {Array.from({ length: numArchivos }, (_, slot) => {
+              const subido = cubicacionItems.find(it => it.slot === slot)
               return (
-                <div key={l.id} className="border border-gray-200 rounded-lg p-2">
+                <div key={slot} className="border border-gray-200 rounded-lg p-2">
                   <label className="flex items-center gap-2 text-xs font-medium text-gray-700 mb-1 cursor-pointer">
-                    <FileSpreadsheet size={14} /> {l.tipologia} (x{l.cantidad_casas} casas)
-                    {subido && <span className="text-green-600 font-normal">— cargado</span>}
+                    <FileSpreadsheet size={14} /> Tipo de casa {slot + 1}
+                    {subido && <span className="text-green-600 font-normal">— cargado ({subido.tipologia})</span>}
                   </label>
                   <input type="file" accept=".xlsx,.xls" disabled={parsingExcel}
-                    onChange={ev => { const f = ev.target.files?.[0]; if (f) handleTipologiaExcel(f, l.tipologia, l.tipologia); ev.target.value = '' }}
+                    onChange={ev => { const f = ev.target.files?.[0]; if (f) handleTipologiaExcel(f, slot); ev.target.value = '' }}
                     className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-200 file:text-xs file:font-medium file:bg-gray-50 hover:file:bg-gray-100" />
                 </div>
               )
@@ -928,10 +916,10 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
         )}
         {cubicacionItems.length > 0 && (
           <div className="space-y-2 text-xs">
-            {[...gruposItems.entries()].map(([key, { tipologia, categoria, items: group }]) => (
+            {[...gruposItems.entries()].map(([key, { slot, tipologia, categoria, items: group }]) => (
               <div key={key} className="border border-gray-200 rounded-lg p-2">
                 {tipologia && <p className="text-[10px] font-semibold text-crm-red uppercase mb-0.5">{tipologia}</p>}
-                <input defaultValue={categoria} onBlur={ev => renombrarBloque(tipologia, categoria, ev.target.value)}
+                <input defaultValue={categoria} onBlur={ev => renombrarBloque(slot, categoria, ev.target.value)}
                   className="font-semibold text-gray-600 mb-1 w-full bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-crm-red rounded px-1 -mx-1" />
                 {group.map((it, idx) => (
                   <div key={idx} className="flex justify-between text-gray-500">
@@ -1271,13 +1259,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                   </select></div>
               </div>
 
-              <div className={tieneTipologias ? '' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de casas</label>
                   <input type="number" min="0" value={opp.cantidad_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
-                {!tieneTipologias && (
-                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de tipos de casas</label>
-                    <input type="number" min="0" value={opp.cantidad_tipos_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_tipos_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
-                )}
+                <div><label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de tipos de casas</label>
+                  <input type="number" min="0" value={opp.cantidad_tipos_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_tipos_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                  <p className="text-[11px] text-gray-400 mt-1">Define cuántos archivos Excel se piden en Costos y Presupuestos.</p></div>
               </div>
 
               {opp.tipo_venta !== 'VIT' && (
