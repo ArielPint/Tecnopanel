@@ -1,9 +1,18 @@
 import jsPDF from 'jspdf'
-import { PROYECTO_CONST, WIP_CONST, type SolicitudParaEmail } from './email'
+import { PROYECTO_CONST, WIP_CONST } from './email'
+import type { ItemSolicitud } from '../hooks/useSolicitudes'
+
+export interface SolicitudParaPdf {
+  numero: number
+  grupoNombre: string
+  solicitanteNombre: string
+  items: ItemSolicitud[]
+  observacion: string | null
+}
 
 // Respaldo local de la solicitud, sin depender de email — jsPDF ya está instalado
 // en el proyecto (mismo patrón que el presupuesto del CRM), no hace falta backend.
-export function descargarSolicitudPdf(data: SolicitudParaEmail) {
+export function descargarSolicitudPdf(data: SolicitudParaPdf) {
   const doc = new jsPDF()
   const now = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
@@ -14,7 +23,7 @@ export function descargarSolicitudPdf(data: SolicitudParaEmail) {
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
   doc.text(`Grupo: ${data.grupoNombre}`, 15, 28)
-  doc.text(`Para: ${data.responsableNombre}`, 15, 34)
+  doc.text(`Solicitado por: ${data.solicitanteNombre}`, 15, 34)
   doc.text(`Fecha: ${now}`, 15, 40)
 
   let y = 52

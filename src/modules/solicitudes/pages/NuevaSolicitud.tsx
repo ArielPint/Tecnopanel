@@ -489,7 +489,20 @@ export default function NuevaSolicitud() {
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/20 px-3 py-2 text-sm">
           <span>✅ Solicitud N° {lastSaved.numero} generada.</span>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => descargarSolicitudPdf(lastSaved)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                descargarSolicitudPdf({
+                  numero: lastSaved.numero,
+                  grupoNombre: lastSaved.grupoNombre,
+                  solicitanteNombre: perfil?.name ?? '—',
+                  items: lastSaved.items,
+                  observacion: lastSaved.observacion,
+                })
+              }
+            >
               📄 Descargar PDF
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => setLastSaved(null)}>
