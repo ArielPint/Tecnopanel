@@ -80,6 +80,25 @@ export function useDespachosData(excelData: ParsedDashboardData | null) {
       })
   }, [d, proy])
 
+  // Sin el corte al mes actual — el mensual (usado en Ejecutivo) muestra el proyecto completo,
+  // incluyendo meses futuros ya proyectados en GD_MODULOS.
+  const allMesKeysCompleto = useMemo(() => {
+    const set = new Set<string>()
+    for (const x of d) {
+      const dt = parseDate(x.fecha)
+      if (dt) set.add(mesKey(dt))
+    }
+    for (const x of proy) {
+      const dt = parseDate(x.fecha)
+      if (dt) set.add(mesKey(dt))
+    }
+    return [...set].sort((a, b) => {
+      const [ya, ma] = a.split('_').map(Number)
+      const [yb, mb] = b.split('_').map(Number)
+      return ya * 12 + ma - (yb * 12 + mb)
+    })
+  }, [d, proy])
+
   const mesesOpts = useMemo(
     () => allMesKeys.map((k) => {
       const [y, m] = k.split('_').map(Number)
@@ -133,7 +152,7 @@ export function useDespachosData(excelData: ParsedDashboardData | null) {
       e.acum = Math.max(e.acum, x.modulosAcumulados || 0)
       if (dt <= today) e.acumHoy = Math.max(e.acumHoy, x.modulosAcumulados || 0)
     }
-    const mensual = allMesKeys.map((k) => ({
+    const mensual = allMesKeysCompleto.map((k) => ({
       mes: realMes.get(k)?.lbl ?? mesLbl(new Date(+k.split('_')[0], +k.split('_')[1] - 1, 1)),
       despachado: realMes.get(k)?.mods.size ?? 0,
       proyectado: proyMes.get(k)?.sum ?? 0,
@@ -254,7 +273,7 @@ export function useDespachosData(excelData: ParsedDashboardData | null) {
       kpis, mensual, semanal, diario, gapDia, resumenMensual, torreTipo, tipos,
       mesesOpts, mesesSeleccionados, toggleMes,
     }
-  }, [d, proy, excelData, allMesKeys, mesesSeleccionados, mesesOpts])
+  }, [d, proy, excelData, allMesKeys, allMesKeysCompleto, mesesSeleccionados, mesesOpts])
 }
 
 export type DespachosData = ReturnType<typeof useDespachosData>

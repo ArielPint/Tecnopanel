@@ -221,6 +221,38 @@ export async function loadPlantaModulosProdDiaria(proyectoId: string): Promise<P
   return (data ?? []) as PlantaModuloProdRow[]
 }
 
+export interface DotacionPersonalRow {
+  administrativos: number
+  supervisores: number
+  operarios: number
+  contratistas: number
+  sanitarios: number
+  electricos: number
+  terminaciones: number
+}
+
+const DOTACION_VACIA: DotacionPersonalRow = {
+  administrativos: 0, supervisores: 0, operarios: 0, contratistas: 0, sanitarios: 0, electricos: 0, terminaciones: 0,
+}
+
+export async function loadDotacionPersonal(proyectoId: string): Promise<DotacionPersonalRow> {
+  const data = await unwrap(
+    supabase
+      .from('dotacion_personal')
+      .select('administrativos, supervisores, operarios, contratistas, sanitarios, electricos, terminaciones')
+      .eq('proyecto_id', proyectoId)
+      .maybeSingle(),
+  )
+  return data ? (data as DotacionPersonalRow) : DOTACION_VACIA
+}
+
+export async function guardarDotacionPersonal(proyectoId: string, valores: DotacionPersonalRow): Promise<void> {
+  const { error } = await supabase
+    .from('dotacion_personal')
+    .upsert({ proyecto_id: proyectoId, ...valores, updated_at: new Date().toISOString() }, { onConflict: 'proyecto_id' })
+  if (error) throw new Error(error.message)
+}
+
 export interface PlantaModuloRow {
   nombre: string | null
   torre: string | null

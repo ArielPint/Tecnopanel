@@ -1,11 +1,26 @@
 import { Bar, BarChart, CartesianGrid, ComposedChart, Line, LineChart, XAxis, YAxis } from 'recharts'
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/modules/financiero/components/ui/chart'
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  type ChartConfig,
+} from '@/modules/financiero/components/ui/chart'
 import type { DespachosData } from '../hooks/useDespachosData'
 
-export function DespachosMensualChart({ data }: { data: DespachosData['mensual'] }) {
+export function DespachosMensualChart({
+  data,
+  labelDespachado = 'Despachado',
+  labelProyectado = 'Proyectado',
+}: {
+  data: DespachosData['mensual']
+  labelDespachado?: string
+  labelProyectado?: string
+}) {
   const config = {
-    despachado: { label: 'Despachado', color: '#3fb950' },
-    proyectado: { label: 'Proyectado', color: '#58a6ff' },
+    despachado: { label: labelDespachado, color: '#3fb950' },
+    proyectado: { label: labelProyectado, color: '#58a6ff' },
   } satisfies ChartConfig
   return (
     <ChartContainer config={config} className="aspect-auto h-[300px] w-full">
@@ -16,6 +31,7 @@ export function DespachosMensualChart({ data }: { data: DespachosData['mensual']
         <ChartTooltip content={<ChartTooltipContent />} />
         <Line type="monotone" dataKey="despachado" stroke="var(--color-despachado)" strokeWidth={2.5} dot={{ r: 4 }} />
         <Line type="monotone" dataKey="proyectado" stroke="var(--color-proyectado)" strokeWidth={2.5} dot={{ r: 4 }} />
+        <ChartLegend content={<ChartLegendContent />} />
       </LineChart>
     </ChartContainer>
   )

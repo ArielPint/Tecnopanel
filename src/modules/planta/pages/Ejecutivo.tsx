@@ -2,17 +2,36 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/c
 import { useResumenData } from '../hooks/useResumenData'
 import { useDespachosData } from '../hooks/useDespachosData'
 import { useCurvaData } from '../hooks/useCurvaData'
+import { useDotacionData } from '../hooks/useDotacionData'
+import { useAuth } from '../hooks/useAuth'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { fmt, fmtPr } from '../lib/format'
 import { AvanceEconomicoAcumChart, AvanceEconomicoChart } from '../components/ResumenCharts'
-import { DespachosDiarioChart } from '../components/DespachosCharts'
+import { DespachosMensualChart } from '../components/DespachosCharts'
 import { TiempoTorreChart } from '../components/CurvaCharts'
+import { DotacionPersonal } from '../components/DotacionPersonal'
 import { cn } from '@/lib/utils'
+
+// ponytail: avance económico real del último mes fijado a 7% a pedido — el acumulado
+// se recalcula sumando esta serie corregida en vez del valor calculado desde compras.
+const AVANCE_ECON_ULTIMO_MES_FIJO = 7
 
 export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardData }) {
   const resumen = useResumenData(excelData)
   const despachos = useDespachosData(excelData)
   const curva = useCurvaData(excelData)
+  const dotacion = useDotacionData()
+  const { isAdmin } = useAuth()
+
+  const avanceEconomico = resumen.avanceEconomico.map((x, i) =>
+    i === resumen.avanceEconomico.length - 1 ? { ...x, real: AVANCE_ECON_ULTIMO_MES_FIJO } : x,
+  )
+  let sumRealAcum = 0
+  const avanceEconomicoAcumulado = resumen.avanceEconomicoAcumulado.map((x, i) => {
+    const real = avanceEconomico[i]?.real
+    if (real != null) sumRealAcum += real
+    return { ...x, realAcum: real != null ? +sumRealAcum.toFixed(2) : x.realAcum }
+  })
 
   const items = [
     {
@@ -45,7 +64,7 @@ export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardDat
             <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Avance económico mensual</CardTitle>
           </CardHeader>
           <CardContent>
-            <AvanceEconomicoChart data={resumen.avanceEconomico} readOnly />
+            <AvanceEconomicoChart data={avanceEconomico} readOnly />
           </CardContent>
         </Card>
         <Card>
@@ -53,7 +72,7 @@ export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardDat
             <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Avance económico acumulado</CardTitle>
           </CardHeader>
           <CardContent>
-            <AvanceEconomicoAcumChart data={resumen.avanceEconomicoAcumulado} forecastLabels={resumen.forecastLabels} />
+            <AvanceEconomicoAcumChart data={avanceEconomicoAcumulado} forecastLabels={resumen.forecastLabels} />
           </CardContent>
         </Card>
       </div>
@@ -61,10 +80,10 @@ export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardDat
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Despachos diarios acumulados</CardTitle>
+            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Módulos fabricados / programados por mes</CardTitle>
           </CardHeader>
           <CardContent>
-            <DespachosDiarioChart data={despachos.diario} />
+            <DespachosMensualChart data={despachos.mensual} labelDespachado="Fabricados" labelProyectado="Programados" />
           </CardContent>
         </Card>
         <Card>
@@ -76,6 +95,15 @@ export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardDat
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Dotación de personal</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DotacionPersonal valores={dotacion.valores} isAdmin={isAdmin} guardando={dotacion.guardando} onGuardar={dotacion.guardar} />
+        </CardContent>
+      </Card>
     </div>
   )
 }
