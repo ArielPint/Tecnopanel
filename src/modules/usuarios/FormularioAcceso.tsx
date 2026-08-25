@@ -39,6 +39,7 @@ function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: Proye
     crmModulos: acceso?.crmModulos ?? [],
     gestionVer: acceso?.gestionVer ?? false,
     grupoId: acceso?.grupoId ?? null,
+    subcontratistaId: acceso?.subcontratistaId ?? null,
   }
 }
 
@@ -47,6 +48,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
   const [enviando, setEnviando] = useState(false)
   const [form, setForm] = useState<AccesoInput>(inputFromAcceso(acceso, proyectosObra))
   const [gruposPorProyecto, setGruposPorProyecto] = useState<Record<string, { id: number; nombre: string }[]>>({})
+  const [subcontratistas, setSubcontratistas] = useState<{ id: string; nombre: string }[]>([])
 
   useEffect(() => {
     if (open) setForm(inputFromAcceso(acceso, proyectosObra))
@@ -66,6 +68,18 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
       ),
     ).then((entries) => setGruposPorProyecto(Object.fromEntries(entries)))
   }, [open, proyectosObra])
+
+  useEffect(() => {
+    if (!open) return
+    supabase
+      .from('subcontratistas')
+      .select('id, nombre, user_id')
+      .eq('activo', true)
+      .order('nombre')
+      .then(({ data }) =>
+        setSubcontratistas((data ?? []).filter((s) => !s.user_id || s.id === acceso?.subcontratistaId)),
+      )
+  }, [open, acceso])
 
   function toggleCrmModulo(modulo: string, checked: boolean) {
     setForm((f) => ({
@@ -179,6 +193,30 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                 <Checkbox checked={form.gestionVer} onCheckedChange={(v) => setForm((f) => ({ ...f, gestionVer: !!v }))} />
                 Acceso a Gestión (Reportes, Documentos, Alertas — módulo global del hub)
               </label>
+              <div className="flex flex-col gap-1.5">
+                <Label>Portal de subcontratista (opcional)</Label>
+                <Select
+                  value={form.subcontratistaId ?? '__ninguno'}
+                  onValueChange={(v) => setForm((f) => ({ ...f, subcontratistaId: v === '__ninguno' ? null : v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="No es un subcontratista" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__ninguno">No es un subcontratista</SelectItem>
+                    {subcontratistas.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  Si se vincula, dale también acceso al proyecto con el módulo &quot;Estados de Pago&quot; (pestaña
+                  Listado, acción Crear) para que aparezca en su menú — la base de datos lo limita a ver y cargar
+                  solo lo suyo aunque tenga ese permiso.
+                </p>
+              </div>
             </TabsContent>
 
             <TabsContent value="proyecto" className="flex flex-col gap-4 pt-2">

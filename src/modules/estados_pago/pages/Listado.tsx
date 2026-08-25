@@ -19,7 +19,7 @@ import FormularioEstadoPago from '../components/FormularioEstadoPago'
 import DetalleEstadoPago from '../components/DetalleEstadoPago'
 
 export default function Listado() {
-  const { puedeCrear, puedeAdministrar } = useAuth()
+  const { puedeCrear, puedeAdministrar, esSubcontratista } = useAuth()
   const { estadosPago, loading, cambiarEstado, registrarPago, crear, actualizar, refetch } = useEstadosPago()
   const { subcontratos } = useSubcontratos()
   const { subcontratistas } = useSubcontratistas()
@@ -62,35 +62,37 @@ export default function Listado() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Input placeholder="Buscar N° EP, período o subcontrato…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />
-          <Select value={subcontratoId || 'todos'} onValueChange={(v) => setSubcontratoId(v === 'todos' ? '' : v)}>
-            <SelectTrigger className="w-56">
-              <SelectValue placeholder="Todos los subcontratos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos los subcontratos</SelectItem>
-              {subcontratos.map((sc) => (
-                <SelectItem key={sc.id} value={sc.id}>
-                  {subcontratoLabel(sc.id)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={estadoFiltro || 'todos'} onValueChange={(v) => setEstadoFiltro(v === 'todos' ? '' : v)}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Todos los estados" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos los estados</SelectItem>
-              {ESTADOS_EP.map((e) => (
-                <SelectItem key={e} value={e}>
-                  {ESTADO_LABEL[e]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {!esSubcontratista && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Input placeholder="Buscar N° EP, período o subcontrato…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />
+            <Select value={subcontratoId || 'todos'} onValueChange={(v) => setSubcontratoId(v === 'todos' ? '' : v)}>
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="Todos los subcontratos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos los subcontratos</SelectItem>
+                {subcontratos.map((sc) => (
+                  <SelectItem key={sc.id} value={sc.id}>
+                    {subcontratoLabel(sc.id)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={estadoFiltro || 'todos'} onValueChange={(v) => setEstadoFiltro(v === 'todos' ? '' : v)}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Todos los estados" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos los estados</SelectItem>
+                {ESTADOS_EP.map((e) => (
+                  <SelectItem key={e} value={e}>
+                    {ESTADO_LABEL[e]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         {puedeCrear && (
           <FormularioEstadoPago subcontratos={subcontratos} trigger={<Button size="sm">Nuevo Estado de Pago</Button>} onCrear={crear} onActualizar={actualizar} />
         )}

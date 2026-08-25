@@ -56,6 +56,8 @@ export interface Acceso {
   gestionVer: boolean
   /** Grupo fijo (profiles.grupo_id) para acceso restringido a Solicitudes — un único grupo, no por proyecto. */
   grupoId: number | null
+  /** Ficha de subcontratista vinculada — si tiene valor, este usuario es el portal de ese subcontratista. */
+  subcontratistaId: string | null
   ultimoIngreso: string | null
 }
 
@@ -72,6 +74,17 @@ export interface AccesoInput {
   crmModulos: string[]
   gestionVer: boolean
   grupoId: number | null
+  subcontratistaId: string | null
+}
+
+// Vincula (o desvincula) la ficha de subcontratista con este usuario — desvincula
+// primero cualquier ficha que tuviera este user_id antes, por si cambió la selección.
+async function syncSubcontratistaLink(userId: string, subcontratistaId: string | null) {
+  const { error: unlinkErr } = await supabase.from('subcontratistas').update({ user_id: null }).eq('user_id', userId)
+  if (unlinkErr) throw new Error(unlinkErr.message)
+  if (!subcontratistaId) return
+  const { error } = await supabase.from('subcontratistas').update({ user_id: userId }).eq('id', subcontratistaId)
+  if (error) throw new Error(error.message)
 }
 
 async function syncAccesos(userId: string, input: AccesoInput) {
@@ -105,6 +118,7 @@ async function syncAccesos(userId: string, input: AccesoInput) {
   ])
   const { error } = await supabase.from('profiles').update({ rol: input.rol, grupo_id: input.grupoId }).eq('id', userId)
   if (error) throw new Error(error.message)
+  await syncSubcontratistaLink(userId, input.subcontratistaId)
 }
 
 export function useAccesos() {
@@ -134,14 +148,16 @@ export function useAccesos() {
       { data: permisos, error: permisosError },
       { data: access, error: accessError },
       loginsResp,
+      { data: subcontratistas, error: subcontratistasError },
     ] = await Promise.all([
       // is_root excluida: cuenta root oculta del listado, ver comentario en la columna.
       supabase.from('profiles').select('id, nombre, apellido, email, activo, is_super_admin, rol, grupo_id').eq('is_root', false).order('nombre'),
       supabase.from('permisos').select('user_id, proyecto_id, modulo_key, accion'),
       supabase.from('project_access').select('user_id, proyecto_id, rol_negocio'),
       supabase.functions.invoke('manage-access', { body: { action: 'list_last_logins' } }),
+      supabase.from('subcontratistas').select('id, user_id').not('user_id', 'is', null),
     ])
-    const primerError = profilesError || permisosError || accessError
+    const primerError = profilesError || permisosError || accessError || subcontratistasError
     if (primerError) {
       setError(primerError.message)
       setLoading(false)
@@ -227,6 +243,7 @@ export function useAccesos() {
         crmModulos,
         gestionVer,
         grupoId: p.grupo_id,
+        subcontratistaId: (subcontratistas ?? []).find((s) => s.user_id === p.id)?.id ?? null,
         ultimoIngreso: logins[p.id] ?? null,
       }
     })

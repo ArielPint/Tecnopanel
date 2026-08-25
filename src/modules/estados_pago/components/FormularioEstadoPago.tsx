@@ -1,5 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
+import { Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Input } from '@/modules/financiero/components/ui/input'
@@ -7,7 +8,13 @@ import { Label } from '@/modules/financiero/components/ui/label'
 import { Textarea } from '@/modules/financiero/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/modules/financiero/components/ui/dialog'
+import { documentoPath, subirDocumento } from '../services/storage'
 import type { EstadoPago, Subcontrato } from '../types'
+
+interface ItemInput {
+  descripcion: string
+  monto: string
+}
 
 type EstadoPagoInput = Pick<
   EstadoPago,
@@ -22,15 +29,15 @@ interface Props {
   onActualizar: (id: string, patch: Partial<EstadoPagoInput>) => Promise<void>
 }
 
-// Guarda la lista de módulos/especialidades/partidas cubiertos por el EP —
-// mismo patrón "reemplazar todo" que syncPermisos.ts (delete + insert).
-async function reemplazarModulos(estadoPagoId: string, descripciones: string[]) {
+// Guarda el detalle de ítems cobrados (concepto + monto) — mismo patrón
+// "reemplazar todo" que syncPermisos.ts (delete + insert).
+async function reemplazarItems(estadoPagoId: string, items: { descripcion: string; monto: number }[]) {
   const { error: delErr } = await supabase.from('estados_pago_modulos').delete().eq('estado_pago_id', estadoPagoId)
   if (delErr) throw new Error(delErr.message)
-  if (descripciones.length === 0) return
+  if (items.length === 0) return
   const { error: insErr } = await supabase
     .from('estados_pago_modulos')
-    .insert(descripciones.map((descripcion) => ({ estado_pago_id: estadoPagoId, descripcion })))
+    .insert(items.map((it) => ({ estado_pago_id: estadoPagoId, descripcion: it.descripcion, monto: it.monto })))
   if (insErr) throw new Error(insErr.message)
 }
 
@@ -49,17 +56,39 @@ export default function FormularioEstadoPago({ estadoPago, subcontratos, trigger
   const [retenciones, setRetenciones] = useState(String(estadoPago?.retenciones ?? 0))
   const [montoNeto, setMontoNeto] = useState(String(estadoPago?.monto_neto ?? ''))
   const [observaciones, setObservaciones] = useState(estadoPago?.observaciones ?? '')
-  const [modulosTexto, setModulosTexto] = useState('')
+  const [items, setItems] = useState<ItemInput[]>([{ descripcion: '', monto: '' }])
+  const [archivos, setArchivos] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Precarga los módulos/especialidades ya guardados al editar.
+  // Precarga el detalle de ítems ya guardado al editar.
   useEffect(() => {
     if (!open || !estadoPago) return
     supabase
       .from('estados_pago_modulos')
-      .select('descripcion')
+      .select('descripcion, monto')
       .eq('estado_pago_id', estadoPago.id)
-      .then(({ data }) => setModulosTexto((data ?? []).map((m) => m.descripcion).join(', ')))
+      .then(({ data }) =>
+        setItems(
+          data && data.length > 0
+            ? data.map((m) => ({ descripcion: m.descripcion, monto: String(m.monto) }))
+            : [{ descripcion: '', monto: '' }],
+        ),
+      )
   }, [open, estadoPago])
+
+  function actualizarItem(i: number, patch: Partial<ItemInput>) {
+    setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)))
+  }
+
+  function agregarItem() {
+    setItems((prev) => [...prev, { descripcion: '', monto: '' }])
+  }
+
+  function quitarItem(i: number) {
+    setItems((prev) => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev))
+  }
+
+  const totalItems = items.reduce((acc, it) => acc + (Number(it.monto) || 0), 0)
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -86,10 +115,9 @@ export default function FormularioEstadoPago({ estadoPago, subcontratos, trigger
         observaciones: observaciones || null,
         documento_principal_path: estadoPago?.documento_principal_path ?? null,
       }
-      const descripciones = modulosTexto
-        .split(',')
-        .map((d) => d.trim())
-        .filter(Boolean)
+      const itemsValidos = items
+        .map((it) => ({ descripcion: it.descripcion.trim(), monto: Number(it.monto) || 0 }))
+        .filter((it) => it.descripcion)
 
       let id = estadoPago?.id
       if (esEdicion && id) await onActualizar(id, input)
@@ -97,8 +125,17 @@ export default function FormularioEstadoPago({ estadoPago, subcontratos, trigger
         const creado = await onCrear(input)
         id = creado.id
       }
-      await reemplazarModulos(id!, descripciones)
+      await reemplazarItems(id!, itemsValidos)
+      for (const file of archivos) {
+        const path = documentoPath(id!, crypto.randomUUID(), file.name)
+        await subirDocumento(file, path)
+        const { error: docErr } = await supabase
+          .from('estados_pago_documentos')
+          .insert({ estado_pago_id: id, nombre: file.name, storage_path: path })
+        if (docErr) throw new Error(docErr.message)
+      }
       toast.success(esEdicion ? 'Estado de pago actualizado' : 'Estado de pago creado')
+      setArchivos([])
       setOpen(false)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al guardar')
@@ -169,17 +206,80 @@ export default function FormularioEstadoPago({ estadoPago, subcontratos, trigger
             <Input id="ep-neto" type="number" min="0" value={montoNeto} onChange={(e) => setMontoNeto(e.target.value)} required />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="ep-modulos">Módulos / especialidades / partidas cubiertos</Label>
-            <Input
-              id="ep-modulos"
-              value={modulosTexto}
-              onChange={(e) => setModulosTexto(e.target.value)}
-              placeholder="Separados por coma"
-            />
+            <div className="flex items-center justify-between">
+              <Label>Detalle de lo cobrado</Label>
+              <Button type="button" variant="outline" size="sm" onClick={agregarItem}>
+                Agregar ítem
+              </Button>
+            </div>
+            {items.map((it, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Input
+                  value={it.descripcion}
+                  onChange={(e) => actualizarItem(i, { descripcion: e.target.value })}
+                  placeholder="Concepto / partida"
+                  className="flex-1"
+                />
+                <Input
+                  type="number"
+                  min="0"
+                  value={it.monto}
+                  onChange={(e) => actualizarItem(i, { monto: e.target.value })}
+                  placeholder="Monto"
+                  className="w-32"
+                />
+                <Button type="button" variant="ghost" size="icon" onClick={() => quitarItem(i)} disabled={items.length === 1}>
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            ))}
+            {totalItems > 0 && (
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Total ítems</span>
+                <div className="flex items-center gap-2">
+                  <span className="tabular-nums">{totalItems.toLocaleString('es-CL')}</span>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setMontoBruto(String(totalItems))}>
+                    Usar como monto bruto
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="ep-obs">Observaciones</Label>
             <Textarea id="ep-obs" value={observaciones ?? ''} onChange={(e) => setObservaciones(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <Label>Documentos (EP, factura, etc.)</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => setArchivos((prev) => [...prev, ...Array.from(e.target.files ?? [])])}
+              />
+              <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                Adjuntar
+              </Button>
+            </div>
+            {archivos.length > 0 && (
+              <ul className="flex flex-col gap-1">
+                {archivos.map((f, i) => (
+                  <li key={i} className="flex items-center justify-between gap-2 rounded border px-2 py-1 text-xs">
+                    {f.name}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setArchivos((prev) => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           <DialogFooter>
             <Button type="submit" disabled={enviando}>

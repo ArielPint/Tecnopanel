@@ -49,6 +49,12 @@ export interface EstadoPago {
   updated_at: string
 }
 
+export interface EstadoPagoItem {
+  estado_pago_id: string
+  descripcion: string
+  monto: number
+}
+
 export interface EstadoPagoDocumento {
   id: string
   estado_pago_id: string

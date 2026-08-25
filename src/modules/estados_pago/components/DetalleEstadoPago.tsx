@@ -21,7 +21,7 @@ interface Props {
 export default function DetalleEstadoPago({ estadoPago, subcontratoLabel, onCambiarEstado, onRegistrarPago }: Props) {
   const { puedeEditar, puedeAprobar } = useAuth()
   const [open, setOpen] = useState(false)
-  const { documentos, historial, agregarDocumento, eliminarDocumentoFila } = useEstadoPagoDetalle(open ? estadoPago.id : null)
+  const { documentos, historial, items, agregarDocumento, eliminarDocumentoFila } = useEstadoPagoDetalle(open ? estadoPago.id : null)
   const [subiendo, setSubiendo] = useState(false)
   const [cambiandoEstado, setCambiandoEstado] = useState(false)
   const [montoPagado, setMontoPagado] = useState(String(estadoPago.monto_neto))
@@ -114,6 +114,20 @@ export default function DetalleEstadoPago({ estadoPago, subcontratoLabel, onCamb
               <p className="font-medium tabular-nums">{formatCLP(estadoPago.saldo_pendiente)}</p>
             </div>
           </div>
+
+          {items.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Detalle de lo cobrado</p>
+              <ul className="flex flex-col gap-1 rounded-md border p-2">
+                {items.map((it, i) => (
+                  <li key={i} className="flex items-center justify-between gap-2 text-sm">
+                    <span>{it.descripcion}</span>
+                    <span className="tabular-nums">{formatCLP(it.monto)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {estadoPago.observaciones && (
             <div>
