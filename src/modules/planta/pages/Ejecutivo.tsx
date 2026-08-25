@@ -54,7 +54,7 @@ export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardDat
   return (
     <div className="space-y-4">
       <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">Indicadores</p>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+      <div className="grid grid-cols-6 gap-3">
         {items.map((kpi) => (
           <div key={kpi.label} className="rounded-lg border bg-card p-4">
             <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">{kpi.label}</p>
