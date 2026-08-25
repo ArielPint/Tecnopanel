@@ -24,6 +24,11 @@ export default function StockConfig() {
 
   const cpmPorCodigo = new Map(allProducts.map((p) => [normCod(p.codigo), p.cantidad_por_modulo]))
 
+  const ultimaActualizacion = stock.reduce<string | null>(
+    (max, s) => (!max || s.actualizado_en > max ? s.actualizado_en : max),
+    null,
+  )
+
   const filtrado = stock
     .filter((s) => {
       const q = busqueda.toLowerCase()
@@ -53,6 +58,12 @@ export default function StockConfig() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Última actualización:{' '}
+            {ultimaActualizacion
+              ? new Date(ultimaActualizacion).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+              : 'sin cargas todavía'}
+          </p>
           {error && <p className="text-xs text-destructive">{error}</p>}
           {lastResult && !error && (
             <p className="text-xs text-success">

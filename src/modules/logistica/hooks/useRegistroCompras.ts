@@ -142,7 +142,7 @@ export function useRegistroCompras() {
       if (solicitudNumero != null) {
         const { error: solError } = await supabase
           .from('solicitudes')
-          .update({ estado: 'usada' })
+          .update({ estado: 'usada', usada_en: new Date().toISOString() })
           .eq('numero', solicitudNumero)
           .eq('proyecto_id', proyectoId)
         if (solError) throw new Error(solError.message)

@@ -28,6 +28,7 @@ export interface Solicitud {
   observacion: string | null
   estado: EstadoSolicitud
   created_at: string
+  usada_en: string | null
 }
 
 export interface SolicitudInput {
@@ -78,7 +79,7 @@ export function useSolicitudes() {
 
   const marcarUsada = useCallback(
     async (id: string) => {
-      const { error } = await supabase.from('solicitudes').update({ estado: 'usada' }).eq('id', id)
+      const { error } = await supabase.from('solicitudes').update({ estado: 'usada', usada_en: new Date().toISOString() }).eq('id', id)
       if (error) throw new Error(error.message)
       await refetch()
     },
