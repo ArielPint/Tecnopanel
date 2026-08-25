@@ -13,14 +13,18 @@ export function DespachosMensualChart({
   data,
   labelDespachado = 'Despachado',
   labelProyectado = 'Proyectado',
+  despachadoKey = 'despachado',
+  proyectadoKey = 'proyectado',
 }: {
-  data: DespachosData['mensual']
+  data: Record<string, string | number | null>[]
   labelDespachado?: string
   labelProyectado?: string
+  despachadoKey?: string
+  proyectadoKey?: string
 }) {
   const config = {
-    despachado: { label: labelDespachado, color: '#3fb950' },
-    proyectado: { label: labelProyectado, color: '#58a6ff' },
+    [despachadoKey]: { label: labelDespachado, color: '#3fb950' },
+    [proyectadoKey]: { label: labelProyectado, color: '#58a6ff' },
   } satisfies ChartConfig
   return (
     <ChartContainer config={config} className="aspect-auto h-[300px] w-full">
@@ -29,8 +33,8 @@ export function DespachosMensualChart({
         <XAxis dataKey="mes" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
         <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={36} />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Line type="monotone" dataKey="despachado" stroke="var(--color-despachado)" strokeWidth={2.5} dot={{ r: 4 }} />
-        <Line type="monotone" dataKey="proyectado" stroke="var(--color-proyectado)" strokeWidth={2.5} dot={{ r: 4 }} />
+        <Line type="monotone" dataKey={despachadoKey} stroke={`var(--color-${despachadoKey})`} strokeWidth={2.5} dot={{ r: 4 }} />
+        <Line type="monotone" dataKey={proyectadoKey} stroke={`var(--color-${proyectadoKey})`} strokeWidth={2.5} dot={{ r: 4 }} connectNulls />
         <ChartLegend content={<ChartLegendContent />} />
       </LineChart>
     </ChartContainer>

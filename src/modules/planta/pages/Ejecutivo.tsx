@@ -16,6 +16,11 @@ import { cn } from '@/lib/utils'
 // se recalcula sumando esta serie corregida en vez del valor calculado desde compras.
 const AVANCE_ECON_ULTIMO_MES_FIJO = 7
 
+// ponytail: valores fijos a pedido, no calculados — ajustar acá si cambian.
+const MODULOS_PROYECTO_FIJO = 704
+const MODULOS_INICIADOS_FIJO = 214
+const MODULOS_EN_PROCESO_FIJO = 57
+
 export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardData }) {
   const resumen = useResumenData(excelData)
   const despachos = useDespachosData(excelData)
@@ -39,15 +44,17 @@ export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardDat
       value: resumen.kpis.ejecucionPpto != null ? fmtPr(resumen.kpis.ejecucionPpto) : '—',
       tono: resumen.kpis.ejecucionSobrePresupuesto ? ('destructive' as const) : ('success' as const),
     },
+    { label: 'Módulos del proyecto', value: fmt(MODULOS_PROYECTO_FIJO) },
+    { label: 'Módulos iniciados', value: fmt(MODULOS_INICIADOS_FIJO) },
     { label: 'Módulos terminados', value: fmt(resumen.kpis.modulosTerminados), tono: 'success' as const },
     { label: 'Módulos despachados', value: fmt(resumen.kpis.modulosDespachados) },
-    { label: 'Módulos en proceso', value: fmt(resumen.kpis.modulosEnProceso), tono: 'warning' as const },
+    { label: 'Módulos en proceso', value: fmt(MODULOS_EN_PROCESO_FIJO), tono: 'warning' as const },
   ]
 
   return (
     <div className="space-y-4">
       <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">Indicadores</p>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {items.map((kpi) => (
           <div key={kpi.label} className="rounded-lg border bg-card p-4">
             <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">{kpi.label}</p>
@@ -80,28 +87,28 @@ export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardDat
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Módulos fabricados / programados por mes</CardTitle>
+            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Módulos fabricados / programados acumulados</CardTitle>
           </CardHeader>
           <CardContent>
-            <DespachosMensualChart data={despachos.mensual} labelDespachado="Fabricados" labelProyectado="Programados" />
+            <DespachosMensualChart data={despachos.mensualAcumulado} labelDespachado="Fabricados (acum.)" labelProyectado="Programados (acum.)" despachadoKey="fabricadoAcum" proyectadoKey="programadoAcum" />
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Tiempo real vs proyectado por torre</CardTitle>
+            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Dotación de personal</CardTitle>
           </CardHeader>
           <CardContent>
-            <TiempoTorreChart data={curva.torreTiempo} />
+            <DotacionPersonal valores={dotacion.valores} isAdmin={isAdmin} guardando={dotacion.guardando} onGuardar={dotacion.guardar} />
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Dotación de personal</CardTitle>
+          <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Tiempo real vs proyectado por torre</CardTitle>
         </CardHeader>
         <CardContent>
-          <DotacionPersonal valores={dotacion.valores} isAdmin={isAdmin} guardando={dotacion.guardando} onGuardar={dotacion.guardar} />
+          <TiempoTorreChart data={curva.torreTiempo} />
         </CardContent>
       </Card>
     </div>

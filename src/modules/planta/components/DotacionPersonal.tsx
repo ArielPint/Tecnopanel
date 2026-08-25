@@ -44,7 +44,7 @@ export function DotacionPersonal({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3">
         {PRINCIPALES.map((c) => (
           <div key={c.key} className={`rounded-lg p-4 text-white ${c.className}`}>
             <p className="text-[.7rem] font-semibold tracking-wide uppercase opacity-90">{c.label}</p>

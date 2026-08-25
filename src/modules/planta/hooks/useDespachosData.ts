@@ -158,6 +158,22 @@ export function useDespachosData(excelData: ParsedDashboardData | null) {
       proyectado: proyMes.get(k)?.sum ?? 0,
     }))
 
+    // Acumulado: fabricado se corta en el mes actual (no sigue plano hasta el fin del
+    // proyecto), programado sigue acumulando hasta el último mes proyectado.
+    const curMesOrd = today.getFullYear() * 12 + today.getMonth()
+    let acumFab = 0
+    let acumProg = 0
+    const mensualAcumulado = allMesKeysCompleto.map((k) => {
+      const [y, m] = k.split('_').map(Number)
+      acumFab += realMes.get(k)?.mods.size ?? 0
+      acumProg += proyMes.get(k)?.sum ?? 0
+      return {
+        mes: realMes.get(k)?.lbl ?? mesLbl(new Date(y, m - 1, 1)),
+        fabricadoAcum: y * 12 + (m - 1) <= curMesOrd ? acumFab : null,
+        programadoAcum: acumProg,
+      }
+    })
+
     // ── Semanal (filtrado por mes) ──
     const realSem = new Map<string, { lbl: string; mods: Set<unknown> }>()
     for (const x of d) {
@@ -270,7 +286,7 @@ export function useDespachosData(excelData: ParsedDashboardData | null) {
     })
 
     return {
-      kpis, mensual, semanal, diario, gapDia, resumenMensual, torreTipo, tipos,
+      kpis, mensual, mensualAcumulado, semanal, diario, gapDia, resumenMensual, torreTipo, tipos,
       mesesOpts, mesesSeleccionados, toggleMes,
     }
   }, [d, proy, excelData, allMesKeys, allMesKeysCompleto, mesesSeleccionados, mesesOpts])
