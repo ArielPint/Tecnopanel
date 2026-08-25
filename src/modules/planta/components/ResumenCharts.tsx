@@ -144,7 +144,9 @@ export function AvanceEconomicoChart({
     return <div className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">Sin datos de avance económico</div>
   }
 
-  const chartData = data.map((d, i) => ({ ...d, proyExtra: i === data.length - 1 ? proyExtra : null }))
+  // readOnly (dashboard Ejecutivo): sin la barra de proyExtra, que pisaba la etiqueta
+  // del "proyectado" cuando ambas caían en el mismo mes.
+  const chartData = readOnly ? data : data.map((d, i) => ({ ...d, proyExtra: i === data.length - 1 ? proyExtra : null }))
   const config = {
     real: { label: 'Avance económico real', color: '#d42b1e' },
     proyectado: { label: 'Proyectado mensual', color: '#4f8ef7' },
@@ -175,9 +177,11 @@ export function AvanceEconomicoChart({
           <Line type="monotone" dataKey="proyectado" stroke="var(--color-proyectado)" strokeWidth={2.5} dot connectNulls>
             <LabelList dataKey="proyectado" content={lineaLabel} />
           </Line>
-          <Bar dataKey="proyExtra" barSize={BAR_SIZE} fill="none" stroke="#f5a623" strokeWidth={2} strokeDasharray="4 3" radius={4}>
-            <LabelList dataKey="proyExtra" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
-          </Bar>
+          {!readOnly && (
+            <Bar dataKey="proyExtra" barSize={BAR_SIZE} fill="none" stroke="#f5a623" strokeWidth={2} strokeDasharray="4 3" radius={4}>
+              <LabelList dataKey="proyExtra" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
+            </Bar>
+          )}
         </ComposedChart>
       </ChartContainer>
       {!readOnly && (

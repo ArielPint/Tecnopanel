@@ -4,10 +4,9 @@ import { Input } from '@/modules/financiero/components/ui/input'
 import type { DotacionPersonalRow } from '../lib/supaData'
 
 const PRINCIPALES: { key: keyof DotacionPersonalRow; label: string; className: string }[] = [
-  { key: 'administrativos', label: 'Administrativos', className: 'bg-[#1f5fbf]' },
-  { key: 'supervisores', label: 'Supervisores', className: 'bg-[#d32f2f]' },
-  { key: 'operarios', label: 'Operarios', className: 'bg-[#c8a415]' },
-  { key: 'contratistas', label: 'Contratistas', className: 'bg-[#2e7d32]' },
+  { key: 'administrativos', label: 'Administrativos', className: 'bg-[#2b73ff] dark:bg-[#1f5fbf]' },
+  { key: 'supervisores', label: 'Supervisores', className: 'bg-[#ff0004] dark:bg-[#d32f2f]' },
+  { key: 'operarios', label: 'Operarios', className: 'bg-[#f09500] dark:bg-[#c8a415]' },
 ]
 
 const CONTRATISTAS: { key: keyof DotacionPersonalRow; label: string }[] = [
@@ -44,7 +43,7 @@ export function DotacionPersonal({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {PRINCIPALES.map((c) => (
           <div key={c.key} className={`rounded-lg p-4 text-white ${c.className}`}>
             <p className="text-[.7rem] font-semibold tracking-wide uppercase opacity-90">{c.label}</p>
@@ -65,10 +64,10 @@ export function DotacionPersonal({
         ))}
       </div>
 
-      <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">Dotación contratistas</p>
+      <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">Dotación subcontratistas</p>
       <div className="grid grid-cols-3 gap-3">
         {CONTRATISTAS.map((c) => (
-          <div key={c.key} className="rounded-lg bg-[#3a3a3a] p-4 text-white">
+          <div key={c.key} className="rounded-lg bg-[#6e6e6e] p-4 text-white">
             <p className="text-[.7rem] font-semibold tracking-wide uppercase opacity-90">{c.label}</p>
             {isAdmin ? (
               <Input

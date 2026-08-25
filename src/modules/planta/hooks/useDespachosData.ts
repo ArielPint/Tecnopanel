@@ -158,14 +158,23 @@ export function useDespachosData(excelData: ParsedDashboardData | null) {
       proyectado: proyMes.get(k)?.sum ?? 0,
     }))
 
-    // Acumulado: fabricado se corta en el mes actual (no sigue plano hasta el fin del
+    // Terminados por mes (fecha real de término en planta, no despacho) — misma fuente que kpis.modsTerminados.
+    const terminadosMes = new Map<string, number>()
+    for (const m of excelData?.modulos ?? []) {
+      const dt = parseDate(m.termReal)
+      if (!dt) continue
+      const k = mesKey(dt)
+      terminadosMes.set(k, (terminadosMes.get(k) || 0) + 1)
+    }
+
+    // Acumulado: terminado se corta en el mes actual (no sigue plano hasta el fin del
     // proyecto), programado sigue acumulando hasta el último mes proyectado.
     const curMesOrd = today.getFullYear() * 12 + today.getMonth()
     let acumFab = 0
     let acumProg = 0
     const mensualAcumulado = allMesKeysCompleto.map((k) => {
       const [y, m] = k.split('_').map(Number)
-      acumFab += realMes.get(k)?.mods.size ?? 0
+      acumFab += terminadosMes.get(k) || 0
       acumProg += proyMes.get(k)?.sum ?? 0
       return {
         mes: realMes.get(k)?.lbl ?? mesLbl(new Date(y, m - 1, 1)),
