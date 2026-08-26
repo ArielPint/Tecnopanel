@@ -1,5 +1,11 @@
 # Publicar Tecnopanel Hub en GitHub Pages
 
+> **⚠️ Obsoleto (nota agregada 2026-08-26).** El deploy real hoy es **Vercel**
+> (`tecnopanel.vercel.app`, ver `VERCEL_DEPLOY.md`), migrado desde GitHub Pages el 2026-07-23.
+> `vite.config.ts`/`src/App.tsx` ya no tienen el `base`/`basename` de `/Tecnopanel/` que este
+> flujo necesita — seguir estos pasos tal cual dejaría el deploy roto. Se deja el documento como
+> referencia histórica, no como instrucción vigente.
+
 ## 0. Limpieza previa (una sola vez)
 Intenté inicializar el repo git desde el sandbox y quedó una carpeta `.git` corrupta/vacía
 (por una limitación de permisos al escribir sobre esta carpeta montada). Antes de seguir,
