@@ -34,6 +34,10 @@ export const PAGE_MAP: Record<PageId, PageDef> = {
       partidas: 'Partidas',
       alertas: 'Alertas',
       detalle: 'Detalle',
+      // Pestaña propia (no Config, que es solo-admin) para poder dar acceso granular
+      // "solo asociar subcontrato" — marcar el módulo Producción con únicamente esta
+      // pestaña habilitada es el permiso especial pedido para esto.
+      subcontrato: 'Subcontrato',
     },
   },
   obra: {

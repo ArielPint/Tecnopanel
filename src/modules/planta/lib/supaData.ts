@@ -253,6 +253,34 @@ export async function guardarDotacionPersonal(proyectoId: string, valores: Dotac
   if (error) throw new Error(error.message)
 }
 
+export interface ModuloSubcontratoRow {
+  nombre: string
+  torre: string | null
+  tipo: string | null
+  subcontrato: 'WEDO' | 'CONBES' | null
+}
+
+export async function loadModulosSubcontrato(proyectoId: string): Promise<ModuloSubcontratoRow[]> {
+  const data = await unwrap(
+    supabase
+      .from('planta_modulos')
+      .select('nombre, torre, tipo, subcontrato')
+      .eq('proyecto_id', proyectoId)
+      .eq('activo', true)
+      .order('nombre', { ascending: true }),
+  )
+  return (data ?? []) as ModuloSubcontratoRow[]
+}
+
+export async function guardarSubcontratoModulo(proyectoId: string, nombre: string, subcontrato: 'WEDO' | 'CONBES'): Promise<void> {
+  const { error } = await supabase
+    .from('planta_modulos')
+    .update({ subcontrato })
+    .eq('proyecto_id', proyectoId)
+    .eq('nombre', nombre)
+  if (error) throw new Error(error.message)
+}
+
 export interface PlantaModuloRow {
   nombre: string | null
   torre: string | null

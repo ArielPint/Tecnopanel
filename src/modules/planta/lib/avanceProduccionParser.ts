@@ -1,12 +1,31 @@
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabaseClient'
 
+export type Subcontrato = 'WEDO' | 'CONBES'
+
 export interface AvanceProduccionRow {
   nombre: string
   torre: string
   tipo: string
   estadoModulo: string
   estados: Record<string, string>
+  subcontrato?: Subcontrato
+}
+
+// Hoja "SUBCONTRATO" (agregada 2026-08-26): N° MÓDULO / N° SERIE / SUBCONTRATO,
+// solo WEDO o CONBES. Opcional — archivos viejos sin esta hoja siguen andando igual.
+function parseSubcontratoSheet(wb: XLSX.WorkBook): Map<string, Subcontrato> {
+  const map = new Map<string, Subcontrato>()
+  const ws = wb.Sheets['SUBCONTRATO']
+  if (!ws) return map
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as unknown[][]
+  for (let i = 1; i < rows.length; i++) {
+    const modulo = String(rows[i][0] ?? '').trim()
+    const valor = String(rows[i][2] ?? '').trim().toUpperCase()
+    if (!modulo || (valor !== 'WEDO' && valor !== 'CONBES')) continue
+    map.set(modulo, valor)
+  }
+  return map
 }
 
 // Código de partida (lib/partidas.ts) → columna "check" de la hoja BD_AVANCE de
@@ -79,6 +98,7 @@ export function parseAvanceProduccion(wb: XLSX.WorkBook): AvanceProduccionRow[] 
   }
 
   const checkCols = Object.entries(CODE_TO_CHECK_COLUMN).map(([code, colName]) => ({ code, idx: col(colName) }))
+  const subcontratoPorModulo = parseSubcontratoSheet(wb)
 
   const out: AvanceProduccionRow[] = []
   for (let i = 1; i < rows.length; i++) {
@@ -96,6 +116,7 @@ export function parseAvanceProduccion(wb: XLSX.WorkBook): AvanceProduccionRow[] 
       tipo: iTipo >= 0 ? String(r[iTipo] ?? '').trim() || 'N/A' : 'N/A',
       estadoModulo: iEstado >= 0 ? String(r[iEstado] ?? '').trim() : '',
       estados,
+      subcontrato: subcontratoPorModulo.get(nombre),
     })
   }
   return out
@@ -138,6 +159,20 @@ export async function seedPlantaModulos(proyectoId: string, rows: AvanceProducci
     const { error } = await supabase
       .from('planta_modulos')
       .upsert(payload.slice(i, i + LOTE), { onConflict: 'proyecto_id,nombre' })
+    if (error) throw new Error(error.message)
+  }
+
+  // subcontrato va en un upsert aparte, con un payload que SOLO trae esa columna —
+  // así el "columns" que arma postgrest para este request no incluye torre/tipo/estados/etc,
+  // y el merge no puede pisarlos. Probado: meter subcontrato en el payload de arriba (aunque
+  // sea con defaultToNull:false) SÍ pisaba con null los módulos sin valor en el Excel — esa
+  // opción solo protege el camino de INSERT, no el UPDATE de un conflicto (doc de postgrest-js).
+  const conSubcontrato = rows.filter((r) => r.subcontrato)
+  const payloadSub = conSubcontrato.map((r) => ({ proyecto_id: proyectoId, nombre: r.nombre, subcontrato: r.subcontrato }))
+  for (let i = 0; i < payloadSub.length; i += LOTE) {
+    const { error } = await supabase
+      .from('planta_modulos')
+      .upsert(payloadSub.slice(i, i + LOTE), { onConflict: 'proyecto_id,nombre' })
     if (error) throw new Error(error.message)
   }
 

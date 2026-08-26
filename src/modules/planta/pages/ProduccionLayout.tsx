@@ -10,6 +10,7 @@ import ProduccionTorres from './ProduccionTorres'
 import ProduccionPartidas from './ProduccionPartidas'
 import ProduccionAlertas from './ProduccionAlertas'
 import ProduccionDetalle from './ProduccionDetalle'
+import ProduccionSubcontrato from './ProduccionSubcontrato'
 
 const TABS = [
   { value: 'resumen', label: 'Resumen' },
@@ -17,6 +18,7 @@ const TABS = [
   { value: 'partidas', label: 'Partidas' },
   { value: 'alertas', label: 'Alertas' },
   { value: 'detalle', label: 'Detalle' },
+  { value: 'subcontrato', label: 'Subcontrato' },
 ] as const
 
 export default function ProduccionLayout() {
@@ -61,6 +63,7 @@ export default function ProduccionLayout() {
             {visibles.some((t) => t.value === 'partidas') && <TabsContent value="partidas"><ProduccionPartidas excelData={excelData} /></TabsContent>}
             {visibles.some((t) => t.value === 'alertas') && <TabsContent value="alertas"><ProduccionAlertas excelData={excelData} /></TabsContent>}
             {visibles.some((t) => t.value === 'detalle') && <TabsContent value="detalle"><ProduccionDetalle excelData={excelData} /></TabsContent>}
+            {visibles.some((t) => t.value === 'subcontrato') && <TabsContent value="subcontrato"><ProduccionSubcontrato /></TabsContent>}
           </Tabs>
         )}
       </main>
