@@ -24,6 +24,9 @@ export interface ProyectoAcceso {
   /** Puede ocultar/eliminar productos del catálogo desde la pestaña Solicitudes,
    * sin necesitar logistica:editar (independiente de solicitudesEdit). */
   solicitudesCatalogoEliminar: boolean
+  /** Subcontrato asociado (WEDO/CONBES) — si está seteado, Producción y Avance Obra
+   * filtran los módulos a solo los de ese subcontrato para este usuario. */
+  subcontrato: 'WEDO' | 'CONBES' | ''
 }
 
 export function proyectoAccesoVacio(): ProyectoAcceso {
@@ -38,6 +41,7 @@ export function proyectoAccesoVacio(): ProyectoAcceso {
     solicitudesEdit: false,
     solicitudesCatalogoCrearEditar: false,
     solicitudesCatalogoEliminar: false,
+    subcontrato: '',
   }
 }
 
@@ -105,6 +109,7 @@ async function syncAccesos(userId: string, input: AccesoInput) {
         pa.financieroEdit,
         accionesExtra,
         pa.tabs,
+        pa.subcontrato,
       ),
       pa.rolNegocio ? syncRolNegocio(userId, proyectoId, pa.rolNegocio) : Promise.resolve(),
     ]
@@ -186,8 +191,12 @@ export function useAccesos() {
         let solicitudesEdit = false
         let solicitudesCatalogoCrearEditar = false
         let solicitudesCatalogoEliminar = false
+        let subcontrato: 'WEDO' | 'CONBES' | '' = ''
         for (const x of misPermisos) {
           if (x.proyecto_id !== proy.id) continue
+          if (x.modulo_key === '_subcontrato' && (x.accion === 'WEDO' || x.accion === 'CONBES')) {
+            subcontrato = x.accion
+          }
           if (x.accion === 'editar' && x.modulo_key.startsWith('financiero:')) {
             financieroEdit[x.modulo_key.split(':')[1]] = true
           }
@@ -225,6 +234,7 @@ export function useAccesos() {
           solicitudesEdit,
           solicitudesCatalogoCrearEditar,
           solicitudesCatalogoEliminar,
+          subcontrato,
         }
       }
 

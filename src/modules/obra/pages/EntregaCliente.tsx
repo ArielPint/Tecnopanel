@@ -1,8 +1,12 @@
 import { useMemo } from 'react'
+import { useParams } from 'react-router-dom'
+import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 import { useObraCrData } from '../hooks/useObraCrData'
 import { buildEntregasFlat } from '../lib/matrix'
-import { ASIGNACION_DEFS, ASIGNACION_ORDER, SUBCONTRATO_LABEL, type AsignacionCategoria } from '../lib/categorias'
+import { ASIGNACION_DEFS, ASIGNACION_ORDER, SUBCONTRATO_LABEL, type AsignacionCategoria, type ObraSubcontrato } from '../lib/categorias'
 import CalendarioEntregas from '../components/CalendarioEntregas'
+
+const SUBCONTRATO_PERMISO_A_OBRA: Record<'WEDO' | 'CONBES', ObraSubcontrato> = { WEDO: 'W', CONBES: 'C' }
 
 function tituloCategoria(cat: AsignacionCategoria): string {
   const def = ASIGNACION_DEFS[cat]
@@ -11,12 +15,21 @@ function tituloCategoria(cat: AsignacionCategoria): string {
 }
 
 export default function EntregaCliente() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
+  const { subcontrato } = usePermisosProyecto(proyectoSlug ?? '')
   const { modulos, loading, hayCR } = useObraCrData()
   const entregas = useMemo(() => buildEntregasFlat(modulos), [modulos])
+  // Con subcontrato asociado: solo "terminaciones" aplica (las otras 3 categorías
+  // son de otras empresas fijas), filtrado además al código propio (W/C).
+  const categorias = subcontrato ? (['terminaciones'] as AsignacionCategoria[]) : ASIGNACION_ORDER
 
   const porCategoria = useMemo(
-    () => ASIGNACION_ORDER.map((cat) => ({ cat, entregas: entregas.filter((e) => e.categoria === cat) })),
-    [entregas],
+    () =>
+      categorias.map((cat) => ({
+        cat,
+        entregas: entregas.filter((e) => e.categoria === cat && (!subcontrato || e.subcontrato === SUBCONTRATO_PERMISO_A_OBRA[subcontrato])),
+      })),
+    [entregas, categorias, subcontrato],
   )
 
   if (loading) return <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>

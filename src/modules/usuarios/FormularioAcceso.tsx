@@ -287,6 +287,27 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                         ))}
                       </div>
                     )}
+                    {(pa.modulos.includes('produccion') || pa.modulos.includes('obra')) && (
+                      <div className="flex flex-col gap-1.5 rounded-md border p-3">
+                        <Label className="text-xs text-muted-foreground">Subcontrato asociado (Producción / Avance Obra)</Label>
+                        <Select
+                          value={pa.subcontrato || '__ninguno'}
+                          onValueChange={(v) => setProyectoAcceso(proy.id, { subcontrato: v === '__ninguno' ? '' : (v as 'WEDO' | 'CONBES') })}
+                        >
+                          <SelectTrigger className="h-8 w-56">
+                            <SelectValue placeholder="Ver todos los módulos" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__ninguno">Ver todos los módulos</SelectItem>
+                            <SelectItem value="WEDO">We Do</SelectItem>
+                            <SelectItem value="CONBES">Conbes</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[11px] text-muted-foreground">
+                          Si se asigna, en Producción y Avance Obra este usuario solo ve los módulos asociados a ese subcontrato.
+                        </p>
+                      </div>
+                    )}
                     {pa.modulos.includes('logistica') && (
                       <div className="flex flex-col gap-1.5 rounded-md border p-3">
                         <Label className="text-xs text-muted-foreground">Edición en Logística</Label>

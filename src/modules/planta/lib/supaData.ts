@@ -288,6 +288,7 @@ export interface PlantaModuloRow {
   estado_modulo: string | null
   estados: Record<string, unknown> | null
   tiempos: Record<string, { t1?: string; t2?: string; t3?: string }> | null
+  subcontrato: 'WEDO' | 'CONBES' | null
 }
 
 // Set completo de columnas para el módulo Producción (Resumen/Torres/Partidas/Alertas/Detalle) —
@@ -296,7 +297,7 @@ export async function loadPlantaModulos(proyectoId: string): Promise<PlantaModul
   const data = await unwrap(
     supabase
       .from('planta_modulos')
-      .select('nombre, torre, tipo, estado_modulo, estados, tiempos')
+      .select('nombre, torre, tipo, estado_modulo, estados, tiempos, subcontrato')
       .eq('proyecto_id', proyectoId)
       .order('orden', { ascending: true }),
   )

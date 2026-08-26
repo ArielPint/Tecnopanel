@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { Card, CardContent } from '@/modules/financiero/components/ui/card'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
+import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 import { useObraCrData } from '../hooks/useObraCrData'
 import { ASIGNACION_POR_CR_CATEGORIA, CATEGORY_DEFS } from '../lib/categorias'
 import { buildCategoryTable, isModuloTerminado, type ModuloCombinado } from '../lib/matrix'
@@ -9,6 +11,9 @@ import type { ObraCategoria } from '../lib/categorias'
 import type { ChipEstado } from '../lib/crParser'
 
 const ORDEN: ObraCategoria[] = ['electrico', 'sanitario', 'wedo', 'conbes', 'ventanas']
+// Sección "wedo"/"conbes" correspondiente al valor del permiso — un usuario con
+// subcontrato asociado solo ve la suya (las otras 3 categorías son de otras empresas).
+const SECCION_POR_SUBCONTRATO: Record<'WEDO' | 'CONBES', ObraCategoria> = { WEDO: 'wedo', CONBES: 'conbes' }
 
 function fmtFecha(iso: string | null): string {
   if (!iso) return ''
@@ -104,15 +109,18 @@ function CategoriaSection({ cat, modulos }: { cat: ObraCategoria; modulos: Modul
 }
 
 export default function PorContratista() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
+  const { subcontrato } = usePermisosProyecto(proyectoSlug ?? '')
   const { modulos: todos, loading, hayCR } = useObraCrData()
   const modulos = useMemo(() => todos.filter((m) => !isModuloTerminado(m)), [todos])
+  const orden = subcontrato ? [SECCION_POR_SUBCONTRATO[subcontrato]] : ORDEN
 
   const kpis = useMemo(() => {
-    const porCat = ORDEN.map((cat) => ({ cat, tabla: buildCategoryTable(cat, modulos) }))
+    const porCat = orden.map((cat) => ({ cat, tabla: buildCategoryTable(cat, modulos) }))
     const totalDone = porCat.reduce((s, c) => s + c.tabla.done, 0)
     const totalAll = porCat.reduce((s, c) => s + c.tabla.total, 0)
     return { porCat, generalPct: totalAll ? ((100 * totalDone) / totalAll).toFixed(1) : '0.0', totalDone, totalAll }
-  }, [modulos])
+  }, [modulos, orden])
 
   if (loading) return <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
 
@@ -128,7 +136,7 @@ export default function PorContratista() {
           <Kpi key={cat} label={CATEGORY_DEFS[cat].label} pct={tabla.total ? ((100 * tabla.done) / tabla.total).toFixed(1) : '0.0'} frac={`${tabla.done} / ${tabla.total}`} />
         ))}
       </div>
-      {ORDEN.map((cat) => (
+      {orden.map((cat) => (
         <CategoriaSection key={cat} cat={cat} modulos={modulos} />
       ))}
     </div>

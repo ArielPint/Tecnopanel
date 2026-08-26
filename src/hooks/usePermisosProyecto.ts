@@ -8,6 +8,9 @@ interface PermisosProyecto {
   isAdmin: boolean
   activo: boolean
   rolNegocio: string | null
+  /** Subcontrato asociado al usuario (WEDO/CONBES) — si está seteado, Producción y
+   * Avance Obra filtran los módulos a solo los de ese subcontrato. */
+  subcontrato: 'WEDO' | 'CONBES' | null
   tieneAccion: (moduloKey: string, accion?: string) => boolean
 }
 
@@ -16,10 +19,11 @@ interface Estado {
   isAdmin: boolean
   activo: boolean
   rolNegocio: string | null
+  subcontrato: 'WEDO' | 'CONBES' | null
   granted: Set<string>
 }
 
-const ESTADO_INICIAL: Estado = { loading: true, isAdmin: false, activo: false, rolNegocio: null, granted: new Set() }
+const ESTADO_INICIAL: Estado = { loading: true, isAdmin: false, activo: false, rolNegocio: null, subcontrato: null, granted: new Set() }
 
 export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
   const userId = useAuthStore((s) => s.user?.id)
@@ -32,7 +36,7 @@ export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
     if (authLoading) return
 
     if (!userId) {
-      setEstado({ loading: false, isAdmin: false, activo: false, rolNegocio: null, granted: new Set() })
+      setEstado({ loading: false, isAdmin: false, activo: false, rolNegocio: null, subcontrato: null, granted: new Set() })
       return
     }
 
@@ -65,12 +69,17 @@ export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
             .filter((p) => habilitados.has(p.modulo_key.split(':')[0]))
             .map((p) => `${p.modulo_key}:${p.accion}`),
         )
+        // '_subcontrato' no es un módulo real (no vive en proyecto_modulos) — se lee
+        // aparte de `granted`, que solo captura módulos habilitados en el proyecto.
+        const subcontratoRow = (permisos ?? []).find((p) => p.modulo_key === '_subcontrato')
+        const subcontrato = subcontratoRow?.accion === 'WEDO' || subcontratoRow?.accion === 'CONBES' ? subcontratoRow.accion : null
 
         setEstado({
           loading: false,
           isAdmin: profile?.rol === 'admin',
           activo: profile?.activo !== false,
           rolNegocio: access?.rol_negocio ?? null,
+          subcontrato,
           granted,
         })
       } catch (err) {
@@ -84,7 +93,7 @@ export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
           return
         }
         console.error('usePermisosProyecto: error al resolver permisos', err)
-        setEstado({ loading: false, isAdmin: false, activo: false, rolNegocio: null, granted: new Set() })
+        setEstado({ loading: false, isAdmin: false, activo: false, rolNegocio: null, subcontrato: null, granted: new Set() })
       }
     }
 
@@ -99,6 +108,7 @@ export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
     isAdmin: estado.isAdmin,
     activo: estado.activo,
     rolNegocio: estado.rolNegocio,
+    subcontrato: estado.subcontrato,
     tieneAccion: (moduloKey: string, accion = 'ver') => estado.isAdmin || estado.granted.has(`${moduloKey}:${accion}`),
   }
 }

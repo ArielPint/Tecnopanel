@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { getProyectoId } from '@/lib/proyectoIds'
 import { useCachedQuery } from '@/lib/useCachedQuery'
+import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 import { loadPlantaModulos, type PlantaModuloRow } from '../lib/supaData'
 import {
   catProgress, moduloProgress, isModuloIniciado, isModuloTerminado,
@@ -95,6 +96,9 @@ function enriquecer(rows: PlantaModuloRow[], excelData: ParsedDashboardData | nu
 
 export function useProduccionModulos(excelData: ParsedDashboardData | null) {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
+  // Si el usuario tiene un subcontrato asociado (permiso "_subcontrato"), Producción
+  // se restringe a solo los módulos de ese subcontrato (planta_modulos.subcontrato).
+  const { subcontrato } = usePermisosProyecto(proyectoSlug ?? '')
 
   const fetcher = useCallback(async () => {
     const proyectoId = await getProyectoId(proyectoSlug!)
@@ -102,7 +106,11 @@ export function useProduccionModulos(excelData: ParsedDashboardData | null) {
   }, [proyectoSlug])
 
   const { data, loading } = useCachedQuery<PlantaModuloRow[]>(proyectoSlug ? `planta_modulos:${proyectoSlug}` : null, fetcher, 60_000)
-  const rows = data ?? []
+  const todasLasRows = data ?? []
+  const rows = useMemo(
+    () => (subcontrato ? todasLasRows.filter((r) => r.subcontrato === subcontrato) : todasLasRows),
+    [todasLasRows, subcontrato],
+  )
 
   const modulos = useMemo(() => enriquecer(rows, excelData), [rows, excelData])
 
