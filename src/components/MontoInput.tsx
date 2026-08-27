@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react'
 
-interface Props {
+interface Props extends Omit<React.ComponentProps<'input'>, 'value' | 'onChange' | 'type'> {
   value: number | null
   onChange: (v: number | null) => void
-  placeholder?: string
-  className?: string
 }
 
 // Input de texto que muestra separador de miles (es-CL) mientras se escribe,
 // pero entrega/recibe un number | null puro hacia el estado del formulario.
-export default function MontoInput({ value, onChange, placeholder, className }: Props) {
+export default function MontoInput({ value, onChange, ...rest }: Props) {
   const [raw, setRaw] = useState(value != null ? value.toLocaleString('es-CL') : '')
 
   useEffect(() => {
@@ -29,8 +27,7 @@ export default function MontoInput({ value, onChange, placeholder, className }: 
       inputMode="numeric"
       value={raw}
       onChange={handleChange}
-      placeholder={placeholder}
-      className={className}
+      {...rest}
     />
   )
 }

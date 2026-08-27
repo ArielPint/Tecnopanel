@@ -106,7 +106,7 @@ export default function FormularioForecast({ forecastExistente, onUpsert }: Form
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="monto">Monto forecast (CLP)</Label>
-            <Input id="monto" type="number" min="0" step="1" value={monto} onChange={(e) => setMonto(e.target.value)} required />
+            <Input id="monto" type="number" thousands min="0" step="1" value={monto} onChange={(e) => setMonto(e.target.value)} required />
           </div>
           <DialogFooter>
             <Button type="submit" disabled={enviando}>

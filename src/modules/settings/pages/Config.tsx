@@ -160,13 +160,13 @@ function PresupuestoCard() {
           <Input
             id="inp-presupuesto"
             type="number"
+            thousands
             min={0}
             step={1000000}
-            placeholder="ej. 6579000000"
+            placeholder="ej. 6.579.000.000"
             value={inputValor}
             onChange={(e) => setValor(e.target.value)}
           />
-          <span className="text-xs text-muted-foreground">Sin puntos ni comas</span>
         </div>
         <Button size="sm" disabled={guardando} onClick={onGuardar}>
           {guardando ? 'Guardando…' : 'Guardar presupuesto'}

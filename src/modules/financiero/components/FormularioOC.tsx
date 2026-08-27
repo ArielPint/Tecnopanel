@@ -210,7 +210,7 @@ export default function FormularioOC({ ordenCompra, ordenesCompra, onCreate, onU
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="neto">Neto (CLP)</Label>
-            <Input id="neto" type="number" min="0" step="1" value={neto} onChange={(e) => setNeto(e.target.value)} required />
+            <Input id="neto" type="number" thousands min="0" step="1" value={neto} onChange={(e) => setNeto(e.target.value)} required />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="detalle">Detalle</Label>

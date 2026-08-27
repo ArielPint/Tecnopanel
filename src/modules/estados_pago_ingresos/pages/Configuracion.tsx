@@ -49,7 +49,7 @@ export default function Configuracion() {
         <Label>Monto contractual total del proyecto</Label>
         {editando ? (
           <div className="flex items-center gap-2">
-            <Input type="number" min="0" value={valor} onChange={(e) => setValor(e.target.value)} className="max-w-48" autoFocus />
+            <Input type="number" thousands min="0" value={valor} onChange={(e) => setValor(e.target.value)} className="max-w-48" autoFocus />
             <Button size="sm" onClick={onGuardar} disabled={guardando}>
               {guardando ? 'Guardando…' : 'Guardar'}
             </Button>

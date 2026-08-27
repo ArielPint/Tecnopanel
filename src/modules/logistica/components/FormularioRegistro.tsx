@@ -372,7 +372,7 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
                   </div>
                   <div className="flex flex-col gap-1">
                     <Label className="text-xs">Valor Total ($)</Label>
-                    <Input type="number" step="any" min="0" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value={l.valor_total_item || ''} onChange={(e) => actualizarLinea(idx, { valor_total_item: parseFloat(e.target.value) || 0 })} />
+                    <Input type="number" thousands step="any" min="0" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value={l.valor_total_item || ''} onChange={(e) => actualizarLinea(idx, { valor_total_item: parseFloat(e.target.value) || 0 })} />
                   </div>
                 </div>
                 <LineaCalc linea={l} />

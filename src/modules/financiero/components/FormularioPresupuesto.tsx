@@ -102,6 +102,7 @@ export default function FormularioPresupuesto({ presupuesto, onCreate, onUpdate 
             <Input
               id="presupuesto_original"
               type="number"
+              thousands
               min="0"
               step="1"
               value={presupuestoOriginal}
@@ -114,6 +115,7 @@ export default function FormularioPresupuesto({ presupuesto, onCreate, onUpdate 
             <Input
               id="valor_servicio"
               type="number"
+              thousands
               min="0"
               step="1"
               value={valorServicio}

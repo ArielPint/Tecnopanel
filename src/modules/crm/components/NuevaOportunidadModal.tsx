@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Loader2, X } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
-import MontoInput from '@/modules/crm/components/MontoInput'
+import MontoInput from '@/components/MontoInput'
 import type { TipoVenta, TipoSubsidioVit, ZonaTermicaVit, TipologiaVitPrecio } from '@/modules/crm/types/database'
 
 interface Cliente { id: string; razon_social: string }
@@ -371,8 +371,8 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Valor UF (CLP)</label>
-                <input type="number" value={form.valor_uf} onChange={e => setForm(f=>({...f,valor_uf:e.target.value}))}
-                  placeholder="ej. 39500"
+                <MontoInput value={form.valor_uf ? Number(form.valor_uf) : null} onChange={v => setForm(f=>({...f,valor_uf: v != null ? String(v) : ''}))}
+                  placeholder="ej. 39.500"
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
               </div>
               {lineas.length > 0 && (

@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { FileText, Trash2 } from 'lucide-react'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Badge } from '@/modules/financiero/components/ui/badge'
+import MontoInput from '@/components/MontoInput'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/modules/financiero/components/ui/dialog'
 import { formatCLP, formatFecha } from '@/modules/financiero/utils/formatters'
 import { useEstadoPagoIngresoDetalle } from '../hooks/useEstadoPagoIngresoDetalle'
@@ -139,11 +140,9 @@ export default function DetalleEstadoPagoIngreso({ estadoPago, onCambiarEstado, 
                   )
                 })}
                 {estadoPago.estado === 'aprobado' && puedeAprobar && (
-                  <input
-                    type="number"
-                    min="0"
-                    value={montoCobrado}
-                    onChange={(e) => setMontoCobrado(e.target.value)}
+                  <MontoInput
+                    value={montoCobrado ? Number(montoCobrado) : null}
+                    onChange={(v) => setMontoCobrado(v != null ? String(v) : '')}
                     className="h-9 w-32 rounded-md border px-2 text-sm"
                     title="Monto cobrado"
                   />

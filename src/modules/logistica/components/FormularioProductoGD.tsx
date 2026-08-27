@@ -110,7 +110,7 @@ export default function FormularioProductoGD({ producto, existentes, onGuardar }
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="ppto">Presupuesto ($)</Label>
-            <Input id="ppto" type="number" step="any" value={ppto} onChange={(e) => setPpto(e.target.value)} />
+            <Input id="ppto" type="number" thousands step="any" value={ppto} onChange={(e) => setPpto(e.target.value)} />
           </div>
 
           <DialogFooter className="col-span-2">

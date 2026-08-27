@@ -190,20 +190,20 @@ export default function FormularioEstadoPago({ estadoPago, subcontratos, trigger
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ep-bruto">Monto bruto</Label>
-              <Input id="ep-bruto" type="number" min="0" value={montoBruto} onChange={(e) => setMontoBruto(e.target.value)} required />
+              <Input id="ep-bruto" type="number" thousands min="0" value={montoBruto} onChange={(e) => setMontoBruto(e.target.value)} required />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ep-descuentos">Descuentos</Label>
-              <Input id="ep-descuentos" type="number" min="0" value={descuentos} onChange={(e) => setDescuentos(e.target.value)} />
+              <Input id="ep-descuentos" type="number" thousands min="0" value={descuentos} onChange={(e) => setDescuentos(e.target.value)} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ep-retenciones">Retenciones</Label>
-              <Input id="ep-retenciones" type="number" min="0" value={retenciones} onChange={(e) => setRetenciones(e.target.value)} />
+              <Input id="ep-retenciones" type="number" thousands min="0" value={retenciones} onChange={(e) => setRetenciones(e.target.value)} />
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="ep-neto">Monto neto</Label>
-            <Input id="ep-neto" type="number" min="0" value={montoNeto} onChange={(e) => setMontoNeto(e.target.value)} required />
+            <Input id="ep-neto" type="number" thousands min="0" value={montoNeto} onChange={(e) => setMontoNeto(e.target.value)} required />
           </div>
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
@@ -222,6 +222,7 @@ export default function FormularioEstadoPago({ estadoPago, subcontratos, trigger
                 />
                 <Input
                   type="number"
+                  thousands
                   min="0"
                   value={it.monto}
                   onChange={(e) => actualizarItem(i, { monto: e.target.value })}

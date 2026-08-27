@@ -117,6 +117,7 @@ export default function FormularioSubcontrato({ subcontrato, subcontratistas, tr
             <Input
               id="sub-monto"
               type="number"
+              thousands
               min="0"
               step="1"
               value={montoContractual}

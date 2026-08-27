@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import { formatCLP } from '@/modules/financiero/utils/formatters'
-import MontoInput from '@/modules/crm/components/MontoInput'
+import MontoInput from '@/components/MontoInput'
 import type { Oportunidad, Profile, OportunidadHistorialEtapa, OportunidadDocumento, TareaIngenieria, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit } from '@/modules/crm/types/database'
 import { FAMILIA_PRODUCTOS_OPCIONES, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
 
@@ -518,6 +518,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       const { error: upErr } = await supabase.storage.from('oportunidades').upload(path, ocFile)
       if (upErr) { setSavingOc(false); handleSupabaseError(upErr, 'OportunidadDrawer.guardarOc.upload'); return }
       storagePath = path
+      const { error: docErr } = await supabase.from('oportunidad_documentos').insert({
+        oportunidad_id: opp.id, nombre: ocFile.name, tipo: 'archivo',
+        url: path, extension: ocFile.name.split('.').pop() ?? '', tamanio_bytes: ocFile.size,
+        subido_por: profile?.id, etapa: opp.etapa_actual, comentario: 'Orden de Compra',
+      })
+      if (handleSupabaseError(docErr, 'OportunidadDrawer.guardarOc.doc')) { setSavingOc(false); return }
     }
     const payload = {
       numero_oc: ocForm.numero_oc.trim() || null,
@@ -946,7 +952,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
               <input value={itemManual.categoria} onChange={ev => setItemManual(m => ({...m, categoria: ev.target.value}))} placeholder="Categoría (ej. PANELES)" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
               <input value={itemManual.nombre} onChange={ev => setItemManual(m => ({...m, nombre: ev.target.value}))} placeholder="Descripción *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <input type="number" value={itemManual.costo_unitario} onChange={ev => setItemManual(m => ({...m, costo_unitario: ev.target.value}))} placeholder="Costo unitario *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
+                <MontoInput value={itemManual.costo_unitario ? Number(itemManual.costo_unitario) : null} onChange={v => setItemManual(m => ({...m, costo_unitario: v != null ? String(v) : ''}))} placeholder="Costo unitario *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
                 <input type="number" value={itemManual.cantidad} onChange={ev => setItemManual(m => ({...m, cantidad: ev.target.value}))} placeholder="Cantidad" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
               </div>
               <button type="button" onClick={agregarItemManual} className="px-3 py-1 text-xs text-white rounded" style={{background:'#ed3224'}}>Agregar</button>
@@ -1096,7 +1102,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
           </div>
           <div><label className="block text-xs font-medium text-gray-600 mb-1">Monto OC (CLP)</label>
-            <input type="number" value={ocForm.monto_oc} onChange={ev => setOcForm(f => ({...f, monto_oc: ev.target.value}))}
+            <MontoInput value={ocForm.monto_oc ? Number(ocForm.monto_oc) : null}
+              onChange={v => setOcForm(f => ({...f, monto_oc: v != null ? String(v) : ''}))}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
           <button onClick={guardarOc} disabled={savingOc} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
             {savingOc && <Loader2 size={14} className="animate-spin" />}{savingOc ? 'Guardando...' : 'Guardar OC'}
@@ -1210,8 +1217,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                       {ZONAS_TERMICAS.map(z => <option key={z} value={z}>{z}</option>)}
                     </select></div>
                   <div><label className="block text-xs font-medium text-gray-600 mb-1">Valor UF (CLP)</label>
-                    <input type="number" value={opp.valor_uf ?? ''} onChange={e => setOpp(o => ({...o,valor_uf:e.target.value?Number(e.target.value):null}))}
-                      placeholder="ej. 39500" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                    <MontoInput value={opp.valor_uf ?? null} onChange={v => setOpp(o => ({...o,valor_uf:v}))}
+                      placeholder="ej. 39.500" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
                 </div>
               )}
 

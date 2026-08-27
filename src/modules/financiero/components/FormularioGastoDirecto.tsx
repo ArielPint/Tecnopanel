@@ -121,7 +121,7 @@ export default function FormularioGastoDirecto({ registroExistente, onUpsert }: 
           <BuscadorProveedor rut={proveedorRut} onRutChange={setProveedorRut} onResolved={() => {}} />
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="monto">Monto (CLP)</Label>
-            <Input id="monto" type="number" min="0" step="1" value={monto} onChange={(e) => setMonto(e.target.value)} required />
+            <Input id="monto" type="number" thousands min="0" step="1" value={monto} onChange={(e) => setMonto(e.target.value)} required />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="observacion">Observación (opcional)</Label>
