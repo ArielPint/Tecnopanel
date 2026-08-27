@@ -194,8 +194,9 @@ export function useAccesos() {
         let subcontrato: 'WEDO' | 'CONBES' | '' = ''
         for (const x of misPermisos) {
           if (x.proyecto_id !== proy.id) continue
-          if (x.modulo_key === '_subcontrato' && (x.accion === 'WEDO' || x.accion === 'CONBES')) {
-            subcontrato = x.accion
+          if (x.modulo_key.startsWith('_subcontrato:')) {
+            const valor = x.modulo_key.split(':')[1]
+            if (valor === 'WEDO' || valor === 'CONBES') subcontrato = valor
           }
           if (x.accion === 'editar' && x.modulo_key.startsWith('financiero:')) {
             financieroEdit[x.modulo_key.split(':')[1]] = true

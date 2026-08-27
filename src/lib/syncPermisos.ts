@@ -56,8 +56,9 @@ export async function syncPermisosProyecto(
   }
   // '_subcontrato' no es un módulo real — filtra Producción/Avance Obra a los módulos
   // de ese subcontrato (ver usePermisosProyecto.subcontrato). Sin sufijo de proyecto:
-  // ya está scoped por proyecto_id en la fila de `permisos`.
-  if (subcontrato) filas.push({ modulo_key: '_subcontrato', accion: subcontrato })
+  // ya está scoped por proyecto_id en la fila de `permisos`. El valor va en modulo_key
+  // (no en accion) porque permisos_accion_check solo permite acciones fijas (ver/crear/...).
+  if (subcontrato) filas.push({ modulo_key: `_subcontrato:${subcontrato}`, accion: 'ver' })
   await reemplazarPermisos(userId, proyectoId, filas)
 }
 

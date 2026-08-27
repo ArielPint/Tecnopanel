@@ -71,8 +71,9 @@ export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
         )
         // '_subcontrato' no es un módulo real (no vive en proyecto_modulos) — se lee
         // aparte de `granted`, que solo captura módulos habilitados en el proyecto.
-        const subcontratoRow = (permisos ?? []).find((p) => p.modulo_key === '_subcontrato')
-        const subcontrato = subcontratoRow?.accion === 'WEDO' || subcontratoRow?.accion === 'CONBES' ? subcontratoRow.accion : null
+        const subcontratoRow = (permisos ?? []).find((p) => p.modulo_key.startsWith('_subcontrato:'))
+        const subcontratoValor = subcontratoRow?.modulo_key.split(':')[1]
+        const subcontrato = subcontratoValor === 'WEDO' || subcontratoValor === 'CONBES' ? subcontratoValor : null
 
         setEstado({
           loading: false,
