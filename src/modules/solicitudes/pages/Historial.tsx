@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { FileText } from 'lucide-react'
+import { Download, FileText } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Button } from '@/modules/financiero/components/ui/button'
@@ -9,6 +9,8 @@ import { Checkbox } from '@/modules/financiero/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 import EmptyState from '@/modules/financiero/components/EmptyState'
+import { formatCLP } from '@/modules/financiero/utils/formatters'
+import { exportarExcel } from '@/modules/financiero/utils/exportExcel'
 import { useCatalogoGD, type Producto } from '@/modules/logistica/hooks/useCatalogoGD'
 import ProductoAutocomplete from '@/modules/logistica/components/ProductoAutocomplete'
 import { useAuth } from '../hooks/useAuth'
@@ -56,7 +58,18 @@ export default function Historial() {
       .then(({ data }) => setRestringidos(new Set((data as string[] | null) ?? [])))
   }, [])
   const { solicitudes, eliminar, actualizarItems, marcarUsada } = useSolicitudes()
-  const { allProducts } = useCatalogoGD()
+  const { allProducts, pppMap } = useCatalogoGD()
+
+  const normCod = (c: string) => String(c || '').trim().toUpperCase()
+  const pppDe = (codigo: string) => {
+    const st = pppMap[normCod(codigo)]
+    return st && st.cant > 0 ? st.monto / st.cant : null
+  }
+  const valorizarSolicitud = (s: Solicitud) =>
+    s.items.reduce((acc, it) => {
+      const ppp = pppDe(it.codigo)
+      return ppp != null ? acc + it.cantidad_real * ppp : acc
+    }, 0)
 
   const [busqueda, setBusqueda] = useState('')
   const [grupoFiltro, setGrupoFiltro] = useState('')
@@ -209,6 +222,21 @@ export default function Historial() {
     return data
   }, [solicitudes, isAdmin, puedeEditar, esRestringido, perfil, grupoFiltro, busqueda, fechaFiltro, estadoFiltro])
 
+  function onExportar() {
+    const filas = filtradas.map((s) => ({
+      'N°': s.numero,
+      Fecha: new Date(s.created_at).toLocaleDateString('es-CL'),
+      Solicitante: s.nombre,
+      Grupo: grupoNombre(s.grupo_id),
+      'Para quién': paraQuien(s),
+      Items: s.items.length,
+      Estado: ESTADO_LABEL[s.estado],
+      'Usada el': s.usada_en ? new Date(s.usada_en).toLocaleString('es-CL') : '',
+      Valorizado: valorizarSolicitud(s),
+    }))
+    exportarExcel('historial_solicitudes', filas)
+  }
+
   async function onEliminar(id: string) {
     if (!confirm('¿Eliminar esta solicitud? Esta acción no se puede deshacer.')) return
     try {
@@ -251,6 +279,9 @@ export default function Historial() {
               ))}
             </SelectContent>
           </Select>
+          <Button variant="outline" size="sm" className="h-9" onClick={onExportar}>
+            <Download className="mr-1 h-4 w-4" /> Exportar Excel
+          </Button>
         </div>
       )}
 
@@ -283,6 +314,7 @@ export default function Historial() {
                 <TableHead>Grupo</TableHead>
                 <TableHead>Para quién</TableHead>
                 <TableHead className="text-center">Items</TableHead>
+                <TableHead className="text-right">Valorizado</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Usada el</TableHead>
                 <TableHead>Acciones</TableHead>
@@ -310,6 +342,7 @@ export default function Historial() {
                       <TableCell className="text-xs text-muted-foreground">{grupoNombre(s.grupo_id)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{paraQuien(s)}</TableCell>
                       <TableCell className="text-center">{s.items.length}</TableCell>
+                      <TableCell className="text-right tabular-nums text-success">{formatCLP(valorizarSolicitud(s))}</TableCell>
                       <TableCell>
                         <Badge variant={ESTADO_BADGE[s.estado]}>{ESTADO_LABEL[s.estado]}</Badge>
                       </TableCell>
@@ -336,7 +369,7 @@ export default function Historial() {
                     </TableRow>
                     {expandido === s.id && (
                       <TableRow>
-                        <TableCell colSpan={11} className="bg-muted/30 p-0">
+                        <TableCell colSpan={12} className="bg-muted/30 p-0">
                           {editando ? (
                             <div className="space-y-2 p-3" onClick={(e) => e.stopPropagation()}>
                               {s.observacion && (

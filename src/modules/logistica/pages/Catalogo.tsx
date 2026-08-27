@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Package } from 'lucide-react'
+import { Download, Package } from 'lucide-react'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
@@ -8,6 +8,7 @@ import { Badge } from '@/modules/financiero/components/ui/badge'
 import EmptyState from '@/modules/financiero/components/EmptyState'
 import TableSkeleton from '@/modules/financiero/components/TableSkeleton'
 import { formatCLP } from '@/modules/financiero/utils/formatters'
+import { exportarExcel } from '@/modules/financiero/utils/exportExcel'
 import { useAuth } from '../hooks/useAuth'
 import { useCatalogoGD, type Producto } from '../hooks/useCatalogoGD'
 import FormularioProductoGD from '../components/FormularioProductoGD'
@@ -50,6 +51,24 @@ export default function Catalogo({ puedeCrearEditarExtra, puedeEliminarExtra }: 
     return { monto, conPrecio }
   }, [filtrados, pppMap])
 
+  function onExportar() {
+    const filas = filtrados.map((p) => {
+      const ppp = pppMap[normCod(p.codigo)]
+      const pppVal = ppp && ppp.cant > 0 ? ppp.monto / ppp.cant : null
+      return {
+        Código: p.codigo,
+        Descripción: p.descripcion,
+        Unidad: p.unidad || '',
+        'Cant/Módulo': p.cantidad_por_modulo ?? '',
+        Grupo: p.grupo || '',
+        Presupuesto: p.ppto ?? '',
+        PPP: pppVal ?? '',
+        Fuente: customCodes.has(normCod(p.codigo)) ? 'Custom' : 'Base',
+      }
+    })
+    exportarExcel('catalogo_productos', filas)
+  }
+
   async function onOcultar(p: Producto) {
     if (!confirm(`¿Ocultar "${p.codigo}" del catálogo?`)) return
     try {
@@ -69,6 +88,9 @@ export default function Catalogo({ puedeCrearEditarExtra, puedeEliminarExtra }: 
         <span className="ml-auto text-xs text-muted-foreground">
           {filtrados.length} producto{filtrados.length !== 1 ? 's' : ''} · {totales.conPrecio} con precio · {formatCLP(totales.monto)} comprado total
         </span>
+        <Button variant="outline" size="sm" className="h-9" onClick={onExportar}>
+          <Download className="mr-1 h-4 w-4" /> Exportar Excel
+        </Button>
         {puedeCrearEditar && (
           <FormularioProductoGD
             existentes={allProducts}
