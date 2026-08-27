@@ -73,7 +73,7 @@ export default function ProductoAutocomplete({ value, productos, onSelect, onCha
         onKeyDown={onKeyDown}
       />
       {open && !exact && matches.length > 0 && (
-        <div className="absolute z-50 mt-1 max-h-56 w-[28rem] max-w-[80vw] overflow-y-auto rounded-md border bg-popover shadow-md">
+        <div className="absolute z-50 mt-1 max-h-56 w-[28rem] max-w-[90vw] overflow-y-auto rounded-md border bg-popover shadow-md">
           {matches.map((p, i) => (
             <button
               key={p.codigo}
@@ -85,7 +85,7 @@ export default function ProductoAutocomplete({ value, productos, onSelect, onCha
                 <span className="font-mono text-xs text-primary">{p.codigo}</span>
                 <span className="text-xs text-muted-foreground">{p.unidad}</span>
               </div>
-              <div className="truncate text-xs">{p.descripcion}</div>
+              <div className="whitespace-normal break-words text-xs leading-snug">{p.descripcion}</div>
             </button>
           ))}
         </div>

@@ -106,6 +106,14 @@ export default function NuevaSolicitud() {
   const [observacion, setObservacion] = useState(draft?.observacion ?? '')
   const [enviando, setEnviando] = useState(false)
   const [lastSaved, setLastSaved] = useState<LastSaved | null>(null)
+  const [filtroProducto, setFiltroProducto] = useState('')
+
+  const filasVisibles = useMemo(() => {
+    if (!esRestringido) return filas
+    const q = filtroProducto.trim().toLowerCase()
+    if (!q) return filas
+    return filas.filter((f) => f.producto?.descripcion.toLowerCase().includes(q) || f.producto?.codigo.toLowerCase().includes(q))
+  }, [filas, esRestringido, filtroProducto])
 
   const responsablesGrupo = useMemo(() => responsables.filter((r) => String(r.grupo_id) === grupoId), [responsables, grupoId])
 
@@ -372,36 +380,73 @@ export default function NuevaSolicitud() {
         ) : esRestringido && productosGrupo != null && productosGrupo.length === 0 ? (
           <p className="mb-2 text-xs text-muted-foreground">Tu grupo aún no tiene una receta de productos cargada. Avisa a un administrador.</p>
         ) : null}
+        {esRestringido && filas.length > 0 && (
+          <Input
+            className="mb-2 max-w-xs"
+            placeholder="🔍 Buscar por código o descripción…"
+            value={filtroProducto}
+            onChange={(e) => setFiltroProducto(e.target.value)}
+          />
+        )}
+        {esRestringido ? (
+          <div className="space-y-2">
+            {filas.length > 0 && filasVisibles.length === 0 && (
+              <p className="py-2 text-center text-xs text-muted-foreground">Ningún producto coincide con la búsqueda.</p>
+            )}
+            {filasVisibles.map((f) => (
+              <div key={f.id} className="rounded-md border p-2.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-mono text-xs text-primary">{f.producto?.codigo}</span>
+                  <span className="text-xs text-muted-foreground">{f.producto?.unidad || '—'}</span>
+                </div>
+                <div className="mt-1 whitespace-normal break-words text-sm">{f.producto?.descripcion || ''}</div>
+                <div className="mt-2 flex gap-2">
+                  <div className="flex-1">
+                    <div className="mb-1 text-[10px] text-muted-foreground">Cant. Sol.</div>
+                    <Input type="number" min="0" step="1" placeholder="0" value={f.cantidadSol} onChange={(e) => onCantSolChange(f.id, e.target.value)} title="Cant. Solicitada" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="mb-1 text-[10px] text-muted-foreground">Módulos</div>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder={f.producto?.cantidad_por_modulo ? '0' : '—'}
+                      disabled={!f.producto?.cantidad_por_modulo}
+                      value={f.modulos}
+                      onChange={(e) => onModulosChange(f.id, e.target.value)}
+                      title="Módulos: calcula la Cant. Real"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="overflow-x-auto">
-        <div className={`grid ${esRestringido ? 'grid-cols-[150px_1fr_60px_75px_75px]' : 'grid-cols-[150px_1fr_60px_75px_75px_75px_36px]'} items-center gap-2 px-1 pb-1 text-[11px] font-medium text-muted-foreground min-w-[520px]`}>
-          <div>Código{esRestringido ? '' : ' (o buscar)'}</div>
+        <div className="grid grid-cols-[150px_1fr_60px_75px_75px_75px_36px] items-center gap-2 px-1 pb-1 text-[11px] font-medium text-muted-foreground min-w-[520px]">
+          <div>Código (o buscar)</div>
           <div>Descripción</div>
           <div className="text-center">Unidad</div>
           <div className="text-center">Cant. Sol.</div>
-          {!esRestringido && <div className="text-center">Cant. Real</div>}
+          <div className="text-center">Cant. Real</div>
           <div className="text-center">Módulos</div>
-          {!esRestringido && <div />}
+          <div />
         </div>
         <div className="space-y-2 min-w-[520px]">
           {filas.map((f) => (
-            <div key={f.id} className={`grid ${esRestringido ? 'grid-cols-[150px_1fr_60px_75px_75px]' : 'grid-cols-[150px_1fr_60px_75px_75px_75px_36px]'} items-center gap-2`}>
-              {esRestringido ? (
-                <div className="truncate font-mono text-xs text-primary">{f.producto?.codigo}</div>
-              ) : (
-                <ProductoAutocomplete
-                  value={f.busqueda}
-                  productos={productosGrupo ?? allProducts}
-                  placeholder="Código o descripción…"
-                  onChange={(v) => setFilas((prev) => prev.map((row) => (row.id === f.id ? { ...row, busqueda: v, producto: null } : row)))}
-                  onSelect={(p) => onSelectProducto(f.id, p)}
-                />
-              )}
-              <div className="truncate text-sm">{f.producto?.descripcion || ''}</div>
-              <div className="text-center text-xs text-muted-foreground">{f.producto?.unidad || '—'}</div>
+            <div key={f.id} className="grid grid-cols-[150px_1fr_60px_75px_75px_75px_36px] items-start gap-2">
+              <ProductoAutocomplete
+                value={f.busqueda}
+                productos={productosGrupo ?? allProducts}
+                placeholder="Código o descripción…"
+                onChange={(v) => setFilas((prev) => prev.map((row) => (row.id === f.id ? { ...row, busqueda: v, producto: null } : row)))}
+                onSelect={(p) => onSelectProducto(f.id, p)}
+              />
+              <div className="whitespace-normal break-words pt-2 text-sm">{f.producto?.descripcion || ''}</div>
+              <div className="pt-2 text-center text-xs text-muted-foreground">{f.producto?.unidad || '—'}</div>
               <Input type="number" min="0" step="1" placeholder="0" value={f.cantidadSol} onChange={(e) => onCantSolChange(f.id, e.target.value)} title="Cant. Solicitada" />
-              {!esRestringido && (
-                <Input type="number" min="0" step="1" placeholder="0" value={f.cantidadReal} onChange={(e) => onCantRealChange(f.id, e.target.value)} title="Cant. Real (va al correo)" />
-              )}
+              <Input type="number" min="0" step="1" placeholder="0" value={f.cantidadReal} onChange={(e) => onCantRealChange(f.id, e.target.value)} title="Cant. Real (va al correo)" />
               <Input
                 type="number"
                 min="0"
@@ -412,15 +457,14 @@ export default function NuevaSolicitud() {
                 onChange={(e) => onModulosChange(f.id, e.target.value)}
                 title="Módulos: calcula la Cant. Real"
               />
-              {!esRestringido && (
-                <Button type="button" variant="ghost" size="icon" onClick={() => quitarFila(f.id)} title="Eliminar">
-                  ✕
-                </Button>
-              )}
+              <Button type="button" variant="ghost" size="icon" onClick={() => quitarFila(f.id)} title="Eliminar">
+                ✕
+              </Button>
             </div>
           ))}
         </div>
         </div>
+        )}
         {!esRestringido && (
           <Button type="button" variant="outline" size="sm" className="mt-3 w-full border-dashed" onClick={() => setFilas((prev) => [...prev, filaVacia()])}>
             + Agregar producto
