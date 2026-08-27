@@ -144,7 +144,7 @@ export default function Curva({ excelData }: { excelData: ParsedDashboardData })
 
       <div className="grid gap-4 lg:grid-cols-2">
         <SectionCard title="Módulos terminados por semana — WEDO" visible={esVisible('terminadosWedo')} onToggle={() => toggle('terminadosWedo')}>
-          <TerminadosSemanaBarChart data={data.terminadosWedoByWeek} />
+          <TerminadosSemanaBarChart data={data.terminadosWedoByWeek} domainMax={10} />
         </SectionCard>
         <SectionCard title="Módulos terminados por semana — CONBES" visible={esVisible('terminadosConbes')} onToggle={() => toggle('terminadosConbes')}>
           <TerminadosSemanaBarChart data={data.terminadosConbesByWeek} />
