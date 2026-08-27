@@ -114,7 +114,7 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
 
     const semanaActual = weekKey(today)
     // Arranca en abril: antes de eso es rampa de inicio de galpón, no aporta a la lectura semanal
-    const galponDesde = new Date(2026, 3, 1)
+    const galponDesde = new Date(2026, 3, 6)
     const galponF = membranaCielo.filter((r) => {
       const d = parseDate(r.membranaFecha)
       return d && d >= galponDesde && d <= today && weekKey(d) !== semanaActual
