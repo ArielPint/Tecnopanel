@@ -14,6 +14,8 @@ const SECCIONES = [
   { key: 'modTerminados', label: 'Módulos terminados' },
   { key: 'galpon', label: 'Salida galpón' },
   { key: 'terminadosSemana', label: 'Terminados por semana' },
+  { key: 'terminadosWedo', label: 'Terminados WEDO por semana' },
+  { key: 'terminadosConbes', label: 'Terminados CONBES por semana' },
   { key: 'tiempoTorre', label: 'Tiempo por torre' },
   { key: 'tablaRitmo', label: 'Tabla ritmo torre' },
 ] as const
@@ -75,21 +77,6 @@ function KpiCards({ kpis }: { kpis: ReturnType<typeof useCurvaData>['kpis'] }) {
   )
 }
 
-function Chip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'rounded-md border px-2 py-1 text-xs font-medium transition-colors',
-        active ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-muted/30 text-muted-foreground',
-      )}
-    >
-      {label}
-    </button>
-  )
-}
-
 function SectionCard({
   title,
   extra,
@@ -130,13 +117,6 @@ export default function Curva({ excelData }: { excelData: ParsedDashboardData })
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold">🗓 Filtrar por mes:</span>
-        {data.mesesDisponibles.map((m) => (
-          <Chip key={m.key} label={m.lbl} active={data.mesesSeleccionados == null || data.mesesSeleccionados.has(m.key)} onClick={() => data.toggleMes(m.key)} />
-        ))}
-      </div>
-
       <SectionCard title="Indicadores" visible={esVisible('kpis')} onToggle={() => toggle('kpis')}>
         <KpiCards kpis={data.kpis} />
       </SectionCard>
@@ -161,6 +141,15 @@ export default function Curva({ excelData }: { excelData: ParsedDashboardData })
       <SectionCard title="Módulos terminados por semana" visible={esVisible('terminadosSemana')} onToggle={() => toggle('terminadosSemana')}>
         <TerminadosSemanaBarChart data={data.terminadosByWeek} />
       </SectionCard>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SectionCard title="Módulos terminados por semana — WEDO" visible={esVisible('terminadosWedo')} onToggle={() => toggle('terminadosWedo')}>
+          <TerminadosSemanaBarChart data={data.terminadosWedoByWeek} />
+        </SectionCard>
+        <SectionCard title="Módulos terminados por semana — CONBES" visible={esVisible('terminadosConbes')} onToggle={() => toggle('terminadosConbes')}>
+          <TerminadosSemanaBarChart data={data.terminadosConbesByWeek} />
+        </SectionCard>
+      </div>
 
       <SectionCard title="Tiempo real vs proyectado por torre" visible={esVisible('tiempoTorre')} onToggle={() => toggle('tiempoTorre')}>
         <TiempoTorreChart data={data.torreTiempo} />

@@ -1,20 +1,15 @@
 import { useMemo, useState } from 'react'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { businessDaysBetween, parseDate, weekKey, weekLabel } from '../lib/format'
-
-const MN: Record<number, string> = { 1: 'Ene', 2: 'Feb', 3: 'Mar', 4: 'Abr', 5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Ago', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dic' }
+import { useModulosSubcontrato } from './useModulosSubcontrato'
 
 function natCompare(a: string, b: string) {
   return a.localeCompare(b, 'es', { numeric: true })
 }
 
-function ym(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
 export function useCurvaData(excelData: ParsedDashboardData | null) {
-  const [mesesSeleccionados, setMesesSeleccionados] = useState<Set<string> | null>(null)
   const [torresSeleccionadas, setTorresSeleccionadas] = useState<Set<string> | null>(null)
+  const { modulos: modulosSubcontrato } = useModulosSubcontrato()
 
   const today = useMemo(() => {
     const d = new Date()
@@ -27,31 +22,11 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
   const avplan = excelData?.avplan ?? []
   const membranaCielo = excelData?.membranaCielo ?? []
 
-  const mesesDisponibles = useMemo(() => {
-    const set = new Set<string>()
-    for (const r of curva) {
-      const d = parseDate(r.fecha)
-      if (d && d <= today) set.add(ym(d))
-    }
-    return [...set].sort().map((key) => {
-      const [y, m] = key.split('-')
-      return { key, lbl: `${MN[+m]} ${y}` }
-    })
-  }, [curva, today])
-
   const torresDisponibles = useMemo(
     () => [...new Set(modulos.map((m) => String(m.torre ?? '')).filter(Boolean))].sort(natCompare),
     [modulos],
   )
 
-  function toggleMes(key: string) {
-    setMesesSeleccionados((cur) => {
-      const base = cur ?? new Set(mesesDisponibles.map((m) => m.key))
-      const next = new Set(base)
-      next.has(key) ? next.delete(key) : next.add(key)
-      return next.size === mesesDisponibles.length ? null : next
-    })
-  }
   function toggleTorre(t: string) {
     setTorresSeleccionadas((cur) => {
       const base = cur ?? new Set(torresDisponibles)
@@ -83,15 +58,13 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
 
     const kpis = { realPct, teoPct, brechaTerms, termPlanHoy, modsActivos, modsIniciados, modsTerminados }
 
-    const dentroFiltroMes = (d: Date) => mesesSeleccionados == null || mesesSeleccionados.has(ym(d))
-
     const curvaF = curva.filter((r) => {
       const d = parseDate(r.fecha)
-      return d && d <= today && dentroFiltroMes(d)
+      return d && d <= today
     })
     const avF = avplan.filter((r) => {
       const d = parseDate(r.fecha)
-      return d && d <= today && dentroFiltroMes(d)
+      return d && d <= today
     })
 
     const curvaWeeks = new Map<number, typeof curva>()
@@ -141,7 +114,7 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
 
     const galponF = membranaCielo.filter((r) => {
       const d = parseDate(r.membranaFecha)
-      return d && d <= today && dentroFiltroMes(d)
+      return d && d <= today
     })
     const galponWeeks = new Map<number, number>()
     for (const r of galponF) {
@@ -155,7 +128,7 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
 
     const terminadosF = modulos.filter((m) => {
       const d = parseDate(m.termReal)
-      return d && d <= today && dentroFiltroMes(d)
+      return d && d <= today
     })
     const terminadosWeeks = new Map<number, number>()
     for (const m of terminadosF) {
@@ -166,6 +139,32 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
       terminadosWeeks.set(wk, (terminadosWeeks.get(wk) || 0) + 1)
     }
     const terminadosByWeek = [...terminadosWeeks.entries()].sort(([a], [b]) => a - b).map(([wk, count]) => ({ semana: weekLabel(wk), count }))
+
+    // Rango continuo de semanas (con huecos en 0) para que WEDO y CONBES queden alineados entre sí
+    const WEEK_MS = 7 * 86400000
+    const wkAll = [...terminadosWeeks.keys()]
+    const weekRange: number[] = []
+    if (wkAll.length) {
+      const minWk = Math.min(...wkAll)
+      const maxWk = Math.max(...wkAll)
+      for (let wk = minWk; wk <= maxWk; wk += WEEK_MS) weekRange.push(wk)
+    }
+
+    const subMap = new Map(modulosSubcontrato.map((r) => [r.nombre, r.subcontrato]))
+    function terminadosPorSubcontrato(sub: 'WEDO' | 'CONBES') {
+      const weeks = new Map<number, number>()
+      for (const m of terminadosF) {
+        if (subMap.get(String(m.modulo ?? '')) !== sub) continue
+        const d = parseDate(m.termReal)
+        if (!d) continue
+        const wk = weekKey(d)
+        if (wk == null) continue
+        weeks.set(wk, (weeks.get(wk) || 0) + 1)
+      }
+      return weekRange.map((wk) => ({ semana: weekLabel(wk), count: weeks.get(wk) || 0 }))
+    }
+    const terminadosWedoByWeek = terminadosPorSubcontrato('WEDO')
+    const terminadosConbesByWeek = terminadosPorSubcontrato('CONBES')
 
     // Tiempo por torre — no afectado por filtros (igual que el original)
     const modsTorreAll = modulos.filter((m) => m.initReal && (m.avance ?? 0) >= 0.99 && (m.tiempoReal ?? 0) > 0)
@@ -193,11 +192,6 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
     const modsF = modulos.filter((m) => {
       if (!m.initReal) return false
       if (torresSeleccionadas != null && !torresSeleccionadas.has(String(m.torre ?? ''))) return false
-      if (mesesSeleccionados != null) {
-        const d = parseDate(m.initReal)
-        if (!d) return false
-        if (!mesesSeleccionados.has(ym(d))) return false
-      }
       return true
     })
 
@@ -260,11 +254,11 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
       .sort((a, b) => natCompare(a.torre, b.torre))
 
     return {
-      kpis, curvaByWeek, avByWeek, galponByWeek, terminadosByWeek, torreTiempo, tiempoHumedo, tiempoSeco, ritmoTorreRows,
-      mesesDisponibles, mesesSeleccionados, toggleMes,
+      kpis, curvaByWeek, avByWeek, galponByWeek, terminadosByWeek, terminadosWedoByWeek, terminadosConbesByWeek,
+      torreTiempo, tiempoHumedo, tiempoSeco, ritmoTorreRows,
       torresDisponibles, torresSeleccionadas, toggleTorre,
     }
-  }, [curva, modulos, avplan, membranaCielo, today, mesesSeleccionados, torresSeleccionadas, mesesDisponibles, torresDisponibles])
+  }, [curva, modulos, avplan, membranaCielo, today, torresSeleccionadas, torresDisponibles, modulosSubcontrato])
 }
 
 export type CurvaData = ReturnType<typeof useCurvaData>
