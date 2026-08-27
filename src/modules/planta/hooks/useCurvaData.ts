@@ -112,9 +112,12 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
         }
       })
 
+    const semanaActual = weekKey(today)
+    // Arranca en abril: antes de eso es rampa de inicio de galpón, no aporta a la lectura semanal
+    const galponDesde = new Date(2026, 3, 1)
     const galponF = membranaCielo.filter((r) => {
       const d = parseDate(r.membranaFecha)
-      return d && d <= today
+      return d && d >= galponDesde && d <= today && weekKey(d) !== semanaActual
     })
     const galponWeeks = new Map<number, number>()
     for (const r of galponF) {
@@ -126,7 +129,6 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
     }
     const galponByWeek = [...galponWeeks.entries()].sort(([a], [b]) => a - b).map(([wk, count]) => ({ semana: weekLabel(wk), count }))
 
-    const semanaActual = weekKey(today)
     const terminadosF = modulos.filter((m) => {
       const d = parseDate(m.termReal)
       return d && d <= today && weekKey(d) !== semanaActual
