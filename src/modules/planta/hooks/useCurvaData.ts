@@ -126,9 +126,10 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
     }
     const galponByWeek = [...galponWeeks.entries()].sort(([a], [b]) => a - b).map(([wk, count]) => ({ semana: weekLabel(wk), count }))
 
+    const semanaActual = weekKey(today)
     const terminadosF = modulos.filter((m) => {
       const d = parseDate(m.termReal)
-      return d && d <= today
+      return d && d <= today && weekKey(d) !== semanaActual
     })
     const terminadosWeeks = new Map<number, number>()
     for (const m of terminadosF) {
