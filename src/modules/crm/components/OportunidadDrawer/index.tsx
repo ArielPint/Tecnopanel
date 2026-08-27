@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { X, ChevronRight, Upload, Link2, FileText, Clock, User, Loader2, Trash2, ExternalLink, MessageCircle, Send, Plus, FileSpreadsheet } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
+import { toast } from 'sonner'
 import tecnopanelLogo from '@/assets/tecnopanel-logo-color.png'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
@@ -515,7 +516,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     if (ocFile) {
       const path = opp.id + '/oc-' + Date.now() + '-' + ocFile.name
       const { error: upErr } = await supabase.storage.from('oportunidades').upload(path, ocFile)
-      if (!upErr) storagePath = path
+      if (upErr) { setSavingOc(false); handleSupabaseError(upErr, 'OportunidadDrawer.guardarOc.upload'); return }
+      storagePath = path
     }
     const payload = {
       numero_oc: ocForm.numero_oc.trim() || null,
@@ -530,6 +532,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
         })
     setOcFile(null); setSavingOc(false)
     if (handleSupabaseError(error, 'OportunidadDrawer.guardarOc')) return
+    toast.success('OC guardada')
     await loadAll()
   }
 
@@ -1077,7 +1080,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
             <label className="block text-xs font-medium text-gray-600 mb-1">PDF de la OC</label>
             <input type="file" accept=".pdf" onChange={ev => setOcFile(ev.target.files?.[0] ?? null)}
               className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-200 file:text-xs file:font-medium file:bg-gray-50 hover:file:bg-gray-100" />
-            {cierre?.storage_oc_path && !ocFile && <p className="text-xs text-gray-400 mt-1">Ya hay un PDF cargado.</p>}
+            {cierre?.storage_oc_path && !ocFile && (
+              <button type="button" onClick={() => openFile('archivo', cierre.storage_oc_path!)}
+                className="text-xs text-crm-red hover:underline mt-1 flex items-center gap-1">
+                <FileText size={12} /> Ver PDF cargado
+              </button>
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className="block text-xs font-medium text-gray-600 mb-1">Número OC</label>
