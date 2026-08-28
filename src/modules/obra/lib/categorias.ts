@@ -34,6 +34,10 @@ const WEDO_CONBES_PARTIDAS = [
   'pavimento zona humeda (instalacion vinilico)',
   'molduras',
   'pintura exterior',
+  // 'tina' duplicada a propósito: también vive en sanitario (findCategoriaForPartida
+  // resuelve ahí primero). Acá solo controla que buildCategoryTable('wedo'/'conbes', …)
+  // también la liste — mismo chip de estado, dos paneles de seguimiento.
+  'tina',
 ]
 
 export const CATEGORY_DEFS: Record<ObraCategoria, CategoryDef> = {

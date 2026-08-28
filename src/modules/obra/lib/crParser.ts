@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabaseClient'
-import { CATEGORY_DEFS, findCategoriaForPartida, type ObraCategoria } from './categorias'
+import { CATEGORY_DEFS, findCategoriaForPartida, normalize, type ObraCategoria } from './categorias'
 
 export type ChipEstado = 'ok' | 'no' | 'na'
 
@@ -55,6 +55,11 @@ export function parseCR(wb: XLSX.WorkBook): ObraCrModuloRow[] {
     return ['SECO', 'HUMEDO']
   }
 
+  // Estas partidas nunca aplican a módulos SECO, sin importar lo que traiga el Excel:
+  // todo "sanitario" (lavamanos, tina, w.c., etc — un módulo seco no lleva baño/cocina
+  // con agua) más 2 partidas eléctricas puntuales que tampoco corresponden a seco.
+  const SOLO_HUMEDO_FORZADO = new Set(['corrientes debiles (caja pau)', 'tablero de distribucion de alumbrado'])
+
   interface PartidaRow { name: string; category: { single: ObraCategoria } | { wedoConbes: true }; rowData: unknown[]; applicableTipos: ('SECO' | 'HUMEDO')[] }
   const partidaRows: PartidaRow[] = []
   for (let r = 20; r <= 84; r++) {
@@ -64,7 +69,8 @@ export function parseCR(wb: XLSX.WorkBook): ObraCrModuloRow[] {
     if (!name || typeof name !== 'string') continue
     const cat = findCategoriaForPartida(name)
     if (!cat) continue
-    partidaRows.push({ name: name.trim(), category: cat, rowData: row, applicableTipos: computeApplicableTipos(row) })
+    const soloHumedo = ('single' in cat && cat.single === 'sanitario') || SOLO_HUMEDO_FORZADO.has(normalize(name))
+    partidaRows.push({ name: name.trim(), category: cat, rowData: row, applicableTipos: soloHumedo ? ['HUMEDO'] : computeApplicableTipos(row) })
   }
   if (!partidaRows.length) throw new Error('No se encontraron partidas reconocidas (filas 21-85, columna B) en la hoja "CR".')
 
