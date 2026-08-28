@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/components/ui/card'
 import { fmt, fmtPr } from '../lib/format'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 import { useProduccionModulos } from '../hooks/useProduccionModulos'
 import { ALL_PARTIDAS, CATEGORIAS, partidaAvg } from '../lib/partidas'
 import { VBarChart, GroupedVBarChart, HBarChart, DISTRIBUCION_COLORS, COLOR_VERDE, COLOR_AZUL, COLOR_NARANJA, COLOR_MORADO } from '../components/ProduccionCharts'
@@ -67,6 +68,7 @@ export default function ProduccionResumen({ excelData }: { excelData: ParsedDash
 
   return (
     <div className="space-y-4">
+      <IndicadoresFecha />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
         <Kpi label="Total módulos" value={fmt(stats.tot)} tono="info" />
         <Kpi label="Terminados" value={fmt(stats.term)} sub={stats.tot ? `${fmtPr((stats.term / stats.tot) * 100)} del total` : undefined} tono="success" />

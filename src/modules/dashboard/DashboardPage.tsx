@@ -7,6 +7,7 @@ import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 import { KPI_LABELS } from './types'
 import KpiCard from './KpiCard'
 import { fmtM } from '@/modules/planta/lib/format'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/modules/financiero/components/ui/card'
 import {
   Table,
@@ -166,9 +167,12 @@ export default function DashboardPage() {
       </div>
 
       <section aria-label="Indicadores Proyectos" className="space-y-2.5">
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-          <span className="h-[7px] w-[7px] rounded-full bg-info" />
-          Indicadores Proyectos
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            <span className="h-[7px] w-[7px] rounded-full bg-info" />
+            Indicadores Proyectos
+          </div>
+          <IndicadoresFecha />
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <KpiCard icon={Building2} tone="brand" label={KPI_LABELS.avance_fisico} value={laChacraKpis.avance_fisico} format="percent" loading={loading} />

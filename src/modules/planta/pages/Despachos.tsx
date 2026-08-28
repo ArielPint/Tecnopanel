@@ -3,6 +3,7 @@ import { useDespachosData } from '../hooks/useDespachosData'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { fmt, fmtM } from '../lib/format'
 import { cn } from '@/lib/utils'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 import { DespachosDiarioChart, DespachosMensualChart, DespachosSemanalChart, DespachosTorreTipoChart } from '../components/DespachosCharts'
 
 function KpiCards({ kpis }: { kpis: ReturnType<typeof useDespachosData>['kpis'] }) {
@@ -53,7 +54,7 @@ export default function Despachos({ excelData }: { excelData: ParsedDashboardDat
         ))}
       </div>
 
-      <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">Indicadores</p>
+      <IndicadoresFecha />
       <KpiCards kpis={data.kpis} />
 
       <Card>

@@ -6,7 +6,9 @@ import { useDespachosData } from '../hooks/useDespachosData'
 import { useSyncProjectKpis } from '../hooks/useSyncProjectKpis'
 import { useAuth } from '../hooks/useAuth'
 import type { ParsedDashboardData } from '../lib/excelParser'
-import { fmt, fmtM, fmtPr } from '../lib/format'
+import { cn } from '@/lib/utils'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
+import { buildIndicadoresEjecutivo } from '../lib/indicadoresEjecutivo'
 import {
   AvanceEconomicoAcumChart,
   AvanceEconomicoChart,
@@ -96,49 +98,16 @@ function SectionCard({
   )
 }
 
-interface Kpi {
-  label: string
-  value: string
-  sub?: string
-  tono?: 'success' | 'warning' | 'destructive'
-}
-
-function KpiCards({ kpis }: { kpis: ReturnType<typeof useResumenData>['kpis'] }) {
-  const items: Kpi[] = [
-    {
-      label: 'Ejecución ppto',
-      value: kpis.ejecucionPpto != null ? fmtPr(kpis.ejecucionPpto) : '—',
-      tono: kpis.ejecucionSobrePresupuesto ? 'destructive' : 'success',
-    },
-    { label: '% Avance físico', value: fmtPr(kpis.avanceFisico) },
-    { label: 'Total comprado', value: fmtM(kpis.totalComprado) },
-    {
-      label: 'Módulos terminados',
-      value: fmt(kpis.modulosTerminados),
-      sub: kpis.pctTerminados != null ? `${fmtPr(kpis.pctTerminados)} del total` : undefined,
-      tono: 'success',
-    },
-    { label: 'Módulos en proceso', value: fmt(kpis.modulosEnProceso), tono: 'warning' },
-    {
-      label: 'Módulos despachados',
-      value: fmt(kpis.modulosDespachados),
-      sub: kpis.totalModulos ? `${fmtPr(kpis.pctDespachados)} del total` : undefined,
-    },
-  ]
+// Mismos indicadores que la pestaña Ejecutivo — ver buildIndicadoresEjecutivo.
+function KpiCards({ items }: { items: ReturnType<typeof buildIndicadoresEjecutivo>['items'] }) {
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+    <div className="grid grid-cols-7 gap-3">
       {items.map((kpi) => (
         <div key={kpi.label} className="rounded-lg border bg-card p-4">
           <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">{kpi.label}</p>
-          <p
-            className={
-              'mt-1 text-2xl font-bold tabular-nums ' +
-              (kpi.tono === 'success' ? 'text-success' : kpi.tono === 'warning' ? 'text-warning' : kpi.tono === 'destructive' ? 'text-destructive' : '')
-            }
-          >
+          <p className={cn('mt-1 text-2xl font-bold tabular-nums', kpi.tono === 'success' && 'text-success', kpi.tono === 'warning' && 'text-warning', kpi.tono === 'destructive' && 'text-destructive')}>
             {kpi.value}
           </p>
-          {kpi.sub && <p className="mt-0.5 text-xs text-muted-foreground">{kpi.sub}</p>}
         </div>
       ))}
     </div>
@@ -150,6 +119,8 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
   const despachos = useDespachosData(excelData)
   const { isAdmin } = useAuth()
   const { esVisible, toggle } = useSeccionesVisibles()
+
+  const { items: kpiItems } = buildIndicadoresEjecutivo(resumen)
 
   const avanceEconomicoAcum = resumen.avanceEconomicoAcumulado
   useSyncProjectKpis(
@@ -167,7 +138,10 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
   return (
     <div className="space-y-4">
       <SectionCard title="Indicadores" visible={esVisible('kpis')} onToggle={() => toggle('kpis')}>
-        <KpiCards kpis={resumen.kpis} />
+        <div className="space-y-3">
+          <IndicadoresFecha />
+          <KpiCards items={kpiItems} />
+        </div>
       </SectionCard>
 
       <div className="grid gap-4 lg:grid-cols-2">

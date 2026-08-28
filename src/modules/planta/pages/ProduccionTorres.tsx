@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/components/ui/card'
 import { fmtPr } from '../lib/format'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 import { useProduccionModulos } from '../hooks/useProduccionModulos'
 import { VBarChart, GroupedVBarChart, colorPorAvance, COLOR_VERDE, COLOR_AZUL } from '../components/ProduccionCharts'
 import type { ParsedDashboardData } from '../lib/excelParser'
@@ -45,6 +46,7 @@ export default function ProduccionTorres({ excelData }: { excelData: ParsedDashb
 
   return (
     <div className="space-y-4">
+      <IndicadoresFecha />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Torres activas" value={String(data.activas)} tono="info" />
         <Kpi label="Torres completadas" value={String(data.completas)} tono="success" />

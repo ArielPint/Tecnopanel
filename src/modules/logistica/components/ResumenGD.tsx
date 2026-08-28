@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { formatCLP } from '@/modules/financiero/utils/formatters'
 import { calcCR, calcDifT, calcPct, getVTI, normCod } from '../lib/calc'
 import type { RegistroCompra } from '../hooks/useRegistroCompras'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 
 const MES_ABREV = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
@@ -98,6 +99,7 @@ export default function ResumenGD({ registros, pptoMap }: ResumenGDProps) {
 
   return (
     <div className="space-y-2">
+      <IndicadoresFecha />
       <div className="flex items-stretch rounded-md border bg-card text-sm">
         <div className="flex flex-1 flex-wrap divide-x">
           {celdas.map((c) => (

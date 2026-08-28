@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useComprasData } from '../hooks/useComprasData'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { MESES_ORDER, fmt, fmtDate, fmtM, fmtPr } from '../lib/format'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 import { ComprasPorMesChart, ComprasPorTipoChart, TopMaterialesChart } from '../components/ComprasCharts'
 
 interface Kpi {
@@ -69,7 +70,7 @@ export default function Compras({ excelData }: { excelData: ParsedDashboardData 
 
   return (
     <div className="space-y-4">
-      <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">Indicadores</p>
+      <IndicadoresFecha />
       <KpiCards kpis={data.kpis} />
 
       <Card>

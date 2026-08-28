@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useModulosData } from '../hooks/useModulosData'
 import type { ModuloRow, ParsedDashboardData } from '../lib/excelParser'
 import { fmt, fmtDate, fmtPr, parseDate } from '../lib/format'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 import { AvancePorTorreChart, DistribucionAvanceChart, M2SemanalAcumChart, M2SemanalDiarioChart } from '../components/ModulosCharts'
 
 interface Kpi {
@@ -220,7 +221,7 @@ export default function Modulos({ excelData }: { excelData: ParsedDashboardData 
 
   return (
     <div className="space-y-4">
-      <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">Indicadores</p>
+      <IndicadoresFecha />
       <KpiCards kpis={data.kpis} />
 
       <div className="grid gap-4 lg:grid-cols-2">

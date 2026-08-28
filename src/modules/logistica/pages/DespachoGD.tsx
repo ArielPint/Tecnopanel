@@ -14,6 +14,7 @@ import { useModulosTerminados } from '../hooks/useModulosTerminados'
 import { loadCatalogoModulos, type CatalogoModulos } from '../lib/catalogoModulos'
 import FormularioDespachoGD from '../components/FormularioDespachoGD'
 import { useAuth } from '../hooks/useAuth'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 
 type SortCol = 'fecha_gd' | 'fecha_despacho' | 'gd_numero' | 'cantidad' | 'monto_neto' | 'modulo' | 'torre' | 'tipo' | 'avance'
 
@@ -132,6 +133,7 @@ export default function DespachoGD() {
 
   return (
     <div className="space-y-4">
+      <IndicadoresFecha />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-lg border bg-card p-4">
           <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">Total módulos</p>

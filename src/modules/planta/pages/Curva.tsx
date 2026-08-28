@@ -6,6 +6,7 @@ import type { ParsedDashboardData } from '../lib/excelParser'
 import { fmt, fmtDate, fmtPr } from '../lib/format'
 import { CurvaSChart, GalponBarChart, ModulosLineChart, TerminadosSemanaBarChart, TiempoTorreChart } from '../components/CurvaCharts'
 import { cn } from '@/lib/utils'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 
 const SECCIONES = [
   { key: 'kpis', label: 'Indicadores' },
@@ -63,16 +64,19 @@ function KpiCards({ kpis }: { kpis: ReturnType<typeof useCurvaData>['kpis'] }) {
     { label: 'Módulos terminados', value: fmt(kpis.modsTerminados), tono: 'success' as const },
   ]
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-      {items.map((kpi) => (
-        <div key={kpi.label} className="rounded-lg border bg-card p-4">
-          <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">{kpi.label}</p>
-          <p className={cn('mt-1 text-2xl font-bold tabular-nums', kpi.tono === 'success' && 'text-success', kpi.tono === 'warning' && 'text-warning', kpi.tono === 'destructive' && 'text-destructive')}>
-            {kpi.value}
-          </p>
-          {kpi.sub && <p className="mt-0.5 text-xs text-muted-foreground">{kpi.sub}</p>}
-        </div>
-      ))}
+    <div className="space-y-3">
+      <IndicadoresFecha />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+        {items.map((kpi) => (
+          <div key={kpi.label} className="rounded-lg border bg-card p-4">
+            <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">{kpi.label}</p>
+            <p className={cn('mt-1 text-2xl font-bold tabular-nums', kpi.tono === 'success' && 'text-success', kpi.tono === 'warning' && 'text-warning', kpi.tono === 'destructive' && 'text-destructive')}>
+              {kpi.value}
+            </p>
+            {kpi.sub && <p className="mt-0.5 text-xs text-muted-foreground">{kpi.sub}</p>}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

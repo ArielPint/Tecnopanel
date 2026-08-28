@@ -10,6 +10,7 @@ import EstadoResultadoMensualView from '@/modules/financiero/components/EstadoRe
 import { useSeguimiento } from '@/modules/financiero/hooks/useSeguimiento'
 import { useEstadoResultado } from '@/modules/financiero/hooks/useEstadoResultado'
 import { useEstadoResultadoDetalle } from '@/modules/financiero/hooks/useEstadoResultadoDetalle'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 
 export default function Dashboard() {
   const { seguimiento, loading, error } = useSeguimiento()
@@ -18,7 +19,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">Indicadores</p>
+      <IndicadoresFecha />
       <KpiCardsResumen seguimiento={seguimiento} loading={loading} />
 
       <div className="space-y-3">

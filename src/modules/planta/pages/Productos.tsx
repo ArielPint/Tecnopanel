@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useProductosData } from '../hooks/useProductosData'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { fmt, fmtM } from '../lib/format'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 import { AvancePedidosChart, AvanceTeoricoChart, VariacionUnitariaChart } from '../components/ProductosCharts'
 
 function KpiCards({ kpis }: { kpis: ReturnType<typeof useProductosData>['kpis'] }) {
@@ -50,7 +51,7 @@ export default function Productos({ excelData }: { excelData: ParsedDashboardDat
 
   return (
     <div className="space-y-4">
-      <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">Indicadores</p>
+      <IndicadoresFecha />
       <KpiCards kpis={data.kpis} />
 
       <Card>

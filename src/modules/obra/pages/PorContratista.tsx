@@ -9,6 +9,7 @@ import { ASIGNACION_POR_CR_CATEGORIA, CATEGORY_DEFS } from '../lib/categorias'
 import { buildCategoryTable, isModuloTerminado, type ModuloCombinado } from '../lib/matrix'
 import type { ObraCategoria } from '../lib/categorias'
 import type { ChipEstado } from '../lib/crParser'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 
 const ORDEN: ObraCategoria[] = ['electrico', 'sanitario', 'wedo', 'conbes', 'ventanas']
 // Sección "wedo"/"conbes" correspondiente al valor del permiso — un usuario con
@@ -130,6 +131,7 @@ export default function PorContratista() {
 
   return (
     <div className="space-y-4">
+      <IndicadoresFecha />
       <div className="flex flex-wrap gap-3">
         <Kpi label="Avance general" pct={kpis.generalPct} frac={`${kpis.totalDone} / ${kpis.totalAll} celdas partida×módulo`} />
         {kpis.porCat.map(({ cat, tabla }) => (

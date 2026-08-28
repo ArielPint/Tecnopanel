@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import { fmtPr } from '../lib/format'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 import { useProduccionModulos } from '../hooks/useProduccionModulos'
 import { ALL_PARTIDAS, CATEGORIAS, partidaAvg, tiemposCategoria } from '../lib/partidas'
 import { VBarChart, HBarChart, GroupedVBarChart, colorPorAvance, COLOR_AZUL, COLOR_VERDE, COLOR_NARANJA, COLOR_MORADO } from '../components/ProduccionCharts'
@@ -100,6 +101,7 @@ export default function ProduccionPartidas({ excelData }: { excelData: ParsedDas
 
   return (
     <div className="space-y-4">
+      <IndicadoresFecha />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Kpi label="Obra Gruesa" value={fmtPr(data.ogP * 100)} tono="info" />
         <Kpi label="Sanitario" value={fmtPr(data.sanP * 100)} tono="success" />

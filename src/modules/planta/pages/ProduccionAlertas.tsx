@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import { fmt, fmtDate } from '../lib/format'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 import { useProduccionModulos } from '../hooks/useProduccionModulos'
 import { ALL_PARTIDAS, CATEGORIAS, isNA, isDone, pS } from '../lib/partidas'
 import type { ParsedDashboardData } from '../lib/excelParser'
@@ -92,6 +93,7 @@ export default function ProduccionAlertas({ excelData }: { excelData: ParsedDash
         </Select>
       </div>
 
+      <IndicadoresFecha />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Módulos atrasados" value={fmt(listas.atrasados.length)} sub="días retraso > 0" tono="destructive" />
         <Kpi label="Retraso promedio" value={listas.retrasoProm != null ? `${listas.retrasoProm} d` : '—'} tono="warning" />

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useStockData } from '../hooks/useStockData'
 import type { ParsedDashboardData } from '../lib/excelParser'
 import { fmt, fmtM } from '../lib/format'
+import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 import { StockComparacionChart } from '../components/StockCharts'
 
 function KpiCards({ kpis }: { kpis: ReturnType<typeof useStockData>['kpis'] }) {
@@ -68,7 +69,7 @@ export default function Stock({ excelData }: { excelData: ParsedDashboardData })
         {data.semanaActual && <span className="text-xs text-muted-foreground">{data.semanaActual.lbl}</span>}
       </div>
 
-      <p className="text-[.7rem] font-semibold tracking-wide text-muted-foreground uppercase">Indicadores</p>
+      <IndicadoresFecha />
       <KpiCards kpis={data.kpis} />
 
       <Card>
