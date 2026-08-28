@@ -10,19 +10,26 @@ export default function ProduccionSubcontrato() {
   const { modulos, loading, guardar } = useModulosSubcontrato()
   const [busqueda, setBusqueda] = useState('')
   const [filtro, setFiltro] = useState<Filtro>('sin_asignar')
+  const [torreFiltro, setTorreFiltro] = useState('todas')
   const [guardando, setGuardando] = useState<string | null>(null)
 
   const sinAsignarCount = useMemo(() => modulos.filter((m) => !m.subcontrato).length, [modulos])
+
+  const torres = useMemo(
+    () => Array.from(new Set(modulos.map((m) => m.torre).filter((t): t is string => !!t))).sort(),
+    [modulos],
+  )
 
   const filtrados = useMemo(() => {
     const q = busqueda.toLowerCase()
     return modulos.filter((m) => {
       if (filtro === 'sin_asignar' && m.subcontrato) return false
       if ((filtro === 'WEDO' || filtro === 'CONBES') && m.subcontrato !== filtro) return false
+      if (torreFiltro !== 'todas' && m.torre !== torreFiltro) return false
       if (q && !`${m.nombre} ${m.torre ?? ''}`.toLowerCase().includes(q)) return false
       return true
     })
-  }, [modulos, busqueda, filtro])
+  }, [modulos, busqueda, filtro, torreFiltro])
 
   async function onAsignar(nombre: string, subcontrato: 'WEDO' | 'CONBES') {
     setGuardando(nombre)
@@ -49,6 +56,15 @@ export default function ProduccionSubcontrato() {
             <SelectItem value="todos">Todos</SelectItem>
             <SelectItem value="WEDO">We Do</SelectItem>
             <SelectItem value="CONBES">Conbes</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={torreFiltro} onValueChange={setTorreFiltro}>
+          <SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas las torres</SelectItem>
+            {torres.map((t) => (
+              <SelectItem key={t} value={t}>{t}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <span className="text-xs text-muted-foreground">
