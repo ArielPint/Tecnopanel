@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/modules/financiero/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/modules/financiero/components/ui/tabs'
 import { PAGE_MAP, FINANCIERO_EDIT_GROUPS, ESTADOS_PAGO_ACCION_GROUPS, ESTADOS_PAGO_INGRESOS_ACCION_GROUPS, ROLES } from '@/modules/settings/lib/pageMap'
-import { ROL_META, MODULOS as CRM_MODULOS } from '@/modules/crm/lib/roles'
+import { ROL_META, MODULOS as CRM_MODULOS, CRM_ACCION_GROUPS } from '@/modules/crm/lib/roles'
 import { proyectoAccesoVacio, type Acceso, type AccesoInput, type ProyectoAcceso, type ProyectoObra } from './useAccesos'
 
 const OBRA_MODULOS = Object.keys(PAGE_MAP)
@@ -37,6 +37,7 @@ function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: Proye
     proyectos,
     crmRolNegocio: acceso?.crmRolNegocio ?? '',
     crmModulos: acceso?.crmModulos ?? [],
+    crmAcciones: acceso?.crmAcciones ?? {},
     gestionVer: acceso?.gestionVer ?? false,
     grupoId: acceso?.grupoId ?? null,
     subcontratistaId: acceso?.subcontratistaId ?? null,
@@ -435,10 +436,30 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               <div className="flex flex-col gap-2">
                 <Label>Módulos con acceso</Label>
                 {CRM_MODULOS.map((m) => (
-                  <label key={m} className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={form.crmModulos.includes(m)} onCheckedChange={(v) => toggleCrmModulo(m, !!v)} />
-                    {m}
-                  </label>
+                  <div key={m} className="flex flex-col gap-1.5">
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox checked={form.crmModulos.includes(m)} onCheckedChange={(v) => toggleCrmModulo(m, !!v)} />
+                      {m}
+                    </label>
+                    {form.crmModulos.includes(m) && CRM_ACCION_GROUPS[m] && (
+                      <div className="ml-6 flex flex-col gap-1 rounded-md border p-2">
+                        {CRM_ACCION_GROUPS[m].map((g) => {
+                          const key = `${m}:${g.key}`
+                          return (
+                            <label key={g.key} className="flex items-center gap-1.5 text-xs">
+                              <Checkbox
+                                checked={form.crmAcciones[key] ?? false}
+                                onCheckedChange={(v) =>
+                                  setForm((f) => ({ ...f, crmAcciones: { ...f.crmAcciones, [key]: !!v } }))
+                                }
+                              />
+                              {g.label}
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </TabsContent>

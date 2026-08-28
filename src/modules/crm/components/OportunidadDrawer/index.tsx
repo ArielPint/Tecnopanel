@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import tecnopanelLogo from '@/assets/tecnopanel-logo-color.png'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
+import { usePermisos } from '@/modules/crm/contexts/PermisosContext'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import { formatCLP } from '@/modules/financiero/utils/formatters'
 import MontoInput from '@/components/MontoInput'
@@ -228,6 +229,7 @@ type Tab = 'general' | 'etapa' | 'docs' | 'historial' | 'chat'
 
 export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Props) {
   const { profile } = useAuth()
+  const { canAccess } = usePermisos()
   const [tab, setTab] = useState<Tab>('general')
   const [opp, setOpp] = useState<Oportunidad>(oportunidad)
   const [usuarios, setUsuarios] = useState<Profile[]>([])
@@ -1145,8 +1147,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
               )}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              {profile?.rol === 'admin' && (
-                <button onClick={eliminarOportunidad} disabled={saving} title="Eliminar oportunidad (solo admin)"
+              {canAccess('Oportunidades', 'eliminar') && (
+                <button onClick={eliminarOportunidad} disabled={saving} title="Eliminar oportunidad"
                   className="text-gray-400 hover:text-red-600 disabled:opacity-40"><Trash2 size={16} /></button>
               )}
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
@@ -1346,7 +1348,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                 <div className="pt-4 border-t border-gray-200 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tareas de ingeniería</p>
-                    {opp.etapa_actual === 'Ingeniería' && (profile?.rol === 'jefe_ingenieria' || profile?.rol === 'admin') && (
+                    {opp.etapa_actual === 'Ingeniería' && canAccess('Ingeniería', 'crear') && (
                       <button onClick={() => setShowCrearTarea(s => !s)} className="flex items-center gap-1 text-xs font-medium text-crm-red hover:underline">
                         <Plus size={12} /> Crear tarea
                       </button>

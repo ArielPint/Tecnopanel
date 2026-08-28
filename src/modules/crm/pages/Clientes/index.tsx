@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, UserPlus, X, Building2, Clock, User } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
+import { usePermisos } from '@/modules/crm/contexts/PermisosContext'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 
 interface Cliente {
@@ -38,6 +39,7 @@ function diffCampos(antes: Record<string, unknown> | null, despues: Record<strin
 
 export default function Clientes() {
   const { user } = useAuth()
+  const { canAccess } = usePermisos()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -199,7 +201,9 @@ export default function Clientes() {
         <div><h1 className="text-lg font-bold text-gray-800">Clientes</h1><p className="text-xs text-gray-500">{clientes.length} clientes registrados</p></div>
         <div className="flex items-center gap-2">
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar..." className="flex-1 sm:w-52 sm:flex-none border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red"/>
-          <button onClick={openNewCliente} className="flex items-center gap-2 px-3 py-2 bg-crm-red text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex-shrink-0"><Plus size={16}/><span className="hidden sm:inline">Nuevo cliente</span><span className="sm:hidden">Nuevo</span></button>
+          {canAccess('Clientes', 'crear') && (
+            <button onClick={openNewCliente} className="flex items-center gap-2 px-3 py-2 bg-crm-red text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex-shrink-0"><Plus size={16}/><span className="hidden sm:inline">Nuevo cliente</span><span className="sm:hidden">Nuevo</span></button>
+          )}
         </div>
       </div>
 
@@ -215,8 +219,12 @@ export default function Clientes() {
                 <p className="text-xs text-gray-400">{c.rut} {c.ciudad ? '· '+c.ciudad : ''} {c.rubro ? '· '+c.rubro : ''}</p>
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => openEditCliente(c)} className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600" title="Editar"><Pencil size={14}/></button>
-                <button onClick={() => deleteCliente(c.id)} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500" title="Eliminar"><Trash2 size={14}/></button>
+                {canAccess('Clientes', 'editar') && (
+                  <button onClick={() => openEditCliente(c)} className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600" title="Editar"><Pencil size={14}/></button>
+                )}
+                {canAccess('Clientes', 'eliminar') && (
+                  <button onClick={() => deleteCliente(c.id)} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500" title="Eliminar"><Trash2 size={14}/></button>
+                )}
                 <button onClick={() => toggleExpand(c.id)} className="p-1.5 rounded hover:bg-gray-100 text-gray-400 ml-1">
                   {expanded === c.id ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
                 </button>

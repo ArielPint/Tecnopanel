@@ -14,6 +14,36 @@ export const ROL_META: Record<string, { label: string; badge: string; descripcio
 
 export const MODULOS = ['Dashboard','Oportunidades','Ingeniería','Ganadas y Perdidas','Desarrollo','Costos y Presupuestos','Negociación','Ventas','Clientes','Usuarios']
 
+// Acciones granulares por módulo CRM (accion != 'ver'), mapeadas 1:1 contra lo que el RLS
+// real de la base de datos exige (has_crm_permiso, fase_h). Módulos sin entrada aquí solo
+// tienen 'ver'.
+export const CRM_ACCION_GROUPS: Record<string, { key: string; label: string }[]> = {
+  'Oportunidades': [
+    { key: 'crear', label: 'Puede crear oportunidades' },
+    { key: 'editar', label: 'Puede editar oportunidades de otros (no solo las propias)' },
+    { key: 'eliminar', label: 'Puede eliminar oportunidades' },
+    { key: 'exportar', label: 'Puede ver el historial de auditoría de cambios' },
+  ],
+  'Ingeniería': [
+    { key: 'crear', label: 'Puede crear tareas de ingeniería' },
+    { key: 'editar', label: 'Puede editar tareas de otros (no solo las asignadas a él)' },
+  ],
+  'Desarrollo': [
+    { key: 'crear', label: 'Puede subir planos y fichas de documentos' },
+  ],
+  'Costos y Presupuestos': [
+    { key: 'crear', label: 'Puede crear cubicaciones y presupuestos' },
+    { key: 'editar', label: 'Puede revisar presupuestos y editar el catálogo de tipologías' },
+  ],
+  'Negociación': [
+    { key: 'crear', label: 'Puede crear evaluaciones crediticias' },
+  ],
+  'Clientes': [
+    { key: 'crear', label: 'Puede crear clientes' },
+    { key: 'editar', label: 'Puede editar clientes' },
+  ],
+}
+
 // Permisos de página que trae un rol por defecto al crearlo (el admin luego puede ajustar por usuario)
 export const DEFAULT_MODULOS: Record<string, string[]> = {
   admin:           MODULOS,

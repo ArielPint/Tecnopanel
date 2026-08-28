@@ -6,9 +6,11 @@ import HeaderSearch from '@/modules/crm/components/HeaderSearch'
 import NotificationsBell from '@/modules/crm/components/NotificationsBell'
 import NuevaOportunidadModal from '@/modules/crm/components/NuevaOportunidadModal'
 import { useGlobalModals } from '@/modules/crm/contexts/GlobalModalsContext'
+import { usePermisos } from '@/modules/crm/contexts/PermisosContext'
 
 export function AppLayout() {
   const { showNuevaOpp, openNuevaOpp, closeNuevaOpp } = useGlobalModals()
+  const { canAccess } = usePermisos()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
@@ -29,14 +31,16 @@ export function AppLayout() {
 
           <div className="flex items-center gap-2 ml-auto">
             <NotificationsBell />
-            <button
-              onClick={openNuevaOpp}
-              className="flex items-center gap-1.5 bg-crm-red hover:bg-crm-dark text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
-            >
-              <Plus size={15} />
-              <span className="hidden sm:inline">Nueva Oportunidad</span>
-              <span className="sm:hidden">Nueva</span>
-            </button>
+            {canAccess('Oportunidades', 'crear') && (
+              <button
+                onClick={openNuevaOpp}
+                className="flex items-center gap-1.5 bg-crm-red hover:bg-crm-dark text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+              >
+                <Plus size={15} />
+                <span className="hidden sm:inline">Nueva Oportunidad</span>
+                <span className="sm:hidden">Nueva</span>
+              </button>
+            )}
           </div>
         </header>
 

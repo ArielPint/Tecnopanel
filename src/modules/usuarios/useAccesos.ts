@@ -56,6 +56,8 @@ export interface Acceso {
   proyectos: Record<string, ProyectoAcceso>
   crmRolNegocio: string
   crmModulos: string[]
+  /** Acciones granulares CRM (crear/editar/eliminar/exportar), clave "Módulo:accion" — ver CRM_ACCION_GROUPS. */
+  crmAcciones: Record<string, boolean>
   /** Acceso al módulo Gestión (§3.6) — permisos(modulo_key='gestion', accion='ver'), no es un proyecto. */
   gestionVer: boolean
   /** Grupo fijo (profiles.grupo_id) para acceso restringido a Solicitudes — un único grupo, no por proyecto. */
@@ -76,6 +78,7 @@ export interface AccesoInput {
   proyectos: Record<string, ProyectoAcceso>
   crmRolNegocio: string
   crmModulos: string[]
+  crmAcciones: Record<string, boolean>
   gestionVer: boolean
   grupoId: number | null
   subcontratistaId: string | null
@@ -117,7 +120,7 @@ async function syncAccesos(userId: string, input: AccesoInput) {
   const crmId = await getProyectoId('crm')
   await Promise.all([
     ...syncsProyectos,
-    syncPermisosCrm(userId, input.crmModulos),
+    syncPermisosCrm(userId, input.crmModulos, input.crmAcciones),
     syncPermisosGestion(userId, input.gestionVer),
     input.crmRolNegocio ? syncRolNegocio(userId, crmId, input.crmRolNegocio) : Promise.resolve(),
   ])
@@ -240,6 +243,10 @@ export function useAccesos() {
       }
 
       const crmModulos = misPermisos.filter((x) => x.proyecto_id === crmId && x.accion === 'ver').map((x) => x.modulo_key)
+      const crmAcciones: Record<string, boolean> = {}
+      for (const x of misPermisos) {
+        if (x.proyecto_id === crmId && x.accion !== 'ver') crmAcciones[`${x.modulo_key}:${x.accion}`] = true
+      }
       const gestionVer = misPermisos.some((x) => x.proyecto_id === sistemaId && x.modulo_key === 'gestion' && x.accion === 'ver')
       return {
         id: p.id,
@@ -252,6 +259,7 @@ export function useAccesos() {
         proyectos,
         crmRolNegocio: miAcceso.find((x) => x.proyecto_id === crmId)?.rol_negocio ?? '',
         crmModulos,
+        crmAcciones,
         gestionVer,
         grupoId: p.grupo_id,
         subcontratistaId: (subcontratistas ?? []).find((s) => s.user_id === p.id)?.id ?? null,

@@ -4,7 +4,7 @@ import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 
 interface PermisosContextValue {
   loading: boolean
-  canAccess: (modulo: string) => boolean
+  canAccess: (modulo: string, accion?: string) => boolean
 }
 
 const PermisosContext = createContext<PermisosContextValue>({
@@ -16,9 +16,9 @@ export function PermisosProvider({ children }: { children: React.ReactNode }) {
   const { profile, loading: loadingProfile } = useAuth()
   const acceso = usePermisosProyecto('crm')
 
-  function canAccess(modulo: string): boolean {
+  function canAccess(modulo: string, accion = 'ver'): boolean {
     if (!profile) return false
-    return acceso.tieneAccion(modulo)
+    return acceso.tieneAccion(modulo, accion)
   }
 
   return (

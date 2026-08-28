@@ -11,14 +11,20 @@ async function reemplazarPermisos(userId: string, proyectoId: string, filas: { m
   if (insErr) throw new Error(insErr.message)
 }
 
-/** CRM: un usuario tiene "ver" sobre cada string literal de módulo que el admin le marcó (profiles.modulos). */
-export async function syncPermisosCrm(userId: string, modulos: string[]) {
+/**
+ * CRM: "ver" por cada módulo marcado, más las acciones granulares (crear/editar/eliminar/exportar)
+ * seleccionadas — mismo formato "Módulo:accion" que `accionesExtra` de syncPermisosProyecto,
+ * gateadas de verdad por has_crm_permiso() en el RLS (fase_h).
+ */
+export async function syncPermisosCrm(userId: string, modulos: string[], acciones: Record<string, boolean> = {}) {
   const proyectoId = await getProyectoId('crm')
-  await reemplazarPermisos(
-    userId,
-    proyectoId,
-    modulos.map((m) => ({ modulo_key: m, accion: 'ver' })),
-  )
+  const filas: { modulo_key: string; accion: string }[] = modulos.map((m) => ({ modulo_key: m, accion: 'ver' }))
+  for (const [key, on] of Object.entries(acciones)) {
+    if (!on) continue
+    const separador = key.lastIndexOf(':')
+    filas.push({ modulo_key: key.slice(0, separador), accion: key.slice(separador + 1) })
+  }
+  await reemplazarPermisos(userId, proyectoId, filas)
 }
 
 /**
