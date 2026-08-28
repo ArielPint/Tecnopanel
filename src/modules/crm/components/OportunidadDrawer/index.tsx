@@ -9,7 +9,7 @@ import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import { formatCLP } from '@/modules/financiero/utils/formatters'
 import MontoInput from '@/components/MontoInput'
-import type { Oportunidad, Profile, OportunidadHistorialEtapa, OportunidadDocumento, TareaIngenieria, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit } from '@/modules/crm/types/database'
+import type { Oportunidad, Profile, OportunidadHistorialEtapa, OportunidadDocumento, TareaIngenieria, EstadoTarea, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit } from '@/modules/crm/types/database'
 import { FAMILIA_PRODUCTOS_OPCIONES, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
 
 const REGIONES = Object.keys(REGIONES_COMUNAS)
@@ -319,7 +319,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     setUsuarios((usersRes.data as Profile[]) ?? [])
     const tareasBase = (tareasRes.data as TareaIngenieria[]) ?? []
     if (tareasBase.length) {
-      const { data: tareaAsigs } = await supabase.from('tarea_asignaciones').select('tarea_id,usuario:profiles(nombre,apellido)').in('tarea_id', tareasBase.map(t => t.id))
+      const { data: tareaAsigs, error: tareaAsigsErr } = await supabase.from('tarea_asignaciones').select('tarea_id,usuario:profiles!tarea_asignaciones_usuario_id_fkey(id,nombre,apellido)').in('tarea_id', tareasBase.map(t => t.id))
+      handleSupabaseError(tareaAsigsErr, 'OportunidadDrawer.loadAll.tareaAsignaciones')
       const byTarea: Record<string, Profile[]> = {}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(tareaAsigs ?? []).forEach((a: any) => { (byTarea[a.tarea_id] ??= []).push(a.usuario) })
@@ -591,6 +592,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     setNuevaTarea({ titulo: '', descripcion: '', asignados_ids: [], prioridad: '2', fecha_limite: '' })
     setShowCrearTarea(false); setCreandoTarea(false)
     await loadAll()
+  }
+
+  async function responderTarea(tareaId: string, estado: EstadoTarea) {
+    const { error } = await supabase.from('tareas_ingenieria').update({ estado }).eq('id', tareaId)
+    if (handleSupabaseError(error, 'OportunidadDrawer.responderTarea')) return
+    setTareas(ts => ts.map(t => t.id === tareaId ? { ...t, estado } : t))
   }
 
   async function saveMargen(value: number | null) {
@@ -1335,13 +1342,15 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                 </button>
               )}
 
-              {opp.etapa_actual === 'Ingeniería' && (
+              {(opp.etapa_actual === 'Ingeniería' || opp.etapa_actual === 'Desarrollo') && (
                 <div className="pt-4 border-t border-gray-200 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tareas de ingeniería</p>
-                    <button onClick={() => setShowCrearTarea(s => !s)} className="flex items-center gap-1 text-xs font-medium text-crm-red hover:underline">
-                      <Plus size={12} /> Crear tarea
-                    </button>
+                    {opp.etapa_actual === 'Ingeniería' && (profile?.rol === 'jefe_ingenieria' || profile?.rol === 'admin') && (
+                      <button onClick={() => setShowCrearTarea(s => !s)} className="flex items-center gap-1 text-xs font-medium text-crm-red hover:underline">
+                        <Plus size={12} /> Crear tarea
+                      </button>
+                    )}
                   </div>
                   {showCrearTarea && (
                     <div className="bg-gray-50 rounded-lg p-3 space-y-2">
@@ -1369,15 +1378,25 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                   )}
                   {tareas.length === 0 ? <p className="text-xs text-gray-400 text-center py-2">Sin tareas</p> : (
                     <div className="space-y-1.5">
-                      {tareas.map(t => (
+                      {tareas.map(t => {
+                        const soyAsignado = t.asignados?.some(a => a.id === profile?.id) ?? false
+                        const puedeResponder = opp.etapa_actual === 'Desarrollo' && soyAsignado && t.estado === 'pendiente'
+                        return (
                         <div key={t.id} className="flex items-center justify-between gap-2 p-2 border border-gray-200 rounded-lg">
                           <div className="min-w-0">
                             <p className="text-xs font-medium text-gray-700 truncate">{t.titulo}</p>
                             <p className="text-xs text-gray-400">{t.asignados?.length ? t.asignados.map(a=>`${a.nombre} ${a.apellido}`).join(', ') : 'Sin asignar'}{t.fecha_limite ? ' · vence ' + new Date(t.fecha_limite).toLocaleDateString('es-CL') : ''}</p>
                           </div>
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 flex-shrink-0">{t.estado.replace(/_/g,' ')}</span>
+                          {puedeResponder ? (
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <button onClick={() => responderTarea(t.id, 'en_progreso')} className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200">Aceptar</button>
+                              <button onClick={() => responderTarea(t.id, 'rechazada')} className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 hover:bg-red-200">Rechazar</button>
+                            </div>
+                          ) : (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 flex-shrink-0">{t.estado.replace(/_/g,' ')}</span>
+                          )}
                         </div>
-                      ))}
+                      )})}
                     </div>
                   )}
                   <button onClick={saveEtapaData} disabled={saving} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
