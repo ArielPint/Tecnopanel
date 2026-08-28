@@ -1,10 +1,16 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 import { useObraCrData } from '../hooks/useObraCrData'
-import { buildEntregasFlat } from '../lib/matrix'
+import { buildEntregasFlat, semanaInicioDe } from '../lib/matrix'
 import { ASIGNACION_DEFS, ASIGNACION_ORDER, SUBCONTRATO_LABEL, type AsignacionCategoria, type ObraSubcontrato } from '../lib/categorias'
 import CalendarioEntregas from '../components/CalendarioEntregas'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
+
+function fmtSemana(iso: string): string {
+  const [, m, d] = iso.split('-')
+  return `${d}/${m}`
+}
 
 const SUBCONTRATO_PERMISO_A_OBRA: Record<'WEDO' | 'CONBES', ObraSubcontrato> = { WEDO: 'W', CONBES: 'C' }
 
@@ -18,10 +24,21 @@ export default function EntregaCliente() {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const { subcontrato } = usePermisosProyecto(proyectoSlug ?? '')
   const { modulos, loading, hayCR } = useObraCrData()
-  const entregas = useMemo(() => buildEntregasFlat(modulos), [modulos])
+  const entregasTodas = useMemo(() => buildEntregasFlat(modulos), [modulos])
   // Con subcontrato asociado: solo "terminaciones" aplica (las otras 3 categorías
   // son de otras empresas fijas), filtrado además al código propio (W/C).
   const categorias = subcontrato ? (['terminaciones'] as AsignacionCategoria[]) : ASIGNACION_ORDER
+
+  const semanas = useMemo(
+    () => [...new Set(entregasTodas.map((e) => semanaInicioDe(e.fecha)))].sort(),
+    [entregasTodas],
+  )
+  const [semana, setSemana] = useState<string>('todas')
+
+  const entregas = useMemo(
+    () => (semana === 'todas' ? entregasTodas : entregasTodas.filter((e) => semanaInicioDe(e.fecha) === semana)),
+    [entregasTodas, semana],
+  )
 
   const porCategoria = useMemo(
     () =>
@@ -37,7 +54,20 @@ export default function EntregaCliente() {
 
   return (
     <div className="space-y-6">
-      <p className="text-xs text-muted-foreground">Calendario armado a partir de las fechas de entrega cargadas por módulo y categoría en la pestaña Configuración.</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">Calendario armado a partir de las fechas de entrega cargadas por módulo y categoría en la pestaña Configuración.</p>
+        <Select value={semana} onValueChange={setSemana}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="Semana" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas las semanas</SelectItem>
+            {semanas.map((s) => (
+              <SelectItem key={s} value={s}>Semana del {fmtSemana(s)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       {porCategoria.map(({ cat, entregas: entregasCat }) => (
         <div key={cat} className="space-y-2">
           <h3 className="text-sm font-semibold">{tituloCategoria(cat)}</h3>

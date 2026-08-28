@@ -212,6 +212,11 @@ function lunesDeSemana(fecha: Date): Date {
   return d
 }
 
+// Lunes (YYYY-MM-DD) de la semana a la que pertenece una fecha ISO — mismo criterio que buildEntregaSemanas.
+export function semanaInicioDe(fechaIso: string): string {
+  return lunesDeSemana(new Date(fechaIso + 'T12:00:00')).toISOString().slice(0, 10)
+}
+
 // Arma la grilla semanal a partir de las entregas aplanadas (buildEntregasFlat).
 export function buildEntregaSemanas(entregas: EntregaItem[]): EntregaSemana[] {
   if (!entregas.length) return []
