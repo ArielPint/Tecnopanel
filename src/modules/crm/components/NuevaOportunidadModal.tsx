@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Loader2, X } from 'lucide-react'
+import { getLineasNegocio, SUCURSALES, type LineaNegocio } from '@/lib/lineasNegocio'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import MontoInput from '@/components/MontoInput'
@@ -68,10 +69,12 @@ interface FormData {
   alcances: string[];
   nombre_comite_vivienda: string; nombre_constructora: string;
   zona_termica: ZonaTermicaVit | ''; valor_uf: string;
+  linea_id: string; sucursal: string;
 }
 interface LineaTipologia { tipologia: string; cantidad_casas: string }
 const INIT: FormData = {
   nombre:'', cliente_id:'', tipo_venta:'Proyecto',
+  linea_id:'', sucursal:'',
   monto_estimado:'', probabilidad:'50',
   fecha_cierre_est:'', descripcion:'',
   nombre_entidad_patrocinante:'',
@@ -94,6 +97,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
   const [tipologias, setTipologias] = useState<TipologiaVitPrecio[]>([])
   const [form, setForm] = useState<FormData>(INIT)
   const [lineas, setLineas] = useState<LineaTipologia[]>([])
+  const [lineasNegocio, setLineasNegocio] = useState<LineaNegocio[]>([])
   const [archivo, setArchivo] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -109,6 +113,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
       .then(({ data }) => setClientes((data as Cliente[]) ?? []))
     supabase.from('tipologia_vit_precios').select('tipologia,venta_actual_uf').order('venta_actual_uf')
       .then(({ data }) => setTipologias((data as TipologiaVitPrecio[]) ?? []))
+    getLineasNegocio().then(setLineasNegocio).catch(() => setLineasNegocio([]))
   }, [isOpen])
 
   const comunasDisponibles = form.region ? (REGIONES_COMUNAS[form.region] ?? []) : []
@@ -180,6 +185,8 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.nombre.trim()) return setError('El nombre es requerido')
+    if (!form.linea_id) return setError('La línea de negocio es requerida')
+    if (!form.sucursal) return setError('La sucursal es requerida')
     if (form.comuna && form.region && !comunasDisponibles.includes(form.comuna)) {
       return setError('La comuna seleccionada no pertenece a la región elegida')
     }
@@ -194,6 +201,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
     const { data, error: err } = await supabase.from('oportunidades').insert({
       codigo, nombre: form.nombre.trim(), cliente_id: form.cliente_id || null,
       vendedor_id: profile?.id ?? null, tipo_venta: form.tipo_venta,
+      linea_id: form.linea_id, sucursal: form.sucursal,
       monto_estimado: montoEstimado,
       probabilidad: Number(form.probabilidad), etapa_actual: etapaInicial,
       fecha_cierre_est: form.fecha_cierre_est || null, descripcion: form.descripcion || null,
@@ -272,6 +280,22 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Etapa inicial</label>
               <input disabled value={etapaInicial} className="w-full px-3 py-2 border border-gray-200 bg-gray-50 text-gray-500 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Línea de negocio</label>
+              <select value={form.linea_id} onChange={e => setForm(f=>({...f,linea_id:e.target.value}))}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+                <option value="">Seleccionar…</option>
+                {lineasNegocio.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Sucursal</label>
+              <select value={form.sucursal} onChange={e => setForm(f=>({...f,sucursal:e.target.value}))}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+                <option value="">Seleccionar…</option>
+                {SUCURSALES.map(su => <option key={su} value={su}>{su}</option>)}
+              </select>
             </div>
           </div>
           {form.tipo_venta !== 'VIT' && (

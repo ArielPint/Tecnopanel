@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Search, Trash2 } from 'lucide-react'
+import { getLineasNegocio, SUCURSALES, type LineaNegocio } from '@/lib/lineasNegocio'
 import { supabase } from '@/lib/supabaseClient'
 import type { Oportunidad, EtapaOportunidad, TipoVenta } from '@/modules/crm/types/database'
 import OportunidadDrawer from '@/modules/crm/components/OportunidadDrawer'
@@ -32,6 +33,9 @@ export default function Oportunidades() {
   const [oportunidades, setOportunidades] = useState<Oportunidad[]>([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
+  const [filtroLinea, setFiltroLinea] = useState('todas')
+  const [filtroSucursal, setFiltroSucursal] = useState('todas')
+  const [lineasNegocio, setLineasNegocio] = useState<LineaNegocio[]>([])
   const [selected, setSelected] = useState<Oportunidad | null>(null)
   const [limpiando, setLimpiando] = useState(false)
 
@@ -47,6 +51,8 @@ export default function Oportunidades() {
   }
 
   useEffect(() => { load() }, [])
+
+  useEffect(() => { getLineasNegocio().then(setLineasNegocio).catch(() => setLineasNegocio([])) }, [])
 
   // El boton "Nueva Oportunidad" vive una sola vez en el header global (AppLayout);
   // esta pagina solo escucha el evento para refrescar la lista sin recargar la web.
@@ -68,8 +74,10 @@ export default function Oportunidades() {
   }
 
   const filtradas = oportunidades.filter(o =>
-    o.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    o.codigo.toLowerCase().includes(busqueda.toLowerCase())
+    (o.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+     o.codigo.toLowerCase().includes(busqueda.toLowerCase())) &&
+    (filtroLinea === 'todas' || o.linea_id === filtroLinea) &&
+    (filtroSucursal === 'todas' || o.sucursal === filtroSucursal)
   )
   const porEtapa = (etapa: EtapaOportunidad) => filtradas.filter(o => o.etapa_actual === etapa)
 
@@ -83,6 +91,16 @@ export default function Oportunidades() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar..." className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" />
         </div>
+        <select value={filtroLinea} onChange={e => setFiltroLinea(e.target.value)}
+          className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+          <option value="todas">Todas las líneas</option>
+          {lineasNegocio.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
+        </select>
+        <select value={filtroSucursal} onChange={e => setFiltroSucursal(e.target.value)}
+          className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+          <option value="todas">Todas las sucursales</option>
+          {SUCURSALES.map(su => <option key={su} value={su}>{su}</option>)}
+        </select>
         {profile?.rol === 'admin' && (
           <button onClick={limpiarBase} disabled={limpiando} title="Borra todas las oportunidades de la base"
             className="flex items-center gap-2 bg-white border border-red-200 hover:bg-red-50 text-crm-red text-sm font-medium px-3 py-2 rounded-lg transition-colors flex-shrink-0 disabled:opacity-50">

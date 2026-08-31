@@ -76,6 +76,8 @@ export interface Oportunidad {
   tipologia_vit: string | null
   venta_actual_uf: number | null
   valor_uf: number | null
+  linea_id: string | null
+  sucursal: string | null
   tipo_subsidio: TipoSubsidioVit | null
   programa: string | null
   fecha_ingreso_calificacion: string | null

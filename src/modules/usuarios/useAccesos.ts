@@ -64,6 +64,8 @@ export interface Acceso {
   grupoId: number | null
   /** Ficha de subcontratista vinculada — si tiene valor, este usuario es el portal de ese subcontratista. */
   subcontratistaId: string | null
+  /** Sucursal del usuario (F1). Opcional; el bloqueo real por sucursal llega en F2. */
+  sucursal: string | null
   ultimoIngreso: string | null
 }
 
@@ -82,6 +84,7 @@ export interface AccesoInput {
   gestionVer: boolean
   grupoId: number | null
   subcontratistaId: string | null
+  sucursal: string | null
 }
 
 // Vincula (o desvincula) la ficha de subcontratista con este usuario — desvincula
@@ -124,7 +127,7 @@ async function syncAccesos(userId: string, input: AccesoInput) {
     syncPermisosGestion(userId, input.gestionVer),
     input.crmRolNegocio ? syncRolNegocio(userId, crmId, input.crmRolNegocio) : Promise.resolve(),
   ])
-  const { error } = await supabase.from('profiles').update({ rol: input.rol, grupo_id: input.grupoId }).eq('id', userId)
+  const { error } = await supabase.from('profiles').update({ rol: input.rol, grupo_id: input.grupoId, sucursal: input.sucursal }).eq('id', userId)
   if (error) throw new Error(error.message)
   await syncSubcontratistaLink(userId, input.subcontratistaId)
 }
@@ -159,7 +162,7 @@ export function useAccesos() {
       { data: subcontratistas, error: subcontratistasError },
     ] = await Promise.all([
       // is_root excluida: cuenta root oculta del listado, ver comentario en la columna.
-      supabase.from('profiles').select('id, nombre, apellido, email, activo, is_super_admin, rol, grupo_id').eq('is_root', false).order('nombre'),
+      supabase.from('profiles').select('id, nombre, apellido, email, activo, is_super_admin, rol, grupo_id, sucursal').eq('is_root', false).order('nombre'),
       supabase.from('permisos').select('user_id, proyecto_id, modulo_key, accion'),
       supabase.from('project_access').select('user_id, proyecto_id, rol_negocio'),
       supabase.functions.invoke('manage-access', { body: { action: 'list_last_logins' } }),
@@ -262,6 +265,7 @@ export function useAccesos() {
         crmAcciones,
         gestionVer,
         grupoId: p.grupo_id,
+        sucursal: p.sucursal ?? null,
         subcontratistaId: (subcontratistas ?? []).find((s) => s.user_id === p.id)?.id ?? null,
         ultimoIngreso: logins[p.id] ?? null,
       }

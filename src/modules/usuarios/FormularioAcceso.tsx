@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/modules/financiero/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/modules/financiero/components/ui/tabs'
 import { PAGE_MAP, FINANCIERO_EDIT_GROUPS, ESTADOS_PAGO_ACCION_GROUPS, ESTADOS_PAGO_INGRESOS_ACCION_GROUPS, ROLES } from '@/modules/settings/lib/pageMap'
+import { SUCURSALES } from '@/lib/lineasNegocio'
 import { ROL_META, MODULOS as CRM_MODULOS, CRM_ACCION_GROUPS } from '@/modules/crm/lib/roles'
 import { proyectoAccesoVacio, type Acceso, type AccesoInput, type ProyectoAcceso, type ProyectoObra } from './useAccesos'
 
@@ -41,6 +42,7 @@ function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: Proye
     gestionVer: acceso?.gestionVer ?? false,
     grupoId: acceso?.grupoId ?? null,
     subcontratistaId: acceso?.subcontratistaId ?? null,
+    sucursal: acceso?.sucursal ?? null,
   }
 }
 
@@ -181,6 +183,25 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                   autoComplete="new-password"
                   placeholder="Mínimo 6 caracteres"
                 />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="a-sucursal">Sucursal</Label>
+                <select
+                  id="a-sucursal"
+                  value={form.sucursal ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, sucursal: e.target.value || null }))}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="">Sin sucursal (ve todas)</option>
+                  {SUCURSALES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-muted-foreground">
+                  Hoy es solo informativo: el filtro real por sucursal se activa en una fase posterior.
+                </p>
               </div>
               <label className="flex items-center gap-2 text-sm">
                 <Checkbox checked={form.activo} onCheckedChange={(v) => setForm((f) => ({ ...f, activo: !!v }))} />

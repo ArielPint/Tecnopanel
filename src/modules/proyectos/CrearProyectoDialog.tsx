@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
 import { Button } from '@/modules/financiero/components/ui/button'
@@ -6,6 +6,7 @@ import { Input } from '@/modules/financiero/components/ui/input'
 import { Label } from '@/modules/financiero/components/ui/label'
 import { Checkbox } from '@/modules/financiero/components/ui/checkbox'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/modules/financiero/components/ui/dialog'
+import { getLineasNegocio, abreviaturaSucursal, SUCURSALES, type LineaNegocio, type Sucursal } from '@/lib/lineasNegocio'
 import { useCrearProyecto } from './useCrearProyecto'
 
 // Mismo catálogo cerrado que ya usa proyecto_modulos para La Chacra — el admin
@@ -37,27 +38,63 @@ export default function CrearProyectoDialog({ onCreado }: { onCreado: () => void
   const [nombre, setNombre] = useState('')
   const [slug, setSlug] = useState('')
   const [slugTocado, setSlugTocado] = useState(false)
-  const [modulos, setModulos] = useState<string[]>(MODULOS_DISPONIBLES.map((m) => m.key))
+  const [modulos, setModulos] = useState<string[]>([])
+  const [modulosTocados, setModulosTocados] = useState(false)
+  const [lineas, setLineas] = useState<string[]>([])
+  const [sucursal, setSucursal] = useState<Sucursal | ''>('')
+  const [catalogo, setCatalogo] = useState<LineaNegocio[]>([])
   const { crear, creando } = useCrearProyecto()
+
+  useEffect(() => {
+    getLineasNegocio()
+      .then(setCatalogo)
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'No se pudieron cargar las líneas de negocio'))
+  }, [])
+
+  const seleccionadas = useMemo(() => catalogo.filter((l) => lineas.includes(l.id)), [catalogo, lineas])
+
+  // Los módulos se premarcan con la unión de los modulos_default de las líneas
+  // elegidas, hasta que el admin toque un checkbox — desde ahí manda él.
+  useEffect(() => {
+    if (modulosTocados) return
+    setModulos([...new Set(seleccionadas.flatMap((l) => l.modulos_default))])
+  }, [seleccionadas, modulosTocados])
+
+  // Slug sugerido con prefijo de línea y sufijo de sucursal: vit-proyecto-2-pv.
+  useEffect(() => {
+    if (slugTocado) return
+    const prefijo = seleccionadas.map((l) => l.codigo).join('-')
+    const sufijo = sucursal ? abreviaturaSucursal(sucursal) : ''
+    setSlug(slugify([prefijo, nombre, sufijo].filter(Boolean).join(' ')))
+  }, [seleccionadas, nombre, sucursal, slugTocado])
 
   function resetear() {
     setNombre('')
     setSlug('')
     setSlugTocado(false)
-    setModulos(MODULOS_DISPONIBLES.map((m) => m.key))
+    setModulos([])
+    setModulosTocados(false)
+    setLineas([])
+    setSucursal('')
   }
 
   function toggleModulo(key: string, checked: boolean) {
+    setModulosTocados(true)
     setModulos((prev) => (checked ? [...prev, key] : prev.filter((k) => k !== key)))
+  }
+
+  function toggleLinea(id: string, checked: boolean) {
+    setLineas((prev) => (checked ? [...prev, id] : prev.filter((l) => l !== id)))
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (lineas.length === 0) return toast.error('Elegí al menos una línea de negocio')
+    if (!sucursal) return toast.error('Elegí la sucursal')
     try {
-      await crear({ nombre, slug, modulos })
+      await crear({ nombre, slug, modulos, lineas, sucursal })
       toast.success(`Proyecto "${nombre}" creado`)
       setOpen(false)
-      resetear()
       onCreado()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al crear el proyecto')
@@ -88,12 +125,45 @@ export default function CrearProyectoDialog({ onCreado }: { onCreado: () => void
             <Input
               id="nombre"
               value={nombre}
-              onChange={(e) => {
-                setNombre(e.target.value)
-                if (!slugTocado) setSlug(slugify(e.target.value))
-              }}
+              onChange={(e) => setNombre(e.target.value)}
               required
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Línea de negocio</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {catalogo.map((l) => (
+                <label key={l.id} className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={lineas.includes(l.id)}
+                    onCheckedChange={(checked) => toggleLinea(l.id, checked === true)}
+                  />
+                  {l.nombre}
+                </label>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Puede tener más de una. Los módulos se premarcan según lo que elijas.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sucursal">Sucursal</Label>
+            {/* select nativo a propósito: el Select de Radix adentro de este Dialog
+                dejaba pointer-events:none pegado en el body al cerrar el diálogo
+                por código tras crear, y la página quedaba sin clics hasta recargar. */}
+            <select
+              id="sucursal"
+              value={sucursal}
+              onChange={(e) => setSucursal(e.target.value as Sucursal)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="">Elegir sucursal</option>
+              {SUCURSALES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="slug">Slug (URL)</Label>

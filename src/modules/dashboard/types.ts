@@ -7,6 +7,7 @@ export interface Proyecto {
   estado: string
   color_icon: string | null
   url_app: string | null
+  sucursal: string | null
   created_at: string
 }
 
