@@ -1,5 +1,6 @@
 import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
 import Reportes from './pages/Reportes'
+import Ventas from './pages/Ventas'
 import Calendarizacion from './pages/Calendarizacion'
 import Documentos from './pages/Documentos'
 import Comunicaciones from './pages/Comunicaciones'
@@ -12,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/modules/financiero/c
 // que el usuario decida retomarla.
 
 export default function GestionApp() {
-  const { proyectosObra, tieneCrm, loading } = useAccesoUsuario()
+  const { proyectosObra, tieneCrm, isAdmin, loading } = useAccesoUsuario()
 
   return (
     <div className="space-y-4">
@@ -24,6 +25,7 @@ export default function GestionApp() {
       <Tabs defaultValue="reportes">
         <TabsList>
           <TabsTrigger value="reportes">Reportes</TabsTrigger>
+          <TabsTrigger value="ventas">Ventas</TabsTrigger>
           <TabsTrigger value="calendarizacion">Calendarización</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
           <TabsTrigger value="comunicaciones">Comunicaciones</TabsTrigger>
@@ -31,6 +33,9 @@ export default function GestionApp() {
 
         <TabsContent value="reportes" className="pt-3">
           {loading ? <div className="h-24 animate-pulse rounded bg-muted" /> : <Reportes proyectosObra={proyectosObra} />}
+        </TabsContent>
+        <TabsContent value="ventas" className="pt-3">
+          {loading ? <div className="h-24 animate-pulse rounded bg-muted" /> : <Ventas esAdmin={isAdmin} />}
         </TabsContent>
         <TabsContent value="calendarizacion" className="pt-3">
           {loading ? (
