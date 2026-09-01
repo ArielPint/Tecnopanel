@@ -6,14 +6,6 @@ export async function loadPresupuestoTotal(): Promise<number | null> {
   return data?.value != null ? parseFloat(data.value) || null : null
 }
 
-// Monto del contrato del proyecto (pesos) — misma fuente que Estados de Pago > Ingresos > Configuracion.
-export async function loadMontoContrato(proyectoId: string): Promise<number | null> {
-  const data = await unwrap(
-    supabase.from('estados_pago_ingresos_config').select('monto_contractual').eq('proyecto_id', proyectoId).maybeSingle(),
-  )
-  return data?.monto_contractual != null ? Number(data.monto_contractual) || null : null
-}
-
 export async function loadForecastMensualSeleccionado(): Promise<string | null> {
   const data = await unwrap(supabase.from('config').select('value').eq('key', 'forecast_mensual_seleccionado').maybeSingle())
   return data?.value || null

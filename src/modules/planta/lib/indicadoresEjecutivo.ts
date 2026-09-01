@@ -1,5 +1,9 @@
 import type { useResumenData } from '../hooks/useResumenData'
-import { fmt, fmtM, fmtPr } from './format'
+import { fmt, fmtPr } from './format'
+
+// ponytail: unico valor fijo — el monto del contrato esta en UF y no existe en la base
+// (estados_pago_ingresos_config.monto_contractual es otra cosa). Ajustar aca si cambia.
+export const MONTO_CONTRATO_UF = 346909
 
 type Resumen = ReturnType<typeof useResumenData>
 
@@ -9,7 +13,7 @@ export function buildIndicadoresEjecutivo(resumen: Resumen) {
   const avanceEconomicoAcumFinal = avanceEconomicoAcumulado[avanceEconomicoAcumulado.length - 1]?.realAcum ?? null
 
   const items = [
-    { label: 'Monto del contrato', value: fmtM(resumen.kpis.montoContrato) },
+    { label: 'Monto del contrato', value: `UF ${fmt(MONTO_CONTRATO_UF)}` },
     {
       label: 'Avance económico %',
       value: fmtPr(avanceEconomicoAcumFinal),
