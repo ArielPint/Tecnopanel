@@ -190,7 +190,21 @@ export interface TareaIngenieria {
   prioridad: number
   fecha_limite: string | null
   created_at: string
-  asignados?: Profile[]
+  completada_at: string | null
+  motivo_rechazo: string | null
+  respondido_por: string | null
+  respondido_at: string | null
+  asignados?: PerfilBasico[]
+}
+
+/** Vista crm_perfiles_basicos: solo el nombre, legible por cualquier usuario del CRM.
+ * profiles esta restringido por RLS y no sirve para mostrar companeros asignados. */
+export interface PerfilBasico {
+  id: string
+  nombre: string
+  apellido: string
+  rol: string
+  activo: boolean
 }
 
 export interface TareaAsignacion {

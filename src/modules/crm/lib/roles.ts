@@ -20,6 +20,7 @@ export const MODULOS = ['Dashboard','Oportunidades','Ingeniería','Ganadas y Per
 export const CRM_ACCION_GROUPS: Record<string, { key: string; label: string }[]> = {
   'Oportunidades': [
     { key: 'crear', label: 'Puede crear oportunidades' },
+    { key: 'avanzar', label: 'Puede avanzar/retroceder la etapa desde Clasificación y Oportunidad' },
     { key: 'editar', label: 'Puede editar oportunidades de otros (no solo las propias)' },
     { key: 'eliminar', label: 'Puede eliminar oportunidades' },
     { key: 'exportar', label: 'Puede ver el historial de auditoría de cambios' },
@@ -27,16 +28,23 @@ export const CRM_ACCION_GROUPS: Record<string, { key: string; label: string }[]>
   'Ingeniería': [
     { key: 'crear', label: 'Puede crear tareas de ingeniería' },
     { key: 'editar', label: 'Puede editar tareas de otros (no solo las asignadas a él)' },
+    { key: 'avanzar', label: 'Puede avanzar la etapa Ingeniería a Desarrollo' },
   ],
   'Desarrollo': [
     { key: 'crear', label: 'Puede subir planos y fichas de documentos' },
+    { key: 'avanzar', label: 'Puede avanzar la etapa Desarrollo a Costos y Presupuestos' },
   ],
   'Costos y Presupuestos': [
     { key: 'crear', label: 'Puede crear cubicaciones y presupuestos' },
     { key: 'editar', label: 'Puede revisar presupuestos y editar el catálogo de tipologías' },
+    { key: 'avanzar', label: 'Puede avanzar la etapa Costos y Presupuestos a Ventas' },
+  ],
+  'Ventas': [
+    { key: 'avanzar', label: 'Puede avanzar la etapa Ventas a Negociación' },
   ],
   'Negociación': [
     { key: 'crear', label: 'Puede crear evaluaciones crediticias' },
+    { key: 'avanzar', label: 'Puede cerrar la etapa Negociación' },
   ],
   'Clientes': [
     { key: 'crear', label: 'Puede crear clientes' },

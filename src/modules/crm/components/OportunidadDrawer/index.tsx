@@ -10,7 +10,7 @@ import { usePermisos } from '@/modules/crm/contexts/PermisosContext'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import { formatCLP } from '@/modules/financiero/utils/formatters'
 import MontoInput from '@/components/MontoInput'
-import type { Oportunidad, Profile, OportunidadHistorialEtapa, OportunidadDocumento, TareaIngenieria, EstadoTarea, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit } from '@/modules/crm/types/database'
+import type { Oportunidad, Profile, PerfilBasico, OportunidadHistorialEtapa, OportunidadDocumento, TareaIngenieria, EstadoTarea, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit } from '@/modules/crm/types/database'
 import { FAMILIA_PRODUCTOS_OPCIONES, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
 
 const REGIONES = Object.keys(REGIONES_COMUNAS)
@@ -194,6 +194,20 @@ const TIPO_VENTA_LABELS: Record<string, string> = {
   VIT: 'VIT',
 }
 
+// Espejo de public.crm_modulo_de_etapa(): que modulo del CRM gobierna cada etapa.
+// Se usa para el permiso granular '<modulo>:avanzar'.
+const MODULO_DE_ETAPA: Record<string, string> = {
+  'Clasificación': 'Oportunidades',
+  'Oportunidad': 'Oportunidades',
+  'Ingeniería': 'Ingeniería',
+  'Desarrollo': 'Desarrollo',
+  'Costos y Presupuestos': 'Costos y Presupuestos',
+  'Ventas': 'Ventas',
+  'Negociación': 'Negociación',
+}
+
+const PRIORIDAD_LABEL: Record<number, string> = { 1: 'Alta', 2: 'Media', 3: 'Baja' }
+
 const STAGE_ROLES: Record<string, string[]> = {
   'Clasificación': ['admin','gerente_ventas','vendedor'],
   'Oportunidad': ['admin','gerente_ventas','vendedor'],
@@ -241,6 +255,10 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   const [historial, setHistorial] = useState<OportunidadHistorialEtapa[]>([])
   const [tareas, setTareas] = useState<TareaIngenieria[]>([])
   const [showCrearTarea, setShowCrearTarea] = useState(false)
+  const [tareaSel, setTareaSel] = useState<TareaIngenieria | null>(null)
+  const [motivoRechazo, setMotivoRechazo] = useState('')
+  const [modoRechazo, setModoRechazo] = useState(false)
+  const [respondiendo, setRespondiendo] = useState(false)
   const [nuevaTarea, setNuevaTarea] = useState({ titulo: '', descripcion: '', asignados_ids: [] as string[], prioridad: '2', fecha_limite: '' })
   const [creandoTarea, setCreandoTarea] = useState(false)
   const [mensajes, setMensajes] = useState<MensajeOportunidad[]>([])
@@ -262,6 +280,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   const [linkNombre, setLinkNombre] = useState('')
   const [showLink, setShowLink] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const entregableRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { setOpp(oportunidad); setTab('general'); loadAll() }, [oportunidad.id])
 
@@ -321,11 +340,23 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     setUsuarios((usersRes.data as Profile[]) ?? [])
     const tareasBase = (tareasRes.data as TareaIngenieria[]) ?? []
     if (tareasBase.length) {
-      const { data: tareaAsigs, error: tareaAsigsErr } = await supabase.from('tarea_asignaciones').select('tarea_id,usuario:profiles!tarea_asignaciones_usuario_id_fkey(id,nombre,apellido)').in('tarea_id', tareasBase.map(t => t.id))
+      // Los nombres salen de crm_perfiles_basicos, no de profiles: el RLS de profiles
+      // oculta a los companeros y el embed devolvia null, lo que reventaba el render.
+      const { data: tareaAsigs, error: tareaAsigsErr } = await supabase.from('tarea_asignaciones').select('tarea_id,usuario_id').in('tarea_id', tareasBase.map(t => t.id))
       handleSupabaseError(tareaAsigsErr, 'OportunidadDrawer.loadAll.tareaAsignaciones')
-      const byTarea: Record<string, Profile[]> = {}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(tareaAsigs ?? []).forEach((a: any) => { (byTarea[a.tarea_id] ??= []).push(a.usuario) })
+      const asigs = tareaAsigs ?? []
+      const perfilIds = [...new Set(asigs.map(a => a.usuario_id).filter(Boolean))]
+      let perfilesById: Record<string, PerfilBasico> = {}
+      if (perfilIds.length) {
+        const { data: perfiles, error: perfilesErr } = await supabase.from('crm_perfiles_basicos').select('id,nombre,apellido,rol,activo').in('id', perfilIds)
+        handleSupabaseError(perfilesErr, 'OportunidadDrawer.loadAll.perfilesBasicos')
+        perfilesById = Object.fromEntries(((perfiles as PerfilBasico[]) ?? []).map(u => [u.id, u]))
+      }
+      const byTarea: Record<string, PerfilBasico[]> = {}
+      asigs.forEach(a => {
+        const u = perfilesById[a.usuario_id]
+        if (u) (byTarea[a.tarea_id] ??= []).push(u)
+      })
       setTareas(tareasBase.map(t => ({ ...t, asignados: byTarea[t.id] ?? [] })))
     } else setTareas([])
     const c = cierreRes.data as Cierre | null
@@ -596,10 +627,50 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     await loadAll()
   }
 
-  async function responderTarea(tareaId: string, estado: EstadoTarea) {
-    const { error } = await supabase.from('tareas_ingenieria').update({ estado }).eq('id', tareaId)
-    if (handleSupabaseError(error, 'OportunidadDrawer.responderTarea')) return
-    setTareas(ts => ts.map(t => t.id === tareaId ? { ...t, estado } : t))
+  // Aceptar o rechazar una tarea asignada. Al rechazar, el motivo es obligatorio y queda
+  // guardado en la tarea para que el jefe de ingenieria lo vea, mas una notificacion a
+  // quien hizo la asignacion.
+  async function responderTarea(tarea: TareaIngenieria, estado: EstadoTarea, motivo?: string) {
+    if (estado === 'rechazada' && !motivo?.trim()) return
+    setRespondiendo(true)
+    const ahora = new Date().toISOString()
+    const cambios = {
+      estado,
+      motivo_rechazo: estado === 'rechazada' ? (motivo ?? '').trim() : null,
+      completada_at: estado === 'completada' ? ahora : null,
+      respondido_por: profile?.id ?? null,
+      respondido_at: ahora,
+    }
+    const { error } = await supabase.from('tareas_ingenieria').update(cambios).eq('id', tarea.id)
+    if (handleSupabaseError(error, 'OportunidadDrawer.responderTarea')) { setRespondiendo(false); return }
+
+    const { data: asigs } = await supabase.from('tarea_asignaciones').select('asignado_por').eq('tarea_id', tarea.id)
+    const destinatarios = [...new Set((asigs ?? []).map(a => a.asignado_por).filter((id): id is string => !!id && id !== profile?.id))]
+    if (destinatarios.length) {
+      const quien = profile ? `${profile.nombre} ${profile.apellido}` : 'El asignado'
+      const accion = estado === 'rechazada' ? 'rechazada' : estado === 'completada' ? 'terminada' : 'aceptada'
+      const detalle = estado === 'rechazada'
+        ? `${quien} rechazó la tarea · Motivo: ${(motivo ?? '').trim()}`
+        : estado === 'completada'
+          ? `${quien} marcó la tarea como terminada · ${opp.codigo}`
+          : `${quien} aceptó la tarea · ${opp.codigo}`
+      const { error: notifErr } = await supabase.from('notifications').insert(
+        destinatarios.map(user_id => ({
+          user_id, tipo: 'asignacion', oportunidad_id: opp.id,
+          titulo: `Tarea ${accion}: ${tarea.titulo}`,
+          mensaje: detalle,
+        }))
+      )
+      handleSupabaseError(notifErr, 'OportunidadDrawer.responderTarea.notify')
+    }
+
+    setTareas(ts => ts.map(t => t.id === tarea.id ? { ...t, ...cambios } : t))
+    setTareaSel(t => t && t.id === tarea.id ? { ...t, ...cambios } : t)
+    setModoRechazo(false); setMotivoRechazo(''); setRespondiendo(false)
+  }
+
+  function abrirTarea(t: TareaIngenieria) {
+    setTareaSel(t); setModoRechazo(false); setMotivoRechazo('')
   }
 
   async function saveMargen(value: number | null) {
@@ -661,24 +732,14 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     handleSupabaseError(error, 'OportunidadDrawer.saveEtapaData')
   }
 
-  // Cierra el historial de la etapa actual, mueve oportunidades.etapa_actual y abre nuevo historial.
-  // Si el insert de historial falla tras el update, revierte el update para no desincronizar deal state vs audit trail.
+  // El movimiento de etapa vive en la funcion crm_cambiar_etapa (SECURITY DEFINER):
+  // cierra el historial anterior, mueve etapa_actual y abre el nuevo tramo de forma atomica.
+  // Autoriza con 'Oportunidades:editar' o con el permiso granular '<modulo etapa>:avanzar',
+  // sin tener que abrir la edicion completa de la oportunidad a quien solo mueve la etapa.
   async function cambiarEtapaOportunidad(newEtapa: string, notif: { tipo: string; titulo: string; mensaje: string }): Promise<boolean> {
-    const etapaAnterior = opp.etapa_actual
     setSaving(true)
-    const { data: cur } = await supabase.from('oportunidad_historial_etapas').select('id').eq('oportunidad_id', opp.id).eq('etapa', etapaAnterior).is('fecha_salida', null).maybeSingle()
-    if (cur) {
-      const { error } = await supabase.from('oportunidad_historial_etapas').update({ fecha_salida: new Date().toISOString(), usuario_id: profile?.id }).eq('id', (cur as {id:string}).id)
-      if (handleSupabaseError(error, 'OportunidadDrawer.cambiarEtapa.cerrarHistorial')) { setSaving(false); return false }
-    }
-    const { error: updErr } = await supabase.from('oportunidades').update({ etapa_actual: newEtapa, updated_at: new Date().toISOString() }).eq('id', opp.id)
-    if (handleSupabaseError(updErr, 'OportunidadDrawer.cambiarEtapa.update')) { setSaving(false); return false }
-    const { error: histErr } = await supabase.from('oportunidad_historial_etapas').insert({ oportunidad_id: opp.id, etapa: newEtapa, fecha_entrada: new Date().toISOString(), usuario_id: profile?.id })
-    if (handleSupabaseError(histErr, 'OportunidadDrawer.cambiarEtapa.insertHistorial')) {
-      await supabase.from('oportunidades').update({ etapa_actual: etapaAnterior, updated_at: new Date().toISOString() }).eq('id', opp.id)
-      setSaving(false)
-      return false
-    }
+    const { error } = await supabase.rpc('crm_cambiar_etapa', { p_oportunidad_id: opp.id, p_nueva_etapa: newEtapa })
+    if (handleSupabaseError(error, 'OportunidadDrawer.cambiarEtapa')) { setSaving(false); return false }
     const { error: notifErr } = await supabase.from('notifications').insert({ user_id: profile?.id, oportunidad_id: opp.id, ...notif })
     handleSupabaseError(notifErr, 'OportunidadDrawer.cambiarEtapa.notify')
     setSaving(false)
@@ -801,8 +862,112 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   const filteredUsers = usuarios.filter(u => allowedRoles.includes(u.rol))
   // Mismo control de rol para Avanzar y Retroceder: ambas son acciones de gestión de la etapa actual.
   // gerente_ventas gestiona el pipeline completo, sin restricción de etapa (igual que admin).
-  const canManageStage = !profile?.rol || profile.rol === 'gerente_ventas' || allowedRoles.length === 0 || allowedRoles.includes(profile.rol)
+  const moduloEtapa = MODULO_DE_ETAPA[opp.etapa_actual] ?? 'Oportunidades'
+  const canManageStage = canAccess(moduloEtapa, 'avanzar')
+    || !profile?.rol || profile.rol === 'gerente_ventas' || allowedRoles.length === 0 || allowedRoles.includes(profile.rol)
   const canGoBack = currentIdx > 0 && !isTerminal
+
+  // Bloque de tareas de ingenieria. Se usa en Ingenieria y en Desarrollo; en Desarrollo va
+  // primero, antes de los documentos entregables.
+  function renderBloqueTareas() {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tareas de ingeniería</p>
+          {opp.etapa_actual === 'Ingeniería' && canAccess('Ingeniería', 'crear') && (
+            <button onClick={() => setShowCrearTarea(s => !s)} className="flex items-center gap-1 text-xs font-medium text-crm-red hover:underline">
+              <Plus size={12} /> Crear tarea
+            </button>
+          )}
+        </div>
+        {showCrearTarea && (
+          <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+            <input value={nuevaTarea.titulo} onChange={e => setNuevaTarea(t=>({...t,titulo:e.target.value}))} placeholder="Título *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
+            <textarea value={nuevaTarea.descripcion} onChange={e => setNuevaTarea(t=>({...t,descripcion:e.target.value}))} placeholder="Descripción" rows={2} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900 resize-none" />
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Asignar a (múltiples ingenieros)</label>
+              <div className="space-y-1 max-h-28 overflow-y-auto border border-gray-200 rounded p-1.5">
+                {filteredUsers.length === 0 ? <p className="text-xs text-gray-400 px-1">Sin usuarios disponibles</p> :
+                filteredUsers.map(u => (
+                  <label key={u.id} className="flex items-center gap-1.5 text-xs text-gray-600 px-1 py-0.5">
+                    <input type="checkbox" checked={nuevaTarea.asignados_ids.includes(u.id)}
+                      onChange={() => setNuevaTarea(t => ({ ...t, asignados_ids: t.asignados_ids.includes(u.id) ? t.asignados_ids.filter(id=>id!==u.id) : [...t.asignados_ids, u.id] }))}
+                      className="rounded border-gray-300 text-crm-red focus:ring-crm-red" />
+                    {u.nombre} {u.apellido}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea(t=>({...t,fecha_limite:e.target.value}))} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
+            <button onClick={crearTarea} disabled={creandoTarea} className="px-3 py-1 text-xs text-white rounded disabled:opacity-60" style={{background:'#ed3224'}}>
+              {creandoTarea ? 'Creando...' : 'Crear'}
+            </button>
+          </div>
+        )}
+        {tareas.length === 0 ? <p className="text-xs text-gray-400 text-center py-2">Sin tareas</p> : (
+          <div className="space-y-1.5">
+            {tareas.map(t => (
+              <button key={t.id} type="button" onClick={() => abrirTarea(t)}
+                className="w-full text-left flex items-center justify-between gap-2 p-2 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-red-200 transition-colors">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-700 truncate">{t.titulo}</p>
+                  <p className="text-xs text-gray-400 truncate">{t.asignados?.length ? t.asignados.map(a=>a.nombre + ' ' + a.apellido).join(', ') : 'Sin asignar'}{t.fecha_limite ? ' · vence ' + new Date(t.fecha_limite).toLocaleDateString('es-CL') : ''}</p>
+                  {t.motivo_rechazo && <p className="text-xs text-red-600 truncate mt-0.5">Rechazada: {t.motivo_rechazo}</p>}
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className={'text-xs px-2 py-0.5 rounded-full ' + (t.estado === 'rechazada' ? 'bg-red-100 text-red-700' : t.estado === 'completada' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600')}>{t.estado.replace(/_/g,' ')}</span>
+                  <ChevronRight size={13} className="text-gray-300" />
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+        <button onClick={saveEtapaData} disabled={saving} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
+          {saving && <Loader2 size={14} className="animate-spin" />}{saving ? 'Guardando...' : 'Guardar datos de etapa'}
+        </button>
+      </div>
+    )
+  }
+
+  // Documentos entregables de Desarrollo: lo que se sube aca queda etiquetado con
+  // etapa 'Desarrollo' y aparece tambien en la pestana Documentos.
+  function renderBloqueEntregables() {
+    const entregables = docs.filter(d => d.etapa === 'Desarrollo')
+    const puedeSubir = canAccess('Desarrollo', 'crear') || canAccess('Oportunidades', 'editar')
+    return (
+      <div className="pt-4 border-t border-gray-200 space-y-3">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Documentos entregables</p>
+        {renderEtapaForm()}
+        <div>
+          <button onClick={() => entregableRef.current?.click()} disabled={uploading || !puedeSubir}
+            title={puedeSubir ? undefined : 'No tienes permiso para subir entregables'}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+            {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}{uploading ? 'Subiendo...' : 'Adjuntar entregable'}
+          </button>
+          <input ref={entregableRef} type="file" className="hidden" onChange={e => { if (e.target.files?.[0]) { uploadFile(e.target.files[0]); e.target.value = '' } }} />
+        </div>
+        {entregables.length === 0 ? (
+          <p className="text-xs text-gray-400">Sin entregables adjuntos</p>
+        ) : (
+          <div className="space-y-1.5">
+            {entregables.map(d => (
+              <div key={d.id} className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg">
+                <span className="text-base">{d.tipo === 'link' ? '🔗' : getFileIcon(d.extension)}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-700 truncate">{d.nombre}</p>
+                  <p className="text-xs text-gray-400">{d.tamanio_bytes ? (d.tamanio_bytes/1024).toFixed(0) + ' KB' : 'Entregable'}</p>
+                </div>
+                <button onClick={() => openFile(d.tipo, d.url)} className="text-gray-400 hover:text-blue-500 p-1"><ExternalLink size={13} /></button>
+              </div>
+            ))}
+          </div>
+        )}
+        <button onClick={saveEtapaData} disabled={saving} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
+          {saving && <Loader2 size={14} className="animate-spin" />}{saving ? 'Guardando...' : 'Guardar datos de etapa'}
+        </button>
+      </div>
+    )
+  }
 
   function renderEtapaForm() {
     const e = opp.etapa_actual
@@ -1337,74 +1502,23 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
             </div>
           ) : tab === 'etapa' ? (
             <div className="space-y-4">
-              {renderEtapaForm()}
-              {opp.etapa_actual !== 'Clasificación' && opp.etapa_actual !== 'Ingeniería' && opp.etapa_actual !== 'Oportunidad' && (
-                <button onClick={saveEtapaData} disabled={saving} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
-                  {saving && <Loader2 size={14} className="animate-spin" />}{saving ? 'Guardando...' : 'Guardar datos de etapa'}
-                </button>
-              )}
-
-              {(opp.etapa_actual === 'Ingeniería' || opp.etapa_actual === 'Desarrollo') && (
-                <div className="pt-4 border-t border-gray-200 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tareas de ingeniería</p>
-                    {opp.etapa_actual === 'Ingeniería' && canAccess('Ingeniería', 'crear') && (
-                      <button onClick={() => setShowCrearTarea(s => !s)} className="flex items-center gap-1 text-xs font-medium text-crm-red hover:underline">
-                        <Plus size={12} /> Crear tarea
-                      </button>
-                    )}
-                  </div>
-                  {showCrearTarea && (
-                    <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                      <input value={nuevaTarea.titulo} onChange={e => setNuevaTarea(t=>({...t,titulo:e.target.value}))} placeholder="Título *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
-                      <textarea value={nuevaTarea.descripcion} onChange={e => setNuevaTarea(t=>({...t,descripcion:e.target.value}))} placeholder="Descripción" rows={2} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900 resize-none" />
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">Asignar a (múltiples ingenieros)</label>
-                        <div className="space-y-1 max-h-28 overflow-y-auto border border-gray-200 rounded p-1.5">
-                          {filteredUsers.length === 0 ? <p className="text-xs text-gray-400 px-1">Sin usuarios disponibles</p> :
-                          filteredUsers.map(u => (
-                            <label key={u.id} className="flex items-center gap-1.5 text-xs text-gray-600 px-1 py-0.5">
-                              <input type="checkbox" checked={nuevaTarea.asignados_ids.includes(u.id)}
-                                onChange={() => setNuevaTarea(t => ({ ...t, asignados_ids: t.asignados_ids.includes(u.id) ? t.asignados_ids.filter(id=>id!==u.id) : [...t.asignados_ids, u.id] }))}
-                                className="rounded border-gray-300 text-crm-red focus:ring-crm-red" />
-                              {u.nombre} {u.apellido}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                      <input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea(t=>({...t,fecha_limite:e.target.value}))} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
-                      <button onClick={crearTarea} disabled={creandoTarea} className="px-3 py-1 text-xs text-white rounded disabled:opacity-60" style={{background:'#ed3224'}}>
-                        {creandoTarea ? 'Creando...' : 'Crear'}
-                      </button>
-                    </div>
+              {opp.etapa_actual === 'Desarrollo' ? (
+                // En Desarrollo el trabajo parte por las tareas y termina en la entrega:
+                // primero las tareas de ingenieria, despues los documentos entregables.
+                <>
+                  {renderBloqueTareas()}
+                  {renderBloqueEntregables()}
+                </>
+              ) : (
+                <>
+                  {renderEtapaForm()}
+                  {opp.etapa_actual !== 'Clasificación' && opp.etapa_actual !== 'Ingeniería' && opp.etapa_actual !== 'Oportunidad' && (
+                    <button onClick={saveEtapaData} disabled={saving} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
+                      {saving && <Loader2 size={14} className="animate-spin" />}{saving ? 'Guardando...' : 'Guardar datos de etapa'}
+                    </button>
                   )}
-                  {tareas.length === 0 ? <p className="text-xs text-gray-400 text-center py-2">Sin tareas</p> : (
-                    <div className="space-y-1.5">
-                      {tareas.map(t => {
-                        const soyAsignado = t.asignados?.some(a => a.id === profile?.id) ?? false
-                        const puedeResponder = opp.etapa_actual === 'Desarrollo' && soyAsignado && t.estado === 'pendiente'
-                        return (
-                        <div key={t.id} className="flex items-center justify-between gap-2 p-2 border border-gray-200 rounded-lg">
-                          <div className="min-w-0">
-                            <p className="text-xs font-medium text-gray-700 truncate">{t.titulo}</p>
-                            <p className="text-xs text-gray-400">{t.asignados?.length ? t.asignados.map(a=>`${a.nombre} ${a.apellido}`).join(', ') : 'Sin asignar'}{t.fecha_limite ? ' · vence ' + new Date(t.fecha_limite).toLocaleDateString('es-CL') : ''}</p>
-                          </div>
-                          {puedeResponder ? (
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                              <button onClick={() => responderTarea(t.id, 'en_progreso')} className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200">Aceptar</button>
-                              <button onClick={() => responderTarea(t.id, 'rechazada')} className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 hover:bg-red-200">Rechazar</button>
-                            </div>
-                          ) : (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 flex-shrink-0">{t.estado.replace(/_/g,' ')}</span>
-                          )}
-                        </div>
-                      )})}
-                    </div>
-                  )}
-                  <button onClick={saveEtapaData} disabled={saving} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
-                    {saving && <Loader2 size={14} className="animate-spin" />}{saving ? 'Guardando...' : 'Guardar datos de etapa'}
-                  </button>
-                </div>
+                  {opp.etapa_actual === 'Ingeniería' && renderBloqueTareas()}
+                </>
               )}
             </div>
           ) : tab === 'docs' ? (
@@ -1484,7 +1598,101 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
           )}
         </div>
 
-        {/* Footer */}
+        {tareaSel && (() => {
+        const soyAsignado = (tareaSel.asignados ?? []).some(a => a?.id === profile?.id)
+        const puedeResponder = soyAsignado && tareaSel.estado === 'pendiente'
+        // Una vez aceptada, el asignado la cierra marcandola terminada.
+        const puedeTerminar = soyAsignado && tareaSel.estado === 'en_progreso'
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setTareaSel(null)}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <div className="flex items-start justify-between gap-3 p-5 border-b border-gray-100">
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-400 font-mono">{opp.codigo}</p>
+                  <h3 className="text-base font-bold text-gray-800">{tareaSel.titulo}</h3>
+                </div>
+                <button onClick={() => setTareaSel(null)} className="text-gray-400 hover:text-gray-600 flex-shrink-0"><X size={18} /></button>
+              </div>
+              <div className="p-5 space-y-3">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Descripción</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{tareaSel.descripcion || 'Sin descripción'}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Estado</p>
+                    <span className={'text-xs px-2 py-0.5 rounded-full ' + (tareaSel.estado === 'rechazada' ? 'bg-red-100 text-red-700' : tareaSel.estado === 'completada' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600')}>{tareaSel.estado.replace(/_/g,' ')}</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Prioridad</p>
+                    <p className="text-sm text-gray-700">{PRIORIDAD_LABEL[tareaSel.prioridad] ?? tareaSel.prioridad}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Vence</p>
+                    <p className="text-sm text-gray-700">{tareaSel.fecha_limite ? new Date(tareaSel.fecha_limite).toLocaleDateString('es-CL') : 'Sin fecha'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Oportunidad</p>
+                    <p className="text-sm text-gray-700 truncate">{opp.nombre}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Asignados</p>
+                  <p className="text-sm text-gray-700">{tareaSel.asignados?.length ? tareaSel.asignados.map(a => a.nombre + ' ' + a.apellido).join(', ') : 'Sin asignar'}</p>
+                </div>
+                {tareaSel.motivo_rechazo && (
+                  <div className="bg-red-50 border border-red-100 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-1">Motivo del rechazo</p>
+                    <p className="text-sm text-red-700 whitespace-pre-wrap">{tareaSel.motivo_rechazo}</p>
+                    {tareaSel.respondido_at && <p className="text-xs text-red-400 mt-1">{new Date(tareaSel.respondido_at).toLocaleString('es-CL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</p>}
+                  </div>
+                )}
+                {puedeResponder && (modoRechazo ? (
+                  <div className="space-y-2 pt-1">
+                    <label className="block text-xs font-medium text-gray-600">Motivo del rechazo *</label>
+                    <textarea value={motivoRechazo} onChange={e => setMotivoRechazo(e.target.value)} rows={3} placeholder="Explica por qué rechazas la tarea. El jefe de ingeniería lo verá."
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" />
+                    <div className="flex gap-2">
+                      <button onClick={() => responderTarea(tareaSel, 'rechazada', motivoRechazo)} disabled={respondiendo || !motivoRechazo.trim()}
+                        className="flex-1 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
+                        {respondiendo ? 'Enviando...' : 'Confirmar rechazo'}
+                      </button>
+                      <button onClick={() => { setModoRechazo(false); setMotivoRechazo('') }} className="px-3 py-2 text-sm text-gray-500 border border-gray-200 rounded-lg">Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => responderTarea(tareaSel, 'en_progreso')} disabled={respondiendo}
+                      className="flex-1 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+                      {respondiendo ? 'Guardando...' : 'Aceptar tarea'}
+                    </button>
+                    <button onClick={() => setModoRechazo(true)} disabled={respondiendo}
+                      className="flex-1 py-2 text-sm font-medium border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50">
+                      Rechazar
+                    </button>
+                  </div>
+                ))}
+                {puedeTerminar && (
+                  <div className="pt-1">
+                    <button onClick={() => responderTarea(tareaSel, 'completada')} disabled={respondiendo}
+                      className="w-full py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+                      {respondiendo ? 'Guardando...' : 'Marcar como terminada'}
+                    </button>
+                  </div>
+                )}
+                {tareaSel.estado === 'completada' && tareaSel.completada_at && (
+                  <p className="text-xs text-emerald-600">Terminada el {new Date(tareaSel.completada_at).toLocaleString('es-CL',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</p>
+                )}
+                {!soyAsignado && (tareaSel.estado === 'pendiente' || tareaSel.estado === 'en_progreso') && (
+                  <p className="text-xs text-gray-400">Solo los asignados a la tarea pueden responderla o marcarla terminada.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Footer */}
         {!isTerminal && (
           <div className="p-4 border-t border-gray-200 flex-shrink-0 flex gap-2">
             {canGoBack && (
