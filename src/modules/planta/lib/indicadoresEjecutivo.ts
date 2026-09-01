@@ -1,8 +1,9 @@
 import type { useResumenData } from '../hooks/useResumenData'
 import { fmt, fmtPr } from './format'
 
-// ponytail: unico valor fijo — el monto del contrato esta en UF y no existe en la base
-// (estados_pago_ingresos_config.monto_contractual es otra cosa). Ajustar aca si cambia.
+// ponytail: unico valor fijo — el monto del contrato esta en UF y no existe en la base.
+// No confundir con estados_pago_ingresos_config.monto_contractual, que es el anticipo
+// cobrado del proyecto (en pesos). Ajustar aca si el contrato cambia.
 export const MONTO_CONTRATO_UF = 346909
 
 type Resumen = ReturnType<typeof useResumenData>
