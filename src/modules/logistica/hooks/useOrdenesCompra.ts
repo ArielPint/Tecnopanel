@@ -37,6 +37,7 @@ interface OrdenesData {
   ordenes: OrdenCompra[]
   guias: OCGuia[]
   montoPorOC: Record<string, number>
+  montoPorGD: Record<string, number>
 }
 
 export function useOrdenesCompra() {
@@ -83,7 +84,7 @@ export function useOrdenesCompra() {
       montos[oc.id] = gds.reduce((s, gd) => s + (montoPorGD[gd] || 0), 0)
     }
 
-    return { ordenes: ocData, guias: ogData, montoPorOC: montos }
+    return { ordenes: ocData, guias: ogData, montoPorOC: montos, montoPorGD }
   }, [proyectoSlug])
 
   const { data, loading, error, refetch } = useCachedQuery<OrdenesData>(
@@ -94,6 +95,7 @@ export function useOrdenesCompra() {
   const ordenes = data?.ordenes ?? []
   const guias = data?.guias ?? []
   const montoPorOC = data?.montoPorOC ?? {}
+  const montoPorGD = data?.montoPorGD ?? {}
 
   const guardar = useCallback(
     async (input: NuevaOC, id: string | null, createdBy: string) => {
@@ -143,5 +145,5 @@ export function useOrdenesCompra() {
     [refetch, proyectoSlug],
   )
 
-  return { ordenes, guias, montoPorOC, loading, error, guardar, eliminar }
+  return { ordenes, guias, montoPorOC, montoPorGD, loading, error, guardar, eliminar }
 }

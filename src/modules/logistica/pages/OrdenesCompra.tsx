@@ -11,7 +11,7 @@ import FormularioOC from '../components/FormularioOC'
 
 export default function OrdenesCompra() {
   const { perfil, puedeEditar } = useAuth()
-  const { ordenes, guias, montoPorOC, loading, error, guardar, eliminar } = useOrdenesCompra()
+  const { ordenes, guias, montoPorOC, montoPorGD, loading, error, guardar, eliminar } = useOrdenesCompra()
   const [search, setSearch] = useState('')
 
   const filtradas = useMemo(() => {
@@ -27,7 +27,7 @@ export default function OrdenesCompra() {
       <div className="flex flex-wrap items-center gap-2">
         <Input placeholder="🔍  N° OC, proveedor, notas…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-64" />
         <span className="ml-auto text-xs text-muted-foreground">{filtradas.length} orden{filtradas.length !== 1 ? 'es' : ''}</span>
-        {puedeEditar && <FormularioOC onGuardar={(input, id) => guardar(input, id, perfil?.name ?? 'anon')} />}
+        {puedeEditar && <FormularioOC montoPorGD={montoPorGD} onGuardar={(input, id) => guardar(input, id, perfil?.name ?? 'anon')} />}
       </div>
 
       {!loading && filtradas.length === 0 ? (
@@ -75,7 +75,7 @@ export default function OrdenesCompra() {
                           <FormularioOC
                             oc={oc}
                             gdsIniciales={gds}
-                            monto={montoPorOC[oc.id] ?? 0}
+                            montoPorGD={montoPorGD}
                             onGuardar={(input, id) => guardar(input, id, perfil?.name ?? 'anon')}
                             onEliminar={eliminar}
                           />

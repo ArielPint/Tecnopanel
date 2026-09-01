@@ -12,12 +12,12 @@ import type { NuevaOC, OrdenCompra } from '../hooks/useOrdenesCompra'
 interface Props {
   oc?: OrdenCompra
   gdsIniciales?: string[]
-  monto?: number
+  montoPorGD?: Record<string, number>
   onGuardar: (input: NuevaOC, id: string | null) => Promise<void>
   onEliminar?: (id: string) => Promise<void>
 }
 
-export default function FormularioOC({ oc, gdsIniciales, monto, onGuardar, onEliminar }: Props) {
+export default function FormularioOC({ oc, gdsIniciales, montoPorGD, onGuardar, onEliminar }: Props) {
   const esEdicion = !!oc
   const [open, setOpen] = useState(false)
   const [enviando, setEnviando] = useState(false)
@@ -28,6 +28,10 @@ export default function FormularioOC({ oc, gdsIniciales, monto, onGuardar, onEli
   const [notas, setNotas] = useState(oc?.notas ?? '')
   const [gds, setGds] = useState<string[]>(gdsIniciales ?? [])
   const [gdInput, setGdInput] = useState('')
+
+  // ponytail: suma en vivo desde los chips actuales, no desde el monto guardado
+  const monto = montoPorGD ? gds.reduce((s, gd) => s + (montoPorGD[gd] || 0), 0) : null
+  const gdsSinRegistro = montoPorGD ? gds.filter((gd) => montoPorGD[gd] == null) : []
 
   function limpiar() {
     setNumero('')
@@ -128,18 +132,28 @@ export default function FormularioOC({ oc, gdsIniciales, monto, onGuardar, onEli
             </div>
             {gds.length > 0 && (
               <div className="mt-1 flex flex-wrap gap-1.5">
-                {gds.map((gd) => (
-                  <span key={gd} className="inline-flex items-center gap-1 rounded-full border bg-muted px-2 py-0.5 text-xs">
+                {gds.map((gd) => {
+                  const sinRegistro = montoPorGD != null && montoPorGD[gd] == null
+                  return (
+                  <span
+                    key={gd}
+                    title={sinRegistro ? 'Sin registro de compras: no suma monto' : undefined}
+                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${sinRegistro ? 'border-destructive bg-destructive/10 text-destructive' : 'bg-muted'}`}
+                  >
                     {gd}
                     <button type="button" onClick={() => setGds((g) => g.filter((x) => x !== gd))}>
                       <X className="size-3" />
                     </button>
                   </span>
-                ))}
+                  )
+                })}
               </div>
             )}
+            {gdsSinRegistro.length > 0 && (
+              <p className="text-xs text-destructive">Sin registro de compras (no suman monto): {gdsSinRegistro.join(', ')}</p>
+            )}
           </div>
-          {esEdicion && monto != null && (
+          {monto != null && (
             <p className="col-span-2 text-xs text-muted-foreground">Monto calculado desde las GDs asociadas: <span className="font-semibold text-success">{formatCLP(monto)}</span></p>
           )}
 
