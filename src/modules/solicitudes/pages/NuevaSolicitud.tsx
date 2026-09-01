@@ -6,6 +6,7 @@ import { Input } from '@/modules/financiero/components/ui/input'
 import { Label } from '@/modules/financiero/components/ui/label'
 import { Textarea } from '@/modules/financiero/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/modules/financiero/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 import { useCatalogoGD, type Producto } from '@/modules/logistica/hooks/useCatalogoGD'
 import ProductoAutocomplete from '@/modules/logistica/components/ProductoAutocomplete'
@@ -62,6 +63,11 @@ interface Draft {
   responsableId: string
   filas: FilaSolicitud[]
   observacion: string
+  // Solicitud ya generada desde este mismo borrador. Sobrevive al desmontaje del
+  // componente (cambio de pestaña / recarga), que antes hacía que "Guardar" volviera
+  // a insertar y duplicara la solicitud en vez de actualizarla.
+  savedId?: string | null
+  savedNumero?: number | null
 }
 
 function cargarDraft(key: string): Draft | null {
@@ -86,7 +92,7 @@ export default function NuevaSolicitud() {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const { allProducts } = useCatalogoGD()
   const { grupos, responsables, cargarReceta } = useGruposResponsables()
-  const { crear, marcarUsada } = useSolicitudes()
+  const { solicitudes, crear, actualizarItems, marcarUsada } = useSolicitudes()
 
   // Namespaced por usuario: sessionStorage sobrevive cambios de cuenta en la misma
   // pestaña/navegador, y un borrador de otro usuario no debe filtrarse al siguiente.
@@ -107,6 +113,15 @@ export default function NuevaSolicitud() {
   const [enviando, setEnviando] = useState(false)
   const [lastSaved, setLastSaved] = useState<LastSaved | null>(null)
   const [filtroProducto, setFiltroProducto] = useState('')
+  const [savedId, setSavedId] = useState<string | null>(draft?.savedId ?? null)
+  const [savedNumero, setSavedNumero] = useState<number | null>(draft?.savedNumero ?? null)
+  const [confirmarSobrescribir, setConfirmarSobrescribir] = useState(false)
+
+  // Solo se ofrece sobrescribir si la solicitud sigue existiendo y sin usar.
+  const previaGuardada = useMemo(
+    () => (savedId ? solicitudes.find((s) => s.id === savedId && s.estado === 'pendiente') ?? null : null),
+    [savedId, solicitudes],
+  )
 
   const filasVisibles = useMemo(() => {
     if (!esRestringido) return filas
@@ -118,9 +133,9 @@ export default function NuevaSolicitud() {
   const responsablesGrupo = useMemo(() => responsables.filter((r) => String(r.grupo_id) === grupoId), [responsables, grupoId])
 
   useEffect(() => {
-    const data: Draft = { grupoId, responsableId, filas, observacion }
+    const data: Draft = { grupoId, responsableId, filas, observacion, savedId, savedNumero }
     sessionStorage.setItem(draftKey, JSON.stringify(data))
-  }, [draftKey, grupoId, responsableId, filas, observacion])
+  }, [draftKey, grupoId, responsableId, filas, observacion, savedId, savedNumero])
 
   useEffect(() => {
     if (!grupoId || !allProducts.length || productosGrupo !== null) return
@@ -228,10 +243,12 @@ export default function NuevaSolicitud() {
     setFilas(esRestringido && productosGrupo?.length ? productosGrupo.map((p) => filaVacia(p)) : [filaVacia()])
     setObservacion('')
     setIntentoGuardar(false)
+    setSavedId(null)
+    setSavedNumero(null)
     sessionStorage.removeItem(draftKey)
   }
 
-  async function guardar() {
+  function guardar() {
     setIntentoGuardar(true)
     if (!itemsValidos.length) {
       toast.error('Sin productos válidos')
@@ -249,43 +266,70 @@ export default function NuevaSolicitud() {
       toast.error('Las observaciones son obligatorias')
       return
     }
+    // Este borrador ya generó una solicitud: preguntar antes de duplicarla.
+    if (previaGuardada) {
+      setConfirmarSobrescribir(true)
+      return
+    }
+    void ejecutarGuardado('nueva')
+  }
+
+  async function ejecutarGuardado(modo: 'nueva' | 'sobrescribir') {
+    setConfirmarSobrescribir(false)
     setEnviando(true)
     try {
       const grupo = grupos.find((g) => String(g.id) === grupoId)!
       const responsable = esRestringido ? null : responsables.find((r) => String(r.id) === responsableId)!
-      const saved = await crear({
-        usuario_id: perfil!.id,
-        username: perfil!.username,
-        nombre: perfil!.name,
-        grupo_id: grupo.id,
-        responsable_id: esRestringido ? grupo.responsable_default_id : responsable!.id,
-        items: itemsValidos,
-        observacion: observacion.trim() || null,
-        estado: 'pendiente',
-      })
+      const obs = observacion.trim() || null
+      let id: string
+      let numero: number
+      if (modo === 'sobrescribir' && previaGuardada) {
+        await actualizarItems(previaGuardada.id, itemsValidos, obs)
+        id = previaGuardada.id
+        numero = previaGuardada.numero
+      } else {
+        const saved = await crear({
+          usuario_id: perfil!.id,
+          username: perfil!.username,
+          nombre: perfil!.name,
+          grupo_id: grupo.id,
+          responsable_id: esRestringido ? grupo.responsable_default_id : responsable!.id,
+          items: itemsValidos,
+          observacion: obs,
+          estado: 'pendiente',
+        })
+        id = saved.id
+        numero = saved.numero
+      }
       setIntentoGuardar(false)
+      setSavedId(id)
+      setSavedNumero(numero)
       if (esRestringido) {
         const responsableNombre = grupo.responsable_default_id
           ? responsables.find((r) => r.id === grupo.responsable_default_id)?.nombre ?? '—'
           : '—'
         const datosGuardados: LastSaved = {
-          id: saved.id,
-          numero: saved.numero,
+          id,
+          numero,
           grupoNombre: grupo.nombre,
           responsableNombre,
           items: itemsValidos,
-          observacion: observacion.trim() || null,
+          observacion: obs,
         }
         limpiarItems()
-        toast.success(`✅ Solicitud N° ${saved.numero} generada`)
-        if (proyectoSlug) {
-          getProyectoId(proyectoSlug).then((proyectoId) => notificarNuevaSolicitud(proyectoId, saved.numero, grupo.nombre, perfil!.name))
+        toast.success(modo === 'sobrescribir' ? `✅ Solicitud N° ${numero} actualizada` : `✅ Solicitud N° ${numero} generada`)
+        if (proyectoSlug && modo === 'nueva') {
+          getProyectoId(proyectoSlug).then((proyectoId) => notificarNuevaSolicitud(proyectoId, numero, grupo.nombre, perfil!.name))
         }
         // Se guarda para habilitar el botón de descargar PDF.
         setLastSaved(datosGuardados)
       } else {
-        setLastSaved({ id: saved.id, numero: saved.numero, grupoNombre: grupo.nombre, responsableNombre: responsable!.nombre, items: itemsValidos, observacion: observacion.trim() || null })
-        toast.success(`Solicitud N° ${saved.numero} guardada. Pulsa "Enviar correo" para completarla.`)
+        setLastSaved({ id, numero, grupoNombre: grupo.nombre, responsableNombre: responsable!.nombre, items: itemsValidos, observacion: obs })
+        toast.success(
+          modo === 'sobrescribir'
+            ? `Solicitud N° ${numero} actualizada. Pulsa "Enviar correo" para completarla.`
+            : `Solicitud N° ${numero} guardada. Pulsa "Enviar correo" para completarla.`,
+        )
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al guardar')
@@ -556,7 +600,12 @@ export default function NuevaSolicitud() {
         </div>
       )}
 
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {previaGuardada && !lastSaved && (
+          <span className="mr-auto text-xs text-muted-foreground">
+            Este borrador ya generó la solicitud N° {previaGuardada.numero}.
+          </span>
+        )}
         <Button type="button" variant="outline" onClick={limpiarItems}>
           🗑 Limpiar
         </Button>
@@ -570,6 +619,29 @@ export default function NuevaSolicitud() {
           </Button>
         )}
       </div>
+
+      <Dialog open={confirmarSobrescribir} onOpenChange={setConfirmarSobrescribir}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ya existe la solicitud N° {savedNumero ?? previaGuardada?.numero}</DialogTitle>
+            <DialogDescription>
+              Este borrador ya se guardó. ¿Quieres actualizar esa solicitud con los productos actuales, o crear una
+              solicitud nueva?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="ghost" onClick={() => setConfirmarSobrescribir(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" variant="outline" onClick={() => ejecutarGuardado('nueva')} disabled={enviando}>
+              Crear nueva
+            </Button>
+            <Button type="button" onClick={() => ejecutarGuardado('sobrescribir')} disabled={enviando}>
+              Sobrescribir N° {previaGuardada?.numero}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

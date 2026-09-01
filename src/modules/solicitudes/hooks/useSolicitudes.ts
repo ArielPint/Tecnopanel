@@ -95,9 +95,12 @@ export function useSolicitudes() {
     [refetch],
   )
 
+  // observacion opcional: solo se sobrescribe cuando se pasa explícitamente
+  // (la edición desde Historial toca únicamente los items).
   const actualizarItems = useCallback(
-    async (id: string, items: ItemSolicitud[]) => {
-      const { error } = await supabase.from('solicitudes').update({ items }).eq('id', id)
+    async (id: string, items: ItemSolicitud[], observacion?: string | null) => {
+      const patch = observacion === undefined ? { items } : { items, observacion }
+      const { error } = await supabase.from('solicitudes').update(patch).eq('id', id)
       if (error) throw new Error(error.message)
       await refetch()
     },
