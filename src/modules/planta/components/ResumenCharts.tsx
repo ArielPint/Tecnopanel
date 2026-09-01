@@ -316,7 +316,15 @@ function MesCantidadBarChart({ data, color, label }: { data: { mes: string; cant
           textAnchor="end"
           height={40}
         />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
+        {/* ponytail: +5 de aire arriba para que la etiqueta del valor no se corte */}
+        <YAxis
+          allowDecimals={false}
+          domain={[0, (dataMax: number) => dataMax + 5]}
+          tick={{ fontSize: 11 }}
+          tickLine={false}
+          axisLine={false}
+          width={32}
+        />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey="cantidad" fill="var(--color-cantidad)" radius={4}>
           <LabelList dataKey="cantidad" position="top" style={VALUE_LABEL_STYLE} />
