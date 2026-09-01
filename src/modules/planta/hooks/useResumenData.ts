@@ -9,6 +9,7 @@ import {
   loadCompras,
   loadForecastMensualSeleccionado,
   loadModulosDespachadosCount,
+  loadMontoContrato,
   loadPptoCatalogo,
   loadPresupuestoTotal,
   type AvanceEconProyRow,
@@ -21,6 +22,7 @@ interface ResumenSupaData {
   despachadosCount: number
   avanceProy: AvanceEconProyRow[]
   forecastSeleccionado: string | null
+  montoContrato: number | null
 }
 
 const MES_NAMES = [
@@ -86,15 +88,16 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
 
   const fetcher = useCallback(async (): Promise<ResumenSupaData> => {
     const proyectoId = await getProyectoId(proyectoSlug!)
-    const [compras, ppto, catalogo, despachados, proy, forecastSeleccionado] = await Promise.all([
+    const [compras, ppto, catalogo, despachados, proy, forecastSeleccionado, montoContrato] = await Promise.all([
       loadCompras(proyectoId),
       loadPresupuestoTotal(),
       loadPptoCatalogo(),
       loadModulosDespachadosCount(proyectoId),
       loadAvanceEconProy(new Date().getFullYear()),
       loadForecastMensualSeleccionado(),
+      loadMontoContrato(proyectoId),
     ])
-    return { compras, presupuestoTotal: ppto, pptoCatalogo: catalogo, despachadosCount: despachados, avanceProy: proy, forecastSeleccionado }
+    return { compras, presupuestoTotal: ppto, pptoCatalogo: catalogo, despachadosCount: despachados, avanceProy: proy, forecastSeleccionado, montoContrato }
   }, [proyectoSlug])
 
   const { data, loading } = useCachedQuery<ResumenSupaData>(proyectoSlug ? `resumen_data:${proyectoSlug}` : null, fetcher, 60_000)
@@ -104,12 +107,14 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
   const despachadosCount = data?.despachadosCount ?? 0
   const avanceProy = data?.avanceProy ?? []
   const forecastSeleccionado = data?.forecastSeleccionado ?? null
+  const montoContrato = data?.montoContrato ?? null
 
   return useMemo(() => {
     const modulos = excelData?.modulos ?? []
     const curva = excelData?.curva ?? []
     const totalMod = modulos.length
     const terminados = modulos.filter((m) => m.termReal).length
+    const iniciados = modulos.filter((m) => m.initReal).length
     const enProceso = modulos.filter((m) => m.initReal && !m.termReal).length
     const avProm = totalMod ? modulos.reduce((s, m) => s + (m.avance ?? 0), 0) / totalMod : 0
 
@@ -133,10 +138,12 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
       totalComprado,
       modulosTerminados: terminados,
       pctTerminados: totalMod ? (terminados / totalMod) * 100 : null,
+      modulosIniciados: iniciados,
       modulosEnProceso: enProceso,
       modulosDespachados: despachadosCount,
       pctDespachados: totalMod ? (despachadosCount / totalMod) * 100 : null,
       totalModulos: totalMod,
+      montoContrato,
     }
 
     // Distribución 10% buckets — solo >=50%, excluye completados y despachados (mismo criterio que dashboard.html)
@@ -341,7 +348,7 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
       modulosIniciadosPorMes,
       salidaGalponPorMes,
     }
-  }, [excelData, supaCompras, presupuestoTotal, pptoCatalogo, despachadosCount, avanceProy, forecastSeleccionado, loading])
+  }, [excelData, supaCompras, presupuestoTotal, pptoCatalogo, despachadosCount, avanceProy, forecastSeleccionado, montoContrato, loading])
 }
 
 export type ResumenData = ReturnType<typeof useResumenData>
