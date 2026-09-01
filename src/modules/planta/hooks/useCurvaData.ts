@@ -129,6 +129,22 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
     }
     const galponByWeek = [...galponWeeks.entries()].sort(([a], [b]) => a - b).map(([wk, count]) => ({ semana: weekLabel(wk), count }))
 
+    // Arranca en la semana del 4 de mayo: antes es rampa de inicio de galpón
+    const iniciadosDesde = new Date(2026, 4, 4)
+    const iniciadosF = modulos.filter((m) => {
+      const d = parseDate(m.initReal)
+      return d && d >= iniciadosDesde && d <= today && weekKey(d) !== semanaActual
+    })
+    const iniciadosWeeks = new Map<number, number>()
+    for (const m of iniciadosF) {
+      const d = parseDate(m.initReal)
+      if (!d) continue
+      const wk = weekKey(d)
+      if (wk == null) continue
+      iniciadosWeeks.set(wk, (iniciadosWeeks.get(wk) || 0) + 1)
+    }
+    const iniciadosByWeek = [...iniciadosWeeks.entries()].sort(([a], [b]) => a - b).map(([wk, count]) => ({ semana: weekLabel(wk), count }))
+
     const terminadosF = modulos.filter((m) => {
       const d = parseDate(m.termReal)
       return d && d <= today && weekKey(d) !== semanaActual
@@ -257,7 +273,7 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
       .sort((a, b) => natCompare(a.torre, b.torre))
 
     return {
-      kpis, curvaByWeek, avByWeek, galponByWeek, terminadosByWeek, terminadosWedoByWeek, terminadosConbesByWeek,
+      kpis, curvaByWeek, avByWeek, galponByWeek, iniciadosByWeek, terminadosByWeek, terminadosWedoByWeek, terminadosConbesByWeek,
       torreTiempo, tiempoHumedo, tiempoSeco, ritmoTorreRows,
       torresDisponibles, torresSeleccionadas, toggleTorre,
     }

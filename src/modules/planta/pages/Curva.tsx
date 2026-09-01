@@ -14,6 +14,7 @@ const SECCIONES = [
   { key: 'modIniciados', label: 'Módulos iniciados' },
   { key: 'modTerminados', label: 'Módulos terminados' },
   { key: 'galpon', label: 'Salida galpón' },
+  { key: 'iniciadosSemana', label: 'Iniciados por semana' },
   { key: 'terminadosSemana', label: 'Terminados por semana' },
   { key: 'terminadosWedo', label: 'Terminados WEDO por semana' },
   { key: 'terminadosConbes', label: 'Terminados CONBES por semana' },
@@ -142,9 +143,14 @@ export default function Curva({ excelData }: { excelData: ParsedDashboardData })
         <GalponBarChart data={data.galponByWeek} />
       </SectionCard>
 
-      <SectionCard title="Módulos terminados por semana" visible={esVisible('terminadosSemana')} onToggle={() => toggle('terminadosSemana')}>
-        <TerminadosSemanaBarChart data={data.terminadosByWeek} />
-      </SectionCard>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SectionCard title="Módulos iniciados por semana" visible={esVisible('iniciadosSemana')} onToggle={() => toggle('iniciadosSemana')}>
+          <TerminadosSemanaBarChart data={data.iniciadosByWeek} color="#4f9dff" />
+        </SectionCard>
+        <SectionCard title="Módulos terminados por semana" visible={esVisible('terminadosSemana')} onToggle={() => toggle('terminadosSemana')}>
+          <TerminadosSemanaBarChart data={data.terminadosByWeek} />
+        </SectionCard>
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <SectionCard title="Módulos terminados por semana — WEDO" visible={esVisible('terminadosWedo')} onToggle={() => toggle('terminadosWedo')}>

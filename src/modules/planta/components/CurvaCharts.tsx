@@ -93,8 +93,8 @@ export function GalponBarChart({ data }: { data: CurvaData['galponByWeek'] }) {
   )
 }
 
-export function TerminadosSemanaBarChart({ data, domainMax }: { data: CurvaData['terminadosByWeek']; domainMax?: number }) {
-  const config = { count: { label: 'Módulos', color: '#3fb950' } } satisfies ChartConfig
+export function TerminadosSemanaBarChart({ data, domainMax, color = '#3fb950' }: { data: CurvaData['terminadosByWeek']; domainMax?: number; color?: string }) {
+  const config = { count: { label: 'Módulos', color } } satisfies ChartConfig
   return (
     <ChartContainer config={config} className="aspect-auto h-[320px] w-full">
       <ComposedChart data={data} margin={{ left: 8, right: 20 }}>
