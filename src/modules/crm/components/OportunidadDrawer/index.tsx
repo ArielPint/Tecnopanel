@@ -328,6 +328,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   function precioLinea(tipologia: string) {
     return tipologias.find(t => t.tipologia === tipologia)?.venta_actual_uf ?? 0
   }
+  const totalUnidadesLineas = lineas.reduce((s, l) => s + (l.cantidad_casas || 0), 0)
+  const totalTiposLineas = lineas.filter(l => l.tipologia && l.cantidad_casas > 0).length
   async function guardarLineas() {
     await supabase.from('oportunidad_tipologias').delete().eq('oportunidad_id', opp.id)
     const filas = lineas.filter(l => l.tipologia && l.cantidad_casas > 0)
@@ -708,7 +710,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       probabilidad: opp.probabilidad, fecha_cierre_est: opp.fecha_cierre_est,
       descripcion: opp.descripcion, tipo_venta: opp.tipo_venta,
       region: opp.region, comuna: opp.comuna,
-      cantidad_casas: opp.cantidad_casas, cantidad_tipos_casas: opp.cantidad_tipos_casas,
+      cantidad_casas: tieneTipologias ? totalUnidadesLineas : opp.cantidad_casas,
+      cantidad_tipos_casas: tieneTipologias ? totalTiposLineas : opp.cantidad_tipos_casas,
       fecha_adjudicacion_est: opp.fecha_adjudicacion_est, fecha_inicio_despachos_est: opp.fecha_inicio_despachos_est,
       duracion_meses_est: opp.duracion_meses_est, nombre_entidad_patrocinante: opp.nombre_entidad_patrocinante,
       familia_productos: opp.familia_productos, alcances: opp.alcances,
@@ -1106,13 +1109,13 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       const costoCerchas = Number(etapaData['costo_cerchas'] || 0)
       const costoFlete = Number(etapaData['costo_flete'] || 0)
       const costoTotalInterno = cubicacionItems.reduce((s, i) => s + i.costo_total, 0) + costoCerchas + costoFlete
-      const numArchivos = opp.cantidad_tipos_casas ?? 0
+      const numArchivos = tieneTipologias ? totalTiposLineas : (opp.cantidad_tipos_casas ?? 0)
       const slotsSubidos = new Set(cubicacionItems.map(it => it.slot).filter(s => s != null))
       return (
       <div className="space-y-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Cubicación desde Excel (hoja "ANALISIS")</p>
         {numArchivos === 0 ? (
-          <p className="text-xs text-gray-400 bg-gray-50 rounded-lg p-2">Seteá "Cantidad de tipos de casas" en la pestaña General para saber cuántos archivos subir.</p>
+          <p className="text-xs text-gray-400 bg-gray-50 rounded-lg p-2">Definí los tipos de casa en la pestaña General para saber cuántos archivos subir.</p>
         ) : (
           <div className="space-y-2">
             <p className="text-xs text-gray-500">Se {numArchivos === 1 ? 'requiere' : 'requieren'} {numArchivos} {numArchivos === 1 ? 'archivo' : 'archivos'} (uno por tipo de casa) — subidos: {slotsSubidos.size}/{numArchivos}</p>
@@ -1485,6 +1488,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                   </select></div>
               </div>
 
+              {!tieneTipologias && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de casas</label>
                   <input type="number" min="0" value={opp.cantidad_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
@@ -1492,6 +1496,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                   <input type="number" min="0" value={opp.cantidad_tipos_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_tipos_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
                   <p className="text-[11px] text-gray-400 mt-1">Define cuántos archivos Excel se piden en Costos y Presupuestos.</p></div>
               </div>
+              )}
 
               {opp.tipo_venta !== 'VIT' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
