@@ -19,7 +19,7 @@ export default function RevisionVendedor(){
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const idsPaso=[...new Set((paso||[]).map((p:any)=>p.oportunidad_id))]
     if(!idsPaso.length){setOpps([]);setLoading(false);return}
-    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').in('id',idsPaso).in('etapa_actual',['Ventas','Ganado']).order('updated_at',{ascending:false})
+    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').in('id',idsPaso).in('etapa_actual',['Ventas','Ganado']).neq('tipo_venta','VIT').order('updated_at',{ascending:false})
     handleSupabaseError(error,'RevisionVendedor.load')
     const base=(data as Oportunidad[])||[]
     if(!base.length){setOpps([]);setLoading(false);return}

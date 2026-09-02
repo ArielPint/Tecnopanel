@@ -73,6 +73,152 @@ const NOTIF_ICON: Record<string, string> = {
   estado_final: '✓',
 }
 
+/* Los KPIs se calculan sobre un subconjunto de oportunidades para poder mostrar
+   VIT y Tradicional por separado sin duplicar la logica. */
+function calcStats(opps: Oportunidad[]) {
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+
+  const activas = opps.filter(o => !['Ganado','Perdido'].includes(o.etapa_actual))
+  const pipelineMonto = activas.reduce((s, o) => s + (o.monto_estimado ?? 0), 0)
+  const pipelineLastMonth = opps
+    .filter(o => !['Ganado','Perdido'].includes(o.etapa_actual) && new Date(o.created_at) < startOfMonth && new Date(o.created_at) >= startOfLastMonth)
+    .reduce((s, o) => s + (o.monto_estimado ?? 0), 0)
+  const pipelineTrend = pipelineLastMonth > 0 ? Math.round(((pipelineMonto - pipelineLastMonth) / pipelineLastMonth) * 100) : null
+
+  const ganadasMes = opps.filter(o => o.etapa_actual === 'Ganado' && new Date(o.updated_at) >= startOfMonth)
+  const ganadasMesMonto = ganadasMes.reduce((s, o) => s + (o.monto_estimado ?? 0), 0)
+
+  const ganadas = opps.filter(o => o.etapa_actual === 'Ganado')
+  const perdidas = opps.filter(o => o.etapa_actual === 'Perdido')
+  const tasaConv = (ganadas.length + perdidas.length) > 0
+    ? Math.round(ganadas.length / (ganadas.length + perdidas.length) * 100)
+    : 0
+
+  const montoByEtapa: Record<string, number> = {}
+  const countByEtapa: Record<string, number> = {}
+  ETAPAS.forEach(e => {
+    const subset = activas.filter(o => o.etapa_actual === e)
+    countByEtapa[e] = subset.length
+    montoByEtapa[e] = subset.reduce((s, o) => s + (o.monto_estimado ?? 0), 0)
+  })
+  const maxMonto = Math.max(...Object.values(montoByEtapa), 1)
+
+  return { activas, pipelineMonto, pipelineTrend, ganadasMes, ganadasMesMonto, tasaConv, montoByEtapa, countByEtapa, maxMonto }
+}
+
+function promedioDias(hist: OportunidadHistorialEtapa[]): Record<string, number> {
+  const porEtapa: Record<string, number[]> = {}
+  hist.forEach(h => {
+    if (!porEtapa[h.etapa]) porEtapa[h.etapa] = []
+    porEtapa[h.etapa].push(diffDias(h.fecha_entrada, h.fecha_salida))
+  })
+  const avg: Record<string, number> = {}
+  Object.entries(porEtapa).forEach(([e, vals]) => {
+    avg[e] = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
+  })
+  return avg
+}
+
+function SeccionPipeline({ titulo, opps, hist }: { titulo: string; opps: Oportunidad[]; hist: OportunidadHistorialEtapa[] }) {
+  const st = calcStats(opps)
+  const avgDias = promedioDias(hist)
+
+  return (
+    <section className="space-y-4">
+      <div className="flex items-center gap-2">
+        <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">{titulo}</h2>
+        <span className="text-xs bg-slate-200 text-slate-600 rounded-full px-2 py-0.5">{st.activas.length} activas</span>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-start justify-between mb-3">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Pipeline Total</p>
+            <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Briefcase size={16} className="text-slate-500" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-800 truncate">{fmtCLP(st.pipelineMonto)}</p>
+          {st.pipelineTrend !== null ? (
+            <p className={`text-xs mt-1.5 flex items-center gap-0.5 ${st.pipelineTrend >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              <ArrowUpRight size={11} className={st.pipelineTrend < 0 ? 'rotate-180' : ''} />
+              {Math.abs(st.pipelineTrend)}% vs mes anterior
+            </p>
+          ) : (
+            <p className="text-xs text-gray-400 mt-1.5">Monto en pipeline activo</p>
+          )}
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-start justify-between mb-3">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Oport. Activas</p>
+            <div className="w-9 h-9 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Target size={16} className="text-red-500" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-800">{st.activas.length}</p>
+          <p className="text-xs text-gray-400 mt-1.5">En pipeline activo</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-start justify-between mb-3">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Ganados (mes)</p>
+            <div className="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 size={16} className="text-emerald-500" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-800">{st.ganadasMesMonto > 0 ? fmtCLP(st.ganadasMesMonto) : st.ganadasMes.length}</p>
+          <p className="text-xs text-emerald-600 mt-1.5">{st.ganadasMes.length} oportunidad{st.ganadasMes.length !== 1 ? 'es' : ''} cerrada{st.ganadasMes.length !== 1 ? 's' : ''}</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-start justify-between mb-3">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Tasa Conversion</p>
+            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+              <TrendingUp size={16} className="text-blue-500" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-800">{st.tasaConv}%</p>
+          <p className="text-xs text-gray-400 mt-1.5">Ganadas vs cerradas totales</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <h3 className="text-sm font-semibold text-gray-700 mb-5">Pipeline por Etapa</h3>
+        <div className="space-y-3.5">
+          {ETAPAS.map(etapa => (
+            <div key={etapa} className="flex items-center gap-3">
+              <span className="text-xs text-gray-500 w-24 sm:w-40 truncate flex-shrink-0">{etapa}</span>
+              <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden">
+                <div
+                  className="h-4 rounded-full transition-all duration-700"
+                  style={{
+                    width: `${Math.max((st.montoByEtapa[etapa] ?? 0) / st.maxMonto * 100, st.montoByEtapa[etapa] ? 4 : 0)}%`,
+                    background: ETAPA_COLORS[etapa] ?? '#64748b',
+                  }}
+                />
+              </div>
+              <span className="text-xs font-semibold text-gray-700 w-20 text-right flex-shrink-0">
+                {fmtCLP(st.montoByEtapa[etapa] ?? 0)}
+              </span>
+              <span className="text-xs text-gray-400 w-4 text-right flex-shrink-0">
+                {st.countByEtapa[etapa] ?? 0}
+              </span>
+              {avgDias[etapa] !== undefined && (
+                <span className="text-xs text-gray-300 w-14 text-right flex-shrink-0 hidden xl:block">
+                  {avgDias[etapa]}d prom.
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export default function Dashboard() {
   const { profile } = useAuth()
   const [opps, setOpps] = useState<Oportunidad[]>([])
@@ -95,48 +241,11 @@ export default function Dashboard() {
     load()
   }, [])
 
-  /* ── Stats ── */
-  const now = new Date()
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const oppsVit = opps.filter(o => o.tipo_venta === 'VIT')
+  const oppsTrad = opps.filter(o => o.tipo_venta !== 'VIT')
+  const idsVit = new Set(oppsVit.map(o => o.id))
 
-  const activas = opps.filter(o => !['Ganado','Perdido'].includes(o.etapa_actual))
-  const pipelineMonto = activas.reduce((s, o) => s + (o.monto_estimado ?? 0), 0)
-  const pipelineLastMonth = opps
-    .filter(o => !['Ganado','Perdido'].includes(o.etapa_actual) && new Date(o.created_at) < startOfMonth && new Date(o.created_at) >= startOfLastMonth)
-    .reduce((s, o) => s + (o.monto_estimado ?? 0), 0)
-  const pipelineTrend = pipelineLastMonth > 0 ? Math.round(((pipelineMonto - pipelineLastMonth) / pipelineLastMonth) * 100) : null
-
-  const ganadasMes = opps.filter(o => o.etapa_actual === 'Ganado' && new Date(o.updated_at) >= startOfMonth)
-  const ganadasMesMonto = ganadasMes.reduce((s, o) => s + (o.monto_estimado ?? 0), 0)
-
-  const ganadas = opps.filter(o => o.etapa_actual === 'Ganado')
-  const perdidas = opps.filter(o => o.etapa_actual === 'Perdido')
-  const tasaConv = (ganadas.length + perdidas.length) > 0
-    ? Math.round(ganadas.length / (ganadas.length + perdidas.length) * 100)
-    : 0
-
-  /* ── Pipeline por etapa (monto + count) ── */
-  const montoByEtapa: Record<string, number> = {}
-  const countByEtapa: Record<string, number> = {}
-  ETAPAS.forEach(e => {
-    const subset = activas.filter(o => o.etapa_actual === e)
-    countByEtapa[e] = subset.length
-    montoByEtapa[e] = subset.reduce((s, o) => s + (o.monto_estimado ?? 0), 0)
-  })
-  const maxMonto = Math.max(...Object.values(montoByEtapa), 1)
-
-  /* ── Tiempo promedio por etapa ── */
-  const diasPorEtapa: Record<string, number[]> = {}
-  hist.forEach(h => {
-    const d = diffDias(h.fecha_entrada, h.fecha_salida)
-    if (!diasPorEtapa[h.etapa]) diasPorEtapa[h.etapa] = []
-    diasPorEtapa[h.etapa].push(d)
-  })
-  const avgDias: Record<string, number> = {}
-  Object.entries(diasPorEtapa).forEach(([e, vals]) => {
-    avgDias[e] = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
-  })
+  const avgDias = promedioDias(hist)
 
   /* ── Actividad reciente: notificaciones + historial como fallback ──
      Solo admin y gerente_ventas ven la actividad de todos; el resto, solo la propia. */
@@ -175,120 +284,30 @@ export default function Dashboard() {
         Bienvenido, <span className="font-semibold text-gray-700">{profile?.nombre} {profile?.apellido}</span>
       </p>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Pipeline total */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-          <div className="flex items-start justify-between mb-3">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Pipeline Total</p>
-            <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Briefcase size={16} className="text-slate-500" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-gray-800 truncate">{fmtCLP(pipelineMonto)}</p>
-          {pipelineTrend !== null ? (
-            <p className={`text-xs mt-1.5 flex items-center gap-0.5 ${pipelineTrend >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-              <ArrowUpRight size={11} className={pipelineTrend < 0 ? 'rotate-180' : ''} />
-              {Math.abs(pipelineTrend)}% vs mes anterior
-            </p>
-          ) : (
-            <p className="text-xs text-gray-400 mt-1.5">Monto en pipeline activo</p>
-          )}
-        </div>
+      <SeccionPipeline titulo="Oportunidades VIT" opps={oppsVit} hist={hist.filter(h => idsVit.has(h.oportunidad_id))} />
+      <SeccionPipeline titulo="Oportunidades Tradicional" opps={oppsTrad} hist={hist.filter(h => !idsVit.has(h.oportunidad_id))} />
 
-        {/* Oport. activas */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-          <div className="flex items-start justify-between mb-3">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Oport. Activas</p>
-            <div className="w-9 h-9 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Target size={16} className="text-red-500" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{activas.length}</p>
-          <p className="text-xs text-gray-400 mt-1.5">En pipeline activo</p>
-        </div>
-
-        {/* Ganados mes */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-          <div className="flex items-start justify-between mb-3">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Ganados (mes)</p>
-            <div className="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center flex-shrink-0">
-              <CheckCircle2 size={16} className="text-emerald-500" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{ganadasMesMonto > 0 ? fmtCLP(ganadasMesMonto) : ganadasMes.length}</p>
-          <p className="text-xs text-emerald-600 mt-1.5">{ganadasMes.length} oportunidad{ganadasMes.length !== 1 ? 'es' : ''} cerrada{ganadasMes.length !== 1 ? 's' : ''}</p>
-        </div>
-
-        {/* Tasa conversión */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-          <div className="flex items-start justify-between mb-3">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Tasa Conversión</p>
-            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-              <TrendingUp size={16} className="text-blue-500" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{tasaConv}%</p>
-          <p className="text-xs text-gray-400 mt-1.5">Ganadas vs cerradas totales</p>
-        </div>
-      </div>
-
-      {/* Pipeline + Actividad reciente */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Pipeline por etapa */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-5">Pipeline por Etapa</h2>
-          <div className="space-y-3.5">
-            {ETAPAS.map(etapa => (
-              <div key={etapa} className="flex items-center gap-3">
-                <span className="text-xs text-gray-500 w-24 sm:w-40 truncate flex-shrink-0">{etapa}</span>
-                <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden">
-                  <div
-                    className="h-4 rounded-full transition-all duration-700"
-                    style={{
-                      width: `${Math.max((montoByEtapa[etapa] ?? 0) / maxMonto * 100, montoByEtapa[etapa] ? 4 : 0)}%`,
-                      background: ETAPA_COLORS[etapa] ?? '#64748b',
-                    }}
-                  />
+      {/* Actividad reciente */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <h2 className="text-sm font-semibold text-gray-700 mb-4">Actividad Reciente</h2>
+        {actReciente.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-8">Sin actividad reciente</p>
+        ) : (
+          <div className="space-y-1">
+            {actReciente.map(n => (
+              <div key={n.id} className="flex gap-2.5 py-2.5 border-b border-slate-50 last:border-0">
+                <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                  {NOTIF_ICON[n.tipo] ?? '📌'}
                 </div>
-                <span className="text-xs font-semibold text-gray-700 w-20 text-right flex-shrink-0">
-                  {fmtCLP(montoByEtapa[etapa] ?? 0)}
-                </span>
-                <span className="text-xs text-gray-400 w-4 text-right flex-shrink-0">
-                  {countByEtapa[etapa] ?? 0}
-                </span>
-                {avgDias[etapa] !== undefined && (
-                  <span className="text-xs text-gray-300 w-14 text-right flex-shrink-0 hidden xl:block">
-                    {avgDias[etapa]}d prom.
-                  </span>
-                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-700 leading-snug">{n.titulo}</p>
+                  {n.mensaje && <p className="text-[11px] text-gray-400 mt-0.5 truncate">{n.mensaje}</p>}
+                  <p className="text-[10px] text-gray-300 mt-0.5">{tiempoRel(n.created_at)}</p>
+                </div>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Actividad reciente */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Actividad Reciente</h2>
-          {actReciente.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-8">Sin actividad reciente</p>
-          ) : (
-            <div className="space-y-1">
-              {actReciente.map(n => (
-                <div key={n.id} className="flex gap-2.5 py-2.5 border-b border-slate-50 last:border-0">
-                  <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
-                    {NOTIF_ICON[n.tipo] ?? '📌'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-gray-700 leading-snug">{n.titulo}</p>
-                    {n.mensaje && <p className="text-[11px] text-gray-400 mt-0.5 truncate">{n.mensaje}</p>}
-                    <p className="text-[10px] text-gray-300 mt-0.5">{tiempoRel(n.created_at)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Tiempo promedio por etapa */}
@@ -314,7 +333,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-700">Oportunidades Recientes</h2>
-            <a href="/crm/oportunidades" className="text-xs text-crm-red hover:underline font-medium">Ver todas →</a>
+            <a href="/crm/oportunidades/tradicional" className="text-xs text-crm-red hover:underline font-medium">Ver todas →</a>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

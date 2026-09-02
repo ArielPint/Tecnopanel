@@ -13,7 +13,7 @@ export default function Cubicacion(){
   const [loading,setLoading]=useState(true)
   const [sel,setSel]=useState<Oportunidad|null>(null)
   async function load(){
-    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').eq('etapa_actual','Costos y Presupuestos').order('updated_at',{ascending:false})
+    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').eq('etapa_actual','Costos y Presupuestos').neq('tipo_venta','VIT').order('updated_at',{ascending:false})
     handleSupabaseError(error,'Cubicacion.load')
     const base=(data as Oportunidad[])||[]
     if(!base.length){setOpps([]);setLoading(false);return}

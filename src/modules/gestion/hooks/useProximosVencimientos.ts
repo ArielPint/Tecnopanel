@@ -22,7 +22,7 @@ async function vencimientosCrm(): Promise<Vencimiento[]> {
   const [{ data: oportunidades }, { data: tareas }] = await Promise.all([
     supabase
       .from('oportunidades')
-      .select('id, codigo, nombre, fecha_cierre_est, fecha_adjudicacion_est, fecha_inicio_despachos_est')
+      .select('id, codigo, nombre, tipo_venta, fecha_cierre_est, fecha_adjudicacion_est, fecha_inicio_despachos_est')
       .or(
         [
           `fecha_cierre_est.gte.${desde},fecha_cierre_est.lte.${hasta}`,
@@ -36,14 +36,15 @@ async function vencimientosCrm(): Promise<Vencimiento[]> {
   const filas: Vencimiento[] = []
   for (const o of oportunidades ?? []) {
     const nombre = `${o.codigo ?? ''} — ${o.nombre ?? ''}`.replace(/^— /, '')
-    if (o.fecha_cierre_est) filas.push({ fecha: o.fecha_cierre_est, fuente: 'Oportunidad · Cierre est.', descripcion: nombre, ruta: '/crm/oportunidades' })
+    const ruta = o.tipo_venta === 'VIT' ? '/crm/oportunidades/vit' : '/crm/oportunidades/tradicional'
+    if (o.fecha_cierre_est) filas.push({ fecha: o.fecha_cierre_est, fuente: 'Oportunidad · Cierre est.', descripcion: nombre, ruta })
     if (o.fecha_adjudicacion_est)
-      filas.push({ fecha: o.fecha_adjudicacion_est, fuente: 'Oportunidad · Adjudicación est.', descripcion: nombre, ruta: '/crm/oportunidades' })
+      filas.push({ fecha: o.fecha_adjudicacion_est, fuente: 'Oportunidad · Adjudicación est.', descripcion: nombre, ruta })
     if (o.fecha_inicio_despachos_est)
-      filas.push({ fecha: o.fecha_inicio_despachos_est, fuente: 'Oportunidad · Inicio despachos est.', descripcion: nombre, ruta: '/crm/oportunidades' })
+      filas.push({ fecha: o.fecha_inicio_despachos_est, fuente: 'Oportunidad · Inicio despachos est.', descripcion: nombre, ruta })
   }
   for (const t of tareas ?? []) {
-    if (t.fecha_limite) filas.push({ fecha: t.fecha_limite, fuente: 'Tarea Ingeniería', descripcion: t.titulo ?? t.descripcion ?? '', ruta: '/crm/oportunidades' })
+    if (t.fecha_limite) filas.push({ fecha: t.fecha_limite, fuente: 'Tarea Ingeniería', descripcion: t.titulo ?? t.descripcion ?? '', ruta: '/crm/oportunidades/tradicional' })
   }
   return filas
 }

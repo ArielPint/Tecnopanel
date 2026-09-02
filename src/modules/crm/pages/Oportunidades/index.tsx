@@ -27,7 +27,10 @@ const TIPO_VENTA_LABELS: Record<TipoVenta, string> = {
 
 function formatMM(n: number) { return (n / 1_000_000).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' MM' }
 
-export default function Oportunidades() {
+// soloVit separa el pipeline VIT del tradicional: son la misma pantalla, filtrada por
+// tipo_venta. En VIT se ven todas las etapas del flujo, que ya no aparecen en los
+// modulos por etapa (Ingenieria, Desarrollo, Costos y Presupuestos, Ventas, Negociacion).
+export default function Oportunidades({ soloVit = false }: { soloVit?: boolean }) {
   const { profile } = useAuth()
   const [oportunidades, setOportunidades] = useState<Oportunidad[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,10 +70,12 @@ export default function Oportunidades() {
     load()
   }
 
-  const filtradas = oportunidades.filter(o =>
-    o.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    o.codigo.toLowerCase().includes(busqueda.toLowerCase())
-  )
+  const filtradas = oportunidades
+    .filter(o => (o.tipo_venta === 'VIT') === soloVit)
+    .filter(o =>
+      o.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      o.codigo.toLowerCase().includes(busqueda.toLowerCase())
+    )
   const porEtapa = (etapa: EtapaOportunidad) => filtradas.filter(o => o.etapa_actual === etapa)
 
   if (loading) return <div className="flex items-center justify-center h-full"><div className="w-8 h-8 border-2 border-crm-red border-t-transparent rounded-full animate-spin" /></div>
@@ -78,6 +83,7 @@ export default function Oportunidades() {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 md:px-6 py-3 border-b border-slate-200 bg-white flex items-center gap-3">
+        <p className="text-sm font-semibold text-gray-700 hidden sm:block">{soloVit ? 'VIT' : 'Tradicional'}</p>
         <p className="text-xs text-gray-500 hidden sm:block">{filtradas.length} en curso</p>
         <div className="flex-1 relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -130,7 +136,7 @@ export default function Oportunidades() {
         })}
         {filtradas.length === 0 && (
           <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-            <p className="text-sm">Sin oportunidades</p>
+            <p className="text-sm">Sin oportunidades {soloVit ? 'VIT' : 'tradicionales'}</p>
           </div>
         )}
       </div>

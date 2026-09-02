@@ -10,7 +10,8 @@ import { TecnopanelMark, TecnopanelWordmark } from '@/components/TecnopanelLogo'
 // (antes "Cubicación") para no romper enlaces/bookmarks existentes; solo cambia el label visible.
 const MODULO_RUTA: Record<string, string> = {
   Dashboard: '/crm/dashboard',
-  Oportunidades: '/crm/oportunidades',
+  'Oportunidades VIT': '/crm/oportunidades/vit',
+  'Oportunidades Tradicional': '/crm/oportunidades/tradicional',
   'Ingeniería': '/crm/ingenieria',
   'Ganadas y Perdidas': '/crm/ganadas-perdidas',
   'Desarrollo': '/crm/desarrollo',
@@ -23,7 +24,8 @@ const MODULO_RUTA: Record<string, string> = {
 
 const MODULO_ICON: Record<string, React.ReactNode> = {
   Dashboard:    <LayoutDashboard size={16} />,
-  Oportunidades:<Target size={16} />,
+  'Oportunidades VIT': <Target size={16} />,
+  'Oportunidades Tradicional': <Target size={16} />,
   'Ingeniería': <Compass size={16} />,
   'Ganadas y Perdidas': <Trophy size={16} />,
   'Desarrollo': <Hammer size={16} />,
@@ -34,8 +36,15 @@ const MODULO_ICON: Record<string, React.ReactNode> = {
   Usuarios:     <Users size={16} />,
 }
 
+// Las dos vistas de oportunidades comparten el permiso 'Oportunidades': son la misma
+// pantalla filtrada por tipo de venta, no modulos distintos en la base.
+const MODULO_PERMISO: Record<string, string> = {
+  'Oportunidades VIT': 'Oportunidades',
+  'Oportunidades Tradicional': 'Oportunidades',
+}
+
 const GRUPOS = [
-  { label: 'Principal', modulos: ['Dashboard', 'Ganadas y Perdidas', 'Oportunidades'] },
+  { label: 'Principal', modulos: ['Dashboard', 'Ganadas y Perdidas', 'Oportunidades VIT', 'Oportunidades Tradicional'] },
   { label: 'Módulos',   modulos: ['Ingeniería', 'Desarrollo', 'Costos y Presupuestos', 'Ventas', 'Negociación'] },
   { label: 'Sistema',   modulos: ['Clientes', 'Usuarios'] },
 ]
@@ -82,7 +91,7 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
 
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
         {GRUPOS.map(grupo => {
-          const visibles = grupo.modulos.filter(m => canAccess(m))
+          const visibles = grupo.modulos.filter(m => canAccess(MODULO_PERMISO[m] ?? m))
           if (!visibles.length) return null
           return (
             <div key={grupo.label}>

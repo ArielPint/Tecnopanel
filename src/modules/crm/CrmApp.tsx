@@ -70,7 +70,9 @@ function CrmRoutes() {
       <Route element={<AppLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="oportunidades" element={<ProtectedModule modulo="Oportunidades"><Oportunidades /></ProtectedModule>} />
+        <Route path="oportunidades" element={<Navigate to="/crm/oportunidades/tradicional" replace />} />
+        <Route path="oportunidades/vit" element={<ProtectedModule modulo="Oportunidades"><Oportunidades soloVit /></ProtectedModule>} />
+        <Route path="oportunidades/tradicional" element={<ProtectedModule modulo="Oportunidades"><Oportunidades /></ProtectedModule>} />
         <Route path="ingenieria" element={<ProtectedModule modulo="Ingeniería"><Ingenieria /></ProtectedModule>} />
         <Route path="ganadas-perdidas" element={<ProtectedModule modulo="Ganadas y Perdidas"><GanadasPerdidas /></ProtectedModule>} />
         <Route path="desarrollo" element={<ProtectedModule modulo="Desarrollo"><Desarrollo /></ProtectedModule>} />

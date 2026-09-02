@@ -24,7 +24,7 @@ export default function Ingenieria(){
   const [buscando,setBuscando]=useState(false)
 
   async function load(){
-    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').eq('etapa_actual','Ingeniería').order('updated_at',{ascending:false})
+    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').eq('etapa_actual','Ingeniería').neq('tipo_venta','VIT').order('updated_at',{ascending:false})
     handleSupabaseError(error,'Ingenieria.load')
     const base=(data as Oportunidad[])||[]
     if(!base.length){setOpps([]);setLoading(false);return}
