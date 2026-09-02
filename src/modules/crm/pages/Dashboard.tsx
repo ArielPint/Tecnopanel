@@ -9,6 +9,9 @@ const ETAPAS = [
   'Ventas','Negociación',
 ]
 
+// Las oportunidades VIT no pasan por Ingenieria, Desarrollo, Costos y Presupuestos ni Ventas.
+const ETAPAS_VIT = ['Clasificación','Oportunidad','Negociación']
+
 const ETAPA_COLORS: Record<string, string> = {
   'Clasificación':          '#64748b',
   'Oportunidad':            '#10b981',
@@ -75,7 +78,7 @@ const NOTIF_ICON: Record<string, string> = {
 
 /* Los KPIs se calculan sobre un subconjunto de oportunidades para poder mostrar
    VIT y Tradicional por separado sin duplicar la logica. */
-function calcStats(opps: Oportunidad[]) {
+function calcStats(opps: Oportunidad[], etapas: string[]) {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
@@ -98,7 +101,7 @@ function calcStats(opps: Oportunidad[]) {
 
   const montoByEtapa: Record<string, number> = {}
   const countByEtapa: Record<string, number> = {}
-  ETAPAS.forEach(e => {
+  etapas.forEach(e => {
     const subset = activas.filter(o => o.etapa_actual === e)
     countByEtapa[e] = subset.length
     montoByEtapa[e] = subset.reduce((s, o) => s + (o.monto_estimado ?? 0), 0)
@@ -121,8 +124,8 @@ function promedioDias(hist: OportunidadHistorialEtapa[]): Record<string, number>
   return avg
 }
 
-function SeccionPipeline({ titulo, opps, hist }: { titulo: string; opps: Oportunidad[]; hist: OportunidadHistorialEtapa[] }) {
-  const st = calcStats(opps)
+function SeccionPipeline({ titulo, opps, hist, etapas = ETAPAS }: { titulo: string; opps: Oportunidad[]; hist: OportunidadHistorialEtapa[]; etapas?: string[] }) {
+  const st = calcStats(opps, etapas)
   const avgDias = promedioDias(hist)
 
   return (
@@ -188,7 +191,7 @@ function SeccionPipeline({ titulo, opps, hist }: { titulo: string; opps: Oportun
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
         <h3 className="text-sm font-semibold text-gray-700 mb-5">Pipeline por Etapa</h3>
         <div className="space-y-3.5">
-          {ETAPAS.map(etapa => (
+          {etapas.map(etapa => (
             <div key={etapa} className="flex items-center gap-3">
               <span className="text-xs text-gray-500 w-24 sm:w-40 truncate flex-shrink-0">{etapa}</span>
               <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden">
@@ -284,7 +287,7 @@ export default function Dashboard() {
         Bienvenido, <span className="font-semibold text-gray-700">{profile?.nombre} {profile?.apellido}</span>
       </p>
 
-      <SeccionPipeline titulo="Oportunidades VIT" opps={oppsVit} hist={hist.filter(h => idsVit.has(h.oportunidad_id))} />
+      <SeccionPipeline titulo="Oportunidades VIT" opps={oppsVit} hist={hist.filter(h => idsVit.has(h.oportunidad_id))} etapas={ETAPAS_VIT} />
       <SeccionPipeline titulo="Oportunidades Tradicional" opps={oppsTrad} hist={hist.filter(h => !idsVit.has(h.oportunidad_id))} />
 
       {/* Actividad reciente */}
