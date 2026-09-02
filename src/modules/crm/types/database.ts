@@ -135,6 +135,7 @@ export interface OportunidadDocumento {
   etapa: string | null
   comentario: string | null
   created_at: string
+  tarea_id: string | null
   subido_por_profile?: Profile
 }
 
@@ -191,6 +192,7 @@ export interface TareaIngenieria {
   fecha_limite: string | null
   created_at: string
   completada_at: string | null
+  tipos_documento_requeridos: string[] | null
   motivo_rechazo: string | null
   respondido_por: string | null
   respondido_at: string | null

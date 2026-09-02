@@ -208,6 +208,23 @@ const MODULO_DE_ETAPA: Record<string, string> = {
 
 const PRIORIDAD_LABEL: Record<number, string> = { 1: 'Alta', 2: 'Media', 3: 'Baja' }
 
+// Espejo de public.crm_tipo_documento(): que extensiones cuentan como cada tipo exigible.
+const TIPOS_DOCUMENTO: { key: string; label: string; exts: string[] }[] = [
+  { key: 'PDF',   label: 'PDF',   exts: ['pdf'] },
+  { key: 'Word',  label: 'Word',  exts: ['doc', 'docx', 'rtf'] },
+  { key: 'Excel', label: 'Excel', exts: ['xls', 'xlsx', 'xlsm', 'csv'] },
+  { key: 'CAD',   label: 'CAD',   exts: ['dwg', 'dxf', 'dwf'] },
+]
+
+function tipoDeExtension(ext: string | null): string | null {
+  const e = (ext ?? '').toLowerCase()
+  return TIPOS_DOCUMENTO.find(t => t.exts.includes(e))?.key ?? null
+}
+
+// Las tareas de ingenieria se asignan solo al equipo de ingenieria; ningun otro rol
+// (admin incluido) aparece en la lista.
+const ROLES_ASIGNABLES_TAREA = ['ingeniero', 'jefe_ingenieria']
+
 const STAGE_ROLES: Record<string, string[]> = {
   'Clasificación': ['admin','gerente_ventas','vendedor'],
   'Oportunidad': ['admin','gerente_ventas','vendedor'],
@@ -246,7 +263,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   const { canAccess } = usePermisos()
   const [tab, setTab] = useState<Tab>('general')
   const [opp, setOpp] = useState<Oportunidad>(oportunidad)
-  const [usuarios, setUsuarios] = useState<Profile[]>([])
+  const [usuarios, setUsuarios] = useState<PerfilBasico[]>([])
   const [etapaData, setEtapaData] = useState<Record<string, string>>({})
   const [costosData, setCostosData] = useState<Record<string, string>>({})
   const [tipologias, setTipologias] = useState<TipologiaVitPrecio[]>([])
@@ -259,7 +276,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   const [motivoRechazo, setMotivoRechazo] = useState('')
   const [modoRechazo, setModoRechazo] = useState(false)
   const [respondiendo, setRespondiendo] = useState(false)
-  const [nuevaTarea, setNuevaTarea] = useState({ titulo: '', descripcion: '', asignados_ids: [] as string[], prioridad: '2', fecha_limite: '' })
+  const [nuevaTarea, setNuevaTarea] = useState({ titulo: '', descripcion: '', asignados_ids: [] as string[], prioridad: '2', fecha_limite: '', tipos_documento: [] as string[] })
   const [creandoTarea, setCreandoTarea] = useState(false)
   const [mensajes, setMensajes] = useState<MensajeOportunidad[]>([])
   const [nuevoMensaje, setNuevoMensaje] = useState('')
@@ -281,6 +298,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   const [showLink, setShowLink] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const entregableRef = useRef<HTMLInputElement>(null)
+  const tareaFileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { setOpp(oportunidad); setTab('general'); loadAll() }, [oportunidad.id])
 
@@ -329,7 +347,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       supabase.from('oportunidad_datos_etapa').select('*').eq('oportunidad_id', oportunidad.id).eq('etapa', 'Costos y Presupuestos').maybeSingle(),
       supabase.from('oportunidad_documentos').select('*').eq('oportunidad_id', oportunidad.id).order('created_at', { ascending: false }),
       supabase.from('oportunidad_historial_etapas').select('*,usuario:profiles(nombre,apellido)').eq('oportunidad_id', oportunidad.id).order('fecha_entrada', { ascending: false }),
-      supabase.from('profiles').select('*').eq('activo', true).order('nombre'),
+      supabase.from('crm_perfiles_basicos').select('id,nombre,apellido,rol,activo').eq('activo', true).order('nombre'),
       supabase.from('tareas_ingenieria').select('*').eq('oportunidad_id', oportunidad.id).order('created_at', { ascending: false }),
       supabase.from('cierres').select('*').eq('oportunidad_id', oportunidad.id).maybeSingle(),
     ])
@@ -337,7 +355,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     setCostosData(((costosRes.data as {datos?:Record<string,string>}|null)?.datos) ?? {})
     setDocs((docsRes.data as OportunidadDocumento[]) ?? [])
     setHistorial((histRes.data as OportunidadHistorialEtapa[]) ?? [])
-    setUsuarios((usersRes.data as Profile[]) ?? [])
+    setUsuarios((usersRes.data as PerfilBasico[]) ?? [])
     const tareasBase = (tareasRes.data as TareaIngenieria[]) ?? []
     if (tareasBase.length) {
       // Los nombres salen de crm_perfiles_basicos, no de profiles: el RLS de profiles
@@ -605,6 +623,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       descripcion: nuevaTarea.descripcion.trim() || null,
       prioridad: Number(nuevaTarea.prioridad),
       fecha_limite: nuevaTarea.fecha_limite || null,
+      tipos_documento_requeridos: nuevaTarea.tipos_documento.length ? nuevaTarea.tipos_documento : null,
     }).select('id').single()
     if (handleSupabaseError(tareaErr, 'OportunidadDrawer.crearTarea')) { setCreandoTarea(false); return }
     if (tarea && nuevaTarea.asignados_ids.length) {
@@ -622,7 +641,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       )
       handleSupabaseError(notifErr, 'OportunidadDrawer.crearTarea.notify')
     }
-    setNuevaTarea({ titulo: '', descripcion: '', asignados_ids: [], prioridad: '2', fecha_limite: '' })
+    setNuevaTarea({ titulo: '', descripcion: '', asignados_ids: [], prioridad: '2', fecha_limite: '', tipos_documento: [] })
     setShowCrearTarea(false); setCreandoTarea(false)
     await loadAll()
   }
@@ -789,7 +808,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
     if (ok) { onUpdate(); onClose() }
   }
 
-  async function uploadFile(file: File) {
+  async function uploadFile(file: File, tareaId?: string) {
     setUploading(true)
     const ext = file.name.split('.').pop() ?? ''
     const path = opp.id + '/' + Date.now() + '-' + file.name
@@ -799,6 +818,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
       oportunidad_id: opp.id, nombre: file.name, tipo: 'archivo',
       url: path, extension: ext, tamanio_bytes: file.size,
       subido_por: profile?.id, etapa: opp.etapa_actual,
+      tarea_id: tareaId ?? null,
     })
     if (handleSupabaseError(docErr, 'OportunidadDrawer.uploadFile.insert')) { setUploading(false); return }
     await loadAll()
@@ -859,7 +879,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   const nextEtapa = currentIdx >= 0 && currentIdx < etapas.length - 1 ? etapas[currentIdx + 1] : 'Ganado'
   const comunasDisponibles = opp.region ? (REGIONES_COMUNAS[opp.region] ?? []) : []
   const allowedRoles = STAGE_ROLES[opp.etapa_actual] ?? []
-  const filteredUsers = usuarios.filter(u => allowedRoles.includes(u.rol))
+  const filteredUsers = usuarios.filter(u => ROLES_ASIGNABLES_TAREA.includes(u.rol))
   // Mismo control de rol para Avanzar y Retroceder: ambas son acciones de gestión de la etapa actual.
   // gerente_ventas gestiona el pipeline completo, sin restricción de etapa (igual que admin).
   const moduloEtapa = MODULO_DE_ETAPA[opp.etapa_actual] ?? 'Oportunidades'
@@ -898,6 +918,20 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                 ))}
               </div>
             </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Documento que debe adjuntar para completarla</label>
+              <div className="flex flex-wrap gap-3">
+                {TIPOS_DOCUMENTO.map(td => (
+                  <label key={td.key} className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <input type="checkbox" checked={nuevaTarea.tipos_documento.includes(td.key)}
+                      onChange={() => setNuevaTarea(t => ({ ...t, tipos_documento: t.tipos_documento.includes(td.key) ? t.tipos_documento.filter(k => k !== td.key) : [...t.tipos_documento, td.key] }))}
+                      className="rounded border-gray-300 text-crm-red focus:ring-crm-red" />
+                    {td.label}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Sin marcar ninguno, la tarea se puede completar sin adjuntos.</p>
+            </div>
             <input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea(t=>({...t,fecha_limite:e.target.value}))} className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
             <button onClick={crearTarea} disabled={creandoTarea} className="px-3 py-1 text-xs text-white rounded disabled:opacity-60" style={{background:'#ed3224'}}>
               {creandoTarea ? 'Creando...' : 'Crear'}
@@ -912,6 +946,9 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-gray-700 truncate">{t.titulo}</p>
                   <p className="text-xs text-gray-400 truncate">{t.asignados?.length ? t.asignados.map(a=>a.nombre + ' ' + a.apellido).join(', ') : 'Sin asignar'}{t.fecha_limite ? ' · vence ' + new Date(t.fecha_limite).toLocaleDateString('es-CL') : ''}</p>
+                  {!!t.tipos_documento_requeridos?.length && (
+                    <p className="text-xs text-gray-400 truncate mt-0.5">Requiere: {t.tipos_documento_requeridos.join(' / ')}</p>
+                  )}
                   {t.motivo_rechazo && <p className="text-xs text-red-600 truncate mt-0.5">Rechazada: {t.motivo_rechazo}</p>}
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -1601,6 +1638,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
         {tareaSel && (() => {
         const soyAsignado = (tareaSel.asignados ?? []).some(a => a?.id === profile?.id)
         const puedeResponder = soyAsignado && tareaSel.estado === 'pendiente'
+        const requeridos = tareaSel.tipos_documento_requeridos ?? []
+        const adjuntos = docs.filter(d => d.tarea_id === tareaSel.id)
+        // Basta un adjunto que calce con alguno de los tipos exigidos (misma regla que el
+        // trigger crm_tarea_exige_documento en la base).
+        const tiposAdjuntos = [...new Set(adjuntos.map(d => tipoDeExtension(d.extension)).filter(Boolean))] as string[]
+        const requisitoCumplido = requeridos.length === 0 || requeridos.some(r => tiposAdjuntos.includes(r))
         // Una vez aceptada, el asignado la cierra marcandola terminada.
         const puedeTerminar = soyAsignado && tareaSel.estado === 'en_progreso'
         return (
@@ -1672,12 +1715,54 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
                     </button>
                   </div>
                 ))}
+                {(requeridos.length > 0 || adjuntos.length > 0) && (
+                  <div className="border-t border-gray-100 pt-3">
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Documentos de la tarea</p>
+                      {requeridos.length > 0 && (
+                        <span className={'text-xs px-2 py-0.5 rounded-full ' + (requisitoCumplido ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>
+                          {requisitoCumplido ? 'Requisito cumplido' : 'Exige ' + requeridos.join(' / ')}
+                        </span>
+                      )}
+                    </div>
+                    {adjuntos.length === 0 ? (
+                      <p className="text-xs text-gray-400 mb-2">Sin documentos adjuntos</p>
+                    ) : (
+                      <div className="space-y-1.5 mb-2">
+                        {adjuntos.map(d => (
+                          <div key={d.id} className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg">
+                            <span className="text-base">{getFileIcon(d.extension)}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-gray-700 truncate">{d.nombre}</p>
+                              <p className="text-xs text-gray-400">{tipoDeExtension(d.extension) ?? 'Otro'}{d.tamanio_bytes ? ' - ' + (d.tamanio_bytes/1024).toFixed(0) + ' KB' : ''}</p>
+                            </div>
+                            <button onClick={() => openFile(d.tipo, d.url)} className="text-gray-400 hover:text-blue-500 p-1"><ExternalLink size={13} /></button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {soyAsignado && tareaSel.estado !== 'rechazada' && (
+                      <>
+                        <button onClick={() => tareaFileRef.current?.click()} disabled={uploading}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                          {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}{uploading ? 'Subiendo...' : 'Adjuntar documento'}
+                        </button>
+                        <input ref={tareaFileRef} type="file" className="hidden"
+                          onChange={e => { const f = e.target.files?.[0]; if (f) { uploadFile(f, tareaSel.id); e.target.value = '' } }} />
+                      </>
+                    )}
+                  </div>
+                )}
                 {puedeTerminar && (
                   <div className="pt-1">
-                    <button onClick={() => responderTarea(tareaSel, 'completada')} disabled={respondiendo}
+                    <button onClick={() => responderTarea(tareaSel, 'completada')} disabled={respondiendo || !requisitoCumplido}
+                      title={requisitoCumplido ? undefined : 'Adjunta el documento exigido para poder completarla'}
                       className="w-full py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
                       {respondiendo ? 'Guardando...' : 'Marcar como terminada'}
                     </button>
+                    {!requisitoCumplido && (
+                      <p className="text-xs text-amber-600 mt-1">Falta adjuntar un documento {requeridos.join(' o ')} para poder completarla.</p>
+                    )}
                   </div>
                 )}
                 {tareaSel.estado === 'completada' && tareaSel.completada_at && (
