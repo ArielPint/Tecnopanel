@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { fmtMontoCLP } from '@/lib/montoCLP'
 
 type Tone = 'brand' | 'info' | 'success' | 'warning' | 'purple'
 
@@ -23,8 +24,7 @@ interface KpiCardProps {
 function formatValue(value: number, format: KpiCardProps['format']) {
   if (format === 'percent') return `${Math.round(value)}%`
   if (format === 'currency') {
-    if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toLocaleString('es-CL', { maximumFractionDigits: 1 })}M`
-    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(value)
+    return fmtMontoCLP(value)
   }
   return new Intl.NumberFormat('es-CL').format(value)
 }

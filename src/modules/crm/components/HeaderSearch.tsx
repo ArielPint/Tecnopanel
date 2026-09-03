@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { fmtMontoCLP } from '@/lib/montoCLP'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 
 interface Result {
@@ -23,9 +24,7 @@ const ETAPA_DOT: Record<string, string> = {
 
 function fmtM(n: number | null) {
   if (!n) return null
-  if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(1) + 'M'
-  if (n >= 1_000) return '$' + (n / 1_000).toFixed(0) + 'K'
-  return '$' + n.toLocaleString('es-CL')
+  return fmtMontoCLP(n)
 }
 
 export default function HeaderSearch() {

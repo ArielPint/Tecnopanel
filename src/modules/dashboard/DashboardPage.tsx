@@ -1,6 +1,7 @@
 import { Building2, CheckCircle2, Clock, LineChart, Receipt, Target, TrendingUp, Truck, Lock, ArrowRight } from 'lucide-react'
 import { Navigate, Link } from 'react-router-dom'
 import { useDashboardData } from './useDashboardData'
+import { fmtMontoCLP } from '@/lib/montoCLP'
 import { useCrmResumen } from './useCrmResumen'
 import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
 import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
@@ -240,7 +241,7 @@ export default function DashboardPage() {
                       <TableCell className="text-right font-mono-tabular">{findKpi(kpis, 'modulos_despachados') ?? '—'}</TableCell>
                       <TableCell className="text-right font-mono-tabular">{findKpi(kpis, 'modulos_en_proceso') ?? '—'}</TableCell>
                       <TableCell className="text-right font-mono-tabular">
-                        {compras == null ? '—' : `$${(compras / 1_000_000).toLocaleString('es-CL', { maximumFractionDigits: 1 })}M`}
+                        {fmtMontoCLP(compras)}
                       </TableCell>
                     </TableRow>
                   )

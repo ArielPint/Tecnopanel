@@ -3,6 +3,7 @@ import { Briefcase, Target, CheckCircle2, TrendingUp, Clock, ArrowUpRight } from
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import type { Oportunidad, OportunidadHistorialEtapa } from '@/modules/crm/types/database'
+import { fmtMontoCLP as fmtCLP } from '@/lib/montoCLP'
 
 const ETAPAS = [
   'Clasificación','Oportunidad','Ingeniería','Desarrollo','Costos y Presupuestos',
@@ -42,13 +43,6 @@ interface Notif {
   titulo: string
   mensaje: string | null
   created_at: string
-}
-
-function fmtCLP(n: number) {
-  if (n >= 1_000_000_000) return '$' + (n / 1_000_000_000).toFixed(1) + 'B'
-  if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(0) + 'M'
-  if (n >= 1_000) return '$' + (n / 1_000).toFixed(0) + 'K'
-  return '$' + n.toLocaleString('es-CL')
 }
 
 function fmtFull(n: number) {
@@ -143,7 +137,7 @@ function SeccionPipeline({ titulo, opps, hist, etapas = ETAPAS }: { titulo: stri
               <Briefcase size={16} className="text-slate-500" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-gray-800 truncate">{fmtCLP(st.pipelineMonto)}</p>
+          <p className="text-2xl font-bold text-gray-800 truncate" title={fmtFull(st.pipelineMonto)}>{fmtCLP(st.pipelineMonto)}</p>
           {st.pipelineTrend !== null ? (
             <p className={`text-xs mt-1.5 flex items-center gap-0.5 ${st.pipelineTrend >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
               <ArrowUpRight size={11} className={st.pipelineTrend < 0 ? 'rotate-180' : ''} />
@@ -172,7 +166,7 @@ function SeccionPipeline({ titulo, opps, hist, etapas = ETAPAS }: { titulo: stri
               <CheckCircle2 size={16} className="text-emerald-500" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-gray-800">{st.ganadasMesMonto > 0 ? fmtCLP(st.ganadasMesMonto) : st.ganadasMes.length}</p>
+          <p className="text-2xl font-bold text-gray-800 truncate" title={fmtFull(st.ganadasMesMonto)}>{st.ganadasMesMonto > 0 ? fmtCLP(st.ganadasMesMonto) : st.ganadasMes.length}</p>
           <p className="text-xs text-emerald-600 mt-1.5">{st.ganadasMes.length} oportunidad{st.ganadasMes.length !== 1 ? 'es' : ''} cerrada{st.ganadasMes.length !== 1 ? 's' : ''}</p>
         </div>
 
@@ -203,7 +197,7 @@ function SeccionPipeline({ titulo, opps, hist, etapas = ETAPAS }: { titulo: stri
                   }}
                 />
               </div>
-              <span className="text-xs font-semibold text-gray-700 w-20 text-right flex-shrink-0">
+              <span className="text-xs font-semibold text-gray-700 w-24 text-right flex-shrink-0 whitespace-nowrap" title={fmtFull(st.montoByEtapa[etapa] ?? 0)}>
                 {fmtCLP(st.montoByEtapa[etapa] ?? 0)}
               </span>
               <span className="text-xs text-gray-400 w-4 text-right flex-shrink-0">

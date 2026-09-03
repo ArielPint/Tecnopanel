@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Search, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { fmtMontoCLP } from '@/lib/montoCLP'
 import type { Oportunidad, EtapaOportunidad, TipoVenta } from '@/modules/crm/types/database'
 import OportunidadDrawer from '@/modules/crm/components/OportunidadDrawer'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
@@ -25,7 +26,6 @@ const TIPO_VENTA_LABELS: Record<TipoVenta, string> = {
   VIT: 'VIT',
 }
 
-function formatMM(n: number) { return (n / 1_000_000).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' MM' }
 
 // soloVit separa el pipeline VIT del tradicional: son la misma pantalla, filtrada por
 // tipo_venta. En VIT se ven todas las etapas del flujo, que ya no aparecen en los
@@ -123,7 +123,7 @@ export default function Oportunidades({ soloVit = false }: { soloVit?: boolean }
                       {opp.monto_estimado != null && (
                         <>
                           <p className="text-sm font-bold text-crm-red">{'$' + opp.monto_estimado.toLocaleString('es-CL')}</p>
-                          <p className="text-[10px] text-gray-400">{formatMM(opp.monto_estimado)}</p>
+                          <p className="text-[10px] text-gray-400">{fmtMontoCLP(opp.monto_estimado)}</p>
                         </>
                       )}
                       <p className="text-xs text-gray-400 mt-0.5">{opp.probabilidad ?? 0}%</p>

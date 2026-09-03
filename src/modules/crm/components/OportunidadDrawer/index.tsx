@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { X, ChevronRight, Upload, Link2, FileText, Clock, User, Loader2, Trash2, ExternalLink, MessageCircle, Send, Plus, FileSpreadsheet } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import { fmtMontoCLP } from '@/lib/montoCLP'
 import jsPDF from 'jspdf'
 import { toast } from 'sonner'
 import tecnopanelLogo from '@/assets/tecnopanel-logo-color.png'
@@ -235,7 +236,6 @@ const STAGE_ROLES: Record<string, string[]> = {
   'Negociación': ['admin','gerente_ventas','vendedor','finanzas'],
 }
 
-function formatMM(n: number) { return (n / 1_000_000).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' MM' }
 function diffDias(from: string) {
   return Math.floor((new Date().getTime() - new Date(from).getTime()) / 86400000)
 }
@@ -1347,7 +1347,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
               {opp.monto_estimado != null && (
                 <p className="text-sm font-bold mt-1" style={{color:'#ed3224'}}>
                   {formatCLP(opp.monto_estimado)}
-                  <span className="block text-[11px] font-normal text-gray-400">{formatMM(opp.monto_estimado)}</span>
+                  <span className="block text-[11px] font-normal text-gray-400">{fmtMontoCLP(opp.monto_estimado)}</span>
                 </p>
               )}
             </div>

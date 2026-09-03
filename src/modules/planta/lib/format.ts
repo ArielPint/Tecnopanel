@@ -1,14 +1,10 @@
+import { fmtMontoCLP } from '@/lib/montoCLP'
+
 export const N = (v: unknown): number | null => (v == null || v === '' || isNaN(+v) ? null : +v)
 
 export const fmt = (v: number | null | undefined) => (v == null ? '—' : new Intl.NumberFormat('es-CL').format(Math.round(v)))
 
-export const fmtM = (v: number | null | undefined) => {
-  if (v == null) return '—'
-  const a = Math.abs(v)
-  const s = v < 0 ? '-' : ''
-  if (a >= 1e6) return s + '$' + new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 }).format(a / 1e6) + 'M'
-  return s + '$' + fmt(Math.abs(v))
-}
+export const fmtM = (v: number | null | undefined) => fmtMontoCLP(v)
 
 // Recibe el valor YA en escala 0-100 (a diferencia de formatPct de financiero, que recibe fracción 0-1)
 export const fmtPr = (v: number | null | undefined) => (v == null ? '—' : (+v).toFixed(2) + '%')
