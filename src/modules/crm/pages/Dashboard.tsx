@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Briefcase, Target, CheckCircle2, TrendingUp, Clock, ArrowUpRight } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
+import { usePermisos } from '@/modules/crm/contexts/PermisosContext'
 import type { Oportunidad, OportunidadHistorialEtapa } from '@/modules/crm/types/database'
 import { fmtMontoCLP as fmtCLP } from '@/lib/montoCLP'
 
@@ -12,6 +14,23 @@ const ETAPAS = [
 
 // Las oportunidades VIT no pasan por Ingenieria, Desarrollo, Costos y Presupuestos ni Ventas.
 const ETAPAS_VIT = ['Clasificación','Oportunidad','Negociación']
+
+/* Cada etapa del pipeline tradicional tiene su propio modulo; desde el grafico se salta
+   directo ahi. Clasificacion y Oportunidad no tienen modulo propio: caen en la vista de
+   oportunidades. Las VIT no pasan por los modulos por etapa, asi que siempre van a la
+   vista VIT (ver ETAPAS_VIT). */
+// Solo estos roles ven el cuadro "Actividad Reciente" del dashboard.
+const ROLES_ACTIVIDAD = ['admin', 'gerente_general', 'gerente_ventas']
+
+const ETAPA_DESTINO: Record<string, { ruta: string; permiso: string }> = {
+  'Clasificación':         { ruta: '/crm/oportunidades/tradicional', permiso: 'Oportunidades' },
+  'Oportunidad':           { ruta: '/crm/oportunidades/tradicional', permiso: 'Oportunidades' },
+  'Ingeniería':            { ruta: '/crm/ingenieria',                permiso: 'Ingeniería' },
+  'Desarrollo':            { ruta: '/crm/desarrollo',               permiso: 'Desarrollo' },
+  'Costos y Presupuestos': { ruta: '/crm/cubicacion',               permiso: 'Costos y Presupuestos' },
+  'Ventas':                { ruta: '/crm/revision-vendedor',        permiso: 'Ventas' },
+  'Negociación':           { ruta: '/crm/negociacion',              permiso: 'Negociación' },
+}
 
 const ETAPA_COLORS: Record<string, string> = {
   'Clasificación':          '#64748b',
@@ -118,9 +137,16 @@ function promedioDias(hist: OportunidadHistorialEtapa[]): Record<string, number>
   return avg
 }
 
-function SeccionPipeline({ titulo, opps, hist, etapas = ETAPAS }: { titulo: string; opps: Oportunidad[]; hist: OportunidadHistorialEtapa[]; etapas?: string[] }) {
+function SeccionPipeline({ titulo, opps, hist, etapas = ETAPAS, soloVit = false }: { titulo: string; opps: Oportunidad[]; hist: OportunidadHistorialEtapa[]; etapas?: string[]; soloVit?: boolean }) {
   const st = calcStats(opps, etapas)
   const avgDias = promedioDias(hist)
+  const navigate = useNavigate()
+  const { canAccess } = usePermisos()
+
+  function destino(etapa: string): { ruta: string; permiso: string } {
+    if (soloVit) return { ruta: '/crm/oportunidades/vit', permiso: 'Oportunidades' }
+    return ETAPA_DESTINO[etapa] ?? { ruta: '/crm/oportunidades/tradicional', permiso: 'Oportunidades' }
+  }
 
   return (
     <section className="space-y-4">
@@ -185,8 +211,17 @@ function SeccionPipeline({ titulo, opps, hist, etapas = ETAPAS }: { titulo: stri
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
         <h3 className="text-sm font-semibold text-gray-700 mb-5">Pipeline por Etapa</h3>
         <div className="space-y-3.5">
-          {etapas.map(etapa => (
-            <div key={etapa} className="flex items-center gap-3">
+          {etapas.map(etapa => {
+            const dest = destino(etapa)
+            const clickeable = canAccess(dest.permiso)
+            return (
+            <div key={etapa}
+              onClick={clickeable ? () => navigate(dest.ruta) : undefined}
+              role={clickeable ? 'button' : undefined}
+              tabIndex={clickeable ? 0 : undefined}
+              onKeyDown={clickeable ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(dest.ruta) } } : undefined}
+              title={clickeable ? `Ir a ${etapa}` : undefined}
+              className={'flex items-center gap-3 rounded-lg -mx-2 px-2 py-1 ' + (clickeable ? 'cursor-pointer hover:bg-slate-50' : '')}>
               <span className="text-xs text-gray-500 w-24 sm:w-40 truncate flex-shrink-0">{etapa}</span>
               <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden">
                 <div
@@ -209,7 +244,8 @@ function SeccionPipeline({ titulo, opps, hist, etapas = ETAPAS }: { titulo: stri
                 </span>
               )}
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </section>
@@ -218,6 +254,7 @@ function SeccionPipeline({ titulo, opps, hist, etapas = ETAPAS }: { titulo: stri
 
 export default function Dashboard() {
   const { profile } = useAuth()
+  const navigate = useNavigate()
   const [opps, setOpps] = useState<Oportunidad[]>([])
   const [hist, setHist] = useState<OportunidadHistorialEtapa[]>([])
   const [notifs, setNotifs] = useState<Notif[]>([])
@@ -245,8 +282,9 @@ export default function Dashboard() {
   const avgDias = promedioDias(hist)
 
   /* ── Actividad reciente: notificaciones + historial como fallback ──
-     Solo admin y gerente_ventas ven la actividad de todos; el resto, solo la propia. */
-  const veTodo = profile?.rol === 'admin' || profile?.rol === 'gerente_ventas'
+     El cuadro completo es solo para gerencias y administrador (ROLES_ACTIVIDAD); un
+     usuario normal no ve la actividad del equipo, ya tiene la suya en la campana. */
+  const veTodo = ROLES_ACTIVIDAD.includes(profile?.rol ?? '')
   const actReciente = notifs.length >= 3 ? notifs : [
     ...notifs,
     ...hist
@@ -281,10 +319,11 @@ export default function Dashboard() {
         Bienvenido, <span className="font-semibold text-gray-700">{profile?.nombre} {profile?.apellido}</span>
       </p>
 
-      <SeccionPipeline titulo="Oportunidades VIT" opps={oppsVit} hist={hist.filter(h => idsVit.has(h.oportunidad_id))} etapas={ETAPAS_VIT} />
+      <SeccionPipeline titulo="Oportunidades VIT" opps={oppsVit} hist={hist.filter(h => idsVit.has(h.oportunidad_id))} etapas={ETAPAS_VIT} soloVit />
       <SeccionPipeline titulo="Oportunidades Tradicional" opps={oppsTrad} hist={hist.filter(h => !idsVit.has(h.oportunidad_id))} />
 
-      {/* Actividad reciente */}
+      {/* Actividad reciente — solo gerencias y admin */}
+      {veTodo && (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
         <h2 className="text-sm font-semibold text-gray-700 mb-4">Actividad Reciente</h2>
         {actReciente.length === 0 ? (
@@ -306,6 +345,7 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+      )}
 
       {/* Tiempo promedio por etapa */}
       {Object.keys(avgDias).length > 0 && (
@@ -330,7 +370,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-700">Oportunidades Recientes</h2>
-            <a href="/crm/oportunidades/tradicional" className="text-xs text-crm-red hover:underline font-medium">Ver todas →</a>
+            <Link to="/crm/oportunidades/tradicional" className="text-xs text-crm-red hover:underline font-medium">Ver todas →</Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -345,7 +385,12 @@ export default function Dashboard() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {oppsRecientes.map(o => (
-                  <tr key={o.id} className="hover:bg-slate-50 transition-colors">
+                  /* La fila vino del select de `oportunidades`, ya filtrado por RLS: si el
+                     usuario la ve aca, tambien puede abrirla. */
+                  <tr key={o.id} onClick={() => navigate(`/crm/oportunidad/${o.id}`)}
+                    onKeyDown={e => { if (e.key === 'Enter') navigate(`/crm/oportunidad/${o.id}`) }}
+                    tabIndex={0} role="button" title={`Abrir ${o.codigo}`}
+                    className="hover:bg-slate-50 transition-colors cursor-pointer">
                     <td className="px-6 py-3.5">
                       <p className="text-sm font-medium text-gray-800 truncate max-w-[180px]">{o.nombre}</p>
                       <p className="text-[11px] text-gray-400 font-mono">{o.codigo}</p>

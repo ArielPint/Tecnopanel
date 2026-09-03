@@ -14,6 +14,8 @@ import Desarrollo from './pages/Desarrollo'
 import Cubicacion from './pages/Cubicacion'
 import Negociacion from './pages/Negociacion'
 import RevisionVendedor from './pages/RevisionVendedor'
+import Reporteria from './pages/Reporteria'
+import OportunidadLink from './pages/OportunidadLink'
 
 function ProtectedModule({ modulo, children }: { modulo: string; children: React.ReactNode }) {
   const { profile } = useAuth()
@@ -80,6 +82,11 @@ function CrmRoutes() {
         <Route path="negociacion" element={<ProtectedModule modulo="Negociación"><Negociacion /></ProtectedModule>} />
         <Route path="revision-vendedor" element={<ProtectedModule modulo="Ventas"><RevisionVendedor /></ProtectedModule>} />
         <Route path="clientes" element={<ProtectedModule modulo="Clientes"><Clientes /></ProtectedModule>} />
+        <Route path="reporteria" element={<ProtectedModule modulo="Reportería"><Reporteria /></ProtectedModule>} />
+        {/* Enlace directo desde notificaciones y dashboard — el acceso lo resuelve el RLS
+            de `oportunidades`, no un permiso de modulo (un ingeniero puede llegar aca por
+            una tarea asignada sin tener el modulo Oportunidades). */}
+        <Route path="oportunidad/:id" element={<OportunidadLink />} />
         <Route path="usuarios" element={<Navigate to="/usuarios" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="dashboard" replace />} />

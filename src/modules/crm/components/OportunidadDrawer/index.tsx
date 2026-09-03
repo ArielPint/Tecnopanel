@@ -254,14 +254,17 @@ interface Props {
   oportunidad: Oportunidad
   onClose: () => void
   onUpdate: () => void
+  /** Pestaña inicial — la usan los enlaces directos (notificaciones) para aterrizar
+   * en la parte relevante, p.ej. una tarea asignada abre la pestaña de etapa. */
+  initialTab?: Tab
 }
 
-type Tab = 'general' | 'etapa' | 'docs' | 'historial' | 'chat'
+export type Tab = 'general' | 'etapa' | 'docs' | 'historial' | 'chat'
 
-export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Props) {
+export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, initialTab = 'general' }: Props) {
   const { profile } = useAuth()
   const { canAccess } = usePermisos()
-  const [tab, setTab] = useState<Tab>('general')
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [opp, setOpp] = useState<Oportunidad>(oportunidad)
   const [usuarios, setUsuarios] = useState<PerfilBasico[]>([])
   const [etapaData, setEtapaData] = useState<Record<string, string>>({})
@@ -300,7 +303,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate }: Pr
   const entregableRef = useRef<HTMLInputElement>(null)
   const tareaFileRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { setOpp(oportunidad); setTab('general'); loadAll() }, [oportunidad.id])
+  useEffect(() => { setOpp(oportunidad); setTab(initialTab); loadAll() }, [oportunidad.id])
 
   useEffect(() => {
     supabase.from('tipologia_vit_precios').select('tipologia,venta_actual_uf').order('venta_actual_uf')

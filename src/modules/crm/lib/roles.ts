@@ -12,7 +12,7 @@ export const ROL_META: Record<string, { label: string; badge: string; descripcio
   desarrollador:   { label:'Desarrollador',      badge:'bg-fuchsia-100 text-fuchsia-700', descripcion:'Entrega de planos y fichas en etapa Desarrollo' },
 }
 
-export const MODULOS = ['Dashboard','Oportunidades','Ingeniería','Ganadas y Perdidas','Desarrollo','Costos y Presupuestos','Negociación','Ventas','Clientes','Usuarios']
+export const MODULOS = ['Dashboard','Oportunidades','Ingeniería','Ganadas y Perdidas','Desarrollo','Costos y Presupuestos','Negociación','Ventas','Clientes','Reportería','Usuarios']
 
 // Acciones granulares por módulo CRM (accion != 'ver'), mapeadas 1:1 contra lo que el RLS
 // real de la base de datos exige (has_crm_permiso, fase_h). Módulos sin entrada aquí solo
@@ -55,8 +55,8 @@ export const CRM_ACCION_GROUPS: Record<string, { key: string; label: string }[]>
 // Permisos de página que trae un rol por defecto al crearlo (el admin luego puede ajustar por usuario)
 export const DEFAULT_MODULOS: Record<string, string[]> = {
   admin:           MODULOS,
-  gerente_general: ['Dashboard','Oportunidades','Ingeniería','Ganadas y Perdidas','Desarrollo','Costos y Presupuestos','Negociación','Ventas','Clientes'],
-  gerente_ventas:  ['Dashboard','Oportunidades','Clientes','Ventas'],
+  gerente_general: ['Dashboard','Oportunidades','Ingeniería','Ganadas y Perdidas','Desarrollo','Costos y Presupuestos','Negociación','Ventas','Clientes','Reportería'],
+  gerente_ventas:  ['Dashboard','Oportunidades','Clientes','Ventas','Reportería'],
   vendedor:        ['Dashboard','Oportunidades','Clientes','Ventas'],
   jefe_ingenieria: ['Dashboard','Ingeniería','Ganadas y Perdidas','Desarrollo'],
   ingeniero:       ['Dashboard','Ingeniería','Ganadas y Perdidas'],

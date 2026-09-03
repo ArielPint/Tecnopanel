@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Bell, CheckCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
@@ -9,6 +10,7 @@ interface Notif {
   tipo: string
   titulo: string
   mensaje: string | null
+  oportunidad_id: string | null
   leida: boolean
   created_at: string
 }
@@ -34,6 +36,7 @@ const TIPO_LABEL: Record<string, { icon: string; color: string }> = {
 
 export default function NotificationsBell() {
   const { profile } = useAuth()
+  const navigate = useNavigate()
   const [notifs, setNotifs] = useState<Notif[]>([])
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -42,7 +45,7 @@ export default function NotificationsBell() {
     if (!profile?.id) return
     const { data, error } = await supabase
       .from('notifications')
-      .select('id,tipo,titulo,mensaje,leida,created_at')
+      .select('id,tipo,titulo,mensaje,oportunidad_id,leida,created_at')
       .eq('user_id', profile.id)
       .order('created_at', { ascending: false })
       .limit(20)
@@ -65,6 +68,21 @@ export default function NotificationsBell() {
     const { error } = await supabase.from('notifications').update({ leida: true }).eq('user_id', profile.id).eq('leida', false)
     if (handleSupabaseError(error, 'NotificationsBell.markAllRead')) return
     setNotifs(n => n.map(x => ({ ...x, leida: true })))
+  }
+
+  /* Una notificacion de asignacion (oportunidad o tarea) aterriza en la pestaña de
+     etapa, que es donde viven las tareas; el resto abre la oportunidad en General. */
+  async function abrir(n: Notif) {
+    if (!n.oportunidad_id) return
+    setOpen(false)
+    if (!n.leida) {
+      const { error } = await supabase.from('notifications').update({ leida: true }).eq('id', n.id)
+      if (!handleSupabaseError(error, 'NotificationsBell.abrir')) {
+        setNotifs(ns => ns.map(x => x.id === n.id ? { ...x, leida: true } : x))
+      }
+    }
+    const tab = n.tipo === 'asignacion' ? '?tab=etapa' : ''
+    navigate(`/crm/oportunidad/${n.oportunidad_id}${tab}`)
   }
 
   function toggle() {
@@ -107,15 +125,24 @@ export default function NotificationsBell() {
               <div className="divide-y divide-gray-50">
                 {notifs.map(n => {
                   const meta = TIPO_LABEL[n.tipo] ?? { icon: '📌', color: '#64748b' }
+                  const linkeable = !!n.oportunidad_id
                   return (
-                    <div key={n.id} className={`flex gap-3 px-4 py-3 ${!n.leida ? 'bg-red-50/30' : ''}`}>
+                    <div key={n.id}
+                      onClick={linkeable ? () => abrir(n) : undefined}
+                      role={linkeable ? 'button' : undefined}
+                      tabIndex={linkeable ? 0 : undefined}
+                      onKeyDown={linkeable ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(n) } } : undefined}
+                      className={`flex gap-3 px-4 py-3 ${!n.leida ? 'bg-red-50/30' : ''} ${linkeable ? 'cursor-pointer hover:bg-slate-50' : ''}`}>
                       <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-sm flex-shrink-0 mt-0.5">
                         {meta.icon}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-gray-800 leading-snug">{n.titulo}</p>
                         {n.mensaje && <p className="text-[11px] text-gray-400 mt-0.5 truncate">{n.mensaje}</p>}
-                        <p className="text-[10px] text-gray-300 mt-1">{tiempoRelativo(n.created_at)}</p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <p className="text-[10px] text-gray-300">{tiempoRelativo(n.created_at)}</p>
+                          {linkeable && <span className="text-[10px] text-crm-red font-medium">Abrir →</span>}
+                        </div>
                       </div>
                       {!n.leida && <div className="w-2 h-2 bg-crm-red rounded-full mt-2 flex-shrink-0" />}
                     </div>
