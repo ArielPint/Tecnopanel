@@ -133,12 +133,12 @@ export async function loadDespachos(proyectoId: string): Promise<DespachoSupaRow
   const data = await unwrap(
     supabase
       .from('despachos_gd')
-      .select('fecha_despacho, gd_numero, modulo_nro_serie, cantidad, monto_neto, modulo, torre, tipo')
+      .select('fecha_gd, gd_numero, modulo_nro_serie, cantidad, monto_neto, modulo, torre, tipo')
       .eq('proyecto_id', proyectoId)
       .order('fecha_gd', { ascending: true }),
   )
   return (data ?? []).map((r) => ({
-    fecha: r.fecha_despacho, gd: r.gd_numero, serie: r.modulo_nro_serie,
+    fecha: r.fecha_gd, gd: r.gd_numero, serie: r.modulo_nro_serie,
     cant: r.cantidad != null ? parseFloat(r.cantidad) : null,
     monto: r.monto_neto != null ? parseFloat(r.monto_neto) : null,
     modulo: r.modulo, torre: r.torre, tipo: r.tipo,
