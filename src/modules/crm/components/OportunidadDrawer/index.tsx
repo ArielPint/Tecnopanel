@@ -13,7 +13,7 @@ import { formatCLP } from '@/modules/financiero/utils/formatters'
 import MontoInput from '@/components/MontoInput'
 import type { Oportunidad, Profile, PerfilBasico, OportunidadHistorialEtapa, OportunidadDocumento, TareaIngenieria, EstadoTarea, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit, MargenAutorizacion } from '@/modules/crm/types/database'
 import { familiasVisibles, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
-import { notificar, ROLES_GERENCIA, ROLES_AUTORIZAN_MARGEN } from '@/modules/crm/lib/notificaciones'
+import { notificar, ROLES_GERENCIA, ROLES_GERENCIA_ADMIN } from '@/modules/crm/lib/notificaciones'
 
 const REGIONES = Object.keys(REGIONES_COMUNAS)
 
@@ -723,7 +723,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
     setAutorizaciones(as => [data as MargenAutorizacion, ...as])
     toast.info(`Margen bajo el ${MARGEN_MINIMO}%: se solicitó autorización a gerencia`)
     await notificar(
-      usuarios.filter(u => ROLES_AUTORIZAN_MARGEN.includes(u.rol)).map(u => ({
+      usuarios.filter(u => ROLES_GERENCIA_ADMIN.includes(u.rol)).map(u => ({
         user_id: u.id, tipo: 'margen_autorizacion', oportunidad_id: opp.id,
         titulo: `Autorización de margen ${valor}% · ${opp.nombre}`,
         mensaje: `${opp.codigo} · margen bajo el mínimo de ${MARGEN_MINIMO}%, requiere tu autorización`,
@@ -751,8 +751,9 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   }
 
   async function saveGeneral() {
+    if (!puedeEditar) { toast.error('Solo gerencia puede editar oportunidades de otro vendedor'); return }
     setSaving(true)
-    const { error } = await supabase.from('oportunidades').update({
+    const { data, error } = await supabase.from('oportunidades').update({
       nombre: opp.nombre, monto_estimado: opp.monto_estimado,
       probabilidad: opp.probabilidad, fecha_cierre_est: opp.fecha_cierre_est,
       descripcion: opp.descripcion, tipo_venta: opp.tipo_venta,
@@ -764,10 +765,11 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
       familia_productos: opp.familia_productos, alcances: opp.alcances,
       nombre_comite_vivienda: opp.nombre_comite_vivienda, nombre_constructora: opp.nombre_constructora,
       zona_termica: opp.zona_termica, valor_uf: opp.valor_uf,
-    }).eq('id', opp.id)
+    }).eq('id', opp.id).select('id')
     if (tieneTipologias) await guardarLineas()
     setSaving(false)
     if (handleSupabaseError(error, 'OportunidadDrawer.saveGeneral')) return
+    if (!data?.length) { toast.error('No tenés permiso para guardar esta oportunidad'); return }
     onUpdate()
   }
 
@@ -814,7 +816,19 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
       profile?.id,
       ...usuarios.filter(u => ROLES_GERENCIA.includes(u.rol)).map(u => u.id),
     ].filter((id): id is string => !!id))]
-    await notificar(destinatarios.map(user_id => ({ user_id, oportunidad_id: opp.id, ...notif })), 'OportunidadDrawer.cambiarEtapa.notify')
+    // Al entrar a Ingenieria, el jefe de ingenieria recibe en vez del aviso generico uno
+    // accionable: tipo 'asignacion' hace que la campana aterrice en la pestana de etapa,
+    // que es donde se crean las tareas.
+    const jefesIngenieria = usuarios.filter(u => u.rol === 'jefe_ingenieria').map(u => u.id)
+    await notificar(destinatarios.map(user_id =>
+      newEtapa === 'Ingeniería' && jefesIngenieria.includes(user_id)
+        ? {
+            user_id, oportunidad_id: opp.id, tipo: 'asignacion',
+            titulo: `${opp.nombre} entró a Ingeniería — asignar tareas`,
+            mensaje: `${opp.codigo} · de ${opp.etapa_actual} a Ingeniería`,
+          }
+        : { user_id, oportunidad_id: opp.id, ...notif },
+    ), 'OportunidadDrawer.cambiarEtapa.notify')
     setSaving(false)
     return true
   }
@@ -947,7 +961,9 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   const margenBajo = opp.margen_porcentaje != null && opp.margen_porcentaje < MARGEN_MINIMO
   const margenAprobado = autorizaciones.some(a => a.estado === 'aprobado' && Number(a.margen_solicitado) === opp.margen_porcentaje)
   const autorizacionVigente = autorizaciones.find(a => Number(a.margen_solicitado) === opp.margen_porcentaje) ?? null
-  const puedeAutorizarMargen = ROLES_AUTORIZAN_MARGEN.includes(profile?.rol ?? '')
+  // Gerencia y admin editan cualquier oportunidad; el resto, solo las propias.
+  const esGerencia = ROLES_GERENCIA_ADMIN.includes(profile?.rol ?? '')
+  const puedeEditar = esGerencia || opp.vendedor_id === profile?.id
   const bloqueoTareas = tareasAbiertas.length
     ? `Hay ${tareasAbiertas.length} tarea${tareasAbiertas.length > 1 ? 's' : ''} sin completar en esta oportunidad`
     : ''
@@ -1311,7 +1327,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
                   Solicitar autorización
                 </button>
               )}
-              {autorizacionVigente?.estado === 'pendiente' && (puedeAutorizarMargen ? (
+              {autorizacionVigente?.estado === 'pendiente' && (esGerencia ? (
                 <div className="space-y-2">
                   <textarea value={comentarioMargen} onChange={ev => setComentarioMargen(ev.target.value)} rows={2}
                     placeholder="Comentario (opcional)"
@@ -1502,6 +1518,13 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
             <div className="flex items-center justify-center h-32"><Loader2 size={20} className="animate-spin text-gray-400" /></div>
           ) : tab === 'general' ? (
             <div className="space-y-4">
+              {!puedeEditar && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  Esta oportunidad es de otro vendedor: solo gerencia puede editarla.
+                </p>
+              )}
+              {/* fieldset nativo: deshabilita de una todos los campos de adentro. */}
+              <fieldset disabled={!puedeEditar} className="space-y-4 min-w-0">
               <div><label className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
                 <input value={opp.nombre} onChange={e => setOpp(o => ({...o,nombre:e.target.value}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1654,6 +1677,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
               <button onClick={saveGeneral} disabled={saving} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
                 {saving && <Loader2 size={14} className="animate-spin" />}{saving ? 'Guardando...' : 'Guardar cambios'}
               </button>
+              </fieldset>
             </div>
           ) : tab === 'etapa' ? (
             <div className="space-y-4">

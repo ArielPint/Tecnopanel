@@ -12,8 +12,9 @@ export interface NuevaNotificacion {
 /** Gerentes y jefes: además del vendedor, reciben aviso de cada cambio de etapa. */
 export const ROLES_GERENCIA = ['gerente_general', 'gerente_ventas', 'jefe_ingenieria']
 
-/** Quienes pueden aprobar un margen bajo el mínimo — espejo de public.crm_es_gerente(). */
-export const ROLES_AUTORIZAN_MARGEN = ['admin', 'gerente_general', 'gerente_ventas']
+/** Gerencia y administración — espejo de public.crm_es_gerente(). Son quienes editan
+ *  oportunidades de otros vendedores y quienes aprueban un margen bajo el mínimo. */
+export const ROLES_GERENCIA_ADMIN = ['admin', 'gerente_general', 'gerente_ventas']
 
 /** Único punto de creación de notificaciones del CRM: inserta las filas que alimentan la
  *  campana y dispara el correo con los ids recién creados. La edge function relee el
