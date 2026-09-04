@@ -33,7 +33,10 @@ Deno.serve(async (req) => {
   const { data: caller, error: callerErr } = await admin.auth.getUser(token)
   if (callerErr || !caller.user) return json({ error: 'No autenticado' }, 401)
 
-  if (!RESEND_API_KEY) return json({ error: 'Falta RESEND_API_KEY' }, 500)
+  if (!RESEND_API_KEY) {
+    console.error('Falta el secret RESEND_API_KEY en el proyecto: no se puede enviar correo')
+    return json({ error: 'Falta RESEND_API_KEY' }, 500)
+  }
 
   const { notification_ids } = await req.json()
   if (!Array.isArray(notification_ids) || notification_ids.length === 0) {
@@ -44,10 +47,15 @@ Deno.serve(async (req) => {
     .from('notifications')
     .select('id,titulo,mensaje,oportunidad_id,user_id,profiles:user_id(nombre,email)')
     .in('id', notification_ids.slice(0, 50))
-  if (error) return json({ error: error.message }, 500)
+  if (error) {
+    console.error('No se pudieron leer las notificaciones', error.message)
+    return json({ error: error.message }, 500)
+  }
 
   const origin = req.headers.get('origin') ?? ''
   let enviados = 0
+  const fallos: string[] = []
+  console.log('notificaciones a enviar:', (notifs ?? []).length, '| from:', FROM_EMAIL)
 
   for (const n of notifs ?? []) {
     const perfil = n.profiles as { nombre: string; email: string } | null
@@ -67,8 +75,16 @@ Deno.serve(async (req) => {
       body: JSON.stringify({ from: FROM_EMAIL, to: perfil.email, subject: n.titulo, html }),
     })
     if (resp.ok) enviados++
-    else console.error('Resend rechazó el envío', await resp.text())
+    else {
+      const detalle = await resp.text()
+      console.error('Resend rechazó el envío a', perfil.email, '->', detalle)
+      fallos.push(detalle)
+    }
   }
 
-  return json({ ok: true, enviados })
+  // Si no salio ninguno habiendo destinatarios, es un fallo real y el cliente debe verlo.
+  if (enviados === 0 && (notifs ?? []).length > 0) {
+    return json({ error: fallos[0] ?? 'Ningun destinatario tenia correo registrado' }, 500)
+  }
+  return json({ ok: true, enviados, fallidos: fallos.length })
 })

@@ -32,6 +32,7 @@ const TIPO_LABEL: Record<string, { icon: string; color: string }> = {
   etapa_cambio:      { icon: '→',   color: '#f59e0b' },
   asignacion:        { icon: '👤',  color: '#8b5cf6' },
   estado_final:      { icon: '✓',   color: '#22c55e' },
+  margen_autorizacion: { icon: '%', color: '#ed3224' },
 }
 
 export default function NotificationsBell() {

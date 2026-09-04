@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient'
+import { toast } from 'sonner'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 
 export interface NuevaNotificacion {
@@ -32,5 +33,10 @@ export async function notificar(rows: NuevaNotificacion[], contexto: string) {
   const { error: mailErr } = await supabase.functions.invoke('crm-notificar-email', {
     body: { notification_ids: ids },
   })
-  if (mailErr) console.error(contexto + '.email', mailErr)
+  // El correo es best-effort, pero no puede fallar en silencio: la campana ya quedo
+  // guardada, asi que se avisa sin cortar el flujo.
+  if (mailErr) {
+    console.error(contexto + '.email', mailErr)
+    toast.warning('El aviso quedó en la campana, pero el correo no se pudo enviar')
+  }
 }
