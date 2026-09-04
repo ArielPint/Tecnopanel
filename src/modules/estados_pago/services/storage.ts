@@ -1,11 +1,15 @@
 import { supabase } from '@/lib/supabaseClient'
+import { nombreParaStorage } from '@/lib/storageKey'
 
 // Mismo patrón que financiero/services/pdfStorage.ts — bucket propio, path por
 // id de registro (no por número, que puede repetirse o no ser único).
 const BUCKET = 'estados-pago-docs'
 
+// El nombre va saneado: Storage rechaza con HTTP 400 las claves con caracteres fuera
+// de su charset, asi que un archivo con tilde o ñ no subia nunca. El nombre original
+// se guarda aparte, en estados_pago*_documentos.nombre, que es lo que se muestra.
 export function documentoPath(estadoPagoId: string, documentoId: string, nombreArchivo: string) {
-  return `${estadoPagoId}/${documentoId}-${nombreArchivo}`
+  return `${estadoPagoId}/${documentoId}-${nombreParaStorage(nombreArchivo)}`
 }
 
 export async function subirDocumento(file: File, path: string): Promise<string> {
