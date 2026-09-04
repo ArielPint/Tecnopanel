@@ -217,11 +217,27 @@ export function semanaInicioDe(fechaIso: string): string {
   return lunesDeSemana(new Date(fechaIso + 'T12:00:00')).toISOString().slice(0, 10)
 }
 
+export interface VentanaSemanas {
+  atras: number
+  adelante: number
+}
+
 // Arma la grilla semanal a partir de las entregas aplanadas (buildEntregasFlat).
-export function buildEntregaSemanas(entregas: EntregaItem[]): EntregaSemana[] {
-  if (!entregas.length) return []
+// Con `ventana` siempre se muestran esas semanas alrededor de hoy (aunque estén
+// vacías); las semanas con entregas fuera de la ventana igual se agregan, para no
+// esconder asignaciones existentes.
+export function buildEntregaSemanas(entregas: EntregaItem[], ventana?: VentanaSemanas): EntregaSemana[] {
+  if (!entregas.length && !ventana) return []
 
   const porSemana = new Map<string, Map<string, EntregaItem[]>>()
+  if (ventana) {
+    const lunesHoy = lunesDeSemana(new Date())
+    for (let i = -ventana.atras; i <= ventana.adelante; i++) {
+      const d = new Date(lunesHoy)
+      d.setDate(d.getDate() + i * 7)
+      porSemana.set(d.toISOString().slice(0, 10), new Map())
+    }
+  }
   for (const item of entregas) {
     const fecha = new Date(item.fecha + 'T12:00:00')
     const inicio = lunesDeSemana(fecha).toISOString().slice(0, 10)

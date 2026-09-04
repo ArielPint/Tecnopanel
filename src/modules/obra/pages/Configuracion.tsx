@@ -214,7 +214,7 @@ function AsignacionesCard() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <CardTitle>🏗️ Asignación de subcontrato y fecha de entrega</CardTitle>
-            <CardDescription>Por módulo pendiente de término — hasta 4 asignaciones (Terminaciones, Eléctrico, Sanitario, Ventanas), cada una con su propio subcontrato y fecha.</CardDescription>
+            <CardDescription>Por módulo pendiente de término — hasta 4 asignaciones (Terminaciones, Eléctrico, Sanitario, Ventanas), cada una con su propio subcontrato y fecha. Arrastrá un módulo a otro día para reprogramarlo.</CardDescription>
           </div>
           <Button onClick={guardarCambios} disabled={!cambios.size || guardando}>
             {guardando ? 'Guardando…' : `Guardar cambios${cambios.size ? ` (${cambios.size})` : ''}`}
@@ -259,9 +259,11 @@ function AsignacionesCard() {
             </div>
 
             <CalendarioEntregas
+              ventana={{ atras: 1, adelante: 4 }}
               entregas={entregas}
               onEntregaClick={(item) => setDialogo({ moduloNum: item.moduloNum, categoria: item.categoria, nuevo: false })}
               onDiaClick={(fecha) => setDialogo({ moduloNum: null, categoria: null, nuevo: true, fechaInicial: fecha })}
+              onMoverEntrega={(item, nuevaFecha) => confirmarCambio({ moduloNum: item.moduloNum, categoria: item.categoria, subcontrato: item.subcontrato, fechaEntrega: nuevaFecha })}
               esPendiente={(item) => cambios.has(claveCambio(item.moduloNum, item.categoria))}
               emptyMessage="Sin asignaciones todavía — elegí un módulo de la lista o hacé clic en un día para programarlo."
             />
