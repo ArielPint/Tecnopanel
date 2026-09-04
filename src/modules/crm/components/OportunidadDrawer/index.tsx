@@ -958,14 +958,17 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   // Bloqueos de avance (espejo de crm_cambiar_etapa): tareas abiertas y margen bajo el
   // minimo sin autorizacion aprobada. Se muestran aca para no depender del error del RPC.
   const tareasAbiertas = tareas.filter(t => t.estado === 'pendiente' || t.estado === 'en_progreso')
+  // Las tareas se crean en Ingenieria y se gestionan en Desarrollo, asi que la traba por
+  // tareas sin completar aplica solo al salir de Desarrollo.
+  const exigeTareasCompletas = opp.etapa_actual === 'Desarrollo'
   const margenBajo = opp.margen_porcentaje != null && opp.margen_porcentaje < MARGEN_MINIMO
   const margenAprobado = autorizaciones.some(a => a.estado === 'aprobado' && Number(a.margen_solicitado) === opp.margen_porcentaje)
   const autorizacionVigente = autorizaciones.find(a => Number(a.margen_solicitado) === opp.margen_porcentaje) ?? null
   // Gerencia y admin editan cualquier oportunidad; el resto, solo las propias.
   const esGerencia = ROLES_GERENCIA_ADMIN.includes(profile?.rol ?? '')
   const puedeEditar = esGerencia || opp.vendedor_id === profile?.id
-  const bloqueoTareas = tareasAbiertas.length
-    ? `Hay ${tareasAbiertas.length} tarea${tareasAbiertas.length > 1 ? 's' : ''} sin completar en esta oportunidad`
+  const bloqueoTareas = exigeTareasCompletas && tareasAbiertas.length
+    ? `Hay ${tareasAbiertas.length} tarea${tareasAbiertas.length > 1 ? 's' : ''} sin completar: no se puede avanzar desde Desarrollo`
     : ''
   const bloqueoMargen = margenBajo && !margenAprobado
     ? `El margen de ${opp.margen_porcentaje}% está bajo el mínimo de ${MARGEN_MINIMO}% y necesita autorización de gerencia`
