@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { X, ChevronRight, Upload, Link2, FileText, Clock, User, Loader2, Trash2, ExternalLink, MessageCircle, Send, Plus, FileSpreadsheet } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { fmtMontoCLP } from '@/lib/montoCLP'
+import { nombreParaStorage } from '@/lib/storageKey'
 import jsPDF from 'jspdf'
 import { toast } from 'sonner'
 import tecnopanelLogo from '@/assets/tecnopanel-logo-color.png'
@@ -581,7 +582,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
     setSavingOc(true)
     let storagePath = cierre?.storage_oc_path ?? null
     if (ocFile) {
-      const path = opp.id + '/oc-' + Date.now() + '-' + ocFile.name
+      const path = opp.id + '/oc-' + Date.now() + '-' + nombreParaStorage(ocFile.name)
       const { error: upErr } = await supabase.storage.from('oportunidades').upload(path, ocFile)
       if (upErr) { setSavingOc(false); handleSupabaseError(upErr, 'OportunidadDrawer.guardarOc.upload'); return }
       storagePath = path
@@ -879,7 +880,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   async function uploadFile(file: File, tareaId?: string) {
     setUploading(true)
     const ext = file.name.split('.').pop() ?? ''
-    const path = opp.id + '/' + Date.now() + '-' + file.name
+    const path = opp.id + '/' + Date.now() + '-' + nombreParaStorage(file.name)
     const { error: upErr } = await supabase.storage.from('oportunidades').upload(path, file)
     if (handleSupabaseError(upErr, 'OportunidadDrawer.uploadFile.storage')) { setUploading(false); return }
     const { error: docErr } = await supabase.from('oportunidad_documentos').insert({

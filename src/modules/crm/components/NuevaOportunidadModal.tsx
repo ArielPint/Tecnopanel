@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Loader2, X } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { nombreParaStorage } from '@/lib/storageKey'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import MontoInput from '@/components/MontoInput'
 import type { TipoVenta, TipoSubsidioVit, ZonaTermicaVit, TipologiaVitPrecio } from '@/modules/crm/types/database'
@@ -230,7 +231,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
 
     if (archivo && oportunidadId) {
       const ext = archivo.name.split('.').pop() ?? ''
-      const path = oportunidadId + '/' + Date.now() + '-' + archivo.name
+      const path = oportunidadId + '/' + Date.now() + '-' + nombreParaStorage(archivo.name)
       const { error: upErr } = await supabase.storage.from('oportunidades').upload(path, archivo)
       if (!upErr) {
         await supabase.from('oportunidad_documentos').insert({
