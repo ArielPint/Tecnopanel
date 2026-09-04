@@ -451,6 +451,9 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   }
 
   async function generarPresupuestoPdf() {
+    // El PDF sale con los precios ya calculados con el margen: si ese margen esta bajo el
+    // minimo y no tiene autorizacion aprobada, no se emite.
+    if (bloqueoMargen) { toast.error(bloqueoMargen); return }
     let items: CubicacionItem[] = []
     try { items = JSON.parse(costosData['cubicacion_items_json'] || '[]') } catch { items = [] }
     if (items.length === 0) return
@@ -1371,11 +1374,13 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
           {ta('condiciones_comerciales','Condiciones comerciales','Formas de pago, garantias...')}{ta('notas_revision','Notas del vendedor','')}
           <div className="pt-3 border-t border-gray-200">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pb-2">Presupuesto final</p>
-            <button onClick={generarPresupuestoPdf} disabled={generandoPdf || costosItems.length === 0}
+            <button onClick={generarPresupuestoPdf} disabled={generandoPdf || costosItems.length === 0 || !!bloqueoMargen}
+              title={bloqueoMargen || undefined}
               className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
               {generandoPdf && <Loader2 size={14} className="animate-spin" />}{generandoPdf ? 'Generando...' : 'Generar Presupuesto PDF'}
             </button>
             {costosItems.length === 0 && <p className="text-xs text-gray-400 mt-1">Falta la cubicación cargada en Costos y Presupuestos.</p>}
+            {!!bloqueoMargen && <p className="text-xs text-amber-600 mt-1">{bloqueoMargen}: no se puede emitir el presupuesto.</p>}
             {presupuestoPdfUrl && (
               <a href={presupuestoPdfUrl} target="_blank" rel="noreferrer" download={`Presupuesto ${opp.codigo}.pdf`}
                 className="w-full py-2 border border-green-200 bg-green-50 text-green-700 rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-green-100 mt-2">
