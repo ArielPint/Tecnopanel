@@ -972,9 +972,9 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   const esGerencia = ROLES_GERENCIA_ADMIN.includes(profile?.rol ?? '')
   // Dueño o gerencia: gobierna la edicion y el cierre (Ganado / Perdido).
   const esDuenoOGerencia = esGerencia || opp.vendedor_id === profile?.id
-  // Una oportunidad ganada queda congelada, ni siquiera para su dueño.
-  const motivoNoEdita = opp.etapa_actual === 'Ganado'
-    ? 'La oportunidad está ganada: sus datos ya no se editan'
+  // Una oportunidad cerrada queda congelada, ni siquiera para su dueño.
+  const motivoNoEdita = isTerminal
+    ? `La oportunidad está ${opp.etapa_actual === 'Ganado' ? 'ganada' : 'perdida'}: sus datos ya no se editan`
     : !esDuenoOGerencia ? 'Esta oportunidad es de otro vendedor: solo gerencia puede editarla' : ''
   const puedeEditar = !motivoNoEdita
   const motivoNoCierra = esDuenoOGerencia ? '' : 'Solo el vendedor de la oportunidad o gerencia puede cerrarla'
