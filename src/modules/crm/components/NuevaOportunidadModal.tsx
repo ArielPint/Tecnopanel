@@ -30,7 +30,14 @@ export const ZONAS_TERMICAS: ZonaTermicaVit[] = ['A', 'B', 'C', 'D', 'E', 'F', '
 
 export const TIPO_SUBSIDIO_OPCIONES: TipoSubsidioVit[] = ['DS49', 'DS10', 'DS01']
 
-export const FAMILIA_PRODUCTOS_OPCIONES = ['TecnoPanel', 'TecnoTruss', 'TecnoFrame', 'Escaleras'] as const
+export const FAMILIA_PRODUCTOS_OPCIONES = ['TecnoPanel', 'TecnoTruss Cerchas', 'TecnoTruss Paneles', 'TecnoFrame Cerchas', 'TecnoFrame Paneles', 'Escaleras'] as const
+
+// Oportunidades antiguas guardaron familias con la nomenclatura previa ('TecnoTruss',
+// 'TecnoFrame'). Se siguen mostrando para poder verlas y desmarcarlas.
+export function familiasVisibles(guardadas: string[] | null | undefined): string[] {
+  const extras = (guardadas ?? []).filter(v => !FAMILIA_PRODUCTOS_OPCIONES.includes(v as never))
+  return [...FAMILIA_PRODUCTOS_OPCIONES, ...extras]
+}
 
 export const ALCANCES_OPCIONES = ['Memoria', 'Planos estructurales', 'Desarrollo de arquitectura', 'Modulación Simple'] as const
 
@@ -139,10 +146,11 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
 
   async function crearClienteInline() {
     if (!nuevoCliente.razon_social.trim()) { setErrorCliente('La razón social es requerida'); return }
+    if (!nuevoCliente.rut.trim()) { setErrorCliente('El RUT es requerido'); return }
     setCreandoCliente(true); setErrorCliente('')
     const { data, error: err } = await supabase.from('clientes').insert({
       razon_social: nuevoCliente.razon_social.trim(),
-      rut: nuevoCliente.rut.trim() || null,
+      rut: nuevoCliente.rut.trim(),
       rubro: nuevoCliente.rubro.trim() || null,
       creado_por: profile?.id ?? null,
     }).select('id,razon_social').single()
@@ -295,7 +303,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
                     placeholder="Razón social *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input value={nuevoCliente.rut} onChange={e => setNuevoCliente(c=>({...c,rut:e.target.value}))}
-                      placeholder="RUT" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
+                      placeholder="RUT *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
                     <input value={nuevoCliente.rubro} onChange={e => setNuevoCliente(c=>({...c,rubro:e.target.value}))}
                       placeholder="Rubro" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
                   </div>
@@ -428,7 +436,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad de tipos de casas</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Modelos de casa</label>
                 <input type="number" min="0" value={form.cantidad_tipos_casas} onChange={e => setForm(f=>({...f,cantidad_tipos_casas:e.target.value}))}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
               </div>
@@ -462,7 +470,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">Familia de productos a cotizar</label>
               <div className="flex flex-wrap gap-3">
-                {FAMILIA_PRODUCTOS_OPCIONES.map(opcion => (
+                {familiasVisibles(form.familia_productos).map(opcion => (
                   <label key={opcion} className="flex items-center gap-1.5 text-sm text-gray-600">
                     <input type="checkbox" checked={form.familia_productos.includes(opcion)} onChange={() => toggleFamiliaProducto(opcion)}
                       className="rounded border-gray-300 text-crm-red focus:ring-crm-red" />

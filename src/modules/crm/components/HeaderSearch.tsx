@@ -41,7 +41,7 @@ export default function HeaderSearch() {
       setLoading(true)
       const { data, error } = await supabase
         .from('oportunidades')
-        .select('id,nombre,codigo,etapa_actual,monto_estimado,cliente:clientes(razon_social)')
+        .select('id,nombre,codigo,etapa_actual,monto_estimado,cliente:clientes(razon_social,rut)')
         .or(`nombre.ilike.%${trimmed}%,codigo.ilike.%${trimmed}%`)
         .limit(7)
       handleSupabaseError(error, 'HeaderSearch.search')

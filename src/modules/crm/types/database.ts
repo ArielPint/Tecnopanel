@@ -30,7 +30,7 @@ export interface Profile {
 export interface Cliente {
   id: string
   razon_social: string
-  rut: string | null
+  rut: string
   tipo: 'empresa' | 'persona_natural'
   rubro: string | null
   ciudad: string | null
@@ -86,6 +86,20 @@ export interface Oportunidad {
   updated_at: string
   cliente?: Cliente
   vendedor?: Profile
+}
+
+/** Ticket de autorizacion cuando el margen definido queda bajo MARGEN_MINIMO (29%).
+ *  Solo gerencia (crm_es_gerente) puede aprobarlo o rechazarlo. */
+export interface MargenAutorizacion {
+  id: string
+  oportunidad_id: string
+  margen_solicitado: number
+  solicitado_por: string | null
+  estado: 'pendiente' | 'aprobado' | 'rechazado'
+  resuelto_por: string | null
+  resuelto_at: string | null
+  comentario: string | null
+  created_at: string
 }
 
 export interface TipologiaVitPrecio {
@@ -234,6 +248,7 @@ export type Database = {
       oportunidad_datos_etapa: { Row: OportunidadDatosEtapa }
       mensajes_oportunidad: { Row: MensajeOportunidad }
       cierres: { Row: Cierre }
+      crm_margen_autorizaciones: { Row: MargenAutorizacion }
     }
     Enums: {
       rol_usuario: RolUsuario

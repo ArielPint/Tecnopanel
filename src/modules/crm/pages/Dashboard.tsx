@@ -263,7 +263,7 @@ export default function Dashboard() {
   useEffect(() => {
     async function load() {
       const [{ data: rawOpps }, { data: rawHist }, { data: rawNotifs }] = await Promise.all([
-        supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)'),
+        supabase.from('oportunidades').select('*,cliente:clientes(razon_social,rut),vendedor:profiles(nombre,apellido)'),
         supabase.from('oportunidad_historial_etapas').select('*'),
         supabase.from('notifications').select('id,tipo,titulo,mensaje,created_at').order('created_at',{ascending:false}).limit(10),
       ])

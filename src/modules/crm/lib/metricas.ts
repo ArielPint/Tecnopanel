@@ -4,6 +4,7 @@ export const ETAPAS_TERMINALES = ['Ganado', 'Perdido']
 
 const DIA_MS = 86400000
 const SIN_ASIGNAR = '__sin_asignar__'
+const SIN_FAMILIA = '__sin_familia__'
 
 export function dias(desde: string, hasta: string | null): number {
   const fin = hasta ? new Date(hasta).getTime() : Date.now()
@@ -47,6 +48,9 @@ export interface ResumenOportunidades {
   cicloPromGanadas: number | null
   cicloPromPerdidas: number | null
   antiguedadPromActivas: number | null
+  plazoPresentacionProm: number | null
+  plazoPresentacionMediana: number | null
+  conPresentacion: number
 }
 
 export function resumenOportunidades(opps: Oportunidad[]): ResumenOportunidades {
@@ -54,6 +58,7 @@ export function resumenOportunidades(opps: Oportunidad[]): ResumenOportunidades 
   const ganadas = opps.filter((o) => o.etapa_actual === 'Ganado')
   const perdidas = opps.filter((o) => o.etapa_actual === 'Perdido')
   const cerradas = [...ganadas, ...perdidas].map(diasOportunidad)
+  const plazos = opps.map(plazoPresentacion).filter((d): d is number => d != null)
   return {
     total: opps.length,
     activas: activas.length,
@@ -64,7 +69,61 @@ export function resumenOportunidades(opps: Oportunidad[]): ResumenOportunidades 
     cicloPromGanadas: prom(ganadas.map(diasOportunidad)),
     cicloPromPerdidas: prom(perdidas.map(diasOportunidad)),
     antiguedadPromActivas: prom(activas.map(diasOportunidad)),
+    plazoPresentacionProm: prom(plazos),
+    plazoPresentacionMediana: mediana(plazos),
+    conPresentacion: plazos.length,
   }
+}
+
+/** Dias entre la creacion de la oportunidad y la fecha de presentacion solicitada
+ *  (`fecha_cierre_est`). Null cuando no hay fecha pedida. */
+export function plazoPresentacion(o: Oportunidad): number | null {
+  if (!o.fecha_cierre_est) return null
+  return Math.round(
+    (new Date(o.fecha_cierre_est).getTime() - new Date(o.created_at).getTime()) / DIA_MS,
+  )
+}
+
+export interface FilaFamilia {
+  familia: string
+  total: number
+  activas: number
+  ganadas: number
+  perdidas: number
+  tasaConv: number | null
+  cicloProm: number | null
+  montoGanado: number
+}
+
+/** Corte por familia de producto. Una oportunidad con varias familias cuenta en cada una,
+ *  asi que los totales por familia no suman el total del periodo. */
+export function porFamiliaProducto(opps: Oportunidad[]): FilaFamilia[] {
+  const by = new Map<string, Oportunidad[]>()
+  opps.forEach((o) => {
+    const familias = o.familia_productos?.length ? o.familia_productos : [SIN_FAMILIA]
+    familias.forEach((f) => {
+      const arr = by.get(f)
+      if (arr) arr.push(o)
+      else by.set(f, [o])
+    })
+  })
+  return [...by.entries()]
+    .map(([familia, os]) => {
+      const ganadas = os.filter((o) => o.etapa_actual === 'Ganado')
+      const perdidas = os.filter((o) => o.etapa_actual === 'Perdido')
+      const cerradasN = ganadas.length + perdidas.length
+      return {
+        familia: familia === SIN_FAMILIA ? 'Sin familia' : familia,
+        total: os.length,
+        activas: os.filter((o) => !esTerminal(o)).length,
+        ganadas: ganadas.length,
+        perdidas: perdidas.length,
+        tasaConv: cerradasN ? Math.round((ganadas.length / cerradasN) * 100) : null,
+        cicloProm: prom([...ganadas, ...perdidas].map(diasOportunidad)),
+        montoGanado: ganadas.reduce((s, o) => s + (o.monto_final ?? o.monto_estimado ?? 0), 0),
+      }
+    })
+    .sort((a, b) => b.total - a.total)
 }
 
 export interface FilaEtapa {

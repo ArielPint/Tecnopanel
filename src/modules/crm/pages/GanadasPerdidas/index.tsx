@@ -16,7 +16,7 @@ export default function GanadasPerdidas(){
 
   async function load(){
     setLoading(true)
-    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').in('etapa_actual',['Ganado','Perdido']).order('updated_at',{ascending:false})
+    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social,rut),vendedor:profiles(nombre,apellido)').in('etapa_actual',['Ganado','Perdido']).order('updated_at',{ascending:false})
     handleSupabaseError(error,'GanadasPerdidas.load')
     setOpps((data as Oportunidad[])||[])
     setLoading(false)

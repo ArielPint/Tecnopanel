@@ -4,7 +4,7 @@ import {
   Bar, BarChart, CartesianGrid, Cell, ComposedChart, Legend, Line,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { Clock, Timer, Users, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react'
+import { Clock, Timer, Users, ChevronDown, ChevronRight, AlertTriangle, CalendarClock, Boxes } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import { IndicadoresFecha } from '@/components/IndicadoresFecha'
@@ -13,7 +13,7 @@ import type {
   Oportunidad, OportunidadHistorialEtapa, TareaIngenieria, PerfilBasico,
 } from '@/modules/crm/types/database'
 import {
-  diasOportunidad, esTerminal, etapaDeTarea, porEtapa, porVendedor,
+  diasOportunidad, esTerminal, etapaDeTarea, porEtapa, porFamiliaProducto, porVendedor,
   resumenOportunidades, responsablesDeEtapa, tareasPorAsignado, tendenciaMensual,
 } from '@/modules/crm/lib/metricas'
 
@@ -94,7 +94,7 @@ export default function Reporteria() {
   useEffect(() => {
     async function load() {
       const [oppsRes, histRes, tareasRes, asigsRes, perfilesRes] = await Promise.all([
-        supabase.from('oportunidades').select('*, cliente:clientes(razon_social)'),
+        supabase.from('oportunidades').select('*, cliente:clientes(razon_social,rut)'),
         supabase.from('oportunidad_historial_etapas').select('*'),
         supabase.from('tareas_ingenieria').select('*'),
         supabase.from('tarea_asignaciones').select('tarea_id,usuario_id'),
@@ -152,6 +152,7 @@ export default function Reporteria() {
   const vendedores = useMemo(() => porVendedor(filtro.opps), [filtro.opps])
   const tendencia = useMemo(() => tendenciaMensual(filtro.opps), [filtro.opps])
   const tareasGlobal = useMemo(() => tareasPorAsignado(filtro.tareas, asignacionesPorTarea), [filtro.tareas, asignacionesPorTarea])
+  const familias = useMemo(() => porFamiliaProducto(filtro.opps), [filtro.opps])
 
   /* Cada tarea se atribuye a la etapa en que estaba su oportunidad al crearse (ver
      etapaDeTarea): la tabla de tareas por etapa sale de ese corte. */
@@ -211,7 +212,7 @@ export default function Reporteria() {
       </div>
 
       {/* ── Tiempo de oportunidad ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Kpi label="Ciclo promedio" valor={dLbl(resumen.cicloProm)} color="#3b82f6" icon={<Timer size={16} />}
           detalle={`${resumen.ganadas + resumen.perdidas} oportunidades cerradas · mediana ${dLbl(resumen.cicloMediana)}`} />
         <Kpi label="Ciclo ganadas" valor={dLbl(resumen.cicloPromGanadas)} color="#22c55e" icon={<Timer size={16} />}
@@ -220,6 +221,8 @@ export default function Reporteria() {
           detalle={`${resumen.perdidas} perdidas en el período`} />
         <Kpi label="Antigüedad activas" valor={dLbl(resumen.antiguedadPromActivas)} color="#f59e0b" icon={<Clock size={16} />}
           detalle={`${resumen.activas} activas de ${resumen.total} totales`} />
+        <Kpi label="Creación → presentación" valor={dLbl(resumen.plazoPresentacionProm)} color="#8b5cf6" icon={<CalendarClock size={16} />}
+          detalle={`${resumen.conPresentacion} con fecha pedida · mediana ${dLbl(resumen.plazoPresentacionMediana)}`} />
       </div>
 
       {/* ── Tendencias ── */}
@@ -410,6 +413,61 @@ export default function Reporteria() {
                       <td className="px-3 py-2.5 text-right text-xs font-semibold text-gray-800">{dLbl(v.cicloProm)}</td>
                       <td className="px-3 py-2.5 text-right text-xs text-gray-500">{dLbl(v.antiguedadActivas)}</td>
                       <td className="px-3 py-2.5 text-right text-xs text-gray-700">{v.montoGanado ? fmtMontoCLP(v.montoGanado) : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </Card>
+
+      {/* ── Por familia de productos ── */}
+      <Card titulo="Por familia de productos"
+        subtitulo="Una oportunidad con varias familias cuenta en cada una, así que los totales no suman el del período">
+        {familias.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-8">Sin oportunidades con familia en el período</p>
+        ) : (
+          <>
+            <ResponsiveContainer width="100%" height={Math.max(180, familias.length * 34 + 60)}>
+              <BarChart data={familias} layout="vertical" margin={{ left: 8, right: 16 }}>
+                <CartesianGrid horizontal={false} stroke="#e2e8f0" />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="familia" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={140} />
+                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="activas" name="Activas" fill="#3b82f6" radius={[0, 3, 3, 0]} />
+                <Bar dataKey="ganadas" name="Ganadas" fill="#22c55e" radius={[0, 3, 3, 0]} />
+                <Bar dataKey="perdidas" name="Perdidas" fill="#cbd5e1" radius={[0, 3, 3, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="overflow-x-auto mt-4">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+                    <th className="text-left px-3 py-2">Familia</th>
+                    <th className="text-right px-3 py-2">Total</th>
+                    <th className="text-right px-3 py-2">Activas</th>
+                    <th className="text-right px-3 py-2">Ganadas</th>
+                    <th className="text-right px-3 py-2">Perdidas</th>
+                    <th className="text-right px-3 py-2">Conv.</th>
+                    <th className="text-right px-3 py-2">Ciclo</th>
+                    <th className="text-right px-3 py-2">Ganado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {familias.map((f) => (
+                    <tr key={f.familia} className="hover:bg-slate-50">
+                      <td className="px-3 py-2.5 text-xs font-medium text-gray-700 flex items-center gap-1.5">
+                        <Boxes size={12} className="text-gray-300" />{f.familia}
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-xs text-gray-600">{f.total}</td>
+                      <td className="px-3 py-2.5 text-right text-xs text-gray-600">{f.activas}</td>
+                      <td className="px-3 py-2.5 text-right text-xs text-emerald-600">{f.ganadas}</td>
+                      <td className="px-3 py-2.5 text-right text-xs text-red-500">{f.perdidas}</td>
+                      <td className="px-3 py-2.5 text-right text-xs text-gray-600">{f.tasaConv == null ? '—' : `${f.tasaConv}%`}</td>
+                      <td className="px-3 py-2.5 text-right text-xs font-semibold text-gray-800">{dLbl(f.cicloProm)}</td>
+                      <td className="px-3 py-2.5 text-right text-xs text-gray-700">{f.montoGanado ? fmtMontoCLP(f.montoGanado) : '—'}</td>
                     </tr>
                   ))}
                 </tbody>

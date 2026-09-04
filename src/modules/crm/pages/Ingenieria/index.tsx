@@ -24,7 +24,7 @@ export default function Ingenieria(){
   const [buscando,setBuscando]=useState(false)
 
   async function load(){
-    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').eq('etapa_actual','Ingeniería').neq('tipo_venta','VIT').order('updated_at',{ascending:false})
+    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social,rut),vendedor:profiles(nombre,apellido)').eq('etapa_actual','Ingeniería').neq('tipo_venta','VIT').order('updated_at',{ascending:false})
     handleSupabaseError(error,'Ingenieria.load')
     const base=(data as Oportunidad[])||[]
     if(!base.length){setOpps([]);setLoading(false);return}
@@ -69,7 +69,7 @@ export default function Ingenieria(){
     const oppIds=[...new Set((asigOpp||[]).map(a=>a.oportunidad_id))]
     const tareaIds=[...new Set((asigTareas||[]).map(a=>a.tarea_id))]
     const [oppsRes,tareasRes]=await Promise.all([
-      oppIds.length?supabase.from('oportunidades').select('*,cliente:clientes(razon_social)').in('id',oppIds):Promise.resolve({data:[],error:null}),
+      oppIds.length?supabase.from('oportunidades').select('*,cliente:clientes(razon_social,rut)').in('id',oppIds):Promise.resolve({data:[],error:null}),
       tareaIds.length?supabase.from('tareas_ingenieria').select('*,oportunidad:oportunidades(codigo,nombre)').in('id',tareaIds):Promise.resolve({data:[],error:null}),
     ])
     handleSupabaseError(oppsRes.error,'Ingenieria.buscarPorUsuario.oportunidades.detalle')

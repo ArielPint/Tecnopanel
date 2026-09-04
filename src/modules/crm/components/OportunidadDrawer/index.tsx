@@ -11,8 +11,9 @@ import { usePermisos } from '@/modules/crm/contexts/PermisosContext'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import { formatCLP } from '@/modules/financiero/utils/formatters'
 import MontoInput from '@/components/MontoInput'
-import type { Oportunidad, Profile, PerfilBasico, OportunidadHistorialEtapa, OportunidadDocumento, TareaIngenieria, EstadoTarea, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit } from '@/modules/crm/types/database'
-import { FAMILIA_PRODUCTOS_OPCIONES, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
+import type { Oportunidad, Profile, PerfilBasico, OportunidadHistorialEtapa, OportunidadDocumento, TareaIngenieria, EstadoTarea, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit, MargenAutorizacion } from '@/modules/crm/types/database'
+import { familiasVisibles, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
+import { notificar, ROLES_GERENCIA, ROLES_AUTORIZAN_MARGEN } from '@/modules/crm/lib/notificaciones'
 
 const REGIONES = Object.keys(REGIONES_COMUNAS)
 
@@ -209,6 +210,11 @@ const MODULO_DE_ETAPA: Record<string, string> = {
 
 const PRIORIDAD_LABEL: Record<number, string> = { 1: 'Alta', 2: 'Media', 3: 'Baja' }
 
+// Bajo este margen la oportunidad no avanza a Negociacion ni se cierra como Ganada sin
+// un ticket aprobado por gerencia (crm_margen_autorizaciones). Espejo del control que
+// hace crm_cambiar_etapa en la base.
+const MARGEN_MINIMO = 29
+
 // Espejo de public.crm_tipo_documento(): que extensiones cuentan como cada tipo exigible.
 const TIPOS_DOCUMENTO: { key: string; label: string; exts: string[] }[] = [
   { key: 'PDF',   label: 'PDF',   exts: ['pdf'] },
@@ -290,6 +296,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   const [showItemManual, setShowItemManual] = useState(false)
   const [itemManual, setItemManual] = useState({ categoria: 'Manual', nombre: '', costo_unitario: '', cantidad: '1' })
   const [cierre, setCierre] = useState<Cierre | null>(null)
+  const [autorizaciones, setAutorizaciones] = useState<MargenAutorizacion[]>([])
+  const [comentarioMargen, setComentarioMargen] = useState('')
   const [ocForm, setOcForm] = useState({ numero_oc: '', monto_oc: '', fecha_oc: '' })
   const [ocFile, setOcFile] = useState<File | null>(null)
   const [savingOc, setSavingOc] = useState(false)
@@ -347,7 +355,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
 
   async function loadAll() {
     setLoading(true)
-    const [etapaRes, costosRes, docsRes, histRes, usersRes, tareasRes, cierreRes] = await Promise.all([
+    const [etapaRes, costosRes, docsRes, histRes, usersRes, tareasRes, cierreRes, autorizRes] = await Promise.all([
       supabase.from('oportunidad_datos_etapa').select('*').eq('oportunidad_id', oportunidad.id).eq('etapa', oportunidad.etapa_actual).maybeSingle(),
       supabase.from('oportunidad_datos_etapa').select('*').eq('oportunidad_id', oportunidad.id).eq('etapa', 'Costos y Presupuestos').maybeSingle(),
       supabase.from('oportunidad_documentos').select('*').eq('oportunidad_id', oportunidad.id).order('created_at', { ascending: false }),
@@ -355,7 +363,9 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
       supabase.from('crm_perfiles_basicos').select('id,nombre,apellido,rol,activo').eq('activo', true).order('nombre'),
       supabase.from('tareas_ingenieria').select('*').eq('oportunidad_id', oportunidad.id).order('created_at', { ascending: false }),
       supabase.from('cierres').select('*').eq('oportunidad_id', oportunidad.id).maybeSingle(),
+      supabase.from('crm_margen_autorizaciones').select('*').eq('oportunidad_id', oportunidad.id).order('created_at', { ascending: false }),
     ])
+    setAutorizaciones((autorizRes.data as MargenAutorizacion[]) ?? [])
     setEtapaData(((etapaRes.data as {datos?:Record<string,string>}|null)?.datos) ?? {})
     setCostosData(((costosRes.data as {datos?:Record<string,string>}|null)?.datos) ?? {})
     setDocs((docsRes.data as OportunidadDocumento[]) ?? [])
@@ -636,15 +646,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
         nuevaTarea.asignados_ids.map(usuario_id => ({ tarea_id: tarea.id, usuario_id, asignado_por: profile?.id }))
       )
       handleSupabaseError(asigErr, 'OportunidadDrawer.crearTarea.asignaciones')
-      const { error: notifErr } = await supabase.from('notifications').insert(
-        nuevaTarea.asignados_ids.map(user_id => ({
-          user_id, tipo: 'asignacion',
-          titulo: `Nueva tarea: ${nuevaTarea.titulo.trim()}`,
-          mensaje: `${opp.codigo} · ${opp.nombre}`,
-          oportunidad_id: opp.id,
-        }))
-      )
-      handleSupabaseError(notifErr, 'OportunidadDrawer.crearTarea.notify')
+      await notificar(nuevaTarea.asignados_ids.map(user_id => ({
+        user_id, tipo: 'asignacion',
+        titulo: `Nueva tarea: ${nuevaTarea.titulo.trim()}`,
+        mensaje: `${opp.codigo} · ${opp.nombre}`,
+        oportunidad_id: opp.id,
+      })), 'OportunidadDrawer.crearTarea.notify')
     }
     setNuevaTarea({ titulo: '', descripcion: '', asignados_ids: [], prioridad: '2', fecha_limite: '', tipos_documento: [] })
     setShowCrearTarea(false); setCreandoTarea(false)
@@ -678,14 +685,11 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
         : estado === 'completada'
           ? `${quien} marcó la tarea como terminada · ${opp.codigo}`
           : `${quien} aceptó la tarea · ${opp.codigo}`
-      const { error: notifErr } = await supabase.from('notifications').insert(
-        destinatarios.map(user_id => ({
-          user_id, tipo: 'asignacion', oportunidad_id: opp.id,
-          titulo: `Tarea ${accion}: ${tarea.titulo}`,
-          mensaje: detalle,
-        }))
-      )
-      handleSupabaseError(notifErr, 'OportunidadDrawer.responderTarea.notify')
+      await notificar(destinatarios.map(user_id => ({
+        user_id, tipo: 'asignacion', oportunidad_id: opp.id,
+        titulo: `Tarea ${accion}: ${tarea.titulo}`,
+        mensaje: detalle,
+      })), 'OportunidadDrawer.responderTarea.notify')
     }
 
     setTareas(ts => ts.map(t => t.id === tarea.id ? { ...t, ...cambios } : t))
@@ -703,6 +707,46 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
     const { error } = await supabase.from('oportunidades').update({ margen_porcentaje: value }).eq('id', opp.id)
     if (handleSupabaseError(error, 'OportunidadDrawer.saveMargen')) {
       setOpp(o => ({ ...o, margen_porcentaje: anterior }))
+      return
+    }
+    if (value != null && value < MARGEN_MINIMO) await solicitarAutorizacionMargen(value)
+  }
+
+  // Un margen bajo el minimo abre un ticket de autorizacion y avisa a gerencia. No se
+  // duplica: si ya hay un ticket vivo para ese mismo margen, se reutiliza.
+  async function solicitarAutorizacionMargen(valor: number) {
+    if (autorizaciones.some(a => Number(a.margen_solicitado) === valor && a.estado !== 'rechazado')) return
+    const { data, error } = await supabase.from('crm_margen_autorizaciones')
+      .insert({ oportunidad_id: opp.id, margen_solicitado: valor, solicitado_por: profile?.id ?? null })
+      .select('*').single()
+    if (handleSupabaseError(error, 'OportunidadDrawer.solicitarAutorizacionMargen')) return
+    setAutorizaciones(as => [data as MargenAutorizacion, ...as])
+    toast.info(`Margen bajo el ${MARGEN_MINIMO}%: se solicitó autorización a gerencia`)
+    await notificar(
+      usuarios.filter(u => ROLES_AUTORIZAN_MARGEN.includes(u.rol)).map(u => ({
+        user_id: u.id, tipo: 'margen_autorizacion', oportunidad_id: opp.id,
+        titulo: `Autorización de margen ${valor}% · ${opp.nombre}`,
+        mensaje: `${opp.codigo} · margen bajo el mínimo de ${MARGEN_MINIMO}%, requiere tu autorización`,
+      })),
+      'OportunidadDrawer.solicitarAutorizacionMargen.notify',
+    )
+  }
+
+  async function resolverAutorizacionMargen(a: MargenAutorizacion, estado: 'aprobado' | 'rechazado', comentario: string) {
+    const cambios = {
+      estado, comentario: comentario.trim() || null,
+      resuelto_por: profile?.id ?? null, resuelto_at: new Date().toISOString(),
+    }
+    const { error } = await supabase.from('crm_margen_autorizaciones').update(cambios).eq('id', a.id)
+    if (handleSupabaseError(error, 'OportunidadDrawer.resolverAutorizacionMargen')) return
+    setAutorizaciones(as => as.map(x => x.id === a.id ? { ...x, ...cambios } : x))
+    setComentarioMargen('')
+    if (a.solicitado_por && a.solicitado_por !== profile?.id) {
+      await notificar([{
+        user_id: a.solicitado_por, tipo: 'margen_autorizacion', oportunidad_id: opp.id,
+        titulo: `Margen ${a.margen_solicitado}% ${estado}`,
+        mensaje: `${opp.codigo} · ${opp.nombre}${cambios.comentario ? ' · ' + cambios.comentario : ''}`,
+      }], 'OportunidadDrawer.resolverAutorizacionMargen.notify')
     }
   }
 
@@ -765,8 +809,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
     setSaving(true)
     const { error } = await supabase.rpc('crm_cambiar_etapa', { p_oportunidad_id: opp.id, p_nueva_etapa: newEtapa })
     if (handleSupabaseError(error, 'OportunidadDrawer.cambiarEtapa')) { setSaving(false); return false }
-    const { error: notifErr } = await supabase.from('notifications').insert({ user_id: profile?.id, oportunidad_id: opp.id, ...notif })
-    handleSupabaseError(notifErr, 'OportunidadDrawer.cambiarEtapa.notify')
+    // Ademas de quien mueve la etapa, gerentes y jefes reciben el aviso (campana + correo).
+    const destinatarios = [...new Set([
+      profile?.id,
+      ...usuarios.filter(u => ROLES_GERENCIA.includes(u.rol)).map(u => u.id),
+    ].filter((id): id is string => !!id))]
+    await notificar(destinatarios.map(user_id => ({ user_id, oportunidad_id: opp.id, ...notif })), 'OportunidadDrawer.cambiarEtapa.notify')
     setSaving(false)
     return true
   }
@@ -892,6 +940,23 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   const canManageStage = canAccess(moduloEtapa, 'avanzar')
     || !profile?.rol || profile.rol === 'gerente_ventas' || allowedRoles.length === 0 || allowedRoles.includes(profile.rol)
   const canGoBack = currentIdx > 0 && !isTerminal
+
+  // Bloqueos de avance (espejo de crm_cambiar_etapa): tareas abiertas y margen bajo el
+  // minimo sin autorizacion aprobada. Se muestran aca para no depender del error del RPC.
+  const tareasAbiertas = tareas.filter(t => t.estado === 'pendiente' || t.estado === 'en_progreso')
+  const margenBajo = opp.margen_porcentaje != null && opp.margen_porcentaje < MARGEN_MINIMO
+  const margenAprobado = autorizaciones.some(a => a.estado === 'aprobado' && Number(a.margen_solicitado) === opp.margen_porcentaje)
+  const autorizacionVigente = autorizaciones.find(a => Number(a.margen_solicitado) === opp.margen_porcentaje) ?? null
+  const puedeAutorizarMargen = ROLES_AUTORIZAN_MARGEN.includes(profile?.rol ?? '')
+  const bloqueoTareas = tareasAbiertas.length
+    ? `Hay ${tareasAbiertas.length} tarea${tareasAbiertas.length > 1 ? 's' : ''} sin completar en esta oportunidad`
+    : ''
+  const bloqueoMargen = margenBajo && !margenAprobado
+    ? `El margen de ${opp.margen_porcentaje}% está bajo el mínimo de ${MARGEN_MINIMO}% y necesita autorización de gerencia`
+    : ''
+  const margenAplicaA = (etapa: string) => ['Negociación', 'Ganado'].includes(etapa)
+  const bloqueoAvanzar = bloqueoTareas || (margenAplicaA(nextEtapa) ? bloqueoMargen : '')
+  const bloqueoGanado = bloqueoTareas || bloqueoMargen
 
   // Bloque de tareas de ingenieria. Se usa en Ingenieria y en Desarrollo; en Desarrollo va
   // primero, antes de los documentos entregables.
@@ -1118,7 +1183,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
       <div className="space-y-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Cubicación desde Excel (hoja "ANALISIS")</p>
         {numArchivos === 0 ? (
-          <p className="text-xs text-gray-400 bg-gray-50 rounded-lg p-2">Definí los tipos de casa en la pestaña General para saber cuántos archivos subir.</p>
+          <p className="text-xs text-gray-400 bg-gray-50 rounded-lg p-2">Definí los modelos de casa en la pestaña General para saber cuántos archivos subir.</p>
         ) : (
           <div className="space-y-2">
             <p className="text-xs text-gray-500">Se {numArchivos === 1 ? 'requiere' : 'requieren'} {numArchivos} {numArchivos === 1 ? 'archivo' : 'archivos'} (uno por tipo de casa) — subidos: {slotsSubidos.size}/{numArchivos}</p>
@@ -1221,8 +1286,48 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
             <input type="number" defaultValue={opp.margen_porcentaje ?? ''}
               onBlur={ev => { const v = ev.target.value ? Number(ev.target.value) : null; if (v !== opp.margen_porcentaje) saveMargen(v) }}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
-            <p className="text-[11px] text-gray-400 mt-1">Se aplica a cada item de la cubicacion para calcular el precio de venta.</p>
+            <p className="text-[11px] text-gray-400 mt-1">Se aplica a cada item de la cubicacion para calcular el precio de venta. Bajo {MARGEN_MINIMO}% requiere autorización de gerencia.</p>
           </div>
+          {margenBajo && (
+            <div className={'rounded-lg border p-3 space-y-2 ' + (
+              autorizacionVigente?.estado === 'aprobado' ? 'border-emerald-200 bg-emerald-50'
+                : autorizacionVigente?.estado === 'rechazado' ? 'border-red-200 bg-red-50'
+                : 'border-amber-200 bg-amber-50')}>
+              <p className="text-xs font-semibold text-gray-700">
+                Autorización de margen {opp.margen_porcentaje}% ·{' '}
+                {autorizacionVigente ? autorizacionVigente.estado : 'sin solicitud'}
+              </p>
+              {autorizacionVigente?.comentario && (
+                <p className="text-xs text-gray-600 italic">"{autorizacionVigente.comentario}"</p>
+              )}
+              {autorizacionVigente?.resuelto_at && (
+                <p className="text-[11px] text-gray-400">
+                  Resuelta el {new Date(autorizacionVigente.resuelto_at).toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
+              {!autorizacionVigente && (
+                <button type="button" onClick={() => solicitarAutorizacionMargen(opp.margen_porcentaje!)}
+                  className="px-3 py-1.5 text-xs font-medium text-white rounded-lg" style={{ background: '#ed3224' }}>
+                  Solicitar autorización
+                </button>
+              )}
+              {autorizacionVigente?.estado === 'pendiente' && (puedeAutorizarMargen ? (
+                <div className="space-y-2">
+                  <textarea value={comentarioMargen} onChange={ev => setComentarioMargen(ev.target.value)} rows={2}
+                    placeholder="Comentario (opcional)"
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900 resize-none" />
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => resolverAutorizacionMargen(autorizacionVigente, 'aprobado', comentarioMargen)}
+                      className="px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Aprobar margen</button>
+                    <button type="button" onClick={() => resolverAutorizacionMargen(autorizacionVigente, 'rechazado', comentarioMargen)}
+                      className="px-3 py-1.5 text-xs font-medium bg-gray-500 text-white rounded-lg hover:bg-gray-600">Rechazar</button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500">Pendiente de resolución por gerencia.</p>
+              ))}
+            </div>
+          )}
           {costosItems.length > 0 && (
             <div className="space-y-2 text-xs">
               {[...gruposConMargen.entries()].map(([categoria, group]) => (
@@ -1346,7 +1451,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-red-50 text-red-600 border border-red-100">{opp.etapa_actual}</span>
               </div>
               <h2 className="text-base font-bold text-gray-800 leading-tight">{opp.nombre}</h2>
-              {opp.cliente && <p className="text-xs text-gray-500 mt-0.5">{opp.cliente.razon_social}</p>}
+              {opp.cliente && (
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {opp.cliente.razon_social}
+                  {opp.tipo_venta !== 'VIT' && opp.cliente.rut ? ' · ' + opp.cliente.rut : ''}
+                </p>
+              )}
               {opp.monto_estimado != null && (
                 <p className="text-sm font-bold mt-1" style={{color:'#ed3224'}}>
                   {formatCLP(opp.monto_estimado)}
@@ -1442,7 +1552,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
               {tieneTipologias && (
                 <div className="space-y-3 bg-gray-50 rounded-lg p-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Tipos de casa</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Modelos de casa</label>
                     <div className="space-y-2">
                       {lineas.map((l, idx) => (
                         <div key={l.id} className="flex gap-2 items-end">
@@ -1454,7 +1564,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
                             </select>
                           ) : (
                             <input value={l.tipologia} onChange={e => actualizarLinea(idx, { tipologia: e.target.value })}
-                              placeholder="Nombre del tipo de casa (ej. NOGAL BASE)"
+                              placeholder="Nombre del modelo de casa (ej. NOGAL BASE)"
                               className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
                           )}
                           <input type="number" min="0" placeholder="Cantidad" value={l.cantidad_casas || ''}
@@ -1495,7 +1605,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de casas</label>
                   <input type="number" min="0" value={opp.cantidad_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
-                <div><label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de tipos de casas</label>
+                <div><label className="block text-xs font-medium text-gray-600 mb-1">Modelos de casa</label>
                   <input type="number" min="0" value={opp.cantidad_tipos_casas ?? ''} onChange={e => setOpp(o => ({...o,cantidad_tipos_casas:e.target.value?Number(e.target.value):null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
                   <p className="text-[11px] text-gray-400 mt-1">Define cuántos archivos Excel se piden en Costos y Presupuestos.</p></div>
               </div>
@@ -1516,7 +1626,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
               {opp.tipo_venta !== 'VIT' && (
                 <div><label className="block text-xs font-medium text-gray-600 mb-1.5">Familia de productos</label>
                   <div className="flex flex-wrap gap-3">
-                    {FAMILIA_PRODUCTOS_OPCIONES.map(opcion => (
+                    {familiasVisibles(opp.familia_productos).map(opcion => (
                       <label key={opcion} className="flex items-center gap-1.5 text-sm text-gray-600">
                         <input type="checkbox" checked={(opp.familia_productos ?? []).includes(opcion)}
                           onChange={() => setOpp(o => { const cur = o.familia_productos ?? []; const next = cur.includes(opcion) ? cur.filter(v=>v!==opcion) : [...cur,opcion]; return {...o, familia_productos: next.length?next:null} })}
@@ -1787,7 +1897,11 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
 
       {/* Footer */}
         {!isTerminal && (
-          <div className="p-4 border-t border-gray-200 flex-shrink-0 flex gap-2">
+          <div className="p-4 border-t border-gray-200 flex-shrink-0 space-y-2">
+          {(bloqueoTareas || bloqueoMargen) && (
+            <p className="text-xs text-amber-600">{bloqueoTareas || bloqueoMargen}</p>
+          )}
+          <div className="flex gap-2">
             {canGoBack && (
               <button onClick={retrocederEtapa} disabled={saving || !canManageStage} title={!canManageStage ? 'Tu rol no gestiona esta etapa' : undefined}
                 className="px-3 py-2 flex items-center justify-center gap-1 text-xs font-medium border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-40">
@@ -1795,17 +1909,19 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
                 Retroceder
               </button>
             )}
-            <button onClick={avanzarEtapa} disabled={saving || !canManageStage} title={!canManageStage ? 'Tu rol no gestiona esta etapa' : undefined}
+            <button onClick={avanzarEtapa} disabled={saving || !canManageStage || !!bloqueoAvanzar}
+              title={!canManageStage ? 'Tu rol no gestiona esta etapa' : bloqueoAvanzar || undefined}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 text-white text-sm font-medium rounded-lg disabled:opacity-60" style={{background:'#ed3224'}}>
               {saving ? <Loader2 size={14} className="animate-spin" /> : <ChevronRight size={14} />}
               {saving ? 'Avanzando...' : 'Avanzar a ' + nextEtapa}
             </button>
             {opp.etapa_actual !== 'Ingeniería' && (
               <>
-                <button onClick={() => marcarEstado('Ganado')} disabled={saving} className="px-3 py-2 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60">Ganado</button>
+                <button onClick={() => marcarEstado('Ganado')} disabled={saving || !!bloqueoGanado} title={bloqueoGanado || undefined} className="px-3 py-2 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60">Ganado</button>
                 <button onClick={() => marcarEstado('Perdido')} disabled={saving} className="px-3 py-2 text-xs font-medium bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-60">Perdido</button>
               </>
             )}
+          </div>
           </div>
         )}
       </div>

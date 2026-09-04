@@ -13,7 +13,7 @@ export default function Credito(){
   const [loading,setLoading]=useState(true)
   const [sel,setSel]=useState<Oportunidad|null>(null)
   async function load(){
-    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social),vendedor:profiles(nombre,apellido)').eq('etapa_actual','Evaluación Crediticia').order('updated_at',{ascending:false})
+    const {data,error}=await supabase.from('oportunidades').select('*,cliente:clientes(razon_social,rut),vendedor:profiles(nombre,apellido)').eq('etapa_actual','Evaluación Crediticia').order('updated_at',{ascending:false})
     handleSupabaseError(error,'Credito.load')
     const base=(data as Oportunidad[])||[]
     if(!base.length){setOpps([]);setLoading(false);return}

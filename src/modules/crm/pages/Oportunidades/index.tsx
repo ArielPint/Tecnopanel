@@ -41,7 +41,7 @@ export default function Oportunidades({ soloVit = false }: { soloVit?: boolean }
   async function load() {
     const { data: opps, error } = await supabase
       .from('oportunidades')
-      .select('*, cliente:clientes(razon_social), vendedor:profiles(nombre,apellido)')
+      .select('*, cliente:clientes(razon_social,rut), vendedor:profiles(nombre,apellido)')
       .not('etapa_actual','in','("Ganado","Perdido")')
       .order('updated_at',{ascending:false})
     handleSupabaseError(error, 'Oportunidades.load')
@@ -117,7 +117,7 @@ export default function Oportunidades({ soloVit = false }: { soloVit?: boolean }
                         <span className={'text-xs px-1.5 py-0.5 rounded-full font-medium ' + TIPO_COLOR[opp.tipo_venta]}>{TIPO_VENTA_LABELS[opp.tipo_venta] ?? opp.tipo_venta}</span>
                       </div>
                       <p className="text-sm font-semibold text-gray-800 leading-tight">{opp.nombre}</p>
-                      {opp.cliente && <p className="text-xs text-gray-500 mt-0.5 truncate">{opp.cliente.razon_social}</p>}
+                      {opp.cliente && <p className="text-xs text-gray-500 mt-0.5 truncate">{opp.cliente.razon_social}{!soloVit && opp.cliente.rut ? ' · ' + opp.cliente.rut : ''}</p>}
                     </div>
                     <div className="text-right flex-shrink-0">
                       {opp.monto_estimado != null && (

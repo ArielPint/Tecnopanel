@@ -27,7 +27,7 @@ export default function OportunidadLink() {
       setLoading(true)
       const { data, error } = await supabase
         .from('oportunidades')
-        .select('*, cliente:clientes(razon_social), vendedor:profiles(nombre,apellido)')
+        .select('*, cliente:clientes(razon_social,rut), vendedor:profiles(nombre,apellido)')
         .eq('id', id)
         .maybeSingle()
       handleSupabaseError(error, 'OportunidadLink.load')

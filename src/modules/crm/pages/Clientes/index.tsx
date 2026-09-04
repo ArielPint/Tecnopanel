@@ -347,7 +347,7 @@ export default function Clientes() {
             <div className="px-6 py-4 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2"><label className="text-xs font-medium text-gray-600 block mb-1">Razón Social *</label><input value={clienteForm.razon_social} onChange={e => setClienteForm(f => ({ ...f, razon_social: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red"/></div>
-                <div><label className="text-xs font-medium text-gray-600 block mb-1">RUT</label><input value={clienteForm.rut} onChange={e => setClienteForm(f => ({ ...f, rut: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red"/></div>
+                <div><label className="text-xs font-medium text-gray-600 block mb-1">RUT *</label><input value={clienteForm.rut} onChange={e => setClienteForm(f => ({ ...f, rut: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red"/></div>
                 <div><label className="text-xs font-medium text-gray-600 block mb-1">Tipo</label>
                   <select value={clienteForm.tipo} onChange={e => setClienteForm(f => ({ ...f, tipo: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red">
                     <option value="empresa">Empresa</option><option value="persona">Persona</option><option value="gobierno">Gobierno</option>
@@ -367,7 +367,7 @@ export default function Clientes() {
             </div>
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0 bg-white">
               <button onClick={() => { setEditCliente(null); setNewCliente(false) }} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
-              <button onClick={saveCliente} disabled={saving || !clienteForm.razon_social} className="px-4 py-2 text-sm bg-crm-red text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50">{saving ? 'Guardando...' : 'Guardar'}</button>
+              <button onClick={saveCliente} disabled={saving || !clienteForm.razon_social.trim() || !clienteForm.rut.trim()} className="px-4 py-2 text-sm bg-crm-red text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50">{saving ? 'Guardando...' : 'Guardar'}</button>
             </div>
           </div>
         </div>
