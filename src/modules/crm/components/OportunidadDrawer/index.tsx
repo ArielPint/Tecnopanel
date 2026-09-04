@@ -967,7 +967,9 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   const autorizacionVigente = autorizaciones.find(a => Number(a.margen_solicitado) === opp.margen_porcentaje) ?? null
   // Gerencia y admin editan cualquier oportunidad; el resto, solo las propias.
   const esGerencia = ROLES_GERENCIA_ADMIN.includes(profile?.rol ?? '')
+  // Dueño o gerencia: gobierna tanto la edicion como el cierre (Ganado / Perdido).
   const puedeEditar = esGerencia || opp.vendedor_id === profile?.id
+  const motivoNoCierra = puedeEditar ? '' : 'Solo el vendedor de la oportunidad o gerencia puede cerrarla'
   const bloqueoTareas = exigeTareasCompletas && tareasAbiertas.length
     ? `Hay ${tareasAbiertas.length} tarea${tareasAbiertas.length > 1 ? 's' : ''} sin completar: no se puede avanzar desde Desarrollo`
     : ''
@@ -1926,8 +1928,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
       {/* Footer */}
         {!isTerminal && (
           <div className="p-4 border-t border-gray-200 flex-shrink-0 space-y-2">
-          {(bloqueoTareas || bloqueoMargen) && (
-            <p className="text-xs text-amber-600">{bloqueoTareas || bloqueoMargen}</p>
+          {(bloqueoTareas || bloqueoMargen || motivoNoCierra) && (
+            <p className="text-xs text-amber-600">{bloqueoTareas || bloqueoMargen || motivoNoCierra}</p>
           )}
           <div className="flex gap-2">
             {canGoBack && (
@@ -1945,8 +1947,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
             </button>
             {opp.etapa_actual !== 'Ingeniería' && (
               <>
-                <button onClick={() => marcarEstado('Ganado')} disabled={saving || !!bloqueoGanado} title={bloqueoGanado || undefined} className="px-3 py-2 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60">Ganado</button>
-                <button onClick={() => marcarEstado('Perdido')} disabled={saving} className="px-3 py-2 text-xs font-medium bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-60">Perdido</button>
+                <button onClick={() => marcarEstado('Ganado')} disabled={saving || !puedeEditar || !!bloqueoGanado} title={motivoNoCierra || bloqueoGanado || undefined} className="px-3 py-2 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-60">Ganado</button>
+                <button onClick={() => marcarEstado('Perdido')} disabled={saving || !puedeEditar} title={motivoNoCierra || undefined} className="px-3 py-2 text-xs font-medium bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-60">Perdido</button>
               </>
             )}
           </div>
