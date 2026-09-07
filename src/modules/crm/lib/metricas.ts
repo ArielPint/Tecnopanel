@@ -6,6 +6,13 @@ const DIA_MS = 86400000
 const SIN_ASIGNAR = '__sin_asignar__'
 const SIN_FAMILIA = '__sin_familia__'
 
+/** Familias de una oportunidad; las que no tienen ninguna caen en un cubo aparte.
+ *  Una oportunidad con varias familias cuenta en cada una. */
+const familiasDe = (o: Oportunidad) =>
+  o.familia_productos?.length ? o.familia_productos : [SIN_FAMILIA]
+
+const nombreFamilia = (f: string) => (f === SIN_FAMILIA ? 'Sin familia' : f)
+
 export function dias(desde: string, hasta: string | null): number {
   const fin = hasta ? new Date(hasta).getTime() : Date.now()
   return Math.max(0, Math.floor((fin - new Date(desde).getTime()) / DIA_MS))
@@ -100,8 +107,7 @@ export interface FilaFamilia {
 export function porFamiliaProducto(opps: Oportunidad[]): FilaFamilia[] {
   const by = new Map<string, Oportunidad[]>()
   opps.forEach((o) => {
-    const familias = o.familia_productos?.length ? o.familia_productos : [SIN_FAMILIA]
-    familias.forEach((f) => {
+    familiasDe(o).forEach((f) => {
       const arr = by.get(f)
       if (arr) arr.push(o)
       else by.set(f, [o])
@@ -113,7 +119,7 @@ export function porFamiliaProducto(opps: Oportunidad[]): FilaFamilia[] {
       const perdidas = os.filter((o) => o.etapa_actual === 'Perdido')
       const cerradasN = ganadas.length + perdidas.length
       return {
-        familia: familia === SIN_FAMILIA ? 'Sin familia' : familia,
+        familia: nombreFamilia(familia),
         total: os.length,
         activas: os.filter((o) => !esTerminal(o)).length,
         ganadas: ganadas.length,
@@ -334,4 +340,43 @@ export function tendenciaMensual(opps: Oportunidad[]): PuntoMes[] {
       ganadas: s.ganadas,
       cicloProm: prom(s.cerradas.map(diasOportunidad)),
     }))
+}
+
+export interface CeldaVendedorFamilia {
+  vendedorId: string | null
+  familia: string
+  total: number
+  ganadas: number
+  perdidas: number
+  montoGanado: number
+}
+
+/** Cruce vendedor x familia de producto. Igual que porFamiliaProducto, una oportunidad
+ *  con varias familias cuenta en cada una, asi que las filas no suman el total del
+ *  periodo. Solo devuelve las combinaciones con al menos una oportunidad. */
+export function porVendedorYFamilia(opps: Oportunidad[]): CeldaVendedorFamilia[] {
+  const by = new Map<string, Oportunidad[]>()
+  opps.forEach((o) => {
+    const vendedor = o.vendedor_id ?? SIN_ASIGNAR
+    familiasDe(o).forEach((f) => {
+      const k = vendedor + ' ' + f
+      const arr = by.get(k)
+      if (arr) arr.push(o)
+      else by.set(k, [o])
+    })
+  })
+  return [...by.entries()]
+    .map(([k, os]) => {
+      const [vendedor, familia] = k.split(' ')
+      const ganadas = os.filter((o) => o.etapa_actual === 'Ganado')
+      return {
+        vendedorId: vendedor === SIN_ASIGNAR ? null : vendedor,
+        familia: nombreFamilia(familia),
+        total: os.length,
+        ganadas: ganadas.length,
+        perdidas: os.filter((o) => o.etapa_actual === 'Perdido').length,
+        montoGanado: ganadas.reduce((s, o) => s + (o.monto_final ?? o.monto_estimado ?? 0), 0),
+      }
+    })
+    .sort((a, b) => b.total - a.total)
 }

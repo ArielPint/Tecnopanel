@@ -14,7 +14,8 @@ import type {
 } from '@/modules/crm/types/database'
 import {
   diasOportunidad, esTerminal, etapaDeTarea, porEtapa, porFamiliaProducto, porVendedor,
-  resumenOportunidades, responsablesDeEtapa, tareasPorAsignado, tendenciaMensual,
+  porVendedorYFamilia, resumenOportunidades, responsablesDeEtapa, tareasPorAsignado,
+  tendenciaMensual,
 } from '@/modules/crm/lib/metricas'
 
 const ETAPAS_ORDEN = [
@@ -51,6 +52,13 @@ type RangoKey = (typeof RANGOS)[number]['key']
 type TipoKey = (typeof TIPOS)[number]['key']
 
 const dLbl = (n: number | null) => (n == null ? '—' : `${n}d`)
+
+const METRICAS_FAMILIA = [
+  { key: 'total', label: 'Oportunidades' },
+  { key: 'ganadas', label: 'Ganadas' },
+  { key: 'montoGanado', label: 'Monto ganado' },
+] as const
+type MetricaFamiliaKey = (typeof METRICAS_FAMILIA)[number]['key']
 
 function Kpi({ label, valor, detalle, icon, color = '#64748b' }: {
   label: string; valor: string; detalle: string; icon: React.ReactNode; color?: string
@@ -90,6 +98,7 @@ export default function Reporteria() {
   const [rango, setRango] = useState<RangoKey>('12m')
   const [tipo, setTipo] = useState<TipoKey>('todos')
   const [etapaAbierta, setEtapaAbierta] = useState<string | null>(null)
+  const [metricaFamilia, setMetricaFamilia] = useState<MetricaFamiliaKey>('total')
 
   useEffect(() => {
     async function load() {
@@ -153,6 +162,22 @@ export default function Reporteria() {
   const tendencia = useMemo(() => tendenciaMensual(filtro.opps), [filtro.opps])
   const tareasGlobal = useMemo(() => tareasPorAsignado(filtro.tareas, asignacionesPorTarea), [filtro.tareas, asignacionesPorTarea])
   const familias = useMemo(() => porFamiliaProducto(filtro.opps), [filtro.opps])
+
+  /* Matriz vendedor x familia: las columnas son las familias que aparecen en el periodo,
+     ordenadas como en la tabla de familias, y cada celda es la metrica elegida. */
+  const matrizFamilia = useMemo(() => {
+    const celdas = porVendedorYFamilia(filtro.opps)
+    const columnas = familias.map((f) => f.familia)
+    const porVend = new Map<string, { vendedorId: string | null; celdas: Map<string, number>; total: number }>()
+    celdas.forEach((c) => {
+      const k = c.vendedorId ?? '__sin__'
+      let fila = porVend.get(k)
+      if (!fila) { fila = { vendedorId: c.vendedorId, celdas: new Map(), total: 0 }; porVend.set(k, fila) }
+      fila.celdas.set(c.familia, c[metricaFamilia])
+      fila.total += c[metricaFamilia]
+    })
+    return { columnas, filas: [...porVend.values()].sort((a, b) => b.total - a.total) }
+  }, [filtro.opps, familias, metricaFamilia])
 
   /* Cada tarea se atribuye a la etapa en que estaba su oportunidad al crearse (ver
      etapaDeTarea): la tabla de tareas por etapa sale de ese corte. */
@@ -474,6 +499,58 @@ export default function Reporteria() {
               </table>
             </div>
           </>
+        )}
+      </Card>
+
+      {/* ── Familia de productos por vendedor ── */}
+      <Card titulo="Familia de productos por vendedor"
+        subtitulo="Quién vende cada familia. Una oportunidad con varias familias cuenta en cada columna, así que las filas no suman el total del período">
+        <div className="flex justify-end -mt-2 mb-3">
+          <div className="flex rounded-lg border border-slate-200 overflow-hidden bg-white">
+            {METRICAS_FAMILIA.map((m) => (
+              <button key={m.key} onClick={() => setMetricaFamilia(m.key)}
+                className={'px-3 py-1.5 text-xs font-medium transition-colors ' + (metricaFamilia === m.key ? 'bg-crm-red text-white' : 'text-gray-500 hover:bg-slate-50')}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {matrizFamilia.filas.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-8">Sin oportunidades en el período</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+                  <th className="text-left px-3 py-2 sticky left-0 bg-white">Vendedor</th>
+                  {matrizFamilia.columnas.map((f) => (
+                    <th key={f} className="text-right px-3 py-2 whitespace-nowrap">{f}</th>
+                  ))}
+                  <th className="text-right px-3 py-2">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {matrizFamilia.filas.map((fila) => (
+                  <tr key={fila.vendedorId ?? 'sin'} className="hover:bg-slate-50">
+                    <td className="px-3 py-2.5 text-xs font-medium text-gray-700 whitespace-nowrap sticky left-0 bg-white">
+                      {nombreDe(fila.vendedorId)}
+                    </td>
+                    {matrizFamilia.columnas.map((f) => {
+                      const v = fila.celdas.get(f) ?? 0
+                      return (
+                        <td key={f} className={'px-3 py-2.5 text-right text-xs ' + (v ? 'text-gray-700' : 'text-gray-300')}>
+                          {v ? (metricaFamilia === 'montoGanado' ? fmtMontoCLP(v) : v) : '—'}
+                        </td>
+                      )
+                    })}
+                    <td className="px-3 py-2.5 text-right text-xs font-semibold text-gray-800">
+                      {metricaFamilia === 'montoGanado' ? fmtMontoCLP(fila.total) : fila.total}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
 
