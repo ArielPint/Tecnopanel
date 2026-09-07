@@ -9,18 +9,25 @@ interface Props {
   onSelect: (producto: Producto) => void
   onChange: (codigo: string) => void
   placeholder?: string
+  autoFocus?: boolean
 }
 
-export default function ProductoAutocomplete({ value, productos, onSelect, onChange, placeholder }: Props) {
+export default function ProductoAutocomplete({ value, productos, onSelect, onChange, placeholder, autoFocus }: Props) {
   const [open, setOpen] = useState(false)
   const [activeIdx, setActiveIdx] = useState(-1)
   const boxRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
   const matches = useMemo(() => {
     const q = value.trim().toLowerCase()
     if (!q) return []
     return productos.filter((p) => p.codigo.toLowerCase().includes(q) || p.descripcion.toLowerCase().includes(q)).slice(0, 12)
   }, [value, productos])
+
+  // Dentro de un dialogo con scroll el listado queda cortado abajo: lo traemos a la vista al abrirse
+  useEffect(() => {
+    if (open && matches.length) listRef.current?.scrollIntoView({ block: 'nearest' })
+  }, [open, matches.length])
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -45,10 +52,10 @@ export default function ProductoAutocomplete({ value, productos, onSelect, onCha
       e.preventDefault()
       setActiveIdx((i) => Math.max(i - 1, 0))
     } else if (e.key === 'Enter' || e.key === 'Tab') {
-      if (activeIdx >= 0) {
-        e.preventDefault()
-        pick(matches[activeIdx])
-      }
+      // Sin flecha previa toma la primera coincidencia: digitar y tabular basta para elegir.
+      // Con Tab no se hace preventDefault para que el foco siga al campo siguiente.
+      if (e.key === 'Enter') e.preventDefault()
+      pick(matches[activeIdx >= 0 ? activeIdx : 0])
     } else if (e.key === 'Escape') {
       setOpen(false)
     }
@@ -62,6 +69,7 @@ export default function ProductoAutocomplete({ value, productos, onSelect, onCha
         value={value}
         placeholder={placeholder ?? 'Código…'}
         autoComplete="off"
+        autoFocus={autoFocus}
         onChange={(e) => {
           onChange(e.target.value)
           setOpen(true)
@@ -73,7 +81,7 @@ export default function ProductoAutocomplete({ value, productos, onSelect, onCha
         onKeyDown={onKeyDown}
       />
       {open && !exact && matches.length > 0 && (
-        <div className="absolute z-50 mt-1 max-h-56 w-[28rem] max-w-[90vw] overflow-y-auto rounded-md border bg-popover shadow-md">
+        <div ref={listRef} className="absolute z-50 mt-1 max-h-56 w-full min-w-0 overflow-y-auto rounded-md border bg-popover shadow-md">
           {matches.map((p, i) => (
             <button
               key={p.codigo}

@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react'
+import { Fragment, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
-import { Boxes } from 'lucide-react'
+import { Boxes, Download } from 'lucide-react'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
@@ -9,9 +9,9 @@ import EmptyState from '@/modules/financiero/components/EmptyState'
 import TableSkeleton from '@/modules/financiero/components/TableSkeleton'
 import { useAuth } from '../hooks/useAuth'
 import { useCatalogoGD } from '../hooks/useCatalogoGD'
-import { useIngresoStock } from '../hooks/useIngresoStock'
+import { exportarExcel } from '@/modules/financiero/utils/exportExcel'
+import { useIngresoStock, SECCIONES, seccionLabel } from '../hooks/useIngresoStock'
 import FormularioStockItem from '../components/FormularioStockItem'
-import { normCod } from '../lib/calc'
 
 function alcance(stock: number, qty: number | null) {
   if (qty == null || qty <= 0) return null
@@ -35,10 +35,15 @@ export default function StockIngreso() {
     if (stock.error) toast.error(stock.error)
   }, [stock.error])
 
-  const disponibles = useMemo(() => {
-    const usados = new Set(stock.items.map((i) => normCod(i.codigo)))
-    return allProducts.filter((p) => !usados.has(normCod(p.codigo)))
-  }, [allProducts, stock.items])
+  // Mantiene el indice original de stock.items para que editar/quitar sigan apuntando a la fila correcta
+  const grupos = useMemo(() => {
+    const conIdx = stock.items.map((it, idx) => ({ it, idx }))
+    return SECCIONES.map((s) => ({
+      key: s.key,
+      label: s.label,
+      filas: conIdx.filter((r) => (r.it.seccion || 'GALPON') === s.key),
+    })).filter((g) => g.filas.length > 0)
+  }, [stock.items])
 
   const kpis = useMemo(() => {
     let critico = 0
@@ -54,6 +59,20 @@ export default function StockIngreso() {
     }
     return { total: stock.items.length, critico, bajo, ok, sinRef }
   }, [stock.items])
+
+  function onExportar() {
+    const filas = stock.items.map((it) => ({
+      Seccion: seccionLabel(it.seccion),
+      Codigo: it.codigo,
+      Material: it.material,
+      Unidad: it.unidad,
+      'Stock fisico': it.stockFisico,
+      'Cant/Modulo': it.qty,
+      'Alcance (mod)': alcance(it.stockFisico, it.qty),
+    }))
+    exportarExcel(`stock_semana_${stock.semanaKey}`, filas)
+    toast.success(`${filas.length} materiales exportados`)
+  }
 
   async function onGuardarTodo() {
     try {
@@ -97,7 +116,10 @@ export default function StockIngreso() {
         <Button variant="outline" size="sm" onClick={stock.goHoy} className="text-primary">
           Actual
         </Button>
-        <Button onClick={onGuardarTodo} disabled={stock.saving || !stock.items.length} className="ml-auto">
+        <Button variant="outline" size="sm" onClick={onExportar} disabled={!stock.items.length} className="ml-auto">
+          <Download className="mr-1 h-4 w-4" /> Exportar Excel
+        </Button>
+        <Button onClick={onGuardarTodo} disabled={stock.saving || !stock.items.length}>
           {stock.saving ? 'Guardando…' : '💾 Guardar semana'}
         </Button>
       </div>
@@ -127,7 +149,7 @@ export default function StockIngreso() {
 
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">📦 Stock de la semana</h3>
-        <FormularioStockItem productosDisponibles={disponibles} onGuardar={({ producto, stockFisico }) => stock.agregar(producto!, stockFisico)} />
+        <FormularioStockItem productos={allProducts} onAgregar={stock.agregar} />
       </div>
 
       {!loading && stock.items.length === 0 ? (
@@ -150,31 +172,40 @@ export default function StockIngreso() {
               <TableSkeleton columns={7} />
             ) : (
               <TableBody>
-                {stock.items.map((it, idx) => (
-                  <TableRow key={it.codigo}>
-                    <TableCell className="font-mono text-xs text-primary">{it.codigo}</TableCell>
-                    <TableCell className="max-w-md truncate text-sm" title={it.material}>
-                      {it.material}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{it.unidad}</TableCell>
-                    <TableCell className={`text-right tabular-nums font-semibold ${it.dirty ? 'text-warning' : ''}`}>
-                      {it.stockFisico.toLocaleString('es-CL', { maximumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground">
-                      {it.qty != null ? it.qty.toLocaleString('es-CL', { maximumFractionDigits: 4 }) : '—'}
-                    </TableCell>
-                    <TableCell>
-                      <AlcanceBadge stock={it.stockFisico} qty={it.qty} />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <FormularioStockItem item={it} productosDisponibles={disponibles} onGuardar={({ stockFisico }) => stock.editar(idx, stockFisico)} />
-                        <Button variant="ghost" size="icon" onClick={() => onRemove(idx)} title="Quitar">
-                          ✕
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                {grupos.map((g) => (
+                  <Fragment key={g.key}>
+                    <TableRow className="bg-muted/60 hover:bg-muted/60">
+                      <TableCell colSpan={7} className="py-1.5 text-xs font-semibold uppercase tracking-wide">
+                        {g.label} · {g.filas.length} material(es)
+                      </TableCell>
+                    </TableRow>
+                    {g.filas.map(({ it, idx }) => (
+                      <TableRow key={`${g.key}-${it.codigo}`}>
+                        <TableCell className="font-mono text-xs text-primary">{it.codigo}</TableCell>
+                        <TableCell className="max-w-md truncate text-sm" title={it.material}>
+                          {it.material}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{it.unidad}</TableCell>
+                        <TableCell className={`text-right tabular-nums font-semibold ${it.dirty ? 'text-warning' : ''}`}>
+                          {it.stockFisico.toLocaleString('es-CL', { maximumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-right text-xs text-muted-foreground">
+                          {it.qty != null ? it.qty.toLocaleString('es-CL', { maximumFractionDigits: 4 }) : '—'}
+                        </TableCell>
+                        <TableCell>
+                          <AlcanceBadge stock={it.stockFisico} qty={it.qty} />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <FormularioStockItem item={it} productos={allProducts} onEditar={(stockFisico) => stock.editar(idx, stockFisico)} />
+                            <Button variant="ghost" size="icon" onClick={() => onRemove(idx)} title="Quitar">
+                              ✕
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </Fragment>
                 ))}
               </TableBody>
             )}

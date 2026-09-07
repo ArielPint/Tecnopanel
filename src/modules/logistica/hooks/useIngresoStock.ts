@@ -6,8 +6,19 @@ import type { Producto } from './useCatalogoGD'
 import { normCod } from '../lib/calc'
 import { weekKey, weekLabel, dateFromWeekKey } from '../lib/week'
 
+export const SECCIONES = [
+  { key: 'GALPON', label: 'Galpon' },
+  { key: 'CARPA_CHICA', label: 'Carpa Chica' },
+  { key: 'CARPA_GRANDE', label: 'Carpa Grande' },
+] as const
+
+export type Seccion = (typeof SECCIONES)[number]['key']
+
+export const seccionLabel = (k: string) => SECCIONES.find((s) => s.key === k)?.label ?? k
+
 export interface StockItem {
   id: string | null
+  seccion: string
   codigo: string
   material: string
   unidad: string
@@ -18,6 +29,7 @@ export interface StockItem {
 
 interface RawStockItem {
   id: string | null
+  seccion: string
   codigo: string
   material: string
   unidad: string
@@ -27,6 +39,7 @@ interface RawStockItem {
 
 interface RegistroStockRow {
   id: string
+  seccion: string
   codigo: string
   material: string
   unidad: string
@@ -60,9 +73,10 @@ export function useIngresoStock(productos: Producto[]) {
     const proyectoId = await getProyectoId(proyectoSlug!)
     const { data, error: qError } = await supabase
       .from('registro_stock')
-      .select('id, codigo, material, unidad, stock_fisico')
+      .select('id, seccion, codigo, material, unidad, stock_fisico')
       .eq('proyecto_id', proyectoId)
       .eq('semana_key', key)
+      .order('seccion', { ascending: true })
       .order('material', { ascending: true })
     if (qError) {
       setError(qError.message)
@@ -71,6 +85,7 @@ export function useIngresoStock(productos: Producto[]) {
       setRawItems(
         rows.map((r) => ({
           id: r.id,
+          seccion: r.seccion || 'GALPON',
           codigo: r.codigo,
           material: r.material,
           unidad: r.unidad,
@@ -124,18 +139,28 @@ export function useIngresoStock(productos: Producto[]) {
   const goNext = () => semanaIdx > 0 && setSemana(semanas[semanaIdx - 1].key)
   const goHoy = () => setSemana(String(weekKey(new Date())))
 
-  const agregar = useCallback((producto: Producto, stockFisico: number) => {
-    setRawItems((prev) => [
-      ...prev,
-      {
-        id: null,
-        codigo: producto.codigo,
-        material: producto.descripcion,
-        unidad: producto.unidad || 'UND',
-        stockFisico,
-        dirty: true,
-      },
-    ])
+  // Agrega N lineas de una vez en una seccion. Si el codigo ya existe en esa seccion, actualiza su stock en vez de duplicar.
+  const agregar = useCallback((seccion: Seccion, lineas: { producto: Producto; stockFisico: number }[]) => {
+    setRawItems((prev) => {
+      const next = [...prev]
+      for (const { producto, stockFisico } of lineas) {
+        const idx = next.findIndex((it) => it.seccion === seccion && normCod(it.codigo) === normCod(producto.codigo))
+        if (idx >= 0) {
+          next[idx] = { ...next[idx], stockFisico, dirty: true }
+        } else {
+          next.push({
+            id: null,
+            seccion,
+            codigo: producto.codigo,
+            material: producto.descripcion,
+            unidad: producto.unidad || 'UND',
+            stockFisico,
+            dirty: true,
+          })
+        }
+      }
+      return next
+    })
   }, [])
 
   const editar = useCallback((idx: number, stockFisico: number) => {
@@ -170,13 +195,14 @@ export function useIngresoStock(productos: Producto[]) {
           proyecto_id: proyectoId,
           semana_key: semanaKey,
           fecha,
+          seccion: it.seccion || 'GALPON',
           codigo: it.codigo.trim(),
           material: it.material,
           unidad: it.unidad || 'UND',
           stock_fisico: it.stockFisico,
           created_by: creadoPor,
         }))
-        const { error } = await supabase.from('registro_stock').upsert(payload, { onConflict: 'proyecto_id,semana_key,codigo' })
+        const { error } = await supabase.from('registro_stock').upsert(payload, { onConflict: 'proyecto_id,semana_key,codigo,seccion' })
         if (error) throw new Error(error.message)
         // ponytail: refetch en vez de reconciliar ids localmente — mas simple y evita filas huerfanas si se borra un item recien guardado sin recargar
         await cargarSemana(semanaKey)

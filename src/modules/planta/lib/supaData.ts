@@ -182,7 +182,16 @@ export async function loadRegistroStock(proyectoId: string): Promise<RegistroSto
       .order('semana_key', { ascending: false })
       .order('material', { ascending: true }),
   )
-  return (data ?? []) as RegistroStockRow[]
+  // El ingreso de logistica guarda una fila por seccion (Galpon / Carpa Chica / Carpa Grande).
+  // Aca el stock se analiza por material, asi que se suma por semana + codigo.
+  const acc = new Map<string, RegistroStockRow>()
+  for (const r of (data ?? []) as RegistroStockRow[]) {
+    const k = `${r.semana_key}|${String(r.codigo).trim().toUpperCase()}`
+    const prev = acc.get(k)
+    if (prev) prev.stock_fisico = +prev.stock_fisico + +r.stock_fisico
+    else acc.set(k, { ...r, stock_fisico: +r.stock_fisico })
+  }
+  return [...acc.values()]
 }
 
 export interface RitmoProyeccion {
