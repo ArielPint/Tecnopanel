@@ -6,6 +6,10 @@ const VALUE_LABEL_STYLE = { fontSize: 11, fontWeight: 700, fill: 'hsl(var(--fore
 
 const labelFmt = (fn: (v: number) => string) => (v: unknown) => (v == null ? '' : fn(Number(v)))
 
+// ponytail: headroom en el eje Y para que las etiquetas "top" no queden cortadas
+const headroom = (dataMax: number) => dataMax + Math.max(3, Math.ceil(dataMax * 0.1))
+const HEADROOM_DOMAIN: [number, (d: number) => number] = [0, headroom]
+
 export function CurvaSChart({ data }: { data: CurvaData['curvaByWeek'] }) {
   const config = {
     teorico: { label: '% Teórico', color: '#58a6ff' },
@@ -16,7 +20,7 @@ export function CurvaSChart({ data }: { data: CurvaData['curvaByWeek'] }) {
       <AreaChart data={data} margin={{ left: 8, right: 28 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="semana" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
-        <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} />
+        <YAxis domain={[0, (dataMax: number) => dataMax + 5]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} />
         <ChartTooltip
           content={
             <ChartTooltipContent
@@ -61,7 +65,7 @@ export function ModulosLineChart({
       <AreaChart data={data} margin={{ left: 8, right: 28 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="semana" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
-        <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} />
+        <YAxis domain={HEADROOM_DOMAIN} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         <Area type="monotone" dataKey={planKey} stroke={`var(--color-${planKey})`} fill={`var(--color-${planKey})`} fillOpacity={0.08} strokeWidth={2} dot={{ r: 3 }}>
@@ -82,7 +86,7 @@ export function GalponBarChart({ data }: { data: CurvaData['galponByWeek'] }) {
       <ComposedChart data={data} margin={{ left: 8, right: 20 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="semana" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
+        <YAxis allowDecimals={false} domain={HEADROOM_DOMAIN} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         <Bar dataKey="count" name="Módulos" fill="var(--color-count)" radius={4}>
@@ -100,7 +104,7 @@ export function TerminadosSemanaBarChart({ data, domainMax, color = '#3fb950' }:
       <ComposedChart data={data} margin={{ left: 8, right: 20 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="semana" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
-        <YAxis allowDecimals={false} domain={domainMax ? [0, domainMax] : undefined} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
+        <YAxis allowDecimals={false} domain={domainMax ? [0, headroom(domainMax)] : HEADROOM_DOMAIN} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         <Bar dataKey="count" name="Módulos" fill="var(--color-count)" radius={4}>
@@ -122,7 +126,7 @@ export function TiempoTorreChart({ data }: { data: CurvaData['torreTiempo'] }) {
       <ComposedChart data={data} margin={{ left: 8, right: 20 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="torre" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-        <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={36} />
+        <YAxis domain={HEADROOM_DOMAIN} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={36} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         <Bar dataKey="real" name="Tiempo Real (días)" fill="var(--color-real)" radius={4}>
