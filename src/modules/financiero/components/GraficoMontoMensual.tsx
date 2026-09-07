@@ -4,6 +4,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { Skeleton } from '@/modules/financiero/components/ui/skeleton'
 import type { MontoMensual } from '@/modules/financiero/types/financiero'
 import { formatCLP, formatCLPCompact, nombreMes } from '@/modules/financiero/utils/formatters'
+import { yHeadroom } from '@/lib/chartDomain'
 
 interface GraficoMontoMensualProps {
   registros: MontoMensual[]
@@ -38,7 +39,7 @@ export default function GraficoMontoMensual({ registros, loading, colorVar, etiq
       <BarChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={formatCLPCompact} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={64} />
+        <YAxis domain={yHeadroom} tickFormatter={formatCLPCompact} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={64} />
         <ChartTooltip
           content={
             <ChartTooltipContent

@@ -1,6 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/modules/financiero/components/ui/chart'
 import type { ProductosData } from '../hooks/useProductosData'
+import { yHeadroom, yHeadroomSigned } from '@/lib/chartDomain'
 
 function colorAvanceTeorico(v: number) {
   if (v > 100) return '#f85149'
@@ -53,7 +54,7 @@ export function AvancePedidosChart({ data }: { data: ProductosData['avancePedido
       <BarChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="producto" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
-        <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} />
+        <YAxis domain={yHeadroom} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} />
         <ChartTooltip
           content={
             <ChartTooltipContent
@@ -83,7 +84,7 @@ export function VariacionUnitariaChart({ data }: { data: ProductosData['variacio
       <BarChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="producto" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
-        <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} />
+        <YAxis domain={yHeadroomSigned} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} />
         <ChartTooltip
           content={
             <ChartTooltipContent

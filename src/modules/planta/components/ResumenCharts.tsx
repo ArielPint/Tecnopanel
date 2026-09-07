@@ -12,6 +12,7 @@ import { Input } from '@/modules/financiero/components/ui/input'
 import { useProyExtraAvEcon } from '@/modules/settings/hooks/useConfig'
 import type { ResumenData } from '../hooks/useResumenData'
 import { fmtM, fmtPr } from '../lib/format'
+import { yHeadroom, yHeadroomSigned } from '@/lib/chartDomain'
 
 const BUCKET_COLORS = ['#e3903e', '#d2b932', '#a3c83c', '#64c850', '#3fb950']
 
@@ -35,7 +36,7 @@ export function DistribucionModulosChart({ data }: { data: ResumenData['distribu
       <BarChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="bucket" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
+        <YAxis allowDecimals={false} domain={yHeadroom} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey="cantidad" radius={4}>
           {data.map((entry, i) => (
@@ -67,7 +68,7 @@ export function ComprasVsPresupuestoChart({ data }: { data: ResumenData['compras
           textAnchor="end"
           height={40}
         />
-        <YAxis tickFormatter={(v) => fmtM(v)} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={64} />
+        <YAxis domain={yHeadroom} tickFormatter={(v) => fmtM(v)} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={64} />
         <ChartTooltip
           content={
             <ChartTooltipContent
@@ -158,7 +159,7 @@ export function AvanceEconomicoChart({
         <ComposedChart data={chartData} barGap={-BAR_SIZE} margin={{ left: 8, right: 8 }}>
           <CartesianGrid vertical={false} />
           <XAxis dataKey="mes" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-          <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
+          <YAxis domain={yHeadroom} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
           <ChartTooltip
             content={
               <ChartTooltipContent
@@ -264,7 +265,7 @@ export function AvanceEconomicoAcumChart({
       <ComposedChart data={data} margin={{ left: 8, right: 8, top: 24 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="mes" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
+        <YAxis domain={yHeadroom} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
         <ChartTooltip
           content={
             <ChartTooltipContent
@@ -316,10 +317,9 @@ function MesCantidadBarChart({ data, color, label }: { data: { mes: string; cant
           textAnchor="end"
           height={40}
         />
-        {/* ponytail: +5 de aire arriba para que la etiqueta del valor no se corte */}
         <YAxis
           allowDecimals={false}
-          domain={[0, (dataMax: number) => dataMax + 5]}
+          domain={yHeadroom}
           tick={{ fontSize: 11 }}
           tickLine={false}
           axisLine={false}
@@ -361,7 +361,7 @@ export function M2AcumuladoChart({ data }: { data: ResumenData['m2Acumulado'] })
       <ComposedChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="mes" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={(v) => v.toLocaleString('es-CL')} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={56} />
+        <YAxis domain={yHeadroom} tickFormatter={(v) => v.toLocaleString('es-CL')} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={56} />
         <ChartTooltip
           content={
             <ChartTooltipContent
@@ -393,7 +393,7 @@ export function DiferenciaAvanceEconFisicoChart({ data }: { data: ResumenData['d
       <BarChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="mes" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
+        <YAxis domain={yHeadroomSigned} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
         <ChartTooltip
           content={
             <ChartTooltipContent
@@ -426,7 +426,7 @@ export function DiferenciaAvanceEconFisicoAcumChart({ data }: { data: ResumenDat
       <BarChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="mes" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
+        <YAxis domain={yHeadroomSigned} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
         <ChartTooltip
           content={
             <ChartTooltipContent

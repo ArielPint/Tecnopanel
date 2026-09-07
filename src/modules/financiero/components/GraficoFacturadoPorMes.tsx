@@ -6,6 +6,7 @@ import { Skeleton } from '@/modules/financiero/components/ui/skeleton'
 import EmptyState from '@/modules/financiero/components/EmptyState'
 import { BarChart3 } from 'lucide-react'
 import { formatCLP, formatCLPCompact, nombreMes } from '@/modules/financiero/utils/formatters'
+import { yHeadroom } from '@/lib/chartDomain'
 
 const chartConfig = {
   monto: { label: 'Facturado', color: 'hsl(var(--success))' },
@@ -38,7 +39,7 @@ export default function GraficoFacturadoPorMes() {
       <BarChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={formatCLPCompact} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={64} />
+        <YAxis domain={yHeadroom} tickFormatter={formatCLPCompact} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={64} />
         <ChartTooltip
           content={
             <ChartTooltipContent

@@ -9,6 +9,7 @@ import {
   type ChartConfig,
 } from '@/modules/financiero/components/ui/chart'
 import type { DespachosData } from '../hooks/useDespachosData'
+import { yHeadroom } from '@/lib/chartDomain'
 
 // Negro en tema claro, blanco en tema oscuro — igual que en ResumenCharts.
 const VALUE_LABEL_STYLE = { fontSize: 12, fontWeight: 700, fill: 'hsl(var(--foreground))' } as const
@@ -52,7 +53,7 @@ export function DespachosMensualChart({
       <ComposedChart data={data} margin={{ left: 8, right: 8, top: 24 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="mes" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={36} />
+        <YAxis allowDecimals={false} domain={yHeadroom} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={36} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey={despachadoKey} fill={`var(--color-${despachadoKey})`} radius={4}>
           <LabelList dataKey={despachadoKey} content={barraLabel} />
@@ -77,7 +78,7 @@ export function DespachosSemanalChart({ data }: { data: DespachosData['semanal']
       <ComposedChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="semana" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={36} />
+        <YAxis allowDecimals={false} domain={yHeadroom} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={36} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey="despachadoSemanal" fill="var(--color-despachadoSemanal)" radius={3} />
         <Line type="monotone" dataKey="despachadoAcum" stroke="var(--color-despachadoAcum)" strokeWidth={2} dot={{ r: 3 }} />
@@ -97,7 +98,7 @@ export function DespachosDiarioChart({ data }: { data: DespachosData['diario'] }
       <LineChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="dia" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={36} />
+        <YAxis allowDecimals={false} domain={yHeadroom} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={36} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Line type="monotone" dataKey="despachadoAcum" stroke="var(--color-despachadoAcum)" strokeWidth={2} dot={{ r: 2 }} />
         <Line type="monotone" dataKey="proyectadoAcum" stroke="var(--color-proyectadoAcum)" strokeWidth={2} dot={{ r: 2 }} />
@@ -118,7 +119,7 @@ export function DespachosTorreTipoChart({ data, tipos }: { data: DespachosData['
       <BarChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="torre" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={60} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
+        <YAxis allowDecimals={false} domain={yHeadroom} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
         <ChartTooltip content={<ChartTooltipContent />} />
         {tipos.map((t) => (
           <Bar key={t} dataKey={t} fill={`var(--color-${t})`} radius={3} />

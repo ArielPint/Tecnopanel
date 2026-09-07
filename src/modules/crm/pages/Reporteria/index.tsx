@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 import { fmtMontoCLP } from '@/lib/montoCLP'
+import { yHeadroom } from '@/lib/chartDomain'
 import type {
   Oportunidad, OportunidadHistorialEtapa, TareaIngenieria, PerfilBasico,
 } from '@/modules/crm/types/database'
@@ -260,8 +261,8 @@ export default function Reporteria() {
             <ComposedChart data={tendencia} margin={{ left: 4, right: 8 }}>
               <CartesianGrid vertical={false} stroke="#e2e8f0" />
               <XAxis dataKey="mes" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="n" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={32} />
-              <YAxis yAxisId="d" orientation="right" tickFormatter={(v) => `${v}d`} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={44} />
+              <YAxis yAxisId="n" domain={yHeadroom} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={32} />
+              <YAxis yAxisId="d" orientation="right" domain={yHeadroom} tickFormatter={(v) => `${v}d`} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={44} />
               <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar yAxisId="n" dataKey="creadas" name="Creadas" fill="#3b82f6" radius={[3, 3, 0, 0]} />
@@ -282,7 +283,7 @@ export default function Reporteria() {
             <BarChart data={dataEtapas} margin={{ left: 4, right: 8 }}>
               <CartesianGrid vertical={false} stroke="#e2e8f0" />
               <XAxis dataKey="etapa" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} angle={-25} textAnchor="end" height={64} interval={0} />
-              <YAxis tickFormatter={(v) => `${v}d`} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={40} />
+              <YAxis domain={yHeadroom} tickFormatter={(v) => `${v}d`} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={40} />
               <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v: unknown) => [`${v} días`, 'Promedio']} />
               <Bar dataKey="promDias" radius={[3, 3, 0, 0]}>
                 {dataEtapas.map((e) => <Cell key={e.etapa} fill={ETAPA_COLORS[e.etapa] ?? '#64748b'} />)}

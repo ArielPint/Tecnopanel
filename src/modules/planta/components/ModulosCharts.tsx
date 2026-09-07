@@ -1,6 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/modules/financiero/components/ui/chart'
 import type { ModulosData } from '../hooks/useModulosData'
+import { yHeadroom } from '@/lib/chartDomain'
 
 const BUCKET_COLORS_10 = [
   '#f06e3c', '#e3903e', '#d2af32', '#bec337', '#a3c83c',
@@ -14,7 +15,7 @@ export function DistribucionAvanceChart({ data }: { data: ModulosData['distribuc
       <BarChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="bucket" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
+        <YAxis allowDecimals={false} domain={yHeadroom} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey="cantidad" radius={4}>
           {data.map((entry, i) => (
@@ -43,7 +44,7 @@ export function AvancePorTorreChart({ data }: { data: ModulosData['avancePorTorr
       <BarChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="torre" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={40} />
+        <YAxis domain={yHeadroom} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={40} />
         <ChartTooltip
           content={
             <ChartTooltipContent
@@ -77,7 +78,7 @@ export function M2SemanalAcumChart({ data }: { data: ModulosData['m2SemanalAcum'
       <ComposedChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="semana" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-40} textAnchor="end" height={50} />
-        <YAxis tickFormatter={(v) => v.toLocaleString('es-CL')} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={56} />
+        <YAxis domain={yHeadroom} tickFormatter={(v) => v.toLocaleString('es-CL')} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={56} />
         <ChartTooltip
           content={
             <ChartTooltipContent
@@ -108,7 +109,7 @@ export function M2SemanalDiarioChart({ data }: { data: ModulosData['m2SemanalDia
       <ComposedChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="semana" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-40} textAnchor="end" height={50} />
-        <YAxis tickFormatter={(v) => v.toLocaleString('es-CL')} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={56} />
+        <YAxis domain={yHeadroom} tickFormatter={(v) => v.toLocaleString('es-CL')} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={56} />
         <ChartTooltip
           content={
             <ChartTooltipContent

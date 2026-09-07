@@ -1,5 +1,6 @@
 import { Bar, BarChart, CartesianGrid, Cell, Legend, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/modules/financiero/components/ui/chart'
+import { yHeadroom } from '@/lib/chartDomain'
 
 const COLOR_VERDE = '#3fb950'
 const COLOR_AZUL = '#58a6ff'
@@ -39,7 +40,7 @@ export function VBarChart({
       <BarChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey={labelKey} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval={0} angle={data.length > 8 ? -35 : 0} textAnchor={data.length > 8 ? 'end' : 'middle'} height={data.length > 8 ? 50 : 24} />
-        <YAxis tickFormatter={pct ? (v) => `${v}%` : undefined} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={40} />
+        <YAxis domain={yHeadroom} tickFormatter={pct ? (v) => `${v}%` : undefined} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={40} />
         <ChartTooltip content={<ChartTooltipContent formatter={(value) => [pct ? `${value}%` : String(value), '']} />} />
         <Bar dataKey={valueKey} radius={4}>
           {colors
@@ -66,7 +67,7 @@ export function GroupedVBarChart({
       <BarChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey={labelKey} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval={0} angle={data.length > 8 ? -35 : 0} textAnchor={data.length > 8 ? 'end' : 'middle'} height={data.length > 8 ? 50 : 24} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
+        <YAxis allowDecimals={false} domain={yHeadroom} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         {series.map((s) => (

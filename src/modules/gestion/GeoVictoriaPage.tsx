@@ -3,6 +3,7 @@ import { RefreshCw, Search, Users as UsersIcon } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { supabase } from '@/lib/supabaseClient'
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/components/ui/card'
+import { yHeadroom } from '@/lib/chartDomain'
 
 // Puerto de asistencia.html + geovictoria.js (standalone La Chacra) al hub.
 // Toda llamada a la API de GeoVictoria pasa por el Edge Function gv-proxy,
@@ -378,7 +379,7 @@ function TabResumen() {
                   <BarChart data={chartData} margin={{ left: 8, right: 8 }}>
                     <CartesianGrid vertical={false} strokeOpacity={0.3} />
                     <XAxis dataKey="fecha" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
+                    <YAxis allowDecimals={false} domain={yHeadroom} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
                     <Tooltip />
                     <Legend />
                     <Bar dataKey="asistentes" name="Asistentes" fill="hsl(var(--success))" radius={4} />

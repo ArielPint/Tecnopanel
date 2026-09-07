@@ -2,6 +2,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from 
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/modules/financiero/components/ui/chart'
 import type { ComprasData } from '../hooks/useComprasData'
 import { fmtM } from '../lib/format'
+import { yHeadroom } from '@/lib/chartDomain'
 
 export function ComprasPorMesChart({ data }: { data: ComprasData['comprasPorMes'] }) {
   const config = {
@@ -13,7 +14,7 @@ export function ComprasPorMesChart({ data }: { data: ComprasData['comprasPorMes'
       <BarChart data={data} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="mes" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={(v) => fmtM(v)} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={64} />
+        <YAxis domain={yHeadroom} tickFormatter={(v) => fmtM(v)} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={64} />
         <ChartTooltip
           content={
             <ChartTooltipContent
