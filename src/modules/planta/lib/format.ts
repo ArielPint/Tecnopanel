@@ -68,3 +68,20 @@ export const MESES_ORDER: MesOrden[] = [
   { n: 4, y: 2026, lbl: 'Abr 2026' }, { n: 5, y: 2026, lbl: 'May 2026' }, { n: 6, y: 2026, lbl: 'Jun 2026' },
   { n: 7, y: 2026, lbl: 'Jul 2026' }, { n: 8, y: 2026, lbl: 'Ago 2026' }, { n: 9, y: 2026, lbl: 'Sep 2026' },
 ]
+
+// Etiqueta del mes en curso, con el mismo formato que MESES_ORDER y que el mesLbl
+// de useDespachosData ("Sep 2026"), para poder marcarlo como parcial en los
+// graficos mensuales: el mes corriente solo lleva los dias transcurridos.
+export function mesActualLbl(hoy: Date = new Date()): string | null {
+  const m = MESES_ORDER.find((x) => x.n === hoy.getMonth() + 1 && x.y === hoy.getFullYear())
+  return m ? m.lbl : null
+}
+
+export function demoMesActual() {
+  console.assert(mesActualLbl(new Date(2026, 8, 7)) === 'Sep 2026', mesActualLbl(new Date(2026, 8, 7)) ?? 'null')
+  console.assert(mesActualLbl(new Date(2025, 9, 1)) === 'Oct 2025', mesActualLbl(new Date(2025, 9, 1)) ?? 'null')
+  // fuera del rango del proyecto no marca nada en vez de inventar un mes
+  console.assert(mesActualLbl(new Date(2027, 0, 15)) === null, 'fuera de rango debe dar null')
+  const lbl = mesActualLbl(new Date(2026, 8, 7))
+  console.assert(lbl != null && /^[A-Z][a-z]{2} \d{4}$/.test(lbl), `formato inesperado: ${lbl}`)
+}

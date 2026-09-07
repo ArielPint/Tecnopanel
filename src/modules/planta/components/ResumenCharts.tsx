@@ -11,7 +11,7 @@ import {
 import { Input } from '@/modules/financiero/components/ui/input'
 import { useProyExtraAvEcon } from '@/modules/settings/hooks/useConfig'
 import type { ResumenData } from '../hooks/useResumenData'
-import { fmtM, fmtPr } from '../lib/format'
+import { fmtM, fmtPr, mesActualLbl } from '../lib/format'
 import { yHeadroom, yHeadroomSigned } from '@/lib/chartDomain'
 
 const BUCKET_COLORS = ['#e3903e', '#d2b932', '#a3c83c', '#64c850', '#3fb950']
@@ -303,7 +303,12 @@ export function AvanceEconomicoAcumChart({
 function MesCantidadBarChart({ data, color, label }: { data: { mes: string; cantidad: number }[]; color: string; label: string }) {
   const config = { cantidad: { label, color } } satisfies ChartConfig
   if (!data.length) return <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">Sin datos</div>
-  return (
+  // El mes en curso solo lleva los dias transcurridos: se dibuja atenuado y con
+  // borde cortado para que no se lea como un mes cerrado frente a los anteriores.
+  const hoy = new Date()
+  const mesEnCurso = mesActualLbl(hoy)
+  const idxParcial = mesEnCurso ? data.findIndex((d) => d.mes === mesEnCurso) : -1
+  const chart = (
     <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
       <BarChart data={data} margin={{ left: 8, right: 8, bottom: 16 }}>
         <CartesianGrid vertical={false} />
@@ -327,10 +332,26 @@ function MesCantidadBarChart({ data, color, label }: { data: { mes: string; cant
         />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey="cantidad" fill="var(--color-cantidad)" radius={4}>
+          {data.map((_, i) =>
+            i === idxParcial ? (
+              <Cell key={i} fill={color} fillOpacity={0.4} stroke={color} strokeWidth={2} strokeDasharray="4 3" />
+            ) : (
+              <Cell key={i} fill={color} />
+            ),
+          )}
           <LabelList dataKey="cantidad" position="top" style={VALUE_LABEL_STYLE} />
         </Bar>
       </BarChart>
     </ChartContainer>
+  )
+  if (idxParcial === -1) return chart
+  return (
+    <div className="space-y-1">
+      {chart}
+      <p className="text-xs text-muted-foreground">
+        {mesEnCurso} en curso: solo incluye hasta el {hoy.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })}.
+      </p>
+    </div>
   )
 }
 
