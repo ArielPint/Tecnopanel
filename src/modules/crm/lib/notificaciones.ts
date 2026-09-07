@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabaseClient'
-import { toast } from 'sonner'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 
 export interface NuevaNotificacion {
@@ -33,10 +32,9 @@ export async function notificar(rows: NuevaNotificacion[], contexto: string) {
   const { error: mailErr } = await supabase.functions.invoke('crm-notificar-email', {
     body: { notification_ids: ids },
   })
-  // El correo es best-effort, pero no puede fallar en silencio: la campana ya quedo
-  // guardada, asi que se avisa sin cortar el flujo.
-  if (mailErr) {
-    console.error(contexto + '.email', mailErr)
-    toast.warning('El aviso quedó en la campana, pero el correo no se pudo enviar')
-  }
+  // El envio de correo queda pendiente para la migracion al servidor propio (falta el
+  // secret de Resend), asi que hoy este invoke falla siempre. Se registra en consola y no
+  // se molesta al usuario con un aviso en cada accion: la campana ya quedo guardada.
+  // Al retomarlo, volver a subir esto a un toast para que no falle en silencio.
+  if (mailErr) console.error(contexto + '.email', mailErr)
 }
