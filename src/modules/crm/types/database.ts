@@ -82,11 +82,23 @@ export interface Oportunidad {
   programa: string | null
   fecha_ingreso_calificacion: string | null
   estimacion_calificacion: string | null
+  hitos_vit: HitosVit
   created_at: string
   updated_at: string
   cliente?: Cliente
   vendedor?: Profile
 }
+
+/** Una de las 6 etapas internas de una oportunidad VIT (columna jsonb oportunidades.hitos_vit,
+ *  indexada por el numero de etapa "1".."6"). Cumplida exige descripcion escrita. */
+export interface HitoVit {
+  descripcion: string
+  cumplida: boolean
+  cumplida_por?: string | null
+  cumplida_at?: string | null
+}
+
+export type HitosVit = Record<string, HitoVit>
 
 /** Ticket de autorizacion cuando el margen definido queda bajo MARGEN_MINIMO (29%).
  *  Solo gerencia (crm_es_gerente) puede aprobarlo o rechazarlo. */

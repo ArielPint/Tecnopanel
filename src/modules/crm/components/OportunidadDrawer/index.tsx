@@ -12,7 +12,7 @@ import { usePermisos } from '@/modules/crm/contexts/PermisosContext'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import { formatCLP } from '@/modules/financiero/utils/formatters'
 import MontoInput from '@/components/MontoInput'
-import type { Oportunidad, Profile, PerfilBasico, OportunidadHistorialEtapa, OportunidadDocumento, TareaIngenieria, EstadoTarea, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit, MargenAutorizacion } from '@/modules/crm/types/database'
+import type { Oportunidad, Profile, PerfilBasico, OportunidadHistorialEtapa, OportunidadDocumento, TareaIngenieria, EstadoTarea, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit, MargenAutorizacion, HitosVit } from '@/modules/crm/types/database'
 import { familiasVisibles, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
 import { notificar, ROLES_GERENCIA, ROLES_GERENCIA_ADMIN } from '@/modules/crm/lib/notificaciones'
 
@@ -172,6 +172,46 @@ const ETAPAS_ORDER = [
 const ETAPAS_ORDER_VIT = ['Clasificación', 'Oportunidad', 'Negociación']
 
 const CAMPOS_OPORTUNIDAD_REQUERIDOS = ['tipo_subsidio', 'programa', 'monto_estimado', 'fecha_ingreso_calificacion', 'estimacion_calificacion', 'fecha_inicio_despachos_est', 'duracion_meses_est'] as const
+
+// Las 6 etapas internas de una oportunidad VIT (columna jsonb oportunidades.hitos_vit).
+// No son etapas del pipeline: son hitos que se van cumpliendo dentro de las 3 etapas VIT
+// y se muestran en la pestaña General.
+const HITOS_VIT: { n: number; nombre: string }[] = [
+  { n: 1, nombre: 'Diseño y Desarrollo' },
+  { n: 2, nombre: 'Ingreso del Proyecto a Serviu' },
+  { n: 3, nombre: 'CPI Hábil' },
+  { n: 4, nombre: 'Clasificación y Selección' },
+  { n: 5, nombre: 'Orden de Compra o Contrato' },
+  { n: 6, nombre: 'Ejecución' },
+]
+
+// Hasta que numero de etapa interna se puede trabajar estando en cada etapa del pipeline.
+// Dentro de ese tope las etapas aparecen de a una: la siguiente asoma solo cuando la
+// anterior queda cumplida.
+const HITOS_VIT_TOPE: Record<string, number> = {
+  'Clasificación': 1,
+  'Oportunidad': 3,
+  'Negociación': 6,
+}
+
+// Espejo de public.crm_hitos_vit_exigidos(): cuantas etapas internas exige tener cumplidas
+// para ENTRAR a cada etapa destino. Mantener en sync con la base.
+const HITOS_VIT_EXIGIDOS: Record<string, number> = {
+  'Oportunidad': 1,
+  'Negociación': 3,
+  'Ganado': 6,
+}
+
+// Una etapa interna cuenta como cumplida solo con el flag Y una descripcion escrita.
+function hitoVitCumplido(hitos: HitosVit | null | undefined, n: number): boolean {
+  const h = hitos?.[String(n)]
+  return !!h?.cumplida && !!h.descripcion?.trim()
+}
+
+// Espejo de public.crm_hitos_vit_pendientes(): numeros de etapa interna sin cumplir en 1..hasta.
+function hitosVitPendientes(hitos: HitosVit | null | undefined, hasta: number): number[] {
+  return HITOS_VIT.filter(h => h.n <= hasta && !hitoVitCumplido(hitos, h.n)).map(h => h.n)
+}
 
 const ETAPAS_LABELS: Record<string,string> = {
   'Clasificación': 'Clasificación',
@@ -340,6 +380,19 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   function precioLinea(tipologia: string) {
     return tipologias.find(t => t.tipologia === tipologia)?.venta_actual_uf ?? 0
   }
+  // Etapas internas VIT: se editan en memoria y se persisten con "Guardar cambios" de General.
+  function actualizarHito(n: number, cambios: Partial<HitosVit[string]>) {
+    setOpp(o => {
+      const actual = o.hitos_vit?.[String(n)] ?? { descripcion: '', cumplida: false }
+      return { ...o, hitos_vit: { ...(o.hitos_vit ?? {}), [String(n)]: { ...actual, ...cambios } } }
+    })
+  }
+  function marcarHito(n: number, cumplida: boolean) {
+    actualizarHito(n, cumplida
+      ? { cumplida: true, cumplida_por: profile?.id ?? null, cumplida_at: new Date().toISOString() }
+      : { cumplida: false, cumplida_por: null, cumplida_at: null })
+  }
+
   const totalUnidadesLineas = lineas.reduce((s, l) => s + (l.cantidad_casas || 0), 0)
   const totalTiposLineas = lineas.filter(l => l.tipologia && l.cantidad_casas > 0).length
   async function guardarLineas() {
@@ -769,6 +822,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
       familia_productos: opp.familia_productos, alcances: opp.alcances,
       nombre_comite_vivienda: opp.nombre_comite_vivienda, nombre_constructora: opp.nombre_constructora,
       zona_termica: opp.zona_termica, valor_uf: opp.valor_uf,
+      hitos_vit: opp.hitos_vit ?? {},
     }).eq('id', opp.id).select('id')
     if (tieneTipologias) await guardarLineas()
     setSaving(false)
@@ -790,10 +844,14 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
     }).eq('id', opp.id)
     if (handleSupabaseError(error, 'OportunidadDrawer.saveOportunidadCampos')) { setSaving(false); return }
     const completo = CAMPOS_OPORTUNIDAD_REQUERIDOS.every(k => opp[k] !== null && opp[k] !== '' && opp[k] !== undefined)
-    if (completo && opp.etapa_actual === 'Oportunidad') {
+    // El auto-avance a Negociacion espera a que las etapas internas 1 a 3 esten cumplidas,
+    // si no el RPC lo rechaza igual.
+    const trabaHitos = bloqueoHitosVit('Negociación')
+    if (completo && opp.etapa_actual === 'Oportunidad' && !trabaHitos) {
       await avanzarEtapa()
       return
     }
+    if (completo && trabaHitos) toast.info(trabaHitos)
     setSaving(false); onUpdate()
   }
 
@@ -985,8 +1043,59 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
     ? `El margen de ${opp.margen_porcentaje}% está bajo el mínimo de ${MARGEN_MINIMO}% y necesita autorización de gerencia`
     : ''
   const margenAplicaA = (etapa: string) => ['Negociación', 'Ganado'].includes(etapa)
-  const bloqueoAvanzar = bloqueoTareas || (margenAplicaA(nextEtapa) ? bloqueoMargen : '')
-  const bloqueoGanado = bloqueoTareas || bloqueoMargen
+  // Etapas internas VIT (espejo de crm_cambiar_etapa): trancan el avance mientras queden
+  // hitos exigidos por la etapa destino sin cumplir.
+  const bloqueoHitosVit = (destino: string) => {
+    if (opp.tipo_venta !== 'VIT') return ''
+    const faltan = hitosVitPendientes(opp.hitos_vit, HITOS_VIT_EXIGIDOS[destino] ?? 0)
+    if (!faltan.length) return ''
+    return `Falta${faltan.length > 1 ? 'n' : ''} cumplir la${faltan.length > 1 ? 's' : ''} etapa${faltan.length > 1 ? 's' : ''} ${faltan.join(', ')} para pasar a ${destino}`
+  }
+  const bloqueoAvanzar = bloqueoTareas || bloqueoHitosVit(nextEtapa) || (margenAplicaA(nextEtapa) ? bloqueoMargen : '')
+  const bloqueoGanado = bloqueoTareas || bloqueoHitosVit('Ganado') || bloqueoMargen
+
+  // Etapas internas VIT en la pestaña General. Se muestran de a una: la siguiente asoma
+  // solo cuando la anterior queda cumplida, y nunca mas alla del tope de la etapa del
+  // pipeline (Clasificacion -> 1, Oportunidad -> 3, Negociacion -> 6).
+  function renderHitosVit() {
+    const tope = isTerminal ? HITOS_VIT.length : (HITOS_VIT_TOPE[opp.etapa_actual] ?? 0)
+    const visibles = HITOS_VIT.filter(h =>
+      h.n <= tope && (h.n === 1 || hitoVitCumplido(opp.hitos_vit, h.n - 1)))
+    if (!visibles.length) return null
+    return (
+      <div className="space-y-2 bg-gray-50 rounded-lg p-3">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Etapas del proyecto</p>
+        {visibles.map(h => {
+          const hito = opp.hitos_vit?.[String(h.n)]
+          const desc = hito?.descripcion ?? ''
+          const cumplida = hitoVitCumplido(opp.hitos_vit, h.n)
+          const quien = usuarios.find(u => u.id === hito?.cumplida_por)
+          return (
+            <div key={h.n} className={['rounded-lg border p-2.5 space-y-1.5', cumplida ? 'border-emerald-200 bg-emerald-50/60' : 'border-gray-200 bg-white'].join(' ')}>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-xs font-medium text-gray-700">Etapa {h.n} · {h.nombre}</p>
+                <label className="flex items-center gap-1.5 text-xs text-gray-600 shrink-0" title={desc.trim() ? undefined : 'Escribí una descripción para poder marcarla cumplida'}>
+                  <input type="checkbox" checked={!!hito?.cumplida} disabled={!desc.trim()}
+                    onChange={e => marcarHito(h.n, e.target.checked)}
+                    className="accent-emerald-600 disabled:opacity-40" />
+                  Cumplida
+                </label>
+              </div>
+              <textarea value={desc} onChange={e => actualizarHito(h.n, { descripcion: e.target.value })}
+                rows={2} placeholder="Breve descripción de esta etapa"
+                className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" />
+              {cumplida && hito?.cumplida_at && (
+                <p className="text-xs text-emerald-700">
+                  ✓ {quien ? `${quien.nombre} ${quien.apellido}` : 'Cumplida'} · {new Date(hito.cumplida_at).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                </p>
+              )}
+            </div>
+          )
+        })}
+        <p className="text-xs text-gray-400">Marcar una etapa exige su descripción. Los cambios se registran con "Guardar cambios".</p>
+      </div>
+    )
+  }
 
   // Bloque de tareas de ingenieria. Se usa en Ingenieria y en Desarrollo; en Desarrollo va
   // primero, antes de los documentos entregables.
@@ -1565,6 +1674,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
               <div><label className="block text-xs font-medium text-gray-600 mb-1">Descripcion</label>
                 <textarea value={opp.descripcion ?? ''} onChange={e => setOpp(o => ({...o,descripcion:e.target.value||null}))} rows={3} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" /></div>
 
+              {opp.tipo_venta === 'VIT' && renderHitosVit()}
+
               {(opp.tipo_venta === 'Kit' || opp.tipo_venta === 'VIT') && (
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Entidad patrocinante</label>
                   <input value={opp.nombre_entidad_patrocinante ?? ''} onChange={e => setOpp(o => ({...o,nombre_entidad_patrocinante:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
@@ -1938,8 +2049,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
       {/* Footer */}
         {!isTerminal && (
           <div className="p-4 border-t border-gray-200 flex-shrink-0 space-y-2">
-          {(bloqueoTareas || bloqueoMargen || motivoNoCierra) && (
-            <p className="text-xs text-amber-600">{bloqueoTareas || bloqueoMargen || motivoNoCierra}</p>
+          {(bloqueoTareas || bloqueoAvanzar || bloqueoMargen || motivoNoCierra) && (
+            <p className="text-xs text-amber-600">{bloqueoTareas || bloqueoAvanzar || bloqueoMargen || motivoNoCierra}</p>
           )}
           <div className="flex gap-2">
             {canGoBack && (
