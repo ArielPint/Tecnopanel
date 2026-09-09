@@ -15,6 +15,14 @@ import FormularioProductoGD from '../components/FormularioProductoGD'
 
 const normCod = (c: string) => String(c || '').trim().toUpperCase()
 
+/** Precios unitarios: muchos insumos valen menos de $100 la unidad, donde formatCLP
+ * (0 decimales) mostraria "$3" para 3,26 y el reporte queda inservible. */
+const formatUnitario = (v: number | null | undefined) => {
+  if (v == null) return '—'
+  if (Math.abs(v) >= 100) return formatCLP(v)
+  return `$${v.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
 interface CatalogoProps {
   /** Permisos adicionales para habilitar acciones aunque el usuario no tenga logistica:editar
    * (ej. acceso restringido a Solicitudes con permisos propios de catálogo, separados en
@@ -28,7 +36,7 @@ export default function Catalogo({ puedeCrearEditarExtra, puedeEliminarExtra }: 
   const puedeCrearEditar = puedeEditarLogistica || !!puedeCrearEditarExtra
   const puedeEliminar = puedeEditarLogistica || !!puedeEliminarExtra
   const puedeAlgo = puedeCrearEditar || puedeEliminar
-  const { allProducts, customCodes, pppMap, loading, error, guardar, ocultar } = useCatalogoGD()
+  const { allProducts, customCodes, pppMap, statsMap, loading, error, guardar, ocultar } = useCatalogoGD()
   const [search, setSearch] = useState('')
 
   const filtrados = useMemo(() => {
@@ -53,17 +61,25 @@ export default function Catalogo({ puedeCrearEditarExtra, puedeEliminarExtra }: 
 
   function onExportar() {
     const filas = filtrados.map((p) => {
-      const ppp = pppMap[normCod(p.codigo)]
+      const k = normCod(p.codigo)
+      const ppp = pppMap[k]
       const pppVal = ppp && ppp.cant > 0 ? ppp.monto / ppp.cant : null
+      const st = statsMap[k]
       return {
         Código: p.codigo,
         Descripción: p.descripcion,
         Unidad: p.unidad || '',
+        'Cant. Solicitada': st?.solicitada ?? 0,
+        Devoluciones: st?.devuelta ?? 0,
+        'Cant. Neta': st?.neta ?? 0,
         'Cant/Módulo': p.cantidad_por_modulo ?? '',
         Grupo: p.grupo || '',
         Presupuesto: p.ppto ?? '',
         PPP: pppVal ?? '',
-        Fuente: customCodes.has(normCod(p.codigo)) ? 'Custom' : 'Base',
+        'Último valor': st?.ultimoValor ?? '',
+        'Fecha último valor': st?.ultimaFecha ?? '',
+        'Total comprado': ppp?.monto ?? 0,
+        Fuente: customCodes.has(k) ? 'Custom' : 'Base',
       }
     })
     exportarExcel('catalogo_productos', filas)
@@ -109,33 +125,43 @@ export default function Catalogo({ puedeCrearEditarExtra, puedeEliminarExtra }: 
                 <TableHead>Código</TableHead>
                 <TableHead>Descripción</TableHead>
                 <TableHead>Unidad</TableHead>
+                <TableHead className="text-right">Solicitado</TableHead>
                 <TableHead className="text-right">Cant/Módulo</TableHead>
                 <TableHead>Grupo</TableHead>
                 <TableHead className="text-right">Presupuesto</TableHead>
                 <TableHead className="text-right">PPP</TableHead>
+                <TableHead className="text-right">Último valor</TableHead>
                 <TableHead>Fuente</TableHead>
                 {puedeAlgo && <TableHead />}
               </TableRow>
             </TableHeader>
             {loading ? (
-              <TableSkeleton columns={8 + (puedeAlgo ? 1 : 0)} />
+              <TableSkeleton columns={10 + (puedeAlgo ? 1 : 0)} />
             ) : (
               <TableBody>
                 {filtrados.map((p) => {
-                  const esCustom = customCodes.has(normCod(p.codigo))
-                  const ppp = pppMap[normCod(p.codigo)]
+                  const k = normCod(p.codigo)
+                  const esCustom = customCodes.has(k)
+                  const ppp = pppMap[k]
                   const pppVal = ppp && ppp.cant > 0 ? ppp.monto / ppp.cant : null
+                  const st = statsMap[k]
                   return (
                     <TableRow key={p.codigo}>
                       <TableCell className="font-mono text-xs text-primary">{p.codigo}</TableCell>
                       <TableCell className="max-w-md truncate text-sm" title={p.descripcion}>{p.descripcion}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{p.unidad || '—'}</TableCell>
+                      <TableCell className="text-right tabular-nums" title={st ? `Solicitado ${st.solicitada.toLocaleString('es-CL')} · devuelto ${st.devuelta.toLocaleString('es-CL')} · neto ${st.neta.toLocaleString('es-CL')}` : undefined}>
+                        {st && st.solicitada > 0 ? st.solicitada.toLocaleString('es-CL', { maximumFractionDigits: 2 }) : '—'}
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {p.cantidad_por_modulo != null ? p.cantidad_por_modulo.toLocaleString('es-CL', { maximumFractionDigits: 4 }) : '—'}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{p.grupo || '—'}</TableCell>
-                      <TableCell className="text-right tabular-nums text-warning">{p.ppto != null && p.ppto > 0 ? formatCLP(p.ppto) : '—'}</TableCell>
-                      <TableCell className="text-right tabular-nums text-success">{pppVal != null ? formatCLP(pppVal) : '—'}</TableCell>
+                      <TableCell className="text-right tabular-nums text-warning">{p.ppto != null && p.ppto > 0 ? formatUnitario(p.ppto) : '—'}</TableCell>
+                      <TableCell className="text-right tabular-nums text-success">{pppVal != null ? formatUnitario(pppVal) : '—'}</TableCell>
+                      <TableCell className="text-right tabular-nums" title={st?.ultimaFecha ?? undefined}>
+                        {st?.ultimoValor != null ? formatUnitario(st.ultimoValor) : '—'}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={esCustom ? 'secondary' : 'outline'}>{esCustom ? 'Custom' : 'Base'}</Badge>
                       </TableCell>
