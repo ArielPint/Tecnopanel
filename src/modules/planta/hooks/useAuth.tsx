@@ -23,6 +23,7 @@ export type DashboardTab =
   | 'stock'
   | 'despachos'
   | 'ejecutivo'
+  | 'proyeccion'
 
 interface AuthValue {
   perfil: Perfil | null

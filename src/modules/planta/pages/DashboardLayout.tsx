@@ -17,6 +17,7 @@ import Stock from './Stock'
 import Curva from './Curva'
 import Despachos from './Despachos'
 import Ejecutivo from './Ejecutivo'
+import Proyeccion from './Proyeccion'
 
 const TABS: { value: DashboardTab; label: string; implementado: boolean }[] = [
   { value: 'resumen', label: 'Resumen', implementado: true },
@@ -27,6 +28,7 @@ const TABS: { value: DashboardTab; label: string; implementado: boolean }[] = [
   { value: 'stock', label: 'Stock', implementado: true },
   { value: 'despachos', label: 'Despachos', implementado: true },
   { value: 'ejecutivo', label: 'Ejecutivo', implementado: true },
+  { value: 'proyeccion', label: 'Proyección', implementado: true },
 ]
 
 function iniciales(nombre: string | undefined) {
@@ -144,6 +146,11 @@ export default function DashboardLayout() {
                 </TabsContent>
               ))
             )}
+            {/* Proyección se calcula sobre planta_modulos + registro_compras + catálogo,
+                no sobre el Excel: se renderiza aunque no haya archivo cargado. */}
+            <TabsContent value="proyeccion">
+              <Proyeccion />
+            </TabsContent>
             {visibles
               .filter((t) => !t.implementado)
               .map((t) => (
