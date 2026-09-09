@@ -103,9 +103,10 @@ export default function Proyeccion() {
         <CardHeader className="pb-3">
           <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Supuestos del análisis</CardTitle>
           <CardDescription>
-            El costo por módulo se valoriza con la receta del catálogo (cantidad por módulo) al precio que elijas.
-            No existe gasto real por módulo: el campo de módulo en el registro de compras es texto libre, así que el
-            costo por módulo es siempre una valorización o un promedio, nunca un rastreo módulo a módulo.
+            El costo por módulo se valoriza con la receta oficial del catálogo de productos (cantidad por módulo)
+            al precio que elijas. No existe gasto real por módulo: el campo de módulo en el registro de compras es
+            texto libre, así que el costo por módulo es siempre una valorización o un promedio, nunca un rastreo
+            módulo a módulo.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-end gap-6">

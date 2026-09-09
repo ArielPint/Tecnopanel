@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { getProyectoId } from '@/lib/proyectoIds'
 import { useCachedQuery } from '@/lib/useCachedQuery'
 import { useCatalogoGD } from '@/modules/logistica/hooks/useCatalogoGD'
+import { PRODUCTOS_BASE } from '@/modules/logistica/lib/productosBase'
 import { loadCompras, loadDespachos, loadPlantaModulos, loadPresupuestoTotal, loadRegistroStock } from '../lib/supaData'
 import {
   costoPorModulo, costoPorTorre, costoReal, proyectar, ritmoObservado, valorizarStock,
@@ -88,8 +89,8 @@ export interface UseProyeccionOptions {
 
 export function useProyeccionData({ base, ritmoManual }: UseProyeccionOptions) {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
-  // El catálogo es la fuente de la receta y de los tres precios — se reusa tal cual
-  // en vez de duplicar la lógica de merge base/custom/ppto.
+  // Del catálogo salen los tres precios (PPP, presupuesto y último valor comprado);
+  // la receta viene de PRODUCTOS_BASE, ver el useMemo de abajo.
   const { allProducts, pppMap, statsMap, loading: loadingCatalogo, error: errorCatalogo } = useCatalogoGD()
 
   const fetcher = useCallback(async () => fetchProyeccion(await getProyectoId(proyectoSlug!)), [proyectoSlug])
@@ -99,23 +100,27 @@ export function useProyeccionData({ base, ritmoManual }: UseProyeccionOptions) {
     5 * 60_000,
   )
 
+  // La receta sale de PRODUCTOS_BASE, que es la carga oficial de catalogo_productos.xlsx
+  // (columna Cant/Módulo). No se toma de allProducts porque el catálogo resuelve
+  // coalesce(custom, base) y un override viejo en productos_custom pisaría la receta
+  // nueva. Del catálogo se usan solo los precios, que ahí sí son la fuente correcta.
   const productos = useMemo<ProductoReceta[]>(() => {
-    return allProducts
-      .filter((p) => p.cantidad_por_modulo != null && p.cantidad_por_modulo > 0)
-      .map((p) => {
-        const k = normCod(p.codigo)
-        const ppp = pppMap[k]
-        return {
-          codigo: k,
-          descripcion: p.descripcion,
-          unidad: p.unidad || '',
-          grupo: p.grupo || '',
-          cantidadPorModulo: p.cantidad_por_modulo!,
-          ppp: ppp && ppp.cant > 0 ? ppp.monto / ppp.cant : null,
-          ppto: p.ppto,
-          ultimo: statsMap[k]?.ultimoValor ?? null,
-        }
-      })
+    const delCatalogo = new Map(allProducts.map((p) => [normCod(p.codigo), p]))
+    return PRODUCTOS_BASE.filter((p) => p.cantidad_por_modulo != null && p.cantidad_por_modulo > 0).map((p) => {
+      const k = normCod(p.codigo)
+      const cat = delCatalogo.get(k)
+      const ppp = pppMap[k]
+      return {
+        codigo: k,
+        descripcion: cat?.descripcion || p.descripcion,
+        unidad: cat?.unidad || p.unidad || '',
+        grupo: cat?.grupo || p.grupo || '',
+        cantidadPorModulo: p.cantidad_por_modulo!,
+        ppp: ppp && ppp.cant > 0 ? ppp.monto / ppp.cant : null,
+        ppto: cat?.ppto ?? null,
+        ultimo: statsMap[k]?.ultimoValor ?? null,
+      }
+    })
   }, [allProducts, pppMap, statsMap])
 
   return useMemo(() => {
