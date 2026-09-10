@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { getProyectoId } from '@/lib/proyectoIds'
 import { useCachedQuery } from '@/lib/useCachedQuery'
 import type { ParsedDashboardData } from '../lib/excelParser'
-import { parseDate } from '../lib/format'
+import { corteHasta, dentroDeCorte, parseDate } from '../lib/format'
 import { loadDespachos, type DespachoSupaRow } from '../lib/supaData'
 
 const MES_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
@@ -36,7 +36,8 @@ interface DRow {
   monto: number | null
 }
 
-export function useDespachosData(excelData: ParsedDashboardData | null) {
+// `hasta`: corte del filtro de mes del dashboard Ejecutivo (ver useResumenData).
+export function useDespachosData(excelData: ParsedDashboardData | null, hasta?: Date | null) {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const [mesesSeleccionados, setMesesSeleccionados] = useState<Set<string> | null>(null)
 
@@ -56,8 +57,7 @@ export function useDespachosData(excelData: ParsedDashboardData | null) {
   const proy = excelData?.proyeccion ?? []
 
   const allMesKeys = useMemo(() => {
-    const today = new Date()
-    today.setHours(23, 59, 59, 999)
+    const today = corteHasta(hasta)
     const curMesOrd = today.getFullYear() * 12 + today.getMonth()
     const set = new Set<string>()
     for (const x of d) {
@@ -78,7 +78,7 @@ export function useDespachosData(excelData: ParsedDashboardData | null) {
         const [yb, mb] = b.split('_').map(Number)
         return ya * 12 + ma - (yb * 12 + mb)
       })
-  }, [d, proy])
+  }, [d, proy, hasta])
 
   // Sin el corte al mes actual — el mensual (usado en Ejecutivo) muestra el proyecto completo,
   // incluyendo meses futuros ya proyectados en GD_MODULOS.
@@ -117,12 +117,11 @@ export function useDespachosData(excelData: ParsedDashboardData | null) {
   }
 
   return useMemo(() => {
-    const today = new Date()
-    today.setHours(23, 59, 59, 999)
+    const today = corteHasta(hasta)
 
     const totalMonto = d.reduce((s, x) => s + (x.monto ?? 0), 0)
     const nMods = new Set(d.map((x) => x.modulo).filter(Boolean)).size
-    const modsTerminados = (excelData?.modulos ?? []).filter((m) => m.termReal).length
+    const modsTerminados = (excelData?.modulos ?? []).filter((m) => dentroDeCorte(m.termReal, today)).length
 
     const kpis = {
       nMods, totalGDs: d.length, totalMonto,
@@ -162,7 +161,7 @@ export function useDespachosData(excelData: ParsedDashboardData | null) {
     const terminadosMes = new Map<string, number>()
     for (const m of excelData?.modulos ?? []) {
       const dt = parseDate(m.termReal)
-      if (!dt) continue
+      if (!dt || dt > today) continue
       const k = mesKey(dt)
       terminadosMes.set(k, (terminadosMes.get(k) || 0) + 1)
     }
@@ -298,7 +297,7 @@ export function useDespachosData(excelData: ParsedDashboardData | null) {
       kpis, mensual, mensualAcumulado, semanal, diario, gapDia, resumenMensual, torreTipo, tipos,
       mesesOpts, mesesSeleccionados, toggleMes,
     }
-  }, [d, proy, excelData, allMesKeys, allMesKeysCompleto, mesesSeleccionados, mesesOpts])
+  }, [d, proy, excelData, allMesKeys, allMesKeysCompleto, mesesSeleccionados, mesesOpts, hasta])
 }
 
 export type DespachosData = ReturnType<typeof useDespachosData>

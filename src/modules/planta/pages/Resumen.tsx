@@ -38,7 +38,7 @@ const SECCIONES = [
   { key: 'despachosPorMes', label: 'Despachos por mes' },
   { key: 'modulosTerminadosPorMes', label: 'Módulos terminados por mes' },
   { key: 'modulosIniciadosPorMes', label: 'Inicio de módulos por mes' },
-  { key: 'salidaGalponPorMes', label: 'Salida de galpón por mes' },
+  { key: 'salidaGalponPorMes', label: 'Módulos terminados obra gruesa' },
 ] as const
 
 type SeccionKey = (typeof SECCIONES)[number]['key']
@@ -210,7 +210,7 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
         >
           <ModulosIniciadosPorMesChart data={resumen.modulosIniciadosPorMes} />
         </SectionCard>
-        <SectionCard title="Salida de galpón por mes" visible={esVisible('salidaGalponPorMes')} onToggle={() => toggle('salidaGalponPorMes')}>
+        <SectionCard title="Módulos terminados obra gruesa" visible={esVisible('salidaGalponPorMes')} onToggle={() => toggle('salidaGalponPorMes')}>
           <SalidaGalponPorMesChart data={resumen.salidaGalponPorMes} />
         </SectionCard>
       </div>

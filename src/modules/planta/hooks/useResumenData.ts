@@ -2,13 +2,13 @@ import { useCallback, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { getProyectoId } from '@/lib/proyectoIds'
 import { useCachedQuery } from '@/lib/useCachedQuery'
-import { MESES_ORDER, parseDate } from '../lib/format'
+import { MESES_ORDER, corteHasta, dentroDeCorte, parseDate } from '../lib/format'
 import type { DetalleGdRow, ParsedDashboardData } from '../lib/excelParser'
 import {
   loadAvanceEconProy,
   loadCompras,
   loadForecastMensualSeleccionado,
-  loadModulosDespachadosCount,
+  loadModulosDespachados,
   loadPptoCatalogo,
   loadPresupuestoTotal,
   type AvanceEconProyRow,
@@ -18,7 +18,7 @@ interface ResumenSupaData {
   compras: DetalleGdRow[]
   presupuestoTotal: number | null
   pptoCatalogo: Record<string, number>
-  despachadosCount: number
+  despachados: { modulo: string | null; fecha: string | null }[]
   avanceProy: AvanceEconProyRow[]
   forecastSeleccionado: string | null
 }
@@ -81,7 +81,9 @@ export function getHomeAvance(
   })
 }
 
-export function useResumenData(excelData: ParsedDashboardData | null) {
+// `hasta`: corte del filtro de mes del dashboard Ejecutivo — todos los indicadores y
+// series se calculan hasta ese instante inclusive. Sin el parámetro el corte es hoy.
+export function useResumenData(excelData: ParsedDashboardData | null, hasta?: Date | null) {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
 
   const fetcher = useCallback(async (): Promise<ResumenSupaData> => {
@@ -90,18 +92,18 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
       loadCompras(proyectoId),
       loadPresupuestoTotal(),
       loadPptoCatalogo(),
-      loadModulosDespachadosCount(proyectoId),
+      loadModulosDespachados(proyectoId),
       loadAvanceEconProy(new Date().getFullYear()),
       loadForecastMensualSeleccionado(),
     ])
-    return { compras, presupuestoTotal: ppto, pptoCatalogo: catalogo, despachadosCount: despachados, avanceProy: proy, forecastSeleccionado }
+    return { compras, presupuestoTotal: ppto, pptoCatalogo: catalogo, despachados, avanceProy: proy, forecastSeleccionado }
   }, [proyectoSlug])
 
   const { data, loading } = useCachedQuery<ResumenSupaData>(proyectoSlug ? `resumen_data:${proyectoSlug}` : null, fetcher, 60_000)
   const supaCompras = data?.compras ?? []
   const presupuestoTotal = data?.presupuestoTotal ?? null
   const pptoCatalogo = data?.pptoCatalogo ?? {}
-  const despachadosCount = data?.despachadosCount ?? 0
+  const despachados = data?.despachados ?? []
   const avanceProy = data?.avanceProy ?? []
   const forecastSeleccionado = data?.forecastSeleccionado ?? null
 
@@ -109,19 +111,23 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
     const modulos = excelData?.modulos ?? []
     const curva = excelData?.curva ?? []
     const totalMod = modulos.length
-    const terminados = modulos.filter((m) => m.termReal).length
-    const iniciados = modulos.filter((m) => m.initReal).length
-    const enProceso = modulos.filter((m) => m.initReal && !m.termReal).length
     const avProm = totalMod ? modulos.reduce((s, m) => s + (m.avance ?? 0), 0) / totalMod : 0
 
-    const hoy = new Date()
-    hoy.setHours(23, 59, 59, 999)
+    const hoy = corteHasta(hasta)
+    const terminados = modulos.filter((m) => dentroDeCorte(m.termReal, hoy)).length
+    const iniciados = modulos.filter((m) => dentroDeCorte(m.initReal, hoy)).length
+    const enProceso = modulos.filter((m) => dentroDeCorte(m.initReal, hoy) && !dentroDeCorte(m.termReal, hoy)).length
+
     const curvaHoy = curva.filter((c) => {
       const d = parseDate(c.fecha)
       return d && !isNaN(d.getTime()) && d <= hoy
     })
     const lastReal = [...curvaHoy].reverse().find((c) => c.real != null && c.real > 0)
     const avanceFisico = lastReal ? (lastReal.real ?? 0) * 100 : avProm * 100
+
+    const despachadosCount = new Set(
+      despachados.filter((r) => dentroDeCorte(r.fecha, hoy)).map((r) => r.modulo).filter(Boolean),
+    ).size
 
     const compras = getCompras(supaCompras, excelData?.detalleGD ?? [], pptoCatalogo)
     const totalComprado = compras.reduce((s, c) => s + (c.valorTotal ?? 0), 0)
@@ -191,7 +197,8 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
 
     // Avance económico mensual/acumulado
     const ha = getHomeAvance(compras, avanceProy, presupuestoTotal, excelData?.homeAvance ?? [], forecastSeleccionado)
-    const curMes = new Date().getMonth() + 1
+    const anioCorte = hoy.getFullYear()
+    const curMes = anioCorte > new Date().getFullYear() ? 12 : hoy.getMonth() + 1
     const haFilt = ha.filter((x) => {
       const idx = MES_NAMES.indexOf(String(x.mes))
       return (idx < 0 ? 13 : idx + 1) <= curMes
@@ -295,12 +302,12 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
     const iniciadosByMes: Record<string, number> = {}
     for (const m of modulos) {
       const dTerm = parseDate(m.termReal)
-      if (dTerm && !isNaN(dTerm.getTime())) {
+      if (dTerm && !isNaN(dTerm.getTime()) && dTerm <= hoy) {
         const key = `${dTerm.getMonth() + 1}-${dTerm.getFullYear()}`
         terminadosByMes[key] = (terminadosByMes[key] || 0) + 1
       }
       const dInit = parseDate(m.initReal)
-      if (dInit && !isNaN(dInit.getTime())) {
+      if (dInit && !isNaN(dInit.getTime()) && dInit <= hoy) {
         const key = `${dInit.getMonth() + 1}-${dInit.getFullYear()}`
         iniciadosByMes[key] = (iniciadosByMes[key] || 0) + 1
       }
@@ -318,7 +325,7 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
     const galponByMes: Record<string, number> = {}
     for (const r of excelData?.membranaCielo ?? []) {
       const d = parseDate(r.membranaFecha)
-      if (!d || isNaN(d.getTime())) continue
+      if (!d || isNaN(d.getTime()) || d > hoy) continue
       const key = `${d.getMonth() + 1}-${d.getFullYear()}`
       galponByMes[key] = (galponByMes[key] || 0) + 1
     }
@@ -343,7 +350,7 @@ export function useResumenData(excelData: ParsedDashboardData | null) {
       modulosIniciadosPorMes,
       salidaGalponPorMes,
     }
-  }, [excelData, supaCompras, presupuestoTotal, pptoCatalogo, despachadosCount, avanceProy, forecastSeleccionado, loading])
+  }, [excelData, supaCompras, presupuestoTotal, pptoCatalogo, despachados, avanceProy, forecastSeleccionado, loading, hasta])
 }
 
 export type ResumenData = ReturnType<typeof useResumenData>

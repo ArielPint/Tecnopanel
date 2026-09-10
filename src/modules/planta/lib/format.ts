@@ -85,3 +85,46 @@ export function demoMesActual() {
   const lbl = mesActualLbl(new Date(2026, 8, 7))
   console.assert(lbl != null && /^[A-Z][a-z]{2} \d{4}$/.test(lbl), `formato inesperado: ${lbl}`)
 }
+
+// ── Corte por mes (filtro del dashboard Ejecutivo) ─────────────────────────────
+
+// Fin del día del corte: por defecto "ahora", o el último instante del mes elegido.
+export function corteHasta(hasta?: Date | null): Date {
+  if (hasta) return hasta
+  const d = new Date()
+  d.setHours(23, 59, 59, 999)
+  return d
+}
+
+// Fecha real (inicio/término de módulo) que cae dentro del corte. Si el flag
+// existe pero la fecha no parsea cuenta igual: hay módulos con termReal marcado
+// sin fecha válida (RF/R1 del avance.xlsx) y no deben desaparecer del conteo.
+export function dentroDeCorte(valor: unknown, hasta: Date): boolean {
+  if (!valor) return false
+  const d = parseDate(valor)
+  return !d || isNaN(d.getTime()) ? true : d <= hasta
+}
+
+// Opciones del filtro de mes: meses del año en curso ya iniciados. El avance
+// económico solo existe para el año actual, por eso no se ofrecen los de 2025.
+export function mesesCorteOpts(hoy: Date = new Date()): MesOrden[] {
+  return MESES_ORDER.filter((m) => m.y === hoy.getFullYear() && m.n <= hoy.getMonth() + 1)
+}
+
+// Último instante del mes elegido, sin pasarse de hoy (el mes en curso corta hoy).
+export function finDeMesCorte(n: number, y: number, hoy: Date = new Date()): Date {
+  const fin = new Date(y, n, 0, 23, 59, 59, 999)
+  const tope = new Date(hoy)
+  tope.setHours(23, 59, 59, 999)
+  return fin > tope ? tope : fin
+}
+
+export function demoCorte() {
+  const hoy = new Date(2026, 8, 10)
+  console.assert(finDeMesCorte(8, 2026, hoy).getDate() === 31, 'agosto cierra el 31')
+  console.assert(finDeMesCorte(9, 2026, hoy).getDate() === 10, 'mes en curso corta hoy')
+  console.assert(mesesCorteOpts(hoy).length === 9, `esperaba Ene..Sep, dio ${mesesCorteOpts(hoy).length}`)
+  console.assert(dentroDeCorte('2026-07-15', finDeMesCorte(7, 2026, hoy)), 'julio dentro del corte de julio')
+  console.assert(!dentroDeCorte('2026-08-01', finDeMesCorte(7, 2026, hoy)), 'agosto fuera del corte de julio')
+  console.assert(dentroDeCorte('SIN FECHA', finDeMesCorte(7, 2026, hoy)), 'flag sin fecha cuenta igual')
+}

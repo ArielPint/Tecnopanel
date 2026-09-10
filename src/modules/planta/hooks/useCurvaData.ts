@@ -1,21 +1,18 @@
 import { useMemo, useState } from 'react'
 import type { ParsedDashboardData } from '../lib/excelParser'
-import { businessDaysBetween, parseDate, weekKey, weekLabel } from '../lib/format'
+import { businessDaysBetween, corteHasta, dentroDeCorte, parseDate, weekKey, weekLabel } from '../lib/format'
 import { useModulosSubcontrato } from './useModulosSubcontrato'
 
 function natCompare(a: string, b: string) {
   return a.localeCompare(b, 'es', { numeric: true })
 }
 
-export function useCurvaData(excelData: ParsedDashboardData | null) {
+// `hasta`: corte del filtro de mes del dashboard Ejecutivo (ver useResumenData).
+export function useCurvaData(excelData: ParsedDashboardData | null, hasta?: Date | null) {
   const [torresSeleccionadas, setTorresSeleccionadas] = useState<Set<string> | null>(null)
   const { modulos: modulosSubcontrato } = useModulosSubcontrato()
 
-  const today = useMemo(() => {
-    const d = new Date()
-    d.setHours(23, 59, 59, 999)
-    return d
-  }, [])
+  const today = useMemo(() => corteHasta(hasta), [hasta])
 
   const curva = excelData?.curva ?? []
   const modulos = excelData?.modulos ?? []
@@ -45,9 +42,9 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
     const lastTeo = [...curvaHoy].reverse().find((r) => r.teorico != null && r.teorico > 0)
     const realPct = lastReal ? (lastReal.real ?? 0) * 100 : 0
     const teoPct = lastTeo ? (lastTeo.teorico ?? 0) * 100 : 0
-    const modsActivos = modulos.filter((m) => m.initReal && !m.termReal).length
-    const modsIniciados = modulos.filter((m) => m.initReal).length
-    const modsTerminados = modulos.filter((m) => m.termReal).length
+    const modsActivos = modulos.filter((m) => dentroDeCorte(m.initReal, today) && !dentroDeCorte(m.termReal, today)).length
+    const modsIniciados = modulos.filter((m) => dentroDeCorte(m.initReal, today)).length
+    const modsTerminados = modulos.filter((m) => dentroDeCorte(m.termReal, today)).length
     const avHoy = avplan.filter((r) => {
       const d = parseDate(r.fecha)
       return d && d <= today
@@ -186,7 +183,7 @@ export function useCurvaData(excelData: ParsedDashboardData | null) {
     const terminadosConbesByWeek = terminadosPorSubcontrato('CONBES')
 
     // Tiempo por torre — no afectado por filtros (igual que el original)
-    const modsTorreAll = modulos.filter((m) => m.initReal && (m.avance ?? 0) >= 0.99 && (m.tiempoReal ?? 0) > 0)
+    const modsTorreAll = modulos.filter((m) => m.initReal && (m.avance ?? 0) >= 0.99 && (m.tiempoReal ?? 0) > 0 && (!m.termReal || dentroDeCorte(m.termReal, today)))
     const torreTiempoMap = new Map<string, { realSum: number; realCnt: number; proySum: number; proyCnt: number }>()
     for (const m of modsTorreAll) {
       const t = String(m.torre ?? 'S/T')

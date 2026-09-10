@@ -1,7 +1,9 @@
+import type { ComponentProps } from 'react'
 import { Area, AreaChart, Bar, CartesianGrid, ComposedChart, LabelList, Legend, Line, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/modules/financiero/components/ui/chart'
 import { yHeadroom } from '@/lib/chartDomain'
 import type { CurvaData } from '../hooks/useCurvaData'
+import { INST } from '../lib/coloresInstitucionales'
 
 const VALUE_LABEL_STYLE = { fontSize: 11, fontWeight: 700, fill: 'hsl(var(--foreground))' } as const
 
@@ -112,10 +114,43 @@ export function TerminadosSemanaBarChart({ data, domainMax, color = '#3fb950' }:
   )
 }
 
-export function TiempoTorreChart({ data }: { data: CurvaData['torreTiempo'] }) {
+type LabelContent = NonNullable<ComponentProps<typeof LabelList>['content']>
+
+// Desde la torre 5 la barra del tiempo real es alta y la etiqueta de arriba choca
+// con la línea del proyectado: en esas torres el valor va al centro de la barra.
+const TORRE_ETIQUETA_AL_CENTRO_DESDE = 5
+
+function torreNum(torre: unknown): number {
+  const n = parseInt(String(torre ?? '').replace(/\D/g, ''), 10)
+  return isNaN(n) ? 0 : n
+}
+
+function realTorreLabel(data: CurvaData['torreTiempo']): LabelContent {
+  return (props) => {
+    const { x, y, width, height, value, index } = props as {
+      x?: number | string
+      y?: number | string
+      width?: number | string
+      height?: number | string
+      value?: number | string
+      index?: number
+    }
+    if (value == null || x == null || y == null || width == null || height == null) return null
+    const alCentro = index != null && torreNum(data[index]?.torre) >= TORRE_ETIQUETA_AL_CENTRO_DESDE
+    const cx = Number(x) + Number(width) / 2
+    const cy = alCentro ? Number(y) + Number(height) / 2 : Number(y) - 6
+    return (
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline={alCentro ? 'middle' : undefined} style={VALUE_LABEL_STYLE}>
+        {Number(value).toFixed(0)}
+      </text>
+    )
+  }
+}
+
+export function TiempoTorreChart({ data, institucional }: { data: CurvaData['torreTiempo']; institucional?: boolean }) {
   const config = {
-    real: { label: 'Tiempo Real (días)', color: '#3fb950' },
-    proy: { label: 'Tiempo Proyectado (días)', color: '#e3903e' },
+    real: { label: 'Tiempo Real (días)', color: institucional ? INST.rojo : '#3fb950' },
+    proy: { label: 'Tiempo Proyectado (días)', color: institucional ? INST.plomo : '#e3903e' },
   } satisfies ChartConfig
   if (!data.length) return <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">Sin datos</div>
   return (
@@ -127,7 +162,7 @@ export function TiempoTorreChart({ data }: { data: CurvaData['torreTiempo'] }) {
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         <Bar dataKey="real" name="Tiempo Real (días)" fill="var(--color-real)" radius={4}>
-          <LabelList dataKey="real" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt((v) => v.toFixed(0))} />
+          <LabelList dataKey="real" content={realTorreLabel(data)} />
         </Bar>
         <Line type="monotone" dataKey="proy" name="Tiempo Proyectado (días)" stroke="var(--color-proy)" strokeWidth={2.5} dot={{ r: 4 }} connectNulls>
           <LabelList dataKey="proy" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt((v) => v.toFixed(0))} />

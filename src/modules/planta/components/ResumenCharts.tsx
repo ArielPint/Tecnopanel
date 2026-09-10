@@ -13,6 +13,7 @@ import { useProyExtraAvEcon } from '@/modules/settings/hooks/useConfig'
 import type { ResumenData } from '../hooks/useResumenData'
 import { fmtM, fmtPr, mesActualLbl } from '../lib/format'
 import { yHeadroom, yHeadroomSigned } from '@/lib/chartDomain'
+import { INST, INST_GRISES } from '../lib/coloresInstitucionales'
 
 const BUCKET_COLORS = ['#e3903e', '#d2b932', '#a3c83c', '#64c850', '#3fb950']
 
@@ -134,10 +135,12 @@ export function AvanceEconomicoChart({
   data,
   readOnly,
   isAdmin,
+  institucional,
 }: {
   data: ResumenData['avanceEconomico']
   readOnly?: boolean
   isAdmin?: boolean
+  institucional?: boolean
 }) {
   const { valor: proyExtra, guardar: guardarProyExtra } = useProyExtraAvEcon()
 
@@ -149,8 +152,8 @@ export function AvanceEconomicoChart({
   // del "proyectado" cuando ambas caían en el mismo mes.
   const chartData = readOnly ? data : data.map((d, i) => ({ ...d, proyExtra: i === data.length - 1 ? proyExtra : null }))
   const config = {
-    real: { label: 'Avance económico real', color: '#d42b1e' },
-    proyectado: { label: 'Proyectado mensual', color: '#4f8ef7' },
+    real: { label: 'Avance económico real', color: institucional ? INST.rojo : '#d42b1e' },
+    proyectado: { label: 'Proyectado mensual', color: institucional ? INST.plomo : '#4f8ef7' },
   } satisfies ChartConfig
 
   return (
@@ -249,15 +252,18 @@ const lineaLabel: LabelContent = (props) => {
 export function AvanceEconomicoAcumChart({
   data,
   forecastLabels = [],
+  institucional,
 }: {
   data: ResumenData['avanceEconomicoAcumulado']
   forecastLabels?: string[]
+  institucional?: boolean
 }) {
   if (!data.length) return null
+  const paletaLineas: readonly string[] = institucional ? INST_GRISES : FORECAST_COLORS
   const config = {
-    realAcum: { label: 'Real acum.', color: '#d42b1e' },
+    realAcum: { label: 'Real acum.', color: institucional ? INST.rojo : '#d42b1e' },
     ...Object.fromEntries(
-      forecastLabels.map((label, i) => [label, { label, color: FORECAST_COLORS[i % FORECAST_COLORS.length] }]),
+      forecastLabels.map((label, i) => [label, { label, color: paletaLineas[i % paletaLineas.length] }]),
     ),
   } satisfies ChartConfig
   return (
@@ -287,7 +293,7 @@ export function AvanceEconomicoAcumChart({
             key={label}
             type="monotone"
             dataKey={label}
-            stroke={FORECAST_COLORS[i % FORECAST_COLORS.length]}
+            stroke={paletaLineas[i % paletaLineas.length]}
             strokeWidth={2.5}
             dot
             connectNulls
@@ -359,16 +365,17 @@ export function DespachosPorMesChart({ data }: { data: { mes: string; cantidad: 
   return <MesCantidadBarChart data={data} color="#a371f7" label="Módulos despachados" />
 }
 
-export function ModulosTerminadosPorMesChart({ data }: { data: ResumenData['modulosTerminadosPorMes'] }) {
-  return <MesCantidadBarChart data={data} color="#3fb950" label="Módulos terminados" />
+export function ModulosTerminadosPorMesChart({ data, color = '#3fb950' }: { data: ResumenData['modulosTerminadosPorMes']; color?: string }) {
+  return <MesCantidadBarChart data={data} color={color} label="Módulos terminados" />
 }
 
 export function ModulosIniciadosPorMesChart({ data }: { data: ResumenData['modulosIniciadosPorMes'] }) {
   return <MesCantidadBarChart data={data} color="#e3903e" label="Módulos iniciados" />
 }
 
-export function SalidaGalponPorMesChart({ data }: { data: ResumenData['salidaGalponPorMes'] }) {
-  return <MesCantidadBarChart data={data} color="#58a6ff" label="Salida de galpón" />
+// Salida de galpón = módulos terminados en obra gruesa (fecha de membrana/cielo).
+export function SalidaGalponPorMesChart({ data, color = '#58a6ff' }: { data: ResumenData['salidaGalponPorMes']; color?: string }) {
+  return <MesCantidadBarChart data={data} color={color} label="Terminados obra gruesa" />
 }
 
 export function M2AcumuladoChart({ data }: { data: ResumenData['m2Acumulado'] }) {

@@ -113,6 +113,13 @@ export async function loadCompras(proyectoId: string): Promise<DetalleGdRow[]> {
   return filas
 }
 
+// Módulos despachados con su fecha de GD, para poder contarlos con corte por mes
+// (fecha_gd es la fecha oficial de despacho).
+export async function loadModulosDespachados(proyectoId: string): Promise<{ modulo: string | null; fecha: string | null }[]> {
+  const data = await unwrap(supabase.from('despachos_gd').select('modulo, fecha_gd').eq('proyecto_id', proyectoId))
+  return (data ?? []).map((r) => ({ modulo: r.modulo, fecha: r.fecha_gd }))
+}
+
 export async function loadModulosDespachadosCount(proyectoId: string): Promise<number> {
   const data = await unwrap(supabase.from('despachos_gd').select('modulo').eq('proyecto_id', proyectoId))
   return new Set((data ?? []).map((r) => r.modulo).filter(Boolean)).size

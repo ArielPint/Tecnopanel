@@ -37,16 +37,20 @@ export function DespachosMensualChart({
   labelProyectado = 'Proyectado',
   despachadoKey = 'despachado',
   proyectadoKey = 'proyectado',
+  colorDespachado = '#3fb950',
+  colorProyectado = '#58a6ff',
 }: {
   data: Record<string, string | number | null>[]
   labelDespachado?: string
   labelProyectado?: string
   despachadoKey?: string
   proyectadoKey?: string
+  colorDespachado?: string
+  colorProyectado?: string
 }) {
   const config = {
-    [despachadoKey]: { label: labelDespachado, color: '#3fb950' },
-    [proyectadoKey]: { label: labelProyectado, color: '#58a6ff' },
+    [despachadoKey]: { label: labelDespachado, color: colorDespachado },
+    [proyectadoKey]: { label: labelProyectado, color: colorProyectado },
   } satisfies ChartConfig
   return (
     <ChartContainer config={config} className="aspect-auto h-[300px] w-full">
