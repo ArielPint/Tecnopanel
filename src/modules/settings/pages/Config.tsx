@@ -212,8 +212,8 @@ function DotacionModCard() {
               <TableHead className="text-right">Personas</TableHead>
               <TableHead className="text-right">Días-hombre</TableHead>
               <TableHead className="text-right">Costo base</TableHead>
-              <TableHead className="text-right">Horas extras (con cargas)</TableHead>
-              <TableHead className="text-right">Bono producción (con cargas)</TableHead>
+              <TableHead className="text-right">Horas extras</TableHead>
+              <TableHead className="text-right">Bono producción</TableHead>
               <TableHead className="text-right">Costo empresa total</TableHead>
               <TableHead>Archivo</TableHead>
               <TableHead />

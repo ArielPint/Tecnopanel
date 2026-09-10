@@ -37,8 +37,8 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
         Personas: f.personas,
         'Días-hombre': Math.round(f.diasHombre),
         'Costo empresa base': Math.round(f.costoBase),
-        'Horas extras (con cargas)': Math.round(f.horasExtrasConCargas),
-        'Bono de producción (con cargas)': Math.round(f.bonoConCargas),
+        'Horas extras': Math.round(f.horasExtrasConCargas),
+        'Bono de producción': Math.round(f.bonoConCargas),
         'Total HHEE + bono + cargas': Math.round(f.costoVariable),
         'Horas extras sin cargas': Math.round(f.horasExtras),
         'Bono de producción sin cargas': Math.round(f.bonoProduccion),
@@ -129,8 +129,8 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
                       <TableHead>Mes</TableHead>
                       <TableHead className="text-right">Personas</TableHead>
                       <TableHead className="text-right">Costo base</TableHead>
-                      <TableHead className="text-right">Horas extras (con cargas)</TableHead>
-                      <TableHead className="text-right">Bono producción (con cargas)</TableHead>
+                      <TableHead className="text-right">Horas extras</TableHead>
+                      <TableHead className="text-right">Bono producción</TableHead>
                       <TableHead className="text-right">Costo empresa total</TableHead>
                       <TableHead className="text-right">m² del mes</TableHead>
                       <TableHead className="text-right">Módulos term.</TableHead>
