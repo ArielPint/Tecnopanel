@@ -35,9 +35,40 @@ export interface ProductoReceta {
   ultimo: number | null
 }
 
-export function precioDe(p: ProductoReceta, base: BasePrecio): number | null {
+/** Orden de respaldo cuando la base elegida no tiene precio: primero el costo
+ * efectivo (PPP), despues la linea base (presupuesto), y al final el ultimo precio. */
+const ORDEN_RESPALDO: BasePrecio[] = ['ppp', 'ppto', 'ultimo']
+
+function valorCrudo(p: ProductoReceta, base: BasePrecio): number | null {
   const v = base === 'ppp' ? p.ppp : base === 'ppto' ? p.ppto : p.ultimo
   return v != null && v > 0 ? v : null
+}
+
+export interface PrecioResuelto {
+  valor: number | null
+  /** Con que base se termino valorizando. null si el producto no tiene ningun precio. */
+  fuente: BasePrecio | null
+}
+
+/**
+ * Precio de la base pedida y, si ese falta, el primero disponible de las otras dos.
+ * Sin respaldo un producto sin precio entraba en $0 y hundia el costo por modulo en
+ * silencio; con respaldo el total queda completo y la linea dice de donde salio.
+ */
+export function resolverPrecio(p: ProductoReceta, base: BasePrecio): PrecioResuelto {
+  const propio = valorCrudo(p, base)
+  if (propio != null) return { valor: propio, fuente: base }
+  for (const alt of ORDEN_RESPALDO) {
+    if (alt === base) continue
+    const v = valorCrudo(p, alt)
+    if (v != null) return { valor: v, fuente: alt }
+  }
+  return { valor: null, fuente: null }
+}
+
+/** Precio de la base pedida, sin respaldo. */
+export function precioDe(p: ProductoReceta, base: BasePrecio): number | null {
+  return valorCrudo(p, base)
 }
 
 export interface LineaCosto {
@@ -47,6 +78,8 @@ export interface LineaCosto {
   grupo: string
   cantidad: number
   precio: number | null
+  /** Base con la que se valorizo. Distinta de la elegida = se uso un respaldo. */
+  fuentePrecio: BasePrecio | null
   costo: number
   /** % del costo del módulo que explica esta línea. */
   incidencia: number
@@ -55,8 +88,12 @@ export interface LineaCosto {
 export interface CostoModulo {
   lineas: LineaCosto[]
   total: number
-  /** Productos de la receta que quedaron sin precio en la base elegida: su costo va en 0. */
+  /** Productos sin ningun precio en las tres bases: su costo va en 0. */
+  sinPrecioLineas: LineaCosto[]
+  /** Productos valorizados con una base distinta a la elegida. */
+  conRespaldoLineas: LineaCosto[]
   sinPrecio: number
+  conRespaldo: number
   productos: number
 }
 
@@ -64,25 +101,31 @@ export interface CostoModulo {
 export function costoPorModulo(productos: ProductoReceta[], base: BasePrecio): CostoModulo {
   const conReceta = productos.filter((p) => p.cantidadPorModulo > 0)
   const lineas: LineaCosto[] = conReceta.map((p) => {
-    const precio = precioDe(p, base)
+    const { valor, fuente } = resolverPrecio(p, base)
     return {
       codigo: p.codigo,
       descripcion: p.descripcion,
       unidad: p.unidad,
       grupo: p.grupo,
       cantidad: p.cantidadPorModulo,
-      precio,
-      costo: precio == null ? 0 : p.cantidadPorModulo * precio,
+      precio: valor,
+      fuentePrecio: fuente,
+      costo: valor == null ? 0 : p.cantidadPorModulo * valor,
       incidencia: 0,
     }
   })
   const total = lineas.reduce((s, l) => s + l.costo, 0)
   for (const l of lineas) l.incidencia = total ? l.costo / total : 0
   lineas.sort((a, b) => b.costo - a.costo)
+  const sinPrecioLineas = lineas.filter((l) => l.fuentePrecio == null)
+  const conRespaldoLineas = lineas.filter((l) => l.fuentePrecio != null && l.fuentePrecio !== base)
   return {
     lineas,
     total,
-    sinPrecio: lineas.filter((l) => l.precio == null).length,
+    sinPrecioLineas,
+    conRespaldoLineas,
+    sinPrecio: sinPrecioLineas.length,
+    conRespaldo: conRespaldoLineas.length,
     productos: lineas.length,
   }
 }
@@ -177,8 +220,8 @@ export interface StockItem {
 export function valorizarStock(stock: StockItem[], productos: ProductoReceta[], base: BasePrecio): number {
   const precios = new Map<string, number>()
   for (const p of productos) {
-    const v = precioDe(p, base)
-    if (v != null) precios.set(p.codigo, v)
+    const { valor } = resolverPrecio(p, base)
+    if (valor != null) precios.set(p.codigo, valor)
   }
   let total = 0
   for (const s of stock) {
@@ -333,11 +376,29 @@ export function demo() {
   const cm = costoPorModulo(productos, 'ppp')
   console.assert(cm.total === 10500, `costo ppp esperado 10500, dio ${cm.total}`)
   console.assert(cm.productos === 3, `solo los 3 con receta, dio ${cm.productos}`)
-  console.assert(cm.sinPrecio === 1, `1 sin precio, dio ${cm.sinPrecio}`)
+  console.assert(cm.sinPrecio === 1, `1 sin ningun precio, dio ${cm.sinPrecio}`)
+  console.assert(cm.sinPrecioLineas[0].codigo === 'C', 'el sin precio es C')
+  console.assert(cm.conRespaldo === 0, 'con base ppp nadie necesita respaldo')
   console.assert(cm.lineas[0].codigo === 'A', 'ordenado por costo descendente')
   console.assert(Math.abs(cm.lineas[0].incidencia - 10000 / 10500) < 1e-9, 'incidencia mal calculada')
   console.assert(costoPorModulo(productos, 'ppto').total === 9400, 'costo ppto esperado 9400')
   console.assert(costoPorModulo(productos, 'ultimo').total === 11600, 'costo ultimo esperado 11600')
+
+  // Respaldo: E no tiene presupuesto, asi que en base ppto se valoriza con su PPP.
+  const conFalta: ProductoReceta[] = [
+    { codigo: 'E', descripcion: 'Solo ppp', unidad: 'UND', grupo: '', cantidadPorModulo: 2, ppp: 100, ppto: null, ultimo: null },
+  ]
+  const resp = costoPorModulo(conFalta, 'ppto')
+  console.assert(resp.total === 200, `respaldo valoriza igual, dio ${resp.total}`)
+  console.assert(resp.conRespaldo === 1 && resp.sinPrecio === 0, 'cuenta como respaldo, no como sin precio')
+  console.assert(resp.lineas[0].fuentePrecio === 'ppp', `fuente ppp, dio ${resp.lineas[0].fuentePrecio}`)
+  console.assert(costoPorModulo(conFalta, 'ppp').conRespaldo === 0, 'en su propia base no es respaldo')
+  // Orden de respaldo: sin ppp disponible, el siguiente es ppto y no ultimo.
+  const dosAlt: ProductoReceta[] = [
+    { codigo: 'F', descripcion: 'Sin ppp', unidad: 'UND', grupo: '', cantidadPorModulo: 1, ppp: null, ppto: 50, ultimo: 70 },
+  ]
+  console.assert(costoPorModulo(dosAlt, 'ultimo').lineas[0].fuentePrecio === 'ultimo', 'su propia base manda')
+  console.assert(costoPorModulo(dosAlt, 'ppp').lineas[0].fuentePrecio === 'ppto', 'respaldo cae en ppto antes que ultimo')
 
   const modulos: ModuloEstado[] = [
     { torre: 'TORRE 01', terminado: true, enProceso: false }, { torre: 'TORRE 01', terminado: true, enProceso: false },
@@ -349,7 +410,7 @@ export function demo() {
   console.assert(torres[1].avance === 0.5 && torres[1].costoPendiente === 100, 'torre 02 a medias')
 
   const stockVal = valorizarStock([{ codigo: 'A', cantidad: 5 }, { codigo: 'C', cantidad: 9 }], productos, 'ppp')
-  console.assert(stockVal === 5000, `stock valorizado 5000 (C no tiene precio), dio ${stockVal}`)
+  console.assert(stockVal === 5000, `stock valorizado 5000 (C no tiene precio en ninguna base), dio ${stockVal}`)
 
   const real = costoReal(1000, 200, 3, 1)
   console.assert(real.modulosConsiderados === 4, `denominador suma los en proceso, dio ${real.modulosConsiderados}`)

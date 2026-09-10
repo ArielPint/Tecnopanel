@@ -66,6 +66,7 @@ export default function Proyeccion() {
         Grupo: l.grupo,
         'Cant/Módulo': l.cantidad,
         [`Precio (${BASE_PRECIO_LABEL[base]})`]: l.precio ?? '',
+        'Precio tomado de': l.fuentePrecio ? BASE_PRECIO_LABEL[l.fuentePrecio] : 'sin precio',
         'Costo por módulo': Math.round(l.costo),
         'Incidencia %': +(l.incidencia * 100).toFixed(2),
         'Costo 32 módulos (torre)': Math.round(l.costo * 32),
@@ -108,7 +109,9 @@ export default function Proyeccion() {
             texto libre, así que el costo por módulo es siempre una valorización o un promedio, nunca un rastreo
             módulo a módulo. El costo real reparte lo comprado entre los módulos terminados y los que están
             en proceso, porque el material de un módulo iniciado ya se compró; un módulo a medias cuenta como
-            uno completo, así que esa cifra queda algo por debajo del costo real.
+            uno completo, así que esa cifra queda algo por debajo del costo real. Si un producto no tiene el
+            precio de la base elegida, se valoriza con el primero disponible entre PPP, presupuesto y último
+            valor, y queda marcado en el desglose.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-end gap-6">
@@ -140,11 +143,40 @@ export default function Proyeccion() {
                 : 'Sin despachos para estimar el ritmo'}
             </span>
           </div>
-          {d.costoModulo.sinPrecio > 0 && (
-            <p className="flex items-center gap-1.5 text-xs text-warning">
-              <Info className="size-3.5 shrink-0" />
-              {d.costoModulo.sinPrecio} de {d.costoModulo.productos} productos de la receta no tienen {BASE_PRECIO_LABEL[base].toLowerCase()}: van en $0.
-            </p>
+          {(d.costoModulo.sinPrecio > 0 || d.costoModulo.conRespaldo > 0) && (
+            <div className="w-full space-y-2 border-t pt-3">
+              {d.costoModulo.conRespaldo > 0 && (
+                <details>
+                  <summary className="cursor-pointer text-xs text-muted-foreground">
+                    <Info className="mr-1 inline size-3.5 shrink-0 align-[-2px]" />
+                    {d.costoModulo.conRespaldo} de {d.costoModulo.productos} productos no tienen {BASE_PRECIO_LABEL[base].toLowerCase()} y se valorizaron con otro precio
+                  </summary>
+                  <ul className="mt-2 space-y-1 pl-5 text-xs text-muted-foreground">
+                    {d.costoModulo.conRespaldoLineas.map((l) => (
+                      <li key={l.codigo}>
+                        <span className="font-mono text-primary">{l.codigo}</span> {l.descripcion} — {fmtUnitario(l.precio)}{' '}
+                        <span className="text-warning">({BASE_PRECIO_LABEL[l.fuentePrecio!].toLowerCase()})</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              {d.costoModulo.sinPrecio > 0 && (
+                <details>
+                  <summary className="cursor-pointer text-xs text-destructive">
+                    <Info className="mr-1 inline size-3.5 shrink-0 align-[-2px]" />
+                    {d.costoModulo.sinPrecio} de {d.costoModulo.productos} productos no tienen ningún precio cargado: van en $0
+                  </summary>
+                  <ul className="mt-2 space-y-1 pl-5 text-xs text-muted-foreground">
+                    {d.costoModulo.sinPrecioLineas.map((l) => (
+                      <li key={l.codigo}>
+                        <span className="font-mono text-primary">{l.codigo}</span> {l.descripcion} — {fmtNum(l.cantidad, l.cantidad % 1 ? 2 : 0)} {l.unidad} por módulo, sin compras registradas
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
@@ -335,7 +367,14 @@ export default function Proyeccion() {
                         <TableCell className="font-mono text-xs text-primary">{l.codigo}</TableCell>
                         <TableCell className="max-w-sm truncate text-sm" title={l.descripcion}>{l.descripcion}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtNum(l.cantidad, l.cantidad % 1 ? 2 : 0)} {l.unidad}</TableCell>
-                        <TableCell className={cn('text-right tabular-nums', l.precio == null && 'text-warning')}>{l.precio == null ? 'sin precio' : fmtUnitario(l.precio)}</TableCell>
+                        <TableCell className={cn('text-right tabular-nums', l.precio == null && 'text-destructive', l.fuentePrecio != null && l.fuentePrecio !== base && 'text-warning')}>
+                          {l.precio == null ? 'sin precio' : fmtUnitario(l.precio)}
+                          {l.fuentePrecio != null && l.fuentePrecio !== base && (
+                            <span className="ml-1 text-[.65rem] uppercase" title={`Sin ${BASE_PRECIO_LABEL[base].toLowerCase()}: valorizado con ${BASE_PRECIO_LABEL[l.fuentePrecio].toLowerCase()}`}>
+                              {l.fuentePrecio === 'ppp' ? 'ppp' : l.fuentePrecio === 'ppto' ? 'ppto' : 'últ'}
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right tabular-nums">{formatCLP(l.costo)}</TableCell>
                         <TableCell className="text-right tabular-nums text-muted-foreground">{formatPct(l.incidencia)}</TableCell>
                         <TableCell className="text-right tabular-nums text-muted-foreground">{formatCLP(l.costo * (d.torres[0]?.modulos ?? 32))}</TableCell>
