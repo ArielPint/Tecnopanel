@@ -18,6 +18,7 @@ import Curva from './Curva'
 import Despachos from './Despachos'
 import Ejecutivo from './Ejecutivo'
 import Proyeccion from './Proyeccion'
+import Productividad from './Productividad'
 
 const TABS: { value: DashboardTab; label: string; implementado: boolean }[] = [
   { value: 'resumen', label: 'Resumen', implementado: true },
@@ -29,6 +30,7 @@ const TABS: { value: DashboardTab; label: string; implementado: boolean }[] = [
   { value: 'despachos', label: 'Despachos', implementado: true },
   { value: 'ejecutivo', label: 'Ejecutivo', implementado: true },
   { value: 'proyeccion', label: 'Proyección', implementado: true },
+  { value: 'productividad', label: 'Productividad', implementado: true },
 ]
 
 function iniciales(nombre: string | undefined) {
@@ -150,6 +152,11 @@ export default function DashboardLayout() {
                 no sobre el Excel: se renderiza aunque no haya archivo cargado. */}
             <TabsContent value="proyeccion">
               <Proyeccion />
+            </TabsContent>
+            {/* Productividad cruza la hoja CURVA del Excel con la dotación mensual de
+                mod_dotacion_mensual: sin Excel la tabla se muestra igual, solo sin m2. */}
+            <TabsContent value="productividad">
+              <Productividad excelData={excelData} />
             </TabsContent>
             {visibles
               .filter((t) => !t.implementado)

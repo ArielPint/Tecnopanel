@@ -10,6 +10,9 @@ import { invalidatePrefix } from '@/lib/queryCache'
 import { fmtM } from '@/modules/planta/lib/format'
 import { useExcelData } from '@/modules/planta/hooks/useExcelData'
 import { useAvanceProduccionExcel } from '@/modules/planta/hooks/useAvanceProduccionExcel'
+import { useDotacionMod } from '@/modules/planta/hooks/useDotacionMod'
+import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
+import { useParams } from 'react-router-dom'
 import { useConfigFinanciero, useRitmoProyeccion, useTablaAnual, useAvanceEconProy, useForecastMensualSeleccionado, MESES } from '../hooks/useConfig'
 
 const ANIOS = [2026, 2027, 2028]
@@ -23,6 +26,7 @@ export default function Config() {
       </div>
       <ExcelUploadCard />
       <AvanceProduccionUploadCard />
+      <DotacionModCard />
       <PresupuestoCard />
       <RitmoCard />
       <AvanceEconProyCard />
@@ -101,6 +105,127 @@ function AvanceProduccionUploadCard() {
             />
           </label>
         </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+/** Dotación mensual de MOD: alimenta el tab Productividad del dashboard. Solo lo ve
+ * quien tiene el permiso `dashboard:productividad` (no basta ser admin, la RLS
+ * de mod_dotacion_mensual usa has_permiso_estricto). */
+function DotacionModCard() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
+  const acceso = usePermisosProyecto(proyectoSlug!)
+  const { filas, loading, uploading, error, subirPlanilla, eliminar } = useDotacionMod()
+  const [anio, setAnio] = useState(String(new Date().getFullYear()))
+  const [mes, setMes] = useState('auto')
+
+  if (acceso.loading || !acceso.tieneAccionEstricta('dashboard:productividad')) return null
+
+  async function onArchivo(file: File) {
+    try {
+      const periodo = mes === 'auto' ? undefined : { anio: parseInt(anio, 10), mes: parseInt(mes, 10) }
+      const d = await subirPlanilla(file, periodo)
+      toast.success(`${MESES[(d.mes ?? 1) - 1]} ${d.anio}: ${d.personas} personas, ${fmtM(d.costoEmpresa)}`)
+    } catch {
+      /* el hook ya mostró el toast de error */
+    }
+  }
+
+  async function onEliminar(a: number, m: number) {
+    try {
+      await eliminar(a, m)
+      toast.success('Mes eliminado')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo eliminar')
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>👷 Dotación mensual de mano de obra directa</CardTitle>
+        <CardDescription>
+          Sube la planilla de remuneraciones del mes (ej. "Remuneraciones Agosto 2026 Planta Sur"). Se leen personas,
+          días trabajados y costo empresa, y alimentan el tab Productividad del dashboard.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs">Mes</Label>
+            <Select value={mes} onValueChange={setMes}>
+              <SelectTrigger className="h-9 w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Detectar de la hoja</SelectItem>
+                {MESES.map((m, i) => (
+                  <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs">Año</Label>
+            <Select value={anio} onValueChange={setAnio}>
+              <SelectTrigger className="h-9 w-28"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ANIOS.map((a) => (
+                  <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button asChild disabled={uploading}>
+            <label className="cursor-pointer">
+              {uploading ? 'Procesando…' : 'Subir planilla de remuneraciones'}
+              <input
+                type="file"
+                accept=".xlsx,.xlsm,.xls"
+                className="hidden"
+                disabled={uploading}
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) onArchivo(f)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+          </Button>
+        </div>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Mes</TableHead>
+              <TableHead className="text-right">Personas</TableHead>
+              <TableHead className="text-right">Días-hombre</TableHead>
+              <TableHead className="text-right">Costo empresa</TableHead>
+              <TableHead>Archivo</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading && (
+              <TableRow><TableCell colSpan={6} className="text-sm text-muted-foreground">Cargando…</TableCell></TableRow>
+            )}
+            {!loading && filas.length === 0 && (
+              <TableRow><TableCell colSpan={6} className="text-sm text-muted-foreground">Sin meses cargados.</TableCell></TableRow>
+            )}
+            {filas.map((f) => (
+              <TableRow key={`${f.anio}-${f.mes}`}>
+                <TableCell className="font-medium">{MESES[f.mes - 1]} {f.anio}</TableCell>
+                <TableCell className="text-right tabular-nums">{f.personas}</TableCell>
+                <TableCell className="text-right tabular-nums">{f.dias_hombre.toLocaleString('es-CL')}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmtM(f.costo_empresa)}</TableCell>
+                <TableCell className="max-w-[18rem] truncate text-xs text-muted-foreground">{f.fuente ?? '—'}</TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant="ghost" onClick={() => onEliminar(f.anio, f.mes)}>Eliminar</Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   )

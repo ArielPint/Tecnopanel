@@ -25,6 +25,7 @@ export const PAGE_MAP: Record<PageId, PageDef> = {
       despachos: 'Despachos',
       ejecutivo: 'Ejecutivo',
       proyeccion: 'Proyección',
+      productividad: 'Productividad (MOD por m²)',
     },
   },
   produccion: {

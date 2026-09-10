@@ -24,6 +24,11 @@ export type DashboardTab =
   | 'despachos'
   | 'ejecutivo'
   | 'proyeccion'
+  | 'productividad'
+
+/** Pestañas que NO heredan el bypass de admin: se entregan usuario por usuario
+ * (mismo criterio que has_permiso_estricto() en la DB). */
+const TABS_ESTRICTOS = new Set<DashboardTab>(['productividad'])
 
 interface AuthValue {
   perfil: Perfil | null
@@ -103,7 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const acceso = usePermisosProyecto(proyectoSlug!)
   const isAdmin = acceso.isAdmin
 
-  const puedeVer = (tab: DashboardTab): boolean => acceso.tieneAccion('dashboard') && acceso.tieneAccion(`dashboard:${tab}`)
+  const puedeVer = (tab: DashboardTab): boolean =>
+    acceso.tieneAccion('dashboard') &&
+    (TABS_ESTRICTOS.has(tab) ? acceso.tieneAccionEstricta(`dashboard:${tab}`) : acceso.tieneAccion(`dashboard:${tab}`))
   const perfilConRol = perfil ? { ...perfil, role: acceso.rolNegocio ?? '' } : null
 
   return (

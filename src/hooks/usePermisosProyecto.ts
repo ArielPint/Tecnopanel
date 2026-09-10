@@ -12,6 +12,9 @@ interface PermisosProyecto {
    * Avance Obra filtran los módulos a solo los de ese subcontrato. */
   subcontrato: 'WEDO' | 'CONBES' | null
   tieneAccion: (moduloKey: string, accion?: string) => boolean
+  /** Igual que tieneAccion pero sin el bypass de admin — para pestañas que se
+   * entregan usuario por usuario (espeja has_permiso_estricto() en la DB). */
+  tieneAccionEstricta: (moduloKey: string, accion?: string) => boolean
 }
 
 interface Estado {
@@ -111,5 +114,6 @@ export function usePermisosProyecto(proyectoSlug: string): PermisosProyecto {
     rolNegocio: estado.rolNegocio,
     subcontrato: estado.subcontrato,
     tieneAccion: (moduloKey: string, accion = 'ver') => estado.isAdmin || estado.granted.has(`${moduloKey}:${accion}`),
+    tieneAccionEstricta: (moduloKey: string, accion = 'ver') => estado.granted.has(`${moduloKey}:${accion}`),
   }
 }
