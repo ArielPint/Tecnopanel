@@ -19,6 +19,10 @@ export interface FilaProductividad {
   bonoProduccion: number
   /** Cotizaciones y cargas del empleador que caen sobre las horas extras y el bono */
   cargasHheeBono: number
+  /** Horas extras con la parte de cargas que les toca */
+  horasExtrasConCargas: number
+  /** Bono de producción con la parte de cargas que le toca */
+  bonoConCargas: number
   /** Horas extras + bono + las cargas que generan */
   costoVariable: number
   /** Costo empresa sin horas extras, bono ni las cargas de ambos */
@@ -77,6 +81,11 @@ export function useProductividadData(excelData: ParsedDashboardData | null) {
         // cotizaciones que genera y no ensucia el costo base.
         const cargasHheeBono = d?.cargas_hhee_bono ?? 0
         const costoVariable = costoEmpresa > 0 ? horasExtras + bonoProduccion + cargasHheeBono : 0
+        // Las cargas se muestran repartidas dentro de cada concepto, en proporción
+        // a su monto, para que la fila cuadre sin una columna extra.
+        const varSinCargas = horasExtras + bonoProduccion
+        const horasExtrasConCargas = varSinCargas > 0 ? horasExtras + (cargasHheeBono * horasExtras) / varSinCargas : horasExtras
+        const bonoConCargas = varSinCargas > 0 ? bonoProduccion + (cargasHheeBono * bonoProduccion) / varSinCargas : bonoProduccion
         const costoBase = costoEmpresa > 0 ? costoEmpresa - costoVariable : 0
         return {
           anio,
@@ -91,6 +100,8 @@ export function useProductividadData(excelData: ParsedDashboardData | null) {
           horasExtras,
           bonoProduccion,
           cargasHheeBono,
+          horasExtrasConCargas,
+          bonoConCargas,
           costoVariable,
           costoBase,
           costoM2Base: div(costoBase, m2),
@@ -109,6 +120,8 @@ export function useProductividadData(excelData: ParsedDashboardData | null) {
       horasExtras: conDotacion.reduce((s, f) => s + f.horasExtras, 0),
       bonoProduccion: conDotacion.reduce((s, f) => s + f.bonoProduccion, 0),
       cargasHheeBono: conDotacion.reduce((s, f) => s + f.cargasHheeBono, 0),
+      horasExtrasConCargas: conDotacion.reduce((s, f) => s + f.horasExtrasConCargas, 0),
+      bonoConCargas: conDotacion.reduce((s, f) => s + f.bonoConCargas, 0),
       costoVariable: conDotacion.reduce((s, f) => s + f.costoVariable, 0),
       costoBase: conDotacion.reduce((s, f) => s + f.costoBase, 0),
       diasHombre: conDotacion.reduce((s, f) => s + f.diasHombre, 0),

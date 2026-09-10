@@ -110,6 +110,13 @@ function AvanceProduccionUploadCard() {
   )
 }
 
+/** Horas extras o bono con la parte de cargas del empleador que le toca, repartida
+ * en proporción a su monto — mismo criterio que el tab Productividad. */
+function conCargas(monto: number, f: { horas_extras: number; bono_produccion: number; cargas_hhee_bono: number }) {
+  const base = f.horas_extras + f.bono_produccion
+  return base > 0 ? monto + (f.cargas_hhee_bono * monto) / base : monto
+}
+
 /** Dotación mensual de MOD: alimenta el tab Productividad del dashboard. Solo lo ve
  * quien tiene el permiso `dashboard:productividad` (no basta ser admin, la RLS
  * de mod_dotacion_mensual usa has_permiso_estricto). */
@@ -127,7 +134,7 @@ function DotacionModCard() {
       const periodo = mes === 'auto' ? undefined : { anio: parseInt(anio, 10), mes: parseInt(mes, 10) }
       const d = await subirPlanilla(file, periodo)
       toast.success(
-        `${MESES[(d.mes ?? 1) - 1]} ${d.anio}: ${d.personas} personas, ${fmtM(d.costoEmpresa)} (HHEE ${fmtM(d.horasExtras)}, bono ${fmtM(d.bonoProduccion)}, cargas ${fmtM(d.cargasHheeBono)})`,
+        `${MESES[(d.mes ?? 1) - 1]} ${d.anio}: ${d.personas} personas, ${fmtM(d.costoEmpresa)} (HHEE ${fmtM(d.horasExtras)}, bono ${fmtM(d.bonoProduccion)} + ${fmtM(d.cargasHheeBono)} de cargas)`,
       )
     } catch {
       /* el hook ya mostró el toast de error */
@@ -205,9 +212,8 @@ function DotacionModCard() {
               <TableHead className="text-right">Personas</TableHead>
               <TableHead className="text-right">Días-hombre</TableHead>
               <TableHead className="text-right">Costo base</TableHead>
-              <TableHead className="text-right">Horas extras</TableHead>
-              <TableHead className="text-right">Bono producción</TableHead>
-              <TableHead className="text-right">Cargas s/HHEE y bono</TableHead>
+              <TableHead className="text-right">Horas extras (con cargas)</TableHead>
+              <TableHead className="text-right">Bono producción (con cargas)</TableHead>
               <TableHead className="text-right">Costo empresa total</TableHead>
               <TableHead>Archivo</TableHead>
               <TableHead />
@@ -215,10 +221,10 @@ function DotacionModCard() {
           </TableHeader>
           <TableBody>
             {loading && (
-              <TableRow><TableCell colSpan={10} className="text-sm text-muted-foreground">Cargando…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-sm text-muted-foreground">Cargando…</TableCell></TableRow>
             )}
             {!loading && filas.length === 0 && (
-              <TableRow><TableCell colSpan={10} className="text-sm text-muted-foreground">Sin meses cargados.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-sm text-muted-foreground">Sin meses cargados.</TableCell></TableRow>
             )}
             {filas.map((f) => (
               <TableRow key={`${f.anio}-${f.mes}`}>
@@ -226,9 +232,8 @@ function DotacionModCard() {
                 <TableCell className="text-right tabular-nums">{f.personas}</TableCell>
                 <TableCell className="text-right tabular-nums">{f.dias_hombre.toLocaleString('es-CL')}</TableCell>
                 <TableCell className="text-right tabular-nums">{fmtM(f.costo_empresa - f.horas_extras - f.bono_produccion - f.cargas_hhee_bono)}</TableCell>
-                <TableCell className="text-right tabular-nums">{fmtM(f.horas_extras)}</TableCell>
-                <TableCell className="text-right tabular-nums">{fmtM(f.bono_produccion)}</TableCell>
-                <TableCell className="text-right tabular-nums">{fmtM(f.cargas_hhee_bono)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmtM(conCargas(f.horas_extras, f))}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmtM(conCargas(f.bono_produccion, f))}</TableCell>
                 <TableCell className="text-right tabular-nums">{fmtM(f.costo_empresa)}</TableCell>
                 <TableCell className="max-w-[18rem] truncate text-xs text-muted-foreground">{f.fuente ?? '—'}</TableCell>
                 <TableCell className="text-right">
