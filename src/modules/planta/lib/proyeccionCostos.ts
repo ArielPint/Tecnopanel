@@ -5,8 +5,8 @@
 // Dos miradas del costo por módulo, deliberadamente separadas:
 //  - TEÓRICO: receta (cantidad_por_modulo del catálogo) × precio. Es lo que un
 //    módulo debería costar.
-//  - REAL: plata efectivamente comprada ÷ módulos terminados. Es lo que está
-//    costando, e incluye mermas, pérdidas y compras fuera de receta.
+//  - REAL: plata efectivamente comprada ÷ módulos terminados y en proceso. Es lo
+//    que está costando, e incluye mermas, pérdidas y compras fuera de receta.
 // La brecha entre ambos es el dato que se pidió mirar; no se promedian ni se
 // elige uno, porque cada uno responde una pregunta distinta.
 //
@@ -90,6 +90,8 @@ export function costoPorModulo(productos: ProductoReceta[], base: BasePrecio): C
 export interface ModuloEstado {
   torre: string
   terminado: boolean
+  /** Iniciado y sin terminar. Ya consumió material, así que cuenta en el costo real. */
+  enProceso: boolean
 }
 
 export interface TorreCosto {
@@ -134,21 +136,35 @@ export interface CostoReal {
   stockValorizado: number
   compradoNeto: number
   terminados: number
-  /** comprado ÷ terminados. Sobreestima: arrastra el stock no consumido. */
+  enProceso: number
+  /** Denominador del costo real: terminados + en proceso. */
+  modulosConsiderados: number
+  /** comprado ÷ módulos considerados. Sobreestima: arrastra el stock no consumido. */
   porModuloCrudo: number | null
-  /** (comprado − stock) ÷ terminados. */
+  /** (comprado − stock) ÷ módulos considerados. */
   porModuloAjustado: number | null
 }
 
-export function costoReal(comprado: number, stockValorizado: number, terminados: number): CostoReal {
+/**
+ * Costo real por módulo. El denominador incluye los módulos en proceso además de los
+ * terminados: el material de un módulo iniciado ya se compró, así que dejarlo fuera
+ * cargaba todo ese gasto sobre los terminados e inflaba la cifra.
+ *
+ * Contrapartida asumida: un módulo en proceso cuenta como uno completo aunque vaya a
+ * medias, así que el costo por módulo queda algo por debajo del real.
+ */
+export function costoReal(comprado: number, stockValorizado: number, terminados: number, enProceso: number): CostoReal {
   const compradoNeto = comprado - stockValorizado
+  const modulosConsiderados = terminados + enProceso
   return {
     comprado,
     stockValorizado,
     compradoNeto,
     terminados,
-    porModuloCrudo: terminados > 0 ? comprado / terminados : null,
-    porModuloAjustado: terminados > 0 ? compradoNeto / terminados : null,
+    enProceso,
+    modulosConsiderados,
+    porModuloCrudo: modulosConsiderados > 0 ? comprado / modulosConsiderados : null,
+    porModuloAjustado: modulosConsiderados > 0 ? compradoNeto / modulosConsiderados : null,
   }
 }
 
@@ -324,8 +340,8 @@ export function demo() {
   console.assert(costoPorModulo(productos, 'ultimo').total === 11600, 'costo ultimo esperado 11600')
 
   const modulos: ModuloEstado[] = [
-    { torre: 'TORRE 01', terminado: true }, { torre: 'TORRE 01', terminado: true },
-    { torre: 'TORRE 02', terminado: true }, { torre: 'TORRE 02', terminado: false },
+    { torre: 'TORRE 01', terminado: true, enProceso: false }, { torre: 'TORRE 01', terminado: true, enProceso: false },
+    { torre: 'TORRE 02', terminado: true, enProceso: false }, { torre: 'TORRE 02', terminado: false, enProceso: true },
   ]
   const torres = costoPorTorre(modulos, 100)
   console.assert(torres.length === 2, 'dos torres')
@@ -335,9 +351,13 @@ export function demo() {
   const stockVal = valorizarStock([{ codigo: 'A', cantidad: 5 }, { codigo: 'C', cantidad: 9 }], productos, 'ppp')
   console.assert(stockVal === 5000, `stock valorizado 5000 (C no tiene precio), dio ${stockVal}`)
 
-  const real = costoReal(1000, 200, 4)
+  const real = costoReal(1000, 200, 3, 1)
+  console.assert(real.modulosConsiderados === 4, `denominador suma los en proceso, dio ${real.modulosConsiderados}`)
   console.assert(real.porModuloCrudo === 250 && real.porModuloAjustado === 200, 'costo real crudo/ajustado')
-  console.assert(costoReal(1000, 0, 0).porModuloCrudo === null, 'sin terminados no hay costo real')
+  console.assert(costoReal(1000, 0, 0, 0).porModuloCrudo === null, 'sin módulos no hay costo real')
+  // Los en proceso bajan el costo por módulo: mismo gasto repartido entre más unidades.
+  console.assert(costoReal(1000, 0, 4, 0).porModuloCrudo === 250, 'sin en proceso reparte solo entre terminados')
+  console.assert(costoReal(1000, 0, 4, 1).porModuloCrudo === 200, 'con uno en proceso reparte entre 5')
 
   const serie: SerieMensualReal[] = [
     { fecha: new Date(2026, 6, 1), monto: 100 },

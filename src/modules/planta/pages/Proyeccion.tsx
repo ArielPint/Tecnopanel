@@ -106,7 +106,9 @@ export default function Proyeccion() {
             El costo por módulo se valoriza con la receta oficial del catálogo de productos (cantidad por módulo)
             al precio que elijas. No existe gasto real por módulo: el campo de módulo en el registro de compras es
             texto libre, así que el costo por módulo es siempre una valorización o un promedio, nunca un rastreo
-            módulo a módulo.
+            módulo a módulo. El costo real reparte lo comprado entre los módulos terminados y los que están
+            en proceso, porque el material de un módulo iniciado ya se compró; un módulo a medias cuenta como
+            uno completo, así que esa cifra queda algo por debajo del costo real.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-end gap-6">
@@ -167,7 +169,7 @@ export default function Proyeccion() {
             <Kpi
               label="Costo real por módulo"
               value={formatCLP(d.real.porModuloAjustado)}
-              sub={`Sin ajustar: ${formatCLP(d.real.porModuloCrudo)} · descuenta ${formatCLPCompact(d.real.stockValorizado)} de stock`}
+              sub={`Sobre ${fmtNum(d.real.modulosConsiderados)} módulos (${fmtNum(d.terminados)} terminados + ${fmtNum(d.enProceso)} en proceso) · sin ajustar ${formatCLP(d.real.porModuloCrudo)}, descuenta ${formatCLPCompact(d.real.stockValorizado)} de stock`}
             />
             <Kpi
               label="Brecha real vs teórico"
@@ -187,7 +189,9 @@ export default function Proyeccion() {
               <Table>
                 <TableBody>
                   <TableRow>
-                    <TableCell className="font-medium">Comprado a la fecha ({fmtNum(d.terminados)} módulos terminados)</TableCell>
+                    <TableCell className="font-medium">
+                      Comprado a la fecha ({fmtNum(d.terminados)} terminados + {fmtNum(d.enProceso)} en proceso)
+                    </TableCell>
                     <TableCell className="text-right tabular-nums">{formatCLP(d.real.comprado)}</TableCell>
                   </TableRow>
                   <TableRow>

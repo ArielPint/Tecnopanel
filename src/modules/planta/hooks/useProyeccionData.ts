@@ -34,9 +34,12 @@ async function fetchProyeccion(proyectoId: string): Promise<ProyeccionSupaData> 
     loadPresupuestoTotal(),
   ])
 
+  // 'PENDIENTE' es el estado de un módulo iniciado y sin terminar — los mismos 39 que
+  // Resumen y Ejecutivo muestran como "en proceso". El resto es 'MODULO NO INICIADO'.
   const modulos: ModuloEstado[] = modulosRaw.map((m) => ({
     torre: m.torre ?? '',
     terminado: m.estado_modulo === 'MODULO TERMINADO',
+    enProceso: m.estado_modulo === 'PENDIENTE',
   }))
 
   const porMes = new Map<number, { fecha: Date; monto: number }>()
@@ -132,10 +135,11 @@ export function useProyeccionData({ base, ritmoManual }: UseProyeccionOptions) {
     const cm = costoPorModulo(productos, base)
     const modulosTotales = modulos.length
     const terminados = modulos.filter((m) => m.terminado).length
+    const enProceso = modulos.filter((m) => m.enProceso).length
     const torres = costoPorTorre(modulos, cm.total)
 
     const stockValorizado = valorizarStock(data?.stock ?? [], productos, base)
-    const real = costoReal(comprado, stockValorizado, terminados)
+    const real = costoReal(comprado, stockValorizado, terminados, enProceso)
 
     const ritmoObs = ritmoObservado(serieDespachos, 3)
     const ritmo = ritmoManual ?? ritmoObs ?? 0
@@ -159,6 +163,7 @@ export function useProyeccionData({ base, ritmoManual }: UseProyeccionOptions) {
       costoModulo: cm,
       modulosTotales,
       terminados,
+      enProceso,
       restantes: modulosTotales - terminados,
       torres,
       real,
