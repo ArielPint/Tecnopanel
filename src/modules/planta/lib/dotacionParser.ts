@@ -12,6 +12,9 @@ export interface DotacionMes {
   horasExtras: number
   /** Columna M de la planilla */
   bonoProduccion: number
+  /** Cotizaciones y cargas del empleador que caen sobre las horas extras y el bono,
+   * prorrateadas persona a persona por (HHEE + bono) / total imponible */
+  cargasHheeBono: number
   hoja: string
 }
 
@@ -66,13 +69,27 @@ export function parseDotacion(wb: XLSX.WorkBook, XLSXlib: typeof XLSX): Dotacion
   const cCosto = header.findIndex((h) => h.startsWith('COSTO EMPRESA'))
   const cHhee = header.findIndex((h) => h.startsWith('HORAS EXTRAS'))
   const cBono = header.findIndex((h) => h.startsWith('BONO DE PRODUCCION'))
+  const cImponible = header.findIndex((h) => h.startsWith('TOTAL IMPONIBLE'))
+  const cHaberes = header.findIndex((h) => h.startsWith('TOTAL HABERES'))
   if (cCosto < 0) throw new Error('No se encontró la columna COSTO EMPRESA')
+
+  // Cargas del empleador: todo lo que va entre TOTAL HABERES y COSTO EMPRESA
+  // (SIS, cesantía, mutual, AFP, rentabilidad protegida, expectativa de vida).
+  // Se toma por rango y no por nombre para que una carga nueva entre sola.
+  // El depósito convenido queda fuera: es un monto pactado, no un % del imponible.
+  const colsCargas: number[] = []
+  if (cHaberes >= 0) {
+    for (let i = cHaberes + 1; i < cCosto; i++) {
+      if (!header[i].startsWith('DEPOSITO CONVENIDO')) colsCargas.push(i)
+    }
+  }
 
   let personas = 0
   let diasHombre = 0
   let costoEmpresa = 0
   let horasExtras = 0
   let bonoProduccion = 0
+  let cargasHheeBono = 0
   for (const f of filas.slice(iHeader + 1)) {
     const rut = norm(f[cRut])
     // fila de totales o vacía -> fin de la nómina
@@ -81,13 +98,24 @@ export function parseDotacion(wb: XLSX.WorkBook, XLSXlib: typeof XLSX): Dotacion
     if (f.some((c) => norm(c).startsWith('TOTAL '))) break
     personas += 1
     if (cDias >= 0) diasHombre += num(f[cDias])
-    if (cHhee >= 0) horasExtras += num(f[cHhee])
-    if (cBono >= 0) bonoProduccion += num(f[cBono])
+    const hhee = cHhee >= 0 ? num(f[cHhee]) : 0
+    const bono = cBono >= 0 ? num(f[cBono]) : 0
+    horasExtras += hhee
+    bonoProduccion += bono
+    // Las cargas se calculan sobre el imponible (sueldo base + gratificación +
+    // HHEE + bono), así que la parte que corresponde a HHEE+bono es su proporción
+    // dentro de ese imponible. Sin columna de imponible el prorrateo queda en 0 y
+    // esas cargas se leen del lado del costo base.
+    const imponible = cImponible >= 0 ? num(f[cImponible]) : 0
+    if (imponible > 0 && hhee + bono > 0) {
+      const cargas = colsCargas.reduce((acc, i) => acc + num(f[i]), 0)
+      cargasHheeBono += (cargas * (hhee + bono)) / imponible
+    }
     costoEmpresa += num(f[cCosto])
   }
   if (personas === 0) throw new Error('No se leyó ninguna persona en la planilla')
 
-  return { ...periodoDesdeTexto(hoja), personas, diasHombre, costoEmpresa, horasExtras, bonoProduccion, hoja }
+  return { ...periodoDesdeTexto(hoja), personas, diasHombre, costoEmpresa, horasExtras, bonoProduccion, cargasHheeBono, hoja }
 }
 
 export function demoPeriodoDesdeTexto() {

@@ -127,7 +127,7 @@ function DotacionModCard() {
       const periodo = mes === 'auto' ? undefined : { anio: parseInt(anio, 10), mes: parseInt(mes, 10) }
       const d = await subirPlanilla(file, periodo)
       toast.success(
-        `${MESES[(d.mes ?? 1) - 1]} ${d.anio}: ${d.personas} personas, ${fmtM(d.costoEmpresa)} (HHEE ${fmtM(d.horasExtras)}, bono ${fmtM(d.bonoProduccion)})`,
+        `${MESES[(d.mes ?? 1) - 1]} ${d.anio}: ${d.personas} personas, ${fmtM(d.costoEmpresa)} (HHEE ${fmtM(d.horasExtras)}, bono ${fmtM(d.bonoProduccion)}, cargas ${fmtM(d.cargasHheeBono)})`,
       )
     } catch {
       /* el hook ya mostró el toast de error */
@@ -149,7 +149,8 @@ function DotacionModCard() {
         <CardTitle>👷 Dotación mensual de mano de obra directa</CardTitle>
         <CardDescription>
           Sube la planilla de remuneraciones del mes (ej. "Remuneraciones Agosto 2026 Planta Sur"). Se leen personas,
-          días trabajados, horas extras (columna L), bono de producción (columna M) y costo empresa, y alimentan
+          días trabajados, horas extras (columna L), bono de producción (columna M), costo empresa y las cargas
+          del empleador que caen sobre esas horas extras y ese bono (prorrateadas por imponible), y alimentan
           el tab Productividad del dashboard.
         </CardDescription>
       </CardHeader>
@@ -203,9 +204,10 @@ function DotacionModCard() {
               <TableHead>Mes</TableHead>
               <TableHead className="text-right">Personas</TableHead>
               <TableHead className="text-right">Días-hombre</TableHead>
-              <TableHead className="text-right">Costo s/HHEE ni bono</TableHead>
+              <TableHead className="text-right">Costo base</TableHead>
               <TableHead className="text-right">Horas extras</TableHead>
               <TableHead className="text-right">Bono producción</TableHead>
+              <TableHead className="text-right">Cargas s/HHEE y bono</TableHead>
               <TableHead className="text-right">Costo empresa total</TableHead>
               <TableHead>Archivo</TableHead>
               <TableHead />
@@ -213,19 +215,20 @@ function DotacionModCard() {
           </TableHeader>
           <TableBody>
             {loading && (
-              <TableRow><TableCell colSpan={9} className="text-sm text-muted-foreground">Cargando…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-sm text-muted-foreground">Cargando…</TableCell></TableRow>
             )}
             {!loading && filas.length === 0 && (
-              <TableRow><TableCell colSpan={9} className="text-sm text-muted-foreground">Sin meses cargados.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-sm text-muted-foreground">Sin meses cargados.</TableCell></TableRow>
             )}
             {filas.map((f) => (
               <TableRow key={`${f.anio}-${f.mes}`}>
                 <TableCell className="font-medium">{MESES[f.mes - 1]} {f.anio}</TableCell>
                 <TableCell className="text-right tabular-nums">{f.personas}</TableCell>
                 <TableCell className="text-right tabular-nums">{f.dias_hombre.toLocaleString('es-CL')}</TableCell>
-                <TableCell className="text-right tabular-nums">{fmtM(f.costo_empresa - f.horas_extras - f.bono_produccion)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmtM(f.costo_empresa - f.horas_extras - f.bono_produccion - f.cargas_hhee_bono)}</TableCell>
                 <TableCell className="text-right tabular-nums">{fmtM(f.horas_extras)}</TableCell>
                 <TableCell className="text-right tabular-nums">{fmtM(f.bono_produccion)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmtM(f.cargas_hhee_bono)}</TableCell>
                 <TableCell className="text-right tabular-nums">{fmtM(f.costo_empresa)}</TableCell>
                 <TableCell className="max-w-[18rem] truncate text-xs text-muted-foreground">{f.fuente ?? '—'}</TableCell>
                 <TableCell className="text-right">

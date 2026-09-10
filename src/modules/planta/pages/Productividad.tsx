@@ -36,14 +36,16 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
         Mes: f.label,
         Personas: f.personas,
         'Días-hombre': Math.round(f.diasHombre),
-        'Costo empresa s/HHEE ni bono': Math.round(f.costoBase),
+        'Costo empresa base': Math.round(f.costoBase),
         'Horas extras': Math.round(f.horasExtras),
         'Bono de producción': Math.round(f.bonoProduccion),
+        'Cargas sobre HHEE y bono': Math.round(f.cargasHheeBono),
+        'Total HHEE + bono + cargas': Math.round(f.costoVariable),
         'Costo empresa total': Math.round(f.costoEmpresa),
         'm2 del mes': +f.m2.toFixed(1),
         'Módulos iniciados': f.iniciados,
         'Módulos terminados': f.terminados,
-        '$ por m2 s/HHEE ni bono': f.costoM2Base != null ? Math.round(f.costoM2Base) : '',
+        '$ por m2 base': f.costoM2Base != null ? Math.round(f.costoM2Base) : '',
         '$ por m2 total': f.costoM2 != null ? Math.round(f.costoM2) : '',
         'm2 por persona': f.m2Persona != null ? +f.m2Persona.toFixed(1) : '',
         'm2 por día-hombre': f.m2DiaHombre != null ? +f.m2DiaHombre.toFixed(2) : '',
@@ -64,9 +66,9 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
             equivalentes de avance del mes, o sea módulos iniciados, en proceso y terminados dentro del mes,
             no solo los terminados. La dotación, los días-hombre y el costo empresa se cargan mes a mes en
             Configuración desde la planilla de remuneraciones. Las horas extras (columna L) y el bono de
-            producción (columna M) se muestran aparte, y el costo base es el costo empresa menos esos dos
-            conceptos — las cotizaciones y cargas que se pagan sobre ellos quedan del lado del costo base,
-            porque la planilla no las abre por concepto.
+            producción (columna M) van aparte, junto con las cotizaciones y cargas del empleador que generan:
+            esas cargas se prorratean persona a persona por (horas extras + bono) / total imponible, que es la
+            misma base sobre la que se calculan. El costo base es entonces el costo empresa sin nada de eso.
           </CardDescription>
         </CardHeader>
         {d.mesesSinDotacion.length > 0 && (
@@ -95,13 +97,13 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
             <Kpi
               label="$ MOD por m² (último mes)"
               value={ultimo ? fmtMonto(ultimo.costoM2) : '—'}
-              sub={ultimo ? `${fmtMonto(ultimo.costoM2Base)} sin HHEE ni bono` : undefined}
+              sub={ultimo ? `${fmtMonto(ultimo.costoM2Base)} sin HHEE, bono ni sus cargas` : undefined}
               tono="warning"
             />
             <Kpi
               label="$ MOD por m² (acumulado)"
               value={fmtMonto(d.totales.costoM2)}
-              sub={`${fmtMonto(d.totales.costoM2Base)} sin HHEE ni bono · ${fmtNum(d.totales.meses)} mes(es) · ${fmtNum(d.totales.m2, 1)} m²`}
+              sub={`${fmtMonto(d.totales.costoM2Base)} sin HHEE, bono ni sus cargas · ${fmtNum(d.totales.meses)} mes(es) · ${fmtNum(d.totales.m2, 1)} m²`}
               tono="success"
             />
           </div>
@@ -124,13 +126,14 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
                       <TableHead>Mes</TableHead>
                       <TableHead className="text-right">Personas</TableHead>
                       <TableHead className="text-right">Días-hombre</TableHead>
-                      <TableHead className="text-right">Costo s/HHEE ni bono</TableHead>
+                      <TableHead className="text-right">Costo base</TableHead>
                       <TableHead className="text-right">Horas extras</TableHead>
                       <TableHead className="text-right">Bono producción</TableHead>
+                      <TableHead className="text-right">Cargas s/HHEE y bono</TableHead>
                       <TableHead className="text-right">Costo empresa total</TableHead>
                       <TableHead className="text-right">m² del mes</TableHead>
                       <TableHead className="text-right">Módulos term.</TableHead>
-                      <TableHead className="text-right">$ por m² s/HHEE</TableHead>
+                      <TableHead className="text-right">$ por m² base</TableHead>
                       <TableHead className="text-right">$ por m² total</TableHead>
                       <TableHead className="text-right">m² por persona</TableHead>
                       <TableHead className="text-right">m² por día-hombre</TableHead>
@@ -140,7 +143,7 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
                   <TableBody>
                     {d.filas.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={14} className="py-8 text-center text-sm text-muted-foreground">
+                        <TableCell colSpan={15} className="py-8 text-center text-sm text-muted-foreground">
                           Sin datos: falta el Excel del proyecto o la dotación mensual.
                         </TableCell>
                       </TableRow>
@@ -153,6 +156,7 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
                         <TableCell className="text-right tabular-nums">{fmtMonto(f.costoBase)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtMonto(f.horasExtras)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtMonto(f.bonoProduccion)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fmtMonto(f.cargasHheeBono)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtMonto(f.costoEmpresa)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtNum(f.m2, 1)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtNum(f.terminados)}</TableCell>
@@ -171,6 +175,7 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
                         <TableCell className="text-right tabular-nums">{fmtMonto(d.totales.costoBase)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtMonto(d.totales.horasExtras)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtMonto(d.totales.bonoProduccion)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fmtMonto(d.totales.cargasHheeBono)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtMonto(d.totales.costoEmpresa)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtNum(d.totales.m2, 1)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtNum(d.totales.terminados)}</TableCell>

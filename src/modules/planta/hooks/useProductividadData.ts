@@ -17,7 +17,11 @@ export interface FilaProductividad {
   costoEmpresa: number
   horasExtras: number
   bonoProduccion: number
-  /** Costo empresa descontando horas extras y bono de producción */
+  /** Cotizaciones y cargas del empleador que caen sobre las horas extras y el bono */
+  cargasHheeBono: number
+  /** Horas extras + bono + las cargas que generan */
+  costoVariable: number
+  /** Costo empresa sin horas extras, bono ni las cargas de ambos */
   costoBase: number
   /** $ de MOD por m2 ejecutado, sin horas extras ni bono */
   costoM2Base: number | null
@@ -68,9 +72,12 @@ export function useProductividadData(excelData: ParsedDashboardData | null) {
         const costoEmpresa = d?.costo_empresa ?? 0
         const horasExtras = d?.horas_extras ?? 0
         const bonoProduccion = d?.bono_produccion ?? 0
-        // Resta directa: las cotizaciones y cargas que se pagan sobre las horas
-        // extras y el bono quedan del lado del costo base, la planilla no las abre.
-        const costoBase = costoEmpresa > 0 ? costoEmpresa - horasExtras - bonoProduccion : 0
+        // Las cargas del empleador se prorratean en el parser por (HHEE + bono) /
+        // total imponible, así que el corte es exacto: lo variable se lleva las
+        // cotizaciones que genera y no ensucia el costo base.
+        const cargasHheeBono = d?.cargas_hhee_bono ?? 0
+        const costoVariable = costoEmpresa > 0 ? horasExtras + bonoProduccion + cargasHheeBono : 0
+        const costoBase = costoEmpresa > 0 ? costoEmpresa - costoVariable : 0
         return {
           anio,
           mes,
@@ -83,6 +90,8 @@ export function useProductividadData(excelData: ParsedDashboardData | null) {
           costoEmpresa,
           horasExtras,
           bonoProduccion,
+          cargasHheeBono,
+          costoVariable,
           costoBase,
           costoM2Base: div(costoBase, m2),
           costoM2: div(costoEmpresa, m2),
@@ -99,6 +108,8 @@ export function useProductividadData(excelData: ParsedDashboardData | null) {
       costoEmpresa: conDotacion.reduce((s, f) => s + f.costoEmpresa, 0),
       horasExtras: conDotacion.reduce((s, f) => s + f.horasExtras, 0),
       bonoProduccion: conDotacion.reduce((s, f) => s + f.bonoProduccion, 0),
+      cargasHheeBono: conDotacion.reduce((s, f) => s + f.cargasHheeBono, 0),
+      costoVariable: conDotacion.reduce((s, f) => s + f.costoVariable, 0),
       costoBase: conDotacion.reduce((s, f) => s + f.costoBase, 0),
       diasHombre: conDotacion.reduce((s, f) => s + f.diasHombre, 0),
       terminados: conDotacion.reduce((s, f) => s + f.terminados, 0),

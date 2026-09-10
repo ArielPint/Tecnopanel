@@ -14,6 +14,7 @@ export interface FilaDotacion {
   costo_empresa: number
   horas_extras: number
   bono_produccion: number
+  cargas_hhee_bono: number
   fuente: string | null
 }
 
@@ -31,7 +32,7 @@ export function useDotacionMod() {
       const proyectoId = await getProyectoId(proyectoSlug!)
       const { data, error: e } = await supabase
         .from('mod_dotacion_mensual')
-        .select('anio, mes, personas, dias_hombre, costo_empresa, horas_extras, bono_produccion, fuente')
+        .select('anio, mes, personas, dias_hombre, costo_empresa, horas_extras, bono_produccion, cargas_hhee_bono, fuente')
         .eq('proyecto_id', proyectoId)
         .order('anio', { ascending: true })
         .order('mes', { ascending: true })
@@ -45,6 +46,7 @@ export function useDotacionMod() {
           costo_empresa: parseFloat(String(r.costo_empresa ?? 0)) || 0,
           horas_extras: parseFloat(String(r.horas_extras ?? 0)) || 0,
           bono_produccion: parseFloat(String(r.bono_produccion ?? 0)) || 0,
+          cargas_hhee_bono: parseFloat(String(r.cargas_hhee_bono ?? 0)) || 0,
           fuente: r.fuente ?? null,
         })),
       )
@@ -110,6 +112,7 @@ export function useDotacionMod() {
           costo_empresa: d.costoEmpresa,
           horas_extras: d.horasExtras,
           bono_produccion: d.bonoProduccion,
+          cargas_hhee_bono: Math.round(d.cargasHheeBono),
           fuente: file.name,
         })
         return { ...d, anio, mes }
