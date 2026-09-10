@@ -13,8 +13,15 @@ export interface FilaProductividad {
   terminados: number
   personas: number
   diasHombre: number
+  /** Costo empresa total del mes (incluye horas extras y bono) */
   costoEmpresa: number
-  /** $ de MOD por m2 ejecutado */
+  horasExtras: number
+  bonoProduccion: number
+  /** Costo empresa descontando horas extras y bono de producción */
+  costoBase: number
+  /** $ de MOD por m2 ejecutado, sin horas extras ni bono */
+  costoM2Base: number | null
+  /** $ de MOD por m2 ejecutado, costo empresa completo */
   costoM2: number | null
   /** m2 por persona (headcount del mes) */
   m2Persona: number | null
@@ -59,6 +66,11 @@ export function useProductividadData(excelData: ParsedDashboardData | null) {
         const personas = d?.personas ?? 0
         const diasHombre = d?.dias_hombre ?? 0
         const costoEmpresa = d?.costo_empresa ?? 0
+        const horasExtras = d?.horas_extras ?? 0
+        const bonoProduccion = d?.bono_produccion ?? 0
+        // Resta directa: las cotizaciones y cargas que se pagan sobre las horas
+        // extras y el bono quedan del lado del costo base, la planilla no las abre.
+        const costoBase = costoEmpresa > 0 ? costoEmpresa - horasExtras - bonoProduccion : 0
         return {
           anio,
           mes,
@@ -69,6 +81,10 @@ export function useProductividadData(excelData: ParsedDashboardData | null) {
           personas,
           diasHombre,
           costoEmpresa,
+          horasExtras,
+          bonoProduccion,
+          costoBase,
+          costoM2Base: div(costoBase, m2),
           costoM2: div(costoEmpresa, m2),
           m2Persona: div(m2, personas),
           m2DiaHombre: div(m2, diasHombre),
@@ -81,6 +97,9 @@ export function useProductividadData(excelData: ParsedDashboardData | null) {
     const t = {
       m2: conDotacion.reduce((s, f) => s + f.m2, 0),
       costoEmpresa: conDotacion.reduce((s, f) => s + f.costoEmpresa, 0),
+      horasExtras: conDotacion.reduce((s, f) => s + f.horasExtras, 0),
+      bonoProduccion: conDotacion.reduce((s, f) => s + f.bonoProduccion, 0),
+      costoBase: conDotacion.reduce((s, f) => s + f.costoBase, 0),
       diasHombre: conDotacion.reduce((s, f) => s + f.diasHombre, 0),
       terminados: conDotacion.reduce((s, f) => s + f.terminados, 0),
       meses: conDotacion.length,
@@ -91,6 +110,7 @@ export function useProductividadData(excelData: ParsedDashboardData | null) {
       // persona aparece todos los meses).
       personas: t.meses > 0 ? conDotacion.reduce((s, f) => s + f.personas, 0) / t.meses : 0,
       costoM2: div(t.costoEmpresa, t.m2),
+      costoM2Base: div(t.costoBase, t.m2),
       m2DiaHombre: div(t.m2, t.diasHombre),
     }
 

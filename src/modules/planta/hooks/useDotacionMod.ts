@@ -12,6 +12,8 @@ export interface FilaDotacion {
   personas: number
   dias_hombre: number
   costo_empresa: number
+  horas_extras: number
+  bono_produccion: number
   fuente: string | null
 }
 
@@ -29,7 +31,7 @@ export function useDotacionMod() {
       const proyectoId = await getProyectoId(proyectoSlug!)
       const { data, error: e } = await supabase
         .from('mod_dotacion_mensual')
-        .select('anio, mes, personas, dias_hombre, costo_empresa, fuente')
+        .select('anio, mes, personas, dias_hombre, costo_empresa, horas_extras, bono_produccion, fuente')
         .eq('proyecto_id', proyectoId)
         .order('anio', { ascending: true })
         .order('mes', { ascending: true })
@@ -41,6 +43,8 @@ export function useDotacionMod() {
           personas: r.personas ?? 0,
           dias_hombre: parseFloat(String(r.dias_hombre ?? 0)) || 0,
           costo_empresa: parseFloat(String(r.costo_empresa ?? 0)) || 0,
+          horas_extras: parseFloat(String(r.horas_extras ?? 0)) || 0,
+          bono_produccion: parseFloat(String(r.bono_produccion ?? 0)) || 0,
           fuente: r.fuente ?? null,
         })),
       )
@@ -104,6 +108,8 @@ export function useDotacionMod() {
           personas: d.personas,
           dias_hombre: d.diasHombre,
           costo_empresa: d.costoEmpresa,
+          horas_extras: d.horasExtras,
+          bono_produccion: d.bonoProduccion,
           fuente: file.name,
         })
         return { ...d, anio, mes }

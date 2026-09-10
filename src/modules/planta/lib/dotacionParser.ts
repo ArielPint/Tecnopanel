@@ -6,7 +6,12 @@ export interface DotacionMes {
   mes: number | null
   personas: number
   diasHombre: number
+  /** Costo empresa total del mes (incluye horas extras y bono) */
   costoEmpresa: number
+  /** Columna L de la planilla */
+  horasExtras: number
+  /** Columna M de la planilla */
+  bonoProduccion: number
   hoja: string
 }
 
@@ -42,7 +47,8 @@ export function periodoDesdeTexto(texto: string): { anio: number | null; mes: nu
 
 /**
  * Lee la planilla "Remuneraciones <MES> <AÑO> Planta Sur": cuenta las personas y
- * suma DÍAS TRABAJADOS y COSTO EMPRESA. Corta en la fila de totales, así que el
+ * suma DÍAS TRABAJADOS, HORAS EXTRAS, BONO DE PRODUCCIÓN y COSTO EMPRESA. Corta
+ * en la fila de totales, así que el
  * total no se cuenta dos veces ni suma como una persona más.
  */
 export function parseDotacion(wb: XLSX.WorkBook, XLSXlib: typeof XLSX): DotacionMes {
@@ -58,11 +64,15 @@ export function parseDotacion(wb: XLSX.WorkBook, XLSXlib: typeof XLSX): Dotacion
   const cRut = header.indexOf('RUT')
   const cDias = header.findIndex((h) => h.startsWith('DIAS TRABAJADOS'))
   const cCosto = header.findIndex((h) => h.startsWith('COSTO EMPRESA'))
+  const cHhee = header.findIndex((h) => h.startsWith('HORAS EXTRAS'))
+  const cBono = header.findIndex((h) => h.startsWith('BONO DE PRODUCCION'))
   if (cCosto < 0) throw new Error('No se encontró la columna COSTO EMPRESA')
 
   let personas = 0
   let diasHombre = 0
   let costoEmpresa = 0
+  let horasExtras = 0
+  let bonoProduccion = 0
   for (const f of filas.slice(iHeader + 1)) {
     const rut = norm(f[cRut])
     // fila de totales o vacía -> fin de la nómina
@@ -71,11 +81,13 @@ export function parseDotacion(wb: XLSX.WorkBook, XLSXlib: typeof XLSX): Dotacion
     if (f.some((c) => norm(c).startsWith('TOTAL '))) break
     personas += 1
     if (cDias >= 0) diasHombre += num(f[cDias])
+    if (cHhee >= 0) horasExtras += num(f[cHhee])
+    if (cBono >= 0) bonoProduccion += num(f[cBono])
     costoEmpresa += num(f[cCosto])
   }
   if (personas === 0) throw new Error('No se leyó ninguna persona en la planilla')
 
-  return { ...periodoDesdeTexto(hoja), personas, diasHombre, costoEmpresa, hoja }
+  return { ...periodoDesdeTexto(hoja), personas, diasHombre, costoEmpresa, horasExtras, bonoProduccion, hoja }
 }
 
 export function demoPeriodoDesdeTexto() {
