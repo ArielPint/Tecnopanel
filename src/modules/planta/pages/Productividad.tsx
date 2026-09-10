@@ -125,7 +125,6 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
                     <TableRow>
                       <TableHead>Mes</TableHead>
                       <TableHead className="text-right">Personas</TableHead>
-                      <TableHead className="text-right">Días-hombre</TableHead>
                       <TableHead className="text-right">Costo base</TableHead>
                       <TableHead className="text-right">Horas extras</TableHead>
                       <TableHead className="text-right">Bono producción</TableHead>
@@ -136,14 +135,13 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
                       <TableHead className="text-right">$ por m² base</TableHead>
                       <TableHead className="text-right">$ por m² total</TableHead>
                       <TableHead className="text-right">m² por persona</TableHead>
-                      <TableHead className="text-right">m² por día-hombre</TableHead>
                       <TableHead className="text-right">$ por persona</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {d.filas.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={15} className="py-8 text-center text-sm text-muted-foreground">
+                        <TableCell colSpan={13} className="py-8 text-center text-sm text-muted-foreground">
                           Sin datos: falta el Excel del proyecto o la dotación mensual.
                         </TableCell>
                       </TableRow>
@@ -152,7 +150,6 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
                       <TableRow key={`${f.anio}-${f.mes}`} className={f.costoEmpresa === 0 ? 'text-muted-foreground' : undefined}>
                         <TableCell className="font-medium">{f.label}</TableCell>
                         <TableCell className="text-right tabular-nums">{f.personas || '—'}</TableCell>
-                        <TableCell className="text-right tabular-nums">{f.diasHombre ? fmtNum(f.diasHombre) : '—'}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtMonto(f.costoBase)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtMonto(f.horasExtras)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtMonto(f.bonoProduccion)}</TableCell>
@@ -163,7 +160,6 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
                         <TableCell className="text-right tabular-nums">{fmtMonto(f.costoM2Base)}</TableCell>
                         <TableCell className="text-right font-semibold tabular-nums">{fmtMonto(f.costoM2)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtNum(f.m2Persona, 1)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{fmtNum(f.m2DiaHombre, 2)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtMonto(f.costoPersona)}</TableCell>
                       </TableRow>
                     ))}
@@ -171,7 +167,6 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
                       <TableRow className="border-t-2 font-semibold">
                         <TableCell>Total ({d.totales.meses} mes/es con dotación)</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtNum(d.totales.personas, 1)} prom.</TableCell>
-                        <TableCell className="text-right tabular-nums">{fmtNum(d.totales.diasHombre)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtMonto(d.totales.costoBase)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtMonto(d.totales.horasExtras)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtMonto(d.totales.bonoProduccion)}</TableCell>
@@ -182,7 +177,6 @@ export default function Productividad({ excelData }: { excelData: ParsedDashboar
                         <TableCell className="text-right tabular-nums">{fmtMonto(d.totales.costoM2Base)}</TableCell>
                         <TableCell className="text-right tabular-nums">{fmtMonto(d.totales.costoM2)}</TableCell>
                         <TableCell className="text-right">—</TableCell>
-                        <TableCell className="text-right tabular-nums">{fmtNum(d.totales.m2DiaHombre, 2)}</TableCell>
                         <TableCell className="text-right">—</TableCell>
                       </TableRow>
                     )}
