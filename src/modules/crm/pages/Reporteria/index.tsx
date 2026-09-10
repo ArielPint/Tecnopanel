@@ -4,7 +4,8 @@ import {
   Bar, BarChart, CartesianGrid, Cell, ComposedChart, Legend, Line,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import { Clock, Timer, Users, ChevronDown, ChevronRight, AlertTriangle, CalendarClock, Boxes } from 'lucide-react'
+import { Clock, Timer, Users, ChevronDown, ChevronRight, AlertTriangle, CalendarClock, Boxes, Download } from 'lucide-react'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabaseClient'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import { IndicadoresFecha } from '@/components/IndicadoresFecha'
@@ -18,6 +19,7 @@ import {
   porVendedorYFamilia, resumenOportunidades, responsablesDeEtapa, tareasPorAsignado,
   tendenciaMensual,
 } from '@/modules/crm/lib/metricas'
+import { exportarOportunidades } from '@/modules/crm/lib/exportOportunidades'
 
 const ETAPAS_ORDEN = [
   'Clasificación', 'Oportunidad', 'Ingeniería', 'Desarrollo',
@@ -100,6 +102,19 @@ export default function Reporteria() {
   const [tipo, setTipo] = useState<TipoKey>('todos')
   const [etapaAbierta, setEtapaAbierta] = useState<string | null>(null)
   const [metricaFamilia, setMetricaFamilia] = useState<MetricaFamiliaKey>('total')
+  const [descargando, setDescargando] = useState(false)
+
+  // La descarga NO respeta los filtros de arriba: baja la base completa de oportunidades
+  // (incluidas Ganadas y Perdidas) con todas sus hojas asociadas.
+  async function descargar() {
+    setDescargando(true)
+    try {
+      const n = await exportarOportunidades()
+      if (n) toast.success(`${n} oportunidades descargadas`)
+    } finally {
+      setDescargando(false)
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -234,6 +249,12 @@ export default function Reporteria() {
               </button>
             ))}
           </div>
+          <button onClick={descargar} disabled={descargando}
+            title="Descarga todas las oportunidades en Excel, con sus tipologías, cubicación, historial, tareas, responsables, documentos y mensajes"
+            className="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+            <Download size={14} />
+            {descargando ? 'Generando...' : 'Descargar Excel'}
+          </button>
         </div>
       </div>
 
