@@ -74,7 +74,7 @@ export default function Productos({ excelData }: { excelData: ParsedDashboardDat
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Variación precio unitario vs presupuesto (%)</CardTitle>
+            <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Variación precio unitario vs presupuesto (%) — top 15</CardTitle>
           </CardHeader>
           <CardContent>
             <VariacionUnitariaChart data={data.variacion} />
@@ -106,15 +106,16 @@ export default function Productos({ excelData }: { excelData: ParsedDashboardDat
                 <th className="px-2 py-1.5 text-right">Av. teórico</th>
                 <th className="px-2 py-1.5 text-right">% Av. pedidos</th>
                 <th className="px-2 py-1.5 text-right">Cant. comprada</th>
+                <th className="px-2 py-1.5 text-right">Ppto unitario</th>
                 <th className="px-2 py-1.5 text-right">Precio compra</th>
-                <th className="px-2 py-1.5 text-right">Variación</th>
+                <th className="px-2 py-1.5 text-right">Var. precio</th>
               </tr>
             </thead>
             <tbody>
               {filtrados.map((p, i) => {
                 const av = p.avTeorico
                 const avp = p.pctAvPedidos
-                const vc = p.variacion ?? 0
+                const vc = p.varPrecio
                 return (
                   <tr key={`${p.codigo}-${i}`} className="border-b last:border-0">
                     <td className="px-2 py-1.5">{String(p.codigo ?? '—')}</td>
@@ -131,9 +132,10 @@ export default function Productos({ excelData }: { excelData: ParsedDashboardDat
                     </td>
                     <td className="px-2 py-1.5 text-right tabular-nums">{avp != null ? (avp * 100).toFixed(2) + '%' : '—'}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums">{fmt(p.cantComprada)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{fmtM(p.pptoUn)}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums">{fmtM(p.precioUN)}</td>
-                    <td className={'px-2 py-1.5 text-right tabular-nums ' + (vc < 0 ? 'text-success' : vc > 0 ? 'text-destructive' : '')}>
-                      {(vc * 100).toFixed(2)}%
+                    <td className={'px-2 py-1.5 text-right tabular-nums ' + (vc == null ? '' : vc < 0 ? 'text-success' : vc > 0 ? 'text-destructive' : '')}>
+                      {vc != null ? (Math.abs(vc) < 0.00005 ? 0 : vc * 100).toFixed(2) + '%' : '—'}
                     </td>
                   </tr>
                 )

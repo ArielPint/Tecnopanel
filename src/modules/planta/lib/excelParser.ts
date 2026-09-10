@@ -94,6 +94,7 @@ export interface ProductoRow {
   cantComprada: number | null
   cantRec: number | null
   avTeorico: number | null
+  pptoUn: number | null
   precioCompra: number | null
   precioUN: number | null
   variacion: number | null
@@ -203,6 +204,8 @@ export function parseWorkbook(wb: XLSX.WorkBook): ParsedDashboardData {
     .map((r) => ({
       codigo: r[0], desc: r[1], descCorta: r[2], critico: r[10],
       cantMod: N(r[11]), cantComprada: N(r[16]), cantRec: N(r[18]),
+      // Ppto unitario vigente: PPTO_ACTUALIZADO (col H) y, si viene vacío, el PPTO original (col F).
+      pptoUn: N(r[7]) || N(r[5]),
       avTeorico: N(r[19]), precioCompra: N(r[20]), precioUN: N(r[21]),
       variacion: N(r[23]), pctAvPedidos: N(r[25]),
     }))
