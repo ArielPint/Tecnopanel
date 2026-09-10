@@ -23,7 +23,7 @@ import { IndicadoresFecha, fechaIndicadoresLbl } from '@/components/IndicadoresF
 import { buildIndicadoresEjecutivo } from '../lib/indicadoresEjecutivo'
 import { finDeMesCorte, mesesCorteOpts } from '../lib/format'
 import { INST } from '../lib/coloresInstitucionales'
-import { exportarPptEjecutivo, type LaminaPpt } from '../lib/exportPptEjecutivo'
+import { exportarPptEjecutivo, type GraficoPpt } from '../lib/exportPptEjecutivo'
 
 // La salida de galpón es el término de obra gruesa del módulo — ese es el nombre
 // oficial del gráfico en el dashboard Ejecutivo.
@@ -59,10 +59,8 @@ export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardDat
   async function exportarPpt() {
     setExportando(true)
     try {
-      const laminas: LaminaPpt[] = [
-        { tipo: 'kpis', titulo: 'Indicadores', items: items.map((k) => ({ label: k.label, value: k.value })) },
+      const avance: GraficoPpt[] = [
         {
-          tipo: 'combo',
           titulo: 'Avance económico mensual',
           labels: avanceEconomico.map((d) => d.mes),
           barras: [{ name: 'Real', values: avanceEconomico.map((d) => d.real), color: INST.rojo }],
@@ -70,7 +68,6 @@ export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardDat
           sufijo: '%',
         },
         {
-          tipo: 'combo',
           titulo: 'Avance económico acumulado',
           labels: avanceEconomicoAcumulado.map((d) => String(d.mes)),
           barras: [{ name: 'Real acumulado', values: avanceEconomicoAcumulado.map((d) => d.realAcum), color: INST.rojo }],
@@ -80,53 +77,42 @@ export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardDat
           })),
           sufijo: '%',
         },
+      ]
+      const produccion: GraficoPpt[] = [
         {
-          tipo: 'combo',
           titulo: 'Módulos terminados / programados acumulados',
           labels: despachos.mensualAcumulado.map((d) => d.mes),
           barras: [{ name: 'Terminados (acum.)', values: despachos.mensualAcumulado.map((d) => d.fabricadoAcum), color: INST.rojo }],
           lineas: [{ name: 'Programados (acum.)', values: despachos.mensualAcumulado.map((d) => d.programadoAcum), color: INST.plomo }],
         },
         {
-          tipo: 'barras',
-          titulo: 'Módulos terminados por mes',
-          labels: resumen.modulosTerminadosPorMes.map((d) => d.mes),
-          series: [{ name: 'Módulos terminados', values: resumen.modulosTerminadosPorMes.map((d) => d.cantidad), color: INST.rojo }],
-        },
-        {
-          tipo: 'barras',
-          titulo: TITULO_OBRA_GRUESA,
-          labels: resumen.salidaGalponPorMes.map((d) => d.mes),
-          series: [{ name: 'Terminados obra gruesa', values: resumen.salidaGalponPorMes.map((d) => d.cantidad), color: INST.plomo }],
-        },
-        {
-          tipo: 'combo',
           titulo: 'Tiempo real vs proyectado por torre',
           labels: curva.torreTiempo.map((d) => d.torre),
           barras: [{ name: 'Tiempo real (días)', values: curva.torreTiempo.map((d) => d.real), color: INST.rojo }],
           lineas: [{ name: 'Tiempo proyectado (días)', values: curva.torreTiempo.map((d) => d.proy), color: INST.plomo }],
         },
         {
-          tipo: 'barras',
-          titulo: 'Dotación de personal',
-          labels: ['Administrativos', 'Supervisores', 'Operarios', 'Sanitarios', 'Eléctricos', 'Terminaciones'],
-          series: [
-            {
-              name: 'Personas',
-              values: [
-                dotacion.valores.administrativos,
-                dotacion.valores.supervisores,
-                dotacion.valores.operarios,
-                dotacion.valores.sanitarios,
-                dotacion.valores.electricos,
-                dotacion.valores.terminaciones,
-              ],
-              color: INST.rojo,
-            },
-          ],
+          titulo: 'Módulos terminados por mes',
+          labels: resumen.modulosTerminadosPorMes.map((d) => d.mes),
+          barras: [{ name: 'Módulos terminados', values: resumen.modulosTerminadosPorMes.map((d) => d.cantidad), color: INST.rojo }],
+        },
+        {
+          titulo: TITULO_OBRA_GRUESA,
+          labels: resumen.salidaGalponPorMes.map((d) => d.mes),
+          barras: [{ name: 'Terminados obra gruesa', values: resumen.salidaGalponPorMes.map((d) => d.cantidad), color: INST.plomo }],
         },
       ]
-      await exportarPptEjecutivo({ proyecto: nombreProyecto(proyectoSlug), corteLbl, laminas })
+      const d = dotacion.valores
+      const nota = `Dotación: ${d.administrativos} administrativos · ${d.supervisores} supervisores · ${d.operarios} operarios · ${d.sanitarios} sanitarios · ${d.electricos} eléctricos · ${d.terminaciones} terminaciones`
+
+      await exportarPptEjecutivo({
+        proyecto: nombreProyecto(proyectoSlug),
+        corteLbl,
+        kpis: items.map((k) => ({ label: k.label, value: k.value })),
+        avance,
+        produccion,
+        nota,
+      })
       toast.success('PPT generado')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al generar el PPT')
