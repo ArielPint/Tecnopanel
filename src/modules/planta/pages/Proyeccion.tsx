@@ -1,18 +1,15 @@
-import { useMemo, useState } from 'react'
-import { Area, Bar, CartesianGrid, ComposedChart, Legend, XAxis, YAxis } from 'recharts'
+import { useState } from 'react'
 import { Download, Info } from 'lucide-react'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/modules/financiero/components/ui/card'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Label } from '@/modules/financiero/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
-import { ChartContainer, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/modules/financiero/components/ui/chart'
 import { Skeleton } from '@/modules/financiero/components/ui/skeleton'
 import { formatCLP, formatCLPCompact, formatFecha, formatPct } from '@/modules/financiero/utils/formatters'
 import { exportarExcel } from '@/modules/financiero/utils/exportExcel'
 import { IndicadoresFecha } from '@/components/IndicadoresFecha'
 import { cn } from '@/lib/utils'
-import { yHeadroom } from '@/lib/chartDomain'
 import { useProyeccionData } from '../hooks/useProyeccionData'
 import { BASE_PRECIO_LABEL, type BasePrecio } from '../lib/proyeccionCostos'
 
@@ -44,17 +41,6 @@ export default function Proyeccion() {
   const [ritmoInput, setRitmoInput] = useState('')
   const ritmoManual = ritmoInput.trim() === '' ? null : Number(ritmoInput) || 0
   const d = useProyeccionData({ base, ritmoManual })
-
-  const curva = useMemo(
-    () => d.proyeccion.curva.map((p) => ({ mes: p.mes, real: p.real, proyectado: p.proyectado, acumulado: p.acumulado })),
-    [d.proyeccion.curva],
-  )
-
-  const chartConfig = {
-    acumulado: { label: 'Acumulado (eje izq.)', color: '#4f8ef7' },
-    real: { label: 'Real del mes (eje der.)', color: '#3fb950' },
-    proyectado: { label: 'Proyectado del mes (eje der.)', color: '#f2a340' },
-  } satisfies ChartConfig
 
   function exportarDesglose() {
     exportarExcel(
@@ -250,33 +236,6 @@ export default function Proyeccion() {
                   </TableRow>
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Compras acumuladas — real y proyección hasta las {d.torres.length} torres</CardTitle>
-              <CardDescription>
-                La proyección arranca el mes siguiente al actual, a {fmtNum(d.ritmo, 1)} módulos/mes × {formatCLP(d.costoModulo.total)} por módulo
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* El acumulado llega a ~$11 mil M y el gasto mensual ronda los $500 M: en un
-                  solo eje las barras del mes quedan pegadas al piso, así que el mensual va
-                  en el eje derecho. */}
-              <ChartContainer config={chartConfig} className="aspect-auto h-[340px] w-full">
-                <ComposedChart data={curva} margin={{ left: 8, right: 8, top: 16 }}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis dataKey="mes" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} angle={-40} textAnchor="end" height={60} interval="preserveStartEnd" />
-                  <YAxis yAxisId="acum" domain={yHeadroom} tickFormatter={(v) => formatCLPCompact(Number(v))} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={64} />
-                  <YAxis yAxisId="mes" orientation="right" domain={yHeadroom} tickFormatter={(v) => formatCLPCompact(Number(v))} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={64} />
-                  <ChartTooltip content={<ChartTooltipContent formatter={(v) => formatCLP(Number(v))} />} />
-                  <Bar yAxisId="mes" dataKey="real" fill="var(--color-real)" radius={3} />
-                  <Bar yAxisId="mes" dataKey="proyectado" fill="var(--color-proyectado)" radius={3} fillOpacity={0.55} />
-                  <Area yAxisId="acum" type="monotone" dataKey="acumulado" stroke="var(--color-acumulado)" fill="var(--color-acumulado)" fillOpacity={0.16} strokeWidth={2.5} />
-                  <Legend content={<ChartLegendContent />} />
-                </ComposedChart>
-              </ChartContainer>
             </CardContent>
           </Card>
 
