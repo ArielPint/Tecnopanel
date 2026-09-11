@@ -336,6 +336,9 @@ export function useResumenData(excelData: ParsedDashboardData | null, hasta?: Da
 
     return {
       loading: loading && !excelData,
+      // El `loading` de arriba se apaga apenas hay Excel, aunque la consulta a
+      // Supabase siga en vuelo. Quien escriba KPIs al hub debe esperar esto.
+      supaReady: data !== undefined,
       kpis,
       distribucionBuckets,
       comprasVsPresupuesto,
@@ -350,7 +353,7 @@ export function useResumenData(excelData: ParsedDashboardData | null, hasta?: Da
       modulosIniciadosPorMes,
       salidaGalponPorMes,
     }
-  }, [excelData, supaCompras, presupuestoTotal, pptoCatalogo, despachados, avanceProy, forecastSeleccionado, loading, hasta])
+  }, [excelData, data, supaCompras, presupuestoTotal, pptoCatalogo, despachados, avanceProy, forecastSeleccionado, loading, hasta])
 }
 
 export type ResumenData = ReturnType<typeof useResumenData>

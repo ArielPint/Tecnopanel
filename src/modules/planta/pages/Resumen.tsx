@@ -132,7 +132,7 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
       modulos_en_proceso: resumen.kpis.modulosEnProceso,
       compras_total: resumen.kpis.totalComprado,
     },
-    !resumen.loading,
+    resumen.supaReady,
   )
 
   return (
