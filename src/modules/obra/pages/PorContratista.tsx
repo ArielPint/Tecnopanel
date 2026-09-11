@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 import { useObraCrData } from '../hooks/useObraCrData'
 import { ASIGNACION_POR_CR_CATEGORIA, CATEGORY_DEFS } from '../lib/categorias'
-import { buildCategoryTable, isModuloTerminado, type ModuloCombinado } from '../lib/matrix'
+import { buildCategoryTable, isModuloTerminado, ventanaSemanas, type ModuloCombinado, type RangoFechas } from '../lib/matrix'
 import type { ObraCategoria } from '../lib/categorias'
 import type { ChipEstado } from '../lib/crParser'
 import { IndicadoresFecha } from '@/components/IndicadoresFecha'
@@ -42,9 +42,9 @@ function Kpi({ label, pct, frac }: { label: string; pct: string; frac: string })
   )
 }
 
-function CategoriaSection({ cat, modulos }: { cat: ObraCategoria; modulos: ModuloCombinado[] }) {
+function CategoriaSection({ cat, modulos, rango }: { cat: ObraCategoria; modulos: ModuloCombinado[]; rango: RangoFechas }) {
   const [filtro, setFiltro] = useState('')
-  const tabla = useMemo(() => buildCategoryTable(cat, modulos), [cat, modulos])
+  const tabla = useMemo(() => buildCategoryTable(cat, modulos, rango), [cat, modulos, rango])
   const pct = tabla.total ? ((100 * tabla.done) / tabla.total).toFixed(1) : '0.0'
   const asigCat = ASIGNACION_POR_CR_CATEGORIA[cat]
 
@@ -69,7 +69,7 @@ function CategoriaSection({ cat, modulos }: { cat: ObraCategoria; modulos: Modul
 
         {!tabla.rows.length || !tabla.cols.length ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            {tabla.cols.length ? 'Sin partidas reconocidas para esta categoría en el último CR subido.' : 'Sin módulos asignados a este subcontrato en Configuración.'}
+            {tabla.cols.length ? 'Sin partidas reconocidas para esta categoría en el último CR subido.' : 'Sin módulos con entrega entre esta semana y las próximas dos.'}
           </p>
         ) : (
           <div className="max-h-[70vh] overflow-auto rounded-md border">
@@ -115,13 +115,15 @@ export default function PorContratista() {
   const { modulos: todos, loading, hayCR } = useObraCrData()
   const modulos = useMemo(() => todos.filter((m) => !isModuloTerminado(m)), [todos])
   const orden = subcontrato ? [SECCION_POR_SUBCONTRATO[subcontrato]] : ORDEN
+  // Solo semana en curso + las próximas 2 — esta vista es operativa, no histórica.
+  const rango = useMemo(() => ventanaSemanas(2), [])
 
   const kpis = useMemo(() => {
-    const porCat = orden.map((cat) => ({ cat, tabla: buildCategoryTable(cat, modulos) }))
+    const porCat = orden.map((cat) => ({ cat, tabla: buildCategoryTable(cat, modulos, rango) }))
     const totalDone = porCat.reduce((s, c) => s + c.tabla.done, 0)
     const totalAll = porCat.reduce((s, c) => s + c.tabla.total, 0)
     return { porCat, generalPct: totalAll ? ((100 * totalDone) / totalAll).toFixed(1) : '0.0', totalDone, totalAll }
-  }, [modulos, orden])
+  }, [modulos, orden, rango])
 
   if (loading) return <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
 
@@ -132,6 +134,9 @@ export default function PorContratista() {
   return (
     <div className="space-y-4">
       <IndicadoresFecha />
+      <p className="text-xs text-muted-foreground">
+        Mostrando módulos con entrega entre el {fmtFecha(rango.desde)} y el {fmtFecha(rango.hasta)} (semana en curso + próximas 2).
+      </p>
       <div className="flex flex-wrap gap-3">
         <Kpi label="Avance general" pct={kpis.generalPct} frac={`${kpis.totalDone} / ${kpis.totalAll} celdas partida×módulo`} />
         {kpis.porCat.map(({ cat, tabla }) => (
@@ -139,7 +144,7 @@ export default function PorContratista() {
         ))}
       </div>
       {orden.map((cat) => (
-        <CategoriaSection key={cat} cat={cat} modulos={modulos} />
+        <CategoriaSection key={cat} cat={cat} modulos={modulos} rango={rango} />
       ))}
     </div>
   )

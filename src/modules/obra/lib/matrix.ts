@@ -91,6 +91,25 @@ export function categoriaCompleta(m: ModuloCombinado, asigCat: AsignacionCategor
   return aplicables.length > 0 && aplicables.every((status) => status === 'ok')
 }
 
+export interface RangoFechas {
+  desde: string // YYYY-MM-DD inclusive
+  hasta: string // YYYY-MM-DD inclusive
+}
+
+function isoLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// Ventana "semana en curso + las próximas `adelante` semanas": lunes de esta
+// semana hasta el domingo de la semana +adelante. Se usa para que las vistas
+// operativas no arrastren asignaciones históricas.
+export function ventanaSemanas(adelante: number, hoy: Date = new Date()): RangoFechas {
+  const lunes = lunesDeSemana(hoy)
+  const fin = new Date(lunes)
+  fin.setDate(fin.getDate() + adelante * 7 + 6)
+  return { desde: isoLocal(lunes), hasta: isoLocal(fin) }
+}
+
 export interface CategoryTableRow {
   nombre: string
   cells: { status: ChipEstado }[]
@@ -106,8 +125,9 @@ export interface CategoryTable {
 // Equivalente a buildCategoryMatrix() del html — solo entran los módulos que ya
 // tienen fecha de entrega asignada en SU categoría de asignación (Configuración);
 // si la categoría es splitTeam (wedo/conbes) también exige que el subcontrato
-// asignado coincida con el del team de esta sección.
-export function buildCategoryTable(cat: ObraCategoria, modulos: ModuloCombinado[]): CategoryTable {
+// asignado coincida con el del team de esta sección. Con `rango` además se acotan
+// los módulos a esa ventana de fechas de entrega (ver ventanaSemanas).
+export function buildCategoryTable(cat: ObraCategoria, modulos: ModuloCombinado[], rango?: RangoFechas): CategoryTable {
   const def = CATEGORY_DEFS[cat]
   const nombresDisponibles = new Set(modulos.flatMap((m) => Object.keys(m.estados)))
   const partidaNames = partidasDeCategoria(cat, nombresDisponibles)
@@ -116,6 +136,7 @@ export function buildCategoryTable(cat: ObraCategoria, modulos: ModuloCombinado[
   const cols = modulos.filter((m) => {
     const a = m.asignaciones[asigCat]
     if (!a.fechaEntrega) return false
+    if (rango && (a.fechaEntrega < rango.desde || a.fechaEntrega > rango.hasta)) return false
     return def.splitTeam ? a.subcontrato === def.splitTeam : true
   })
 
