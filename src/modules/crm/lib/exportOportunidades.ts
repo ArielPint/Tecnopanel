@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabaseClient'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import type { HitosVit } from '@/modules/crm/types/database'
+import { HITOS_VIT } from '@/modules/crm/lib/hitosVit'
 
 // Descarga de TODAS las oportunidades (incluidas Ganadas y Perdidas) en un solo Excel.
 // Una hoja por tipo de dato: la hoja Oportunidades es la maestra y las demas se enlazan
@@ -14,11 +15,7 @@ const TIPO_VENTA_LABELS: Record<string, string> = {
   VIT: 'VIT',
 }
 
-// Mismos nombres que muestra la pestaña General del drawer (HITOS_VIT).
-const HITOS_VIT_NOMBRES = [
-  'Diseño y Desarrollo', 'Ingreso del Proyecto a Serviu', 'CPI Hábil',
-  'Clasificación y Selección', 'Orden de Compra o Contrato', 'Ejecución',
-]
+const HITOS_VIT_NOMBRES = HITOS_VIT.map(h => h.nombre)
 
 type Fila = Record<string, unknown>
 
@@ -125,7 +122,9 @@ export async function exportarOportunidades(): Promise<number> {
     HITOS_VIT_NOMBRES.forEach((nombre, i) => {
       const h = hitos?.[String(i + 1)]
       fila['Hito ' + (i + 1) + '. ' + nombre] = h
-        ? (h.cumplida ? 'Cumplido' : 'Pendiente') + (h.descripcion ? ' — ' + h.descripcion : '')
+        ? (h.cumplida ? 'Cumplido' : 'Pendiente')
+          + (h.fecha ? ' — vence ' + fecha(h.fecha) : '')
+          + (h.descripcion ? ' — ' + h.descripcion : '')
         : ''
     })
     return fila

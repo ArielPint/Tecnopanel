@@ -33,6 +33,8 @@ const TIPO_LABEL: Record<string, { icon: string; color: string }> = {
   asignacion:        { icon: '👤',  color: '#8b5cf6' },
   estado_final:      { icon: '✓',   color: '#22c55e' },
   margen_autorizacion: { icon: '%', color: '#ed3224' },
+  hito_vencimiento:  { icon: '⏰',  color: '#f97316' },
+  hito_fecha:        { icon: '📅',  color: '#0ea5e9' },
 }
 
 export default function NotificationsBell() {

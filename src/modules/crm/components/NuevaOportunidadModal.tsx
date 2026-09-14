@@ -510,11 +510,15 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
             <input type="range" min="0" max="100" step="5" value={form.probabilidad}
               onChange={e => setForm(f=>({...f,probabilidad:e.target.value}))} className="w-full" />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Descripción</label>
-            <textarea value={form.descripcion} onChange={e => setForm(f=>({...f,descripcion:e.target.value}))} rows={2}
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" />
-          </div>
+          {/* VIT no usa descripcion libre (tampoco aparece en General): lo que describe el
+              proyecto son sus etapas internas. */}
+          {form.tipo_venta !== 'VIT' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Descripción</label>
+              <textarea value={form.descripcion} onChange={e => setForm(f=>({...f,descripcion:e.target.value}))} rows={2}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" />
+            </div>
+          )}
           {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg p-2">{error}</p>}
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose}

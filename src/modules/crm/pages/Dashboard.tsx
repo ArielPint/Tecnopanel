@@ -6,19 +6,29 @@ import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import { usePermisos } from '@/modules/crm/contexts/PermisosContext'
 import type { Oportunidad, OportunidadHistorialEtapa } from '@/modules/crm/types/database'
 import { fmtMontoCLP as fmtCLP } from '@/lib/montoCLP'
+import { HITOS_VIT, etapaVitEnCurso } from '@/modules/crm/lib/hitosVit'
 
 const ETAPAS = [
   'Clasificación','Oportunidad','Ingeniería','Desarrollo','Costos y Presupuestos',
   'Ventas','Negociación',
 ]
 
-// Las oportunidades VIT no pasan por Ingenieria, Desarrollo, Costos y Presupuestos ni Ventas.
-const ETAPAS_VIT = ['Clasificación','Oportunidad','Negociación']
+/* Las oportunidades VIT no pasan por Ingenieria, Desarrollo, Costos y Presupuestos ni
+   Ventas: su pipeline comercial son solo 3 etapas. En el dashboard no se miran por ahi
+   sino por la etapa del proyecto en curso (las 6 internas de hitos_vit), que es el avance
+   real que sigue gerencia. */
+const CLAVES_HITOS_VIT = HITOS_VIT.map(h => String(h.n))
+const LABEL_HITO_VIT: Record<string, string> = Object.fromEntries(
+  HITOS_VIT.map(h => [String(h.n), `${h.n} · ${h.nombre}`]))
+const HITO_VIT_COLORS: Record<string, string> = {
+  '1': '#64748b', '2': '#3b82f6', '3': '#8b5cf6',
+  '4': '#f97316', '5': '#f59e0b', '6': '#10b981',
+}
 
 /* Cada etapa del pipeline tradicional tiene su propio modulo; desde el grafico se salta
    directo ahi. Clasificacion y Oportunidad no tienen modulo propio: caen en la vista de
    oportunidades. Las VIT no pasan por los modulos por etapa, asi que siempre van a la
-   vista VIT (ver ETAPAS_VIT). */
+   vista VIT. */
 // Solo estos roles ven el cuadro "Actividad Reciente" del dashboard.
 const ROLES_ACTIVIDAD = ['admin', 'gerente_general', 'gerente_ventas']
 
@@ -91,7 +101,7 @@ const NOTIF_ICON: Record<string, string> = {
 
 /* Los KPIs se calculan sobre un subconjunto de oportunidades para poder mostrar
    VIT y Tradicional por separado sin duplicar la logica. */
-function calcStats(opps: Oportunidad[], etapas: string[]) {
+function calcStats(opps: Oportunidad[], etapas: string[], claveDe: (o: Oportunidad) => string = o => o.etapa_actual) {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
@@ -115,7 +125,7 @@ function calcStats(opps: Oportunidad[], etapas: string[]) {
   const montoByEtapa: Record<string, number> = {}
   const countByEtapa: Record<string, number> = {}
   etapas.forEach(e => {
-    const subset = activas.filter(o => o.etapa_actual === e)
+    const subset = activas.filter(o => claveDe(o) === e)
     countByEtapa[e] = subset.length
     montoByEtapa[e] = subset.reduce((s, o) => s + (o.monto_estimado ?? 0), 0)
   })
@@ -137,8 +147,13 @@ function promedioDias(hist: OportunidadHistorialEtapa[]): Record<string, number>
   return avg
 }
 
-function SeccionPipeline({ titulo, opps, hist, etapas = ETAPAS, soloVit = false }: { titulo: string; opps: Oportunidad[]; hist: OportunidadHistorialEtapa[]; etapas?: string[]; soloVit?: boolean }) {
-  const st = calcStats(opps, etapas)
+/* `etapas` son las claves de las barras: en Tradicional son las etapas del pipeline y en
+   VIT las 6 etapas del proyecto, por eso van con claveDe/labels/colores parametrizados. */
+function SeccionPipeline({ titulo, opps, hist, etapas = ETAPAS, soloVit = false, claveDe, labels, colores = ETAPA_COLORS, tituloGrafico = 'Pipeline por Etapa' }: {
+  titulo: string; opps: Oportunidad[]; hist: OportunidadHistorialEtapa[]; etapas?: string[]; soloVit?: boolean
+  claveDe?: (o: Oportunidad) => string; labels?: Record<string, string>; colores?: Record<string, string>; tituloGrafico?: string
+}) {
+  const st = calcStats(opps, etapas, claveDe)
   const avgDias = promedioDias(hist)
   const navigate = useNavigate()
   const { canAccess } = usePermisos()
@@ -209,7 +224,7 @@ function SeccionPipeline({ titulo, opps, hist, etapas = ETAPAS, soloVit = false 
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-        <h3 className="text-sm font-semibold text-gray-700 mb-5">Pipeline por Etapa</h3>
+        <h3 className="text-sm font-semibold text-gray-700 mb-5">{tituloGrafico}</h3>
         <div className="space-y-3.5">
           {etapas.map(etapa => {
             const dest = destino(etapa)
@@ -220,15 +235,15 @@ function SeccionPipeline({ titulo, opps, hist, etapas = ETAPAS, soloVit = false 
               role={clickeable ? 'button' : undefined}
               tabIndex={clickeable ? 0 : undefined}
               onKeyDown={clickeable ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(dest.ruta) } } : undefined}
-              title={clickeable ? `Ir a ${etapa}` : undefined}
+              title={clickeable ? `Ir a ${labels?.[etapa] ?? etapa}` : undefined}
               className={'flex items-center gap-3 rounded-lg -mx-2 px-2 py-1 ' + (clickeable ? 'cursor-pointer hover:bg-slate-50' : '')}>
-              <span className="text-xs text-gray-500 w-24 sm:w-40 truncate flex-shrink-0">{etapa}</span>
+              <span className="text-xs text-gray-500 w-24 sm:w-56 truncate flex-shrink-0" title={labels?.[etapa] ?? etapa}>{labels?.[etapa] ?? etapa}</span>
               <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden">
                 <div
                   className="h-4 rounded-full transition-all duration-700"
                   style={{
                     width: `${Math.max((st.montoByEtapa[etapa] ?? 0) / st.maxMonto * 100, st.montoByEtapa[etapa] ? 4 : 0)}%`,
-                    background: ETAPA_COLORS[etapa] ?? '#64748b',
+                    background: colores[etapa] ?? '#64748b',
                   }}
                 />
               </div>
@@ -319,7 +334,9 @@ export default function Dashboard() {
         Bienvenido, <span className="font-semibold text-gray-700">{profile?.nombre} {profile?.apellido}</span>
       </p>
 
-      <SeccionPipeline titulo="Oportunidades VIT" opps={oppsVit} hist={hist.filter(h => idsVit.has(h.oportunidad_id))} etapas={ETAPAS_VIT} soloVit />
+      <SeccionPipeline titulo="Oportunidades VIT" opps={oppsVit} hist={hist.filter(h => idsVit.has(h.oportunidad_id))}
+        etapas={CLAVES_HITOS_VIT} claveDe={o => String(etapaVitEnCurso(o.hitos_vit))}
+        labels={LABEL_HITO_VIT} colores={HITO_VIT_COLORS} tituloGrafico="Pipeline por Etapa del Proyecto" soloVit />
       <SeccionPipeline titulo="Oportunidades Tradicional" opps={oppsTrad} hist={hist.filter(h => !idsVit.has(h.oportunidad_id))} />
 
       {/* Actividad reciente — solo gerencias y admin */}

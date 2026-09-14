@@ -15,6 +15,7 @@ import MontoInput from '@/components/MontoInput'
 import type { Oportunidad, Profile, PerfilBasico, OportunidadHistorialEtapa, OportunidadDocumento, TareaIngenieria, EstadoTarea, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit, MargenAutorizacion, HitosVit } from '@/modules/crm/types/database'
 import { familiasVisibles, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
 import { notificar, ROLES_GERENCIA, ROLES_GERENCIA_ADMIN } from '@/modules/crm/lib/notificaciones'
+import { HITOS_VIT, hitoVitCumplido } from '@/modules/crm/lib/hitosVit'
 
 const REGIONES = Object.keys(REGIONES_COMUNAS)
 
@@ -173,17 +174,8 @@ const ETAPAS_ORDER_VIT = ['Clasificación', 'Oportunidad', 'Negociación']
 
 const CAMPOS_OPORTUNIDAD_REQUERIDOS = ['tipo_subsidio', 'programa', 'monto_estimado', 'fecha_ingreso_calificacion', 'estimacion_calificacion', 'fecha_inicio_despachos_est', 'duracion_meses_est'] as const
 
-// Las 6 etapas internas de una oportunidad VIT (columna jsonb oportunidades.hitos_vit).
-// No son etapas del pipeline: son hitos que se van cumpliendo dentro de las 3 etapas VIT
-// y se muestran en la pestaña General.
-const HITOS_VIT: { n: number; nombre: string }[] = [
-  { n: 1, nombre: 'Diseño y Desarrollo' },
-  { n: 2, nombre: 'Ingreso del Proyecto a Serviu' },
-  { n: 3, nombre: 'CPI Hábil' },
-  { n: 4, nombre: 'Clasificación y Selección' },
-  { n: 5, nombre: 'Orden de Compra o Contrato' },
-  { n: 6, nombre: 'Ejecución' },
-]
+// Las 6 etapas internas (HITOS_VIT) viven en lib/hitosVit: no son etapas del pipeline, son
+// hitos que se van cumpliendo dentro de las 3 etapas VIT y se muestran en la pestaña General.
 
 // Hasta que numero de etapa interna se puede trabajar estando en cada etapa del pipeline.
 // Dentro de ese tope las etapas aparecen de a una: la siguiente asoma solo cuando la
@@ -202,15 +194,40 @@ const HITOS_VIT_EXIGIDOS: Record<string, number> = {
   'Ganado': 6,
 }
 
-// Una etapa interna cuenta como cumplida solo con el flag Y una descripcion escrita.
-function hitoVitCumplido(hitos: HitosVit | null | undefined, n: number): boolean {
-  const h = hitos?.[String(n)]
-  return !!h?.cumplida && !!h.descripcion?.trim()
-}
-
 // Espejo de public.crm_hitos_vit_pendientes(): numeros de etapa interna sin cumplir en 1..hasta.
 function hitosVitPendientes(hitos: HitosVit | null | undefined, hasta: number): number[] {
   return HITOS_VIT.filter(h => h.n <= hasta && !hitoVitCumplido(hitos, h.n)).map(h => h.n)
+}
+
+// Fechas comprometidas de las etapas internas, indexadas por numero de etapa.
+function fechasDeHitos(hitos: HitosVit | null | undefined): Record<string, string> {
+  const out: Record<string, string> = {}
+  HITOS_VIT.forEach(h => {
+    const f = hitos?.[String(h.n)]?.fecha
+    if (f) out[String(h.n)] = f
+  })
+  return out
+}
+
+// Dias que faltan para una fecha 'yyyy-mm-dd'; negativo si ya paso.
+function diasParaFecha(fecha: string): number {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const [a, m, d] = fecha.split('-').map(Number)
+  return Math.round((new Date(a, m - 1, d).getTime() - hoy.getTime()) / 86400000)
+}
+
+function fechaCorta(fecha: string) {
+  return fecha.split('-').reverse().join('-')
+}
+
+// Cuenta regresiva de una etapa interna. Los mismos 2 dias que gatillan el aviso al
+// vendedor (public.crm_avisar_hitos_vit_por_vencer) se pintan en ambar.
+function cuentaRegresivaHito(fecha: string) {
+  const dias = diasParaFecha(fecha)
+  if (dias < 0) return { texto: `Vencida hace ${-dias} día${-dias > 1 ? 's' : ''}`, clase: 'bg-red-50 text-red-700 border-red-200' }
+  if (dias === 0) return { texto: 'Vence hoy', clase: 'bg-red-50 text-red-700 border-red-200' }
+  const texto = `Falta${dias > 1 ? 'n' : ''} ${dias} día${dias > 1 ? 's' : ''}`
+  return { texto, clase: dias <= 2 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-100 text-gray-600 border-gray-200' }
 }
 
 const ETAPAS_LABELS: Record<string,string> = {
@@ -313,6 +330,9 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   const { canAccess } = usePermisos()
   const [tab, setTab] = useState<Tab>(initialTab)
   const [opp, setOpp] = useState<Oportunidad>(oportunidad)
+  // Fechas de etapas internas tal como estan guardadas: contra esto se detecta que alguien
+  // movio una fecha comprometida y hay que avisarle a gerencia.
+  const fechasHitosGuardadas = useRef<Record<string, string>>(fechasDeHitos(oportunidad.hitos_vit))
   const [usuarios, setUsuarios] = useState<PerfilBasico[]>([])
   const [etapaData, setEtapaData] = useState<Record<string, string>>({})
   const [costosData, setCostosData] = useState<Record<string, string>>({})
@@ -807,6 +827,29 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
     }
   }
 
+  // Mover una fecha ya comprometida de una etapa interna avisa a gerencia (campana; el
+  // correo sale por la misma via cuando quede configurado Resend). Cargar la fecha por
+  // primera vez no avisa: eso es planificar, no correr un compromiso.
+  async function avisarFechasHitosCambiadas() {
+    const previas = fechasHitosGuardadas.current
+    const actuales = fechasDeHitos(opp.hitos_vit)
+    const cambiadas = HITOS_VIT.filter(h => previas[String(h.n)] && actuales[String(h.n)] !== previas[String(h.n)])
+    fechasHitosGuardadas.current = actuales
+    if (!cambiadas.length) return
+    const gerentes = usuarios.filter(u => ROLES_GERENCIA.includes(u.rol) && u.id !== profile?.id).map(u => u.id)
+    if (!gerentes.length) return
+    const detalle = cambiadas.map(h => {
+      const antes = fechaCorta(previas[String(h.n)])
+      const ahora = actuales[String(h.n)] ? fechaCorta(actuales[String(h.n)]) : 'sin fecha'
+      return `Etapa ${h.n} · ${h.nombre}: de ${antes} a ${ahora}`
+    }).join(' | ')
+    await notificar(gerentes.map(id => ({
+      user_id: id, tipo: 'hito_fecha', oportunidad_id: opp.id,
+      titulo: `Fecha de etapa modificada · ${opp.codigo}`,
+      mensaje: `${opp.nombre} · ${detalle}`,
+    })), 'OportunidadDrawer.avisarFechasHitosCambiadas')
+  }
+
   async function saveGeneral() {
     if (!puedeEditar) { toast.error(motivoNoEdita); return }
     setSaving(true)
@@ -828,6 +871,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
     setSaving(false)
     if (handleSupabaseError(error, 'OportunidadDrawer.saveGeneral')) return
     if (!data?.length) { toast.error('No tenés permiso para guardar esta oportunidad'); return }
+    await avisarFechasHitosCambiadas()
     onUpdate()
   }
 
@@ -1054,36 +1098,44 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   const bloqueoAvanzar = bloqueoTareas || bloqueoHitosVit(nextEtapa) || (margenAplicaA(nextEtapa) ? bloqueoMargen : '')
   const bloqueoGanado = bloqueoTareas || bloqueoHitosVit('Ganado') || bloqueoMargen
 
-  // Etapas internas VIT en la pestaña General. Se muestran de a una: la siguiente asoma
-  // solo cuando la anterior queda cumplida, y nunca mas alla del tope de la etapa del
-  // pipeline (Clasificacion -> 1, Oportunidad -> 3, Negociacion -> 6).
+  // Etapas internas VIT en la pestaña General. Las 6 se ven completas desde que nace la
+  // oportunidad; lo que el tope de la etapa del pipeline limita es la EDICION de
+  // descripcion y "cumplida" (Clasificacion -> 1, Oportunidad -> 3, Negociacion -> 6), y
+  // ademas en orden: una etapa se trabaja cuando la anterior quedo cumplida.
+  // La fecha comprometida se puede cargar en cualquier etapa mientras no este cumplida.
   function renderHitosVit() {
     const tope = isTerminal ? HITOS_VIT.length : (HITOS_VIT_TOPE[opp.etapa_actual] ?? 0)
-    const visibles = HITOS_VIT.filter(h =>
-      h.n <= tope && (h.n === 1 || hitoVitCumplido(opp.hitos_vit, h.n - 1)))
-    if (!visibles.length) return null
     return (
       <div className="space-y-2 bg-gray-50 rounded-lg p-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Etapas del proyecto</p>
-        {visibles.map(h => {
+        {HITOS_VIT.map(h => {
           const hito = opp.hitos_vit?.[String(h.n)]
           const desc = hito?.descripcion ?? ''
           const cumplida = hitoVitCumplido(opp.hitos_vit, h.n)
+          const editable = h.n <= tope && (h.n === 1 || hitoVitCumplido(opp.hitos_vit, h.n - 1))
+          const fecha = hito?.fecha ?? ''
+          const cuenta = fecha && !cumplida ? cuentaRegresivaHito(fecha) : null
           const quien = usuarios.find(u => u.id === hito?.cumplida_por)
           return (
             <div key={h.n} className={['rounded-lg border p-2.5 space-y-1.5', cumplida ? 'border-emerald-200 bg-emerald-50/60' : 'border-gray-200 bg-white'].join(' ')}>
               <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-medium text-gray-700">Etapa {h.n} · {h.nombre}</p>
-                <label className="flex items-center gap-1.5 text-xs text-gray-600 shrink-0" title={desc.trim() ? undefined : 'Escribí una descripción para poder marcarla cumplida'}>
-                  <input type="checkbox" checked={!!hito?.cumplida} disabled={!desc.trim()}
+                <p className={['text-xs font-medium', editable || cumplida ? 'text-gray-700' : 'text-gray-400'].join(' ')}>Etapa {h.n} · {h.nombre}</p>
+                <label className="flex items-center gap-1.5 text-xs text-gray-600 shrink-0" title={!editable ? 'Esta etapa todavía no se trabaja' : desc.trim() ? undefined : 'Escribí una descripción para poder marcarla cumplida'}>
+                  <input type="checkbox" checked={!!hito?.cumplida} disabled={!editable || !desc.trim()}
                     onChange={e => marcarHito(h.n, e.target.checked)}
                     className="accent-emerald-600 disabled:opacity-40" />
                   Cumplida
                 </label>
               </div>
-              <textarea value={desc} onChange={e => actualizarHito(h.n, { descripcion: e.target.value })}
-                rows={2} placeholder="Breve descripción de esta etapa"
-                className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" />
+              <div className="flex items-center gap-2">
+                <input type="date" value={fecha} disabled={cumplida}
+                  onChange={e => actualizarHito(h.n, { fecha: e.target.value || null })}
+                  className="px-2 py-1 border border-gray-200 rounded text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red disabled:bg-gray-50 disabled:text-gray-400" />
+                {cuenta && <span className={['text-xs px-1.5 py-0.5 rounded border', cuenta.clase].join(' ')}>{cuenta.texto}</span>}
+              </div>
+              <textarea value={desc} disabled={!editable} onChange={e => actualizarHito(h.n, { descripcion: e.target.value })}
+                rows={2} placeholder={editable ? 'Breve descripción de esta etapa' : h.n > tope ? 'Se completa en una etapa posterior del pipeline' : 'Se habilita al cumplir la etapa anterior'}
+                className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none disabled:bg-gray-50 disabled:text-gray-400" />
               {cumplida && hito?.cumplida_at && (
                 <p className="text-xs text-emerald-700">
                   ✓ {quien ? `${quien.nombre} ${quien.apellido}` : 'Cumplida'} · {new Date(hito.cumplida_at).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
@@ -1092,7 +1144,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
             </div>
           )
         })}
-        <p className="text-xs text-gray-400">Marcar una etapa exige su descripción. Los cambios se registran con "Guardar cambios".</p>
+        <p className="text-xs text-gray-400">Marcar una etapa exige su descripción. La fecha se puede mover mientras la etapa no esté cumplida y avisa a gerencia. Los cambios se registran con "Guardar cambios".</p>
       </div>
     )
   }
@@ -1671,8 +1723,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Probabilidad: {opp.probabilidad}%</label>
                   <input type="range" min="0" max="100" step="5" value={opp.probabilidad} onChange={e => setOpp(o => ({...o,probabilidad:Number(e.target.value)}))} className="w-full mt-2" /></div>
               </div>
-              <div><label className="block text-xs font-medium text-gray-600 mb-1">Descripcion</label>
-                <textarea value={opp.descripcion ?? ''} onChange={e => setOpp(o => ({...o,descripcion:e.target.value||null}))} rows={3} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" /></div>
+              {/* En VIT la descripcion libre no se usa: lo que describe el proyecto son las
+                  etapas internas de mas abajo. */}
+              {opp.tipo_venta !== 'VIT' && (
+                <div><label className="block text-xs font-medium text-gray-600 mb-1">Descripcion</label>
+                  <textarea value={opp.descripcion ?? ''} onChange={e => setOpp(o => ({...o,descripcion:e.target.value||null}))} rows={3} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" /></div>
+              )}
 
               {opp.tipo_venta === 'VIT' && renderHitosVit()}
 

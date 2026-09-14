@@ -96,6 +96,9 @@ export interface HitoVit {
   cumplida: boolean
   cumplida_por?: string | null
   cumplida_at?: string | null
+  /** Fecha comprometida (yyyy-mm-dd). Alimenta la cuenta regresiva y el aviso automatico
+   *  al vendedor cuando faltan 1 o 2 dias (public.crm_avisar_hitos_vit_por_vencer). */
+  fecha?: string | null
 }
 
 export type HitosVit = Record<string, HitoVit>
