@@ -55,6 +55,8 @@ export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardDat
 
   const { avanceEconomico, avanceEconomicoAcumulado, items } = buildIndicadoresEjecutivo(resumen)
   const corteLbl = `Indicadores al ${fechaIndicadoresLbl(hasta)}`
+  // ponytail: en Ejecutivo solo se muestra el forecast mas reciente (hoy Julio)
+  const forecastEjecutivo = resumen.forecastLabels.slice(-1)
 
   async function exportarPpt() {
     setExportando(true)
@@ -71,7 +73,7 @@ export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardDat
           titulo: 'Avance económico acumulado',
           labels: avanceEconomicoAcumulado.map((d) => String(d.mes)),
           barras: [{ name: 'Real acumulado', values: avanceEconomicoAcumulado.map((d) => d.realAcum), color: INST.rojo }],
-          lineas: resumen.forecastLabels.map((label) => ({
+          lineas: forecastEjecutivo.map((label) => ({
             name: label,
             values: avanceEconomicoAcumulado.map((d) => (typeof d[label] === 'number' ? (d[label] as number) : null)),
           })),
@@ -178,7 +180,7 @@ export default function Ejecutivo({ excelData }: { excelData: ParsedDashboardDat
             <CardTitle className="text-[.75rem] font-semibold tracking-wide text-muted-foreground uppercase">Avance económico acumulado</CardTitle>
           </CardHeader>
           <CardContent>
-            <AvanceEconomicoAcumChart data={avanceEconomicoAcumulado} forecastLabels={resumen.forecastLabels} institucional />
+            <AvanceEconomicoAcumChart data={avanceEconomicoAcumulado} forecastLabels={forecastEjecutivo} institucional />
           </CardContent>
         </Card>
       </div>
