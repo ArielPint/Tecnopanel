@@ -131,7 +131,8 @@ function DotacionModCard() {
 
   async function onArchivo(file: File) {
     try {
-      const periodo = mes === 'auto' ? undefined : { anio: parseInt(anio, 10), mes: parseInt(mes, 10) }
+      // El año va siempre: sirve de respaldo cuando la planilla trae el mes pero no el año.
+      const periodo = { anio: parseInt(anio, 10), mes: mes === 'auto' ? undefined : parseInt(mes, 10) }
       const d = await subirPlanilla(file, periodo)
       toast.success(
         `${MESES[(d.mes ?? 1) - 1]} ${d.anio}: ${d.personas} personas, ${fmtM(d.costoEmpresa)} (HHEE ${fmtM(d.horasExtras)}, bono ${fmtM(d.bonoProduccion)} + ${fmtM(d.cargasHheeBono)} de cargas)`,

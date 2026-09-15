@@ -49,6 +49,54 @@ export function periodoDesdeTexto(texto: string): { anio: number | null; mes: nu
 }
 
 /**
+ * Planilla sin encabezados: nombre y cargo en texto, y a la derecha los días
+ * trabajados y el costo empresa. Todo el costo se lee como costo empresa —
+ * no hay desglose de horas extras ni bono, así que esos quedan en 0 y la fila
+ * del mes muestra el total completo como costo base.
+ *
+ * La última columna con números es el costo; la anterior son los días si sus
+ * valores caen en 1..31. Las filas sin texto (la del total al pie) se saltan,
+ * con lo que el total no se cuenta dos veces.
+ */
+function parseSoloCostoEmpresa(filas: unknown[][]): Omit<DotacionMes, 'hoja'> {
+  const esNum = (v: unknown) => typeof v === 'number' && isFinite(v)
+  const conTexto = (f: unknown[]) => f.some((c) => typeof c === 'string' && norm(c).length > 1)
+
+  const datos = filas.filter((f) => conTexto(f) && f.some(esNum))
+  if (datos.length === 0) throw new Error('No se reconoció el formato de la planilla: no hay filas con nombre y montos')
+
+  const ancho = Math.max(...datos.map((f) => f.length))
+  const numerica = (col: number) => datos.filter((f) => esNum(f[col])).length > datos.length / 2
+  let cCosto = -1
+  for (let i = ancho - 1; i >= 0; i--) {
+    if (numerica(i)) {
+      cCosto = i
+      break
+    }
+  }
+  if (cCosto < 0) throw new Error('No se encontró la columna de costo empresa')
+
+  let cDias = -1
+  for (let i = cCosto - 1; i >= 0; i--) {
+    if (!numerica(i)) continue
+    const vals = datos.map((f) => num(f[i])).filter((v) => v > 0)
+    if (vals.every((v) => v <= 31)) cDias = i
+    break
+  }
+
+  let personas = 0
+  let diasHombre = 0
+  let costoEmpresa = 0
+  for (const f of datos) {
+    personas += 1
+    costoEmpresa += num(f[cCosto])
+    if (cDias >= 0) diasHombre += num(f[cDias])
+  }
+
+  return { anio: null, mes: null, personas, diasHombre, costoEmpresa, horasExtras: 0, bonoProduccion: 0, cargasHheeBono: 0 }
+}
+
+/**
  * Lee la planilla "Remuneraciones <MES> <AÑO> Planta Sur": cuenta las personas y
  * suma DÍAS TRABAJADOS, HORAS EXTRAS, BONO DE PRODUCCIÓN y COSTO EMPRESA. Corta
  * en la fila de totales, así que el
@@ -61,7 +109,9 @@ export function parseDotacion(wb: XLSX.WorkBook, XLSXlib: typeof XLSX): Dotacion
   const filas = XLSXlib.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true }) as unknown[][]
 
   const iHeader = filas.findIndex((f) => f.some((c) => norm(c) === 'RUT'))
-  if (iHeader < 0) throw new Error('No se encontró la fila de encabezados (columna RUT)')
+  // Planilla sin encabezados (la de "COSTO EMPRESA ... M.O.D."): una fila por
+  // persona y el costo empresa en la última columna, sin desglose de conceptos.
+  if (iHeader < 0) return { ...parseSoloCostoEmpresa(filas), hoja }
 
   const header = filas[iHeader].map(norm)
   const cRut = header.indexOf('RUT')

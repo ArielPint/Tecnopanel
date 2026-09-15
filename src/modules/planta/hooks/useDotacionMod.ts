@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
-import { parseDotacion, type DotacionMes } from '../lib/dotacionParser'
+import { parseDotacion, periodoDesdeTexto, type DotacionMes } from '../lib/dotacionParser'
 
 export interface FilaDotacion {
   anio: number
@@ -94,15 +94,20 @@ export function useDotacionMod() {
 
   /** Lee la planilla de remuneraciones y guarda el mes. `periodo` manda si la hoja no trae mes/año. */
   const subirPlanilla = useCallback(
-    async (file: File, periodo?: { anio: number; mes: number }): Promise<DotacionMes> => {
+    async (file: File, periodo?: { anio?: number; mes?: number }): Promise<DotacionMes> => {
       setUploading(true)
       setError(null)
       try {
         const buf = await file.arrayBuffer()
         const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true })
         const d = parseDotacion(wb, XLSX)
-        const anio = periodo?.anio ?? d.anio
-        const mes = periodo?.mes ?? d.mes
+        // Si la hoja no trae el período (planillas con hojas "Hoja1"), se intenta
+        // con el nombre del archivo antes de pedirlo a mano.
+        const delNombre = periodoDesdeTexto(file.name)
+        const mes = periodo?.mes ?? d.mes ?? delNombre.mes
+        // Con el mes elegido a mano manda también el año elegido; si no, el año
+        // sale de la planilla y el del selector queda de último recurso.
+        const anio = periodo?.mes != null ? (periodo.anio ?? d.anio ?? delNombre.anio) : (d.anio ?? delNombre.anio ?? periodo?.anio)
         if (!anio || !mes) throw new Error(`No se pudo deducir el mes desde la hoja "${d.hoja}" — elegí mes y año a mano`)
         await guardar({
           anio,
