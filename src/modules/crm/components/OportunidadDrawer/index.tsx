@@ -172,7 +172,10 @@ const ETAPAS_ORDER = [
 // sin pasar por Ingenieria/Desarrollo/Costos y Presupuestos/Ventas.
 const ETAPAS_ORDER_VIT = ['Clasificación', 'Oportunidad', 'Negociación']
 
-const CAMPOS_OPORTUNIDAD_REQUERIDOS = ['tipo_subsidio', 'programa', 'monto_estimado', 'fecha_ingreso_calificacion', 'estimacion_calificacion', 'fecha_inicio_despachos_est', 'duracion_meses_est'] as const
+// Con estos campos completos la oportunidad pasa sola de Oportunidad a Negociacion. Se
+// llenan en la pestaña General: la pestaña de etapa "Oportunidad" ya no existe, y sus
+// fechas (ingreso a Serviu, estimacion de calificacion, inicio de despachos) se sacaron.
+const CAMPOS_OPORTUNIDAD_REQUERIDOS = ['tipo_subsidio', 'programa', 'monto_estimado', 'duracion_meses_est'] as const
 
 // Las 6 etapas internas (HITOS_VIT) viven en lib/hitosVit: no son etapas del pipeline, son
 // hitos que se van cumpliendo dentro de las 3 etapas VIT y se muestran en la pestaña General.
@@ -323,7 +326,7 @@ interface Props {
   initialTab?: Tab
 }
 
-export type Tab = 'general' | 'etapa' | 'docs' | 'historial' | 'chat'
+export type Tab = 'general' | 'etapas' | 'etapa' | 'docs' | 'historial' | 'chat'
 
 export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, initialTab = 'general' }: Props) {
   const { profile } = useAuth()
@@ -865,6 +868,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
       familia_productos: opp.familia_productos, alcances: opp.alcances,
       nombre_comite_vivienda: opp.nombre_comite_vivienda, nombre_constructora: opp.nombre_constructora,
       zona_termica: opp.zona_termica, valor_uf: opp.valor_uf,
+      tipo_subsidio: opp.tipo_subsidio, programa: opp.programa,
       hitos_vit: opp.hitos_vit ?? {},
     }).eq('id', opp.id).select('id')
     if (tieneTipologias) await guardarLineas()
@@ -872,31 +876,16 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
     if (handleSupabaseError(error, 'OportunidadDrawer.saveGeneral')) return
     if (!data?.length) { toast.error('No tenés permiso para guardar esta oportunidad'); return }
     await avisarFechasHitosCambiadas()
-    onUpdate()
-  }
-
-  // Guarda los campos de la etapa "Oportunidad" (columnas reales de oportunidades, no jsonb).
-  // Si con este guardado quedan los 7 campos requeridos completos, avanza automaticamente a Negociacion.
-  async function saveOportunidadCampos() {
-    setSaving(true)
-    const { error } = await supabase.from('oportunidades').update({
-      tipo_subsidio: opp.tipo_subsidio, programa: opp.programa,
-      monto_estimado: opp.monto_estimado,
-      fecha_ingreso_calificacion: opp.fecha_ingreso_calificacion, estimacion_calificacion: opp.estimacion_calificacion,
-      fecha_inicio_despachos_est: opp.fecha_inicio_despachos_est, duracion_meses_est: opp.duracion_meses_est,
-      updated_at: new Date().toISOString(),
-    }).eq('id', opp.id)
-    if (handleSupabaseError(error, 'OportunidadDrawer.saveOportunidadCampos')) { setSaving(false); return }
+    // Estando en Oportunidad, completar los campos requeridos avanza sola a Negociacion.
+    // El auto-avance espera a que las etapas internas 1 a 3 esten cumplidas: si no, el RPC
+    // lo rechaza igual.
     const completo = CAMPOS_OPORTUNIDAD_REQUERIDOS.every(k => opp[k] !== null && opp[k] !== '' && opp[k] !== undefined)
-    // El auto-avance a Negociacion espera a que las etapas internas 1 a 3 esten cumplidas,
-    // si no el RPC lo rechaza igual.
-    const trabaHitos = bloqueoHitosVit('Negociación')
-    if (completo && opp.etapa_actual === 'Oportunidad' && !trabaHitos) {
-      await avanzarEtapa()
-      return
+    if (completo && opp.etapa_actual === 'Oportunidad') {
+      const trabaHitos = bloqueoHitosVit('Negociación')
+      if (!trabaHitos) { await avanzarEtapa(); return }
+      toast.info(trabaHitos)
     }
-    if (completo && trabaHitos) toast.info(trabaHitos)
-    setSaving(false); onUpdate()
+    onUpdate()
   }
 
   async function saveEtapaData() {
@@ -1050,6 +1039,13 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   const etapas = opp.tipo_venta === 'VIT' ? ETAPAS_ORDER_VIT : ETAPAS_ORDER
   const currentIdx = etapas.indexOf(opp.etapa_actual)
   const isTerminal = ['Ganado','Perdido'].includes(opp.etapa_actual)
+
+  // La pestaña de la etapa actual no existe estando en Oportunidad, y Etapas solo aplica a
+  // VIT: si el tab quedo apuntando a una que no esta en la barra, vuelve a General.
+  useEffect(() => {
+    if (tab === 'etapa' && opp.etapa_actual === 'Oportunidad' && !isTerminal) setTab('general')
+    if (tab === 'etapas' && opp.tipo_venta !== 'VIT') setTab('general')
+  }, [tab, opp.etapa_actual, opp.tipo_venta, isTerminal])
   const nextEtapa = currentIdx >= 0 && currentIdx < etapas.length - 1 ? etapas[currentIdx + 1] : 'Ganado'
   const comunasDisponibles = opp.region ? (REGIONES_COMUNAS[opp.region] ?? []) : []
   const allowedRoles = STAGE_ROLES[opp.etapa_actual] ?? []
@@ -1291,56 +1287,9 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
         {opp.tipo_venta === 'VIT' && <p className="text-xs text-gray-400 mt-1">Los campos de clasificación VIT se editan en la pestaña General.</p>}
       </div>
     )
-    if (e === 'Oportunidad') return (
-      <div className="space-y-3">
-        <p className="text-xs text-gray-400">Al completar estos 7 campos, la oportunidad pasa automáticamente a Negociación.</p>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Tipo de Subsidio</label>
-          <select value={opp.tipo_subsidio ?? ''} onChange={ev => setOpp(o => ({...o, tipo_subsidio: (ev.target.value || null) as TipoSubsidioVit | null}))}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
-            <option value="">Seleccionar...</option>
-            {TIPO_SUBSIDIO_OPCIONES.map(op => <option key={op} value={op}>{op}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Programa</label>
-          <input value={opp.programa ?? ''} onChange={ev => setOpp(o => ({...o, programa: ev.target.value || null}))} placeholder="ej. Nuevos Terrenos"
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Valor total del proyecto (CLP)</label>
-          <MontoInput value={opp.monto_estimado} onChange={v => setOpp(o => ({...o, monto_estimado: v}))}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Fecha de Ingreso a Serviu</label>
-            <input type="date" value={opp.fecha_ingreso_calificacion ?? ''} onChange={ev => setOpp(o => ({...o, fecha_ingreso_calificacion: ev.target.value || null}))}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Estimación Calificación del proyecto</label>
-            <input type="date" value={opp.estimacion_calificacion ?? ''} onChange={ev => setOpp(o => ({...o, estimacion_calificacion: ev.target.value || null}))}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Estimación Inicio Despachos</label>
-            <input type="date" value={opp.fecha_inicio_despachos_est ?? ''} onChange={ev => setOpp(o => ({...o, fecha_inicio_despachos_est: ev.target.value || null}))}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Cantidad de meses de despacho</label>
-            <input type="number" min="0" value={opp.duracion_meses_est ?? ''} onChange={ev => setOpp(o => ({...o, duracion_meses_est: ev.target.value ? Number(ev.target.value) : null}))}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" />
-          </div>
-        </div>
-        <button onClick={saveOportunidadCampos} disabled={saving} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
-          {saving && <Loader2 size={14} className="animate-spin" />}{saving ? 'Guardando...' : 'Guardar datos de Oportunidad'}
-        </button>
-      </div>
-    )
+    // La etapa Oportunidad ya no tiene pestaña propia: sus campos que no estaban
+    // duplicados (tipo de subsidio y programa) viven en General y sus fechas se sacaron.
+    if (e === 'Oportunidad') return null
     if (e === 'Ingeniería') return null
     if (e === 'Desarrollo') return (
       <div className="space-y-3">
@@ -1572,9 +1521,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
             <p><span className="text-gray-400">Tipo de Subsidio:</span> {opp.tipo_subsidio || '—'}</p>
             <p><span className="text-gray-400">Programa:</span> {opp.programa || '—'}</p>
             <p><span className="text-gray-400">Valor total del proyecto:</span> {opp.monto_estimado != null ? formatCLP(opp.monto_estimado) : '—'}</p>
-            <p><span className="text-gray-400">Fecha Ingreso Calificación:</span> {opp.fecha_ingreso_calificacion || '—'}</p>
-            <p><span className="text-gray-400">Estimación Calificación:</span> {opp.estimacion_calificacion || '—'}</p>
-            <p><span className="text-gray-400">Estimación Inicio Despachos:</span> {opp.fecha_inicio_despachos_est || '—'}</p>
+            {/* Las fechas de ingreso a Serviu, estimacion de calificacion e inicio de
+                despachos salieron del CRM: ya no se cargan en ninguna pantalla. */}
             <p><span className="text-gray-400">Meses de despacho:</span> {opp.duracion_meses_est ?? '—'}</p>
           </div>
         )}
@@ -1681,7 +1629,15 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
 
         {/* Tabs */}
         <div className="flex overflow-x-auto border-b border-gray-200 flex-shrink-0">
-          {([['general','General'],['etapa', isTerminal ? 'Datos' : opp.etapa_actual],['docs','Docs ('+docs.length+')'],['chat','Chat'],['historial','Historial']] as [Tab,string][]).map(([k,label]) => (
+          {([
+            ['general','General'],
+            // Las 6 etapas del proyecto tienen pestaña propia y se ven en cualquier etapa
+            // del pipeline. La pestaña de la etapa actual ya no existe para Oportunidad:
+            // sus campos viven en General.
+            ...(opp.tipo_venta === 'VIT' ? [['etapas','Etapas']] as [Tab,string][] : []),
+            ...(opp.etapa_actual === 'Oportunidad' && !isTerminal ? [] : [['etapa', isTerminal ? 'Datos' : opp.etapa_actual]] as [Tab,string][]),
+            ['docs','Docs ('+docs.length+')'],['chat','Chat'],['historial','Historial'],
+          ] as [Tab,string][]).map(([k,label]) => (
             <button key={k} onClick={() => setTab(k)}
               className={['shrink-0 whitespace-nowrap text-xs font-medium py-2.5 border-b-2 transition-colors px-3 sm:flex-1 sm:shrink', tab===k ? 'border-red-500 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'].join(' ')}>
               {label}
@@ -1730,8 +1686,6 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
                   <textarea value={opp.descripcion ?? ''} onChange={e => setOpp(o => ({...o,descripcion:e.target.value||null}))} rows={3} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red resize-none" /></div>
               )}
 
-              {opp.tipo_venta === 'VIT' && renderHitosVit()}
-
               {(opp.tipo_venta === 'Kit' || opp.tipo_venta === 'VIT') && (
                 <div><label className="block text-xs font-medium text-gray-600 mb-1">Entidad patrocinante</label>
                   <input value={opp.nombre_entidad_patrocinante ?? ''} onChange={e => setOpp(o => ({...o,nombre_entidad_patrocinante:e.target.value||null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
@@ -1752,6 +1706,15 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
                   <div><label className="block text-xs font-medium text-gray-600 mb-1">Valor UF (CLP)</label>
                     <MontoInput value={opp.valor_uf ?? null} onChange={v => setOpp(o => ({...o,valor_uf:v}))}
                       placeholder="ej. 39.500" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
+                  {/* Venian de la pestaña Oportunidad, que ya no existe. El resto de esa pestaña
+                      o estaba duplicado aca (monto y meses de despacho) o era fecha y se saco. */}
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Tipo de Subsidio</label>
+                    <select value={opp.tipo_subsidio ?? ''} onChange={e => setOpp(o => ({...o, tipo_subsidio: (e.target.value || null) as TipoSubsidioVit | null}))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
+                      <option value="">Seleccionar...</option>
+                      {TIPO_SUBSIDIO_OPCIONES.map(op => <option key={op} value={op}>{op}</option>)}
+                    </select></div>
+                  <div><label className="block text-xs font-medium text-gray-600 mb-1">Programa</label>
+                    <input value={opp.programa ?? ''} onChange={e => setOpp(o => ({...o, programa: e.target.value || null}))} placeholder="ej. Nuevos Terrenos" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red" /></div>
                 </div>
               )}
 
@@ -1860,6 +1823,18 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
               <button onClick={saveGeneral} disabled={saving} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
                 {saving && <Loader2 size={14} className="animate-spin" />}{saving ? 'Guardando...' : 'Guardar cambios'}
               </button>
+              </fieldset>
+            </div>
+          ) : tab === 'etapas' ? (
+            <div className="space-y-4">
+              {!!motivoNoEdita && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{motivoNoEdita}.</p>
+              )}
+              <fieldset disabled={!puedeEditar} className="space-y-4 min-w-0">
+                {renderHitosVit()}
+                <button onClick={saveGeneral} disabled={saving} className="w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2" style={{background:'#ed3224'}}>
+                  {saving && <Loader2 size={14} className="animate-spin" />}{saving ? 'Guardando...' : 'Guardar cambios'}
+                </button>
               </fieldset>
             </div>
           ) : tab === 'etapa' ? (
