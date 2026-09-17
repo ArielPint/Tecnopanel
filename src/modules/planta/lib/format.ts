@@ -31,6 +31,20 @@ export function weekLabel(ts: number): string {
   return new Date(ts).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: '2-digit' })
 }
 
+// Semanas (lunes) entre dos weekKey, inclusive, sin huecos. Avanza con setDate y
+// no sumando 7*86400000 ms: el cambio a horario de verano corre la semana una
+// hora y esa deriva dejaba fuera la última semana del rango.
+export function semanasEntre(desde: number, hasta: number): number[] {
+  const out: number[] = []
+  const cur = new Date(desde)
+  while (cur.getTime() <= hasta) {
+    out.push(cur.getTime())
+    cur.setDate(cur.getDate() + 7)
+    cur.setHours(0, 0, 0, 0)
+  }
+  return out
+}
+
 export function parseDate(v: unknown): Date | null {
   if (!v) return null
   if (v instanceof Date) return new Date(v)
@@ -127,4 +141,8 @@ export function demoCorte() {
   console.assert(dentroDeCorte('2026-07-15', finDeMesCorte(7, 2026, hoy)), 'julio dentro del corte de julio')
   console.assert(!dentroDeCorte('2026-08-01', finDeMesCorte(7, 2026, hoy)), 'agosto fuera del corte de julio')
   console.assert(dentroDeCorte('SIN FECHA', finDeMesCorte(7, 2026, hoy)), 'flag sin fecha cuenta igual')
+  // 06-09-2026 entra el horario de verano en Chile: la semana del 07-09 no debe perderse
+  const cruceDst = semanasEntre(weekKey(new Date(2026, 7, 31))!, weekKey(new Date(2026, 8, 7))!)
+  console.assert(cruceDst.length === 2, `esperaba 2 semanas en el cruce de horario de verano, dio ${cruceDst.length}`)
+  console.assert(weekLabel(cruceDst[1]).startsWith('07'), `la ultima semana debe ser el 07-09, dio ${weekLabel(cruceDst[1])}`)
 }

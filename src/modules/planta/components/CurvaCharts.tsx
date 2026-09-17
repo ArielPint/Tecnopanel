@@ -1,5 +1,5 @@
-import type { ComponentProps } from 'react'
-import { Area, AreaChart, Bar, CartesianGrid, ComposedChart, LabelList, Legend, Line, XAxis, YAxis } from 'recharts'
+import type { ComponentProps, ReactElement } from 'react'
+import { Area, AreaChart, Bar, CartesianGrid, Cell, ComposedChart, LabelList, Legend, Line, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/modules/financiero/components/ui/chart'
 import { yHeadroom } from '@/lib/chartDomain'
 import type { CurvaData } from '../hooks/useCurvaData'
@@ -78,9 +78,37 @@ export function ModulosLineChart({
   )
 }
 
+// La semana en curso todavia suma dias: se dibuja atenuada y con borde cortado
+// para que no se lea como una semana cerrada frente a las anteriores.
+type SemanaBar = { semana: string; count: number; parcial?: boolean }
+
+function barrasSemana(data: SemanaBar[]) {
+  return data.map((d, i) =>
+    d.parcial ? (
+      <Cell key={i} fill="var(--color-count)" fillOpacity={0.4} stroke="var(--color-count)" strokeWidth={2} strokeDasharray="4 3" />
+    ) : (
+      <Cell key={i} fill="var(--color-count)" />
+    ),
+  )
+}
+
+function conNotaParcial(chart: ReactElement, data: SemanaBar[]) {
+  const parcial = data.find((d) => d.parcial)
+  if (!parcial) return chart
+  const hoy = new Date()
+  return (
+    <div className="space-y-1">
+      {chart}
+      <p className="text-xs text-muted-foreground">
+        Semana del {parcial.semana} en curso: solo incluye hasta el {hoy.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })}.
+      </p>
+    </div>
+  )
+}
+
 export function GalponBarChart({ data }: { data: CurvaData['galponByWeek'] }) {
   const config = { count: { label: 'Módulos', color: '#58a6ff' } } satisfies ChartConfig
-  return (
+  const chart = (
     <ChartContainer config={config} className="aspect-auto h-[320px] w-full">
       <ComposedChart data={data} margin={{ left: 8, right: 20 }}>
         <CartesianGrid vertical={false} />
@@ -89,16 +117,18 @@ export function GalponBarChart({ data }: { data: CurvaData['galponByWeek'] }) {
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         <Bar dataKey="count" name="Módulos" fill="var(--color-count)" radius={4}>
+          {barrasSemana(data)}
           <LabelList dataKey="count" position="top" style={VALUE_LABEL_STYLE} />
         </Bar>
       </ComposedChart>
     </ChartContainer>
   )
+  return conNotaParcial(chart, data)
 }
 
 export function TerminadosSemanaBarChart({ data, domainMax, color = '#3fb950' }: { data: CurvaData['terminadosByWeek']; domainMax?: number; color?: string }) {
   const config = { count: { label: 'Módulos', color } } satisfies ChartConfig
-  return (
+  const chart = (
     <ChartContainer config={config} className="aspect-auto h-[320px] w-full">
       <ComposedChart data={data} margin={{ left: 8, right: 20 }}>
         <CartesianGrid vertical={false} />
@@ -107,11 +137,13 @@ export function TerminadosSemanaBarChart({ data, domainMax, color = '#3fb950' }:
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         <Bar dataKey="count" name="Módulos" fill="var(--color-count)" radius={4}>
+          {barrasSemana(data)}
           <LabelList dataKey="count" position="top" style={VALUE_LABEL_STYLE} />
         </Bar>
       </ComposedChart>
     </ChartContainer>
   )
+  return conNotaParcial(chart, data)
 }
 
 type LabelContent = NonNullable<ComponentProps<typeof LabelList>['content']>

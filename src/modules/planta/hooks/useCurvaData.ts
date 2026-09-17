@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ParsedDashboardData } from '../lib/excelParser'
-import { businessDaysBetween, corteHasta, dentroDeCorte, parseDate, weekKey, weekLabel } from '../lib/format'
+import { businessDaysBetween, corteHasta, dentroDeCorte, parseDate, semanasEntre, weekKey, weekLabel } from '../lib/format'
 import { useModulosSubcontrato } from './useModulosSubcontrato'
 
 function natCompare(a: string, b: string) {
@@ -114,7 +114,7 @@ export function useCurvaData(excelData: ParsedDashboardData | null, hasta?: Date
     const galponDesde = new Date(2026, 3, 6)
     const galponF = membranaCielo.filter((r) => {
       const d = parseDate(r.membranaFecha)
-      return d && d >= galponDesde && d <= today && weekKey(d) !== semanaActual
+      return d && d >= galponDesde && d <= today
     })
     const galponWeeks = new Map<number, number>()
     for (const r of galponF) {
@@ -124,13 +124,15 @@ export function useCurvaData(excelData: ParsedDashboardData | null, hasta?: Date
       if (wk == null) continue
       galponWeeks.set(wk, (galponWeeks.get(wk) || 0) + 1)
     }
-    const galponByWeek = [...galponWeeks.entries()].sort(([a], [b]) => a - b).map(([wk, count]) => ({ semana: weekLabel(wk), count }))
+    const galponByWeek = [...galponWeeks.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([wk, count]) => ({ semana: weekLabel(wk), count, parcial: wk === semanaActual }))
 
     // Arranca en la semana del 4 de mayo: antes es rampa de inicio de galpón
     const iniciadosDesde = new Date(2026, 4, 4)
     const iniciadosF = modulos.filter((m) => {
       const d = parseDate(m.initReal)
-      return d && d >= iniciadosDesde && d <= today && weekKey(d) !== semanaActual
+      return d && d >= iniciadosDesde && d <= today
     })
     const iniciadosWeeks = new Map<number, number>()
     for (const m of iniciadosF) {
@@ -140,11 +142,13 @@ export function useCurvaData(excelData: ParsedDashboardData | null, hasta?: Date
       if (wk == null) continue
       iniciadosWeeks.set(wk, (iniciadosWeeks.get(wk) || 0) + 1)
     }
-    const iniciadosByWeek = [...iniciadosWeeks.entries()].sort(([a], [b]) => a - b).map(([wk, count]) => ({ semana: weekLabel(wk), count }))
+    const iniciadosByWeek = [...iniciadosWeeks.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([wk, count]) => ({ semana: weekLabel(wk), count, parcial: wk === semanaActual }))
 
     const terminadosF = modulos.filter((m) => {
       const d = parseDate(m.termReal)
-      return d && d <= today && weekKey(d) !== semanaActual
+      return d && d <= today
     })
     const terminadosWeeks = new Map<number, number>()
     for (const m of terminadosF) {
@@ -154,17 +158,13 @@ export function useCurvaData(excelData: ParsedDashboardData | null, hasta?: Date
       if (wk == null) continue
       terminadosWeeks.set(wk, (terminadosWeeks.get(wk) || 0) + 1)
     }
-    const terminadosByWeek = [...terminadosWeeks.entries()].sort(([a], [b]) => a - b).map(([wk, count]) => ({ semana: weekLabel(wk), count }))
+    const terminadosByWeek = [...terminadosWeeks.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([wk, count]) => ({ semana: weekLabel(wk), count, parcial: wk === semanaActual }))
 
     // Rango continuo de semanas (con huecos en 0) para que WEDO y CONBES queden alineados entre sí
-    const WEEK_MS = 7 * 86400000
     const wkAll = [...terminadosWeeks.keys()]
-    const weekRange: number[] = []
-    if (wkAll.length) {
-      const minWk = Math.min(...wkAll)
-      const maxWk = Math.max(...wkAll)
-      for (let wk = minWk; wk <= maxWk; wk += WEEK_MS) weekRange.push(wk)
-    }
+    const weekRange = wkAll.length ? semanasEntre(Math.min(...wkAll), Math.max(...wkAll)) : []
 
     const subMap = new Map(modulosSubcontrato.map((r) => [r.nombre, r.subcontrato]))
     function terminadosPorSubcontrato(sub: 'WEDO' | 'CONBES') {
@@ -177,7 +177,7 @@ export function useCurvaData(excelData: ParsedDashboardData | null, hasta?: Date
         if (wk == null) continue
         weeks.set(wk, (weeks.get(wk) || 0) + 1)
       }
-      return weekRange.map((wk) => ({ semana: weekLabel(wk), count: weeks.get(wk) || 0 }))
+      return weekRange.map((wk) => ({ semana: weekLabel(wk), count: weeks.get(wk) || 0, parcial: wk === semanaActual }))
     }
     const terminadosWedoByWeek = terminadosPorSubcontrato('WEDO')
     const terminadosConbesByWeek = terminadosPorSubcontrato('CONBES')
