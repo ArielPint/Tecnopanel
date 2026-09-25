@@ -18,6 +18,7 @@ const SECCIONES = [
   { key: 'terminadosSemana', label: 'Terminados por semana' },
   { key: 'terminadosWedo', label: 'Terminados WEDO por semana' },
   { key: 'terminadosConbes', label: 'Terminados CONBES por semana' },
+  { key: 'activosSemana', label: 'Activos por semana' },
   { key: 'tiempoTorre', label: 'Tiempo por torre' },
   { key: 'tablaRitmo', label: 'Tabla ritmo torre' },
 ] as const
@@ -160,6 +161,10 @@ export default function Curva({ excelData }: { excelData: ParsedDashboardData })
           <TerminadosSemanaBarChart data={data.terminadosConbesByWeek} />
         </SectionCard>
       </div>
+
+      <SectionCard title="Módulos activos por semana — últimos 3 meses" visible={esVisible('activosSemana')} onToggle={() => toggle('activosSemana')}>
+        <TerminadosSemanaBarChart data={data.activosByWeek} color="#d29922" />
+      </SectionCard>
 
       <SectionCard title="Tiempo real vs proyectado por torre" visible={esVisible('tiempoTorre')} onToggle={() => toggle('tiempoTorre')}>
         <TiempoTorreChart data={data.torreTiempo} />

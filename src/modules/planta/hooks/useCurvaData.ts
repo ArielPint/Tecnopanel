@@ -182,6 +182,19 @@ export function useCurvaData(excelData: ParsedDashboardData | null, hasta?: Date
     const terminadosWedoByWeek = terminadosPorSubcontrato('WEDO')
     const terminadosConbesByWeek = terminadosPorSubcontrato('CONBES')
 
+    // Activos (iniciados sin terminar, misma regla que el KPI) foto al cierre de cada
+    // semana de los últimos 3 meses; la semana en curso corta en `today`.
+    const tresMesesAtras = new Date(today)
+    tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 3)
+    const activosByWeek = semanasEntre(weekKey(tresMesesAtras)!, semanaActual!).map((wk) => {
+      const cierre = new Date(wk)
+      cierre.setDate(cierre.getDate() + 6)
+      cierre.setHours(23, 59, 59, 999)
+      const corte = cierre < today ? cierre : today
+      const count = modulos.filter((m) => dentroDeCorte(m.initReal, corte) && !dentroDeCorte(m.termReal, corte)).length
+      return { semana: weekLabel(wk), count, parcial: wk === semanaActual }
+    })
+
     // Tiempo por torre — no afectado por filtros (igual que el original)
     const modsTorreAll = modulos.filter((m) => m.initReal && (m.avance ?? 0) >= 0.99 && (m.tiempoReal ?? 0) > 0 && (!m.termReal || dentroDeCorte(m.termReal, today)))
     const torreTiempoMap = new Map<string, { realSum: number; realCnt: number; proySum: number; proyCnt: number }>()
@@ -270,7 +283,7 @@ export function useCurvaData(excelData: ParsedDashboardData | null, hasta?: Date
       .sort((a, b) => natCompare(a.torre, b.torre))
 
     return {
-      kpis, curvaByWeek, avByWeek, galponByWeek, iniciadosByWeek, terminadosByWeek, terminadosWedoByWeek, terminadosConbesByWeek,
+      kpis, curvaByWeek, avByWeek, galponByWeek, iniciadosByWeek, terminadosByWeek, terminadosWedoByWeek, terminadosConbesByWeek, activosByWeek,
       torreTiempo, tiempoHumedo, tiempoSeco, ritmoTorreRows,
       torresDisponibles, torresSeleccionadas, toggleTorre,
     }
