@@ -48,8 +48,9 @@ export default function CalendarioEntregas({ entregas, onEntregaClick, onDiaClic
       {semanas.map((semana) => (
         <div key={semana.inicio}>
           <p className="mb-2 text-xs font-medium text-muted-foreground">Semana del {fmtFecha(semana.inicio)}</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-            {semana.dias.map((dia, i) => (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            {/* Lunes a viernes; sábado/domingo solo aparecen si tienen entregas, para no esconderlas. */}
+            {semana.dias.map((dia, i) => (i >= 5 && !dia.items.length) ? null : (
               <Card key={dia.fecha} className={diaDestino === dia.fecha ? 'ring-2 ring-primary' : undefined}>
                 <CardContent
                   className={`space-y-1.5 p-2 ${onDiaClick ? 'cursor-pointer hover:bg-accent/40' : ''}`}
@@ -87,7 +88,7 @@ export default function CalendarioEntregas({ entregas, onEntregaClick, onDiaClic
                         {item.entregado && (
                           <span className="flex size-3 shrink-0 items-center justify-center rounded-full bg-success text-[.55rem] font-bold text-white" title="Checklist completo">✓</span>
                         )}
-                        <span className="truncate">{item.code}</span>
+                        <span className="shrink-0 font-medium">{item.code}</span>
                         <span className="flex shrink-0 items-center gap-0.5">
                           <span className="text-[.6rem] text-muted-foreground">{CAT_CORTA[item.categoria]}</span>
                           <Badge variant={BADGE_VARIANT[item.categoria]} className="px-1.5 py-0 text-[.6rem]">
