@@ -1,6 +1,7 @@
 import { Navigate, useParams } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useAccesoUsuario } from '../hooks/useAccesoUsuario'
+import ChangePasswordDialog from './ChangePasswordDialog'
 
 export default function ProtectedRoute({
   children,
@@ -12,7 +13,7 @@ export default function ProtectedRoute({
   /** Si se indica, exige que el usuario tenga ese acceso además de sesión — si no, lo manda a "/" para que aterrice donde sí tiene acceso real. */
   requiere?: 'admin' | 'crm' | 'proyecto' | 'gestion'
 }) {
-  const { session, loading } = useAuthStore()
+  const { session, loading, mustChangePassword, clearMustChangePassword } = useAuthStore()
   const acceso = useAccesoUsuario()
   // Fase F: rutas de proyecto son /proyectos/:proyectoSlug/* — el gate 'proyecto'
   // ahora valida acceso a ESE proyecto puntual, no solo "tiene algún proyecto".
@@ -28,6 +29,14 @@ export default function ProtectedRoute({
 
   if (!session) {
     return <Navigate to={loginPath} replace />
+  }
+
+  if (mustChangePassword) {
+    return (
+      <div className="min-h-screen bg-background">
+        <ChangePasswordDialog forced open onOpenChange={() => clearMustChangePassword()} />
+      </div>
+    )
   }
 
   if (requiere) {

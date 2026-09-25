@@ -13,9 +13,12 @@ import {
 export default function ChangePasswordDialog({
   open,
   onOpenChange,
+  forced = false,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Primer ingreso (profiles.must_change_password): no se puede cerrar y limpia el flag al guardar. */
+  forced?: boolean
 }) {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -42,7 +45,18 @@ export default function ChangePasswordDialog({
     }
 
     setLoading(true)
-    const { error } = await supabase.auth.updateUser({ password })
+    const { data, error } = await supabase.auth.updateUser({ password })
+    if (!error && forced) {
+      const { error: profileErr } = await supabase
+        .from('profiles')
+        .update({ must_change_password: false })
+        .eq('id', data.user.id)
+      if (profileErr) {
+        setLoading(false)
+        setError(profileErr.message)
+        return
+      }
+    }
     setLoading(false)
 
     if (error) {
@@ -57,14 +71,19 @@ export default function ChangePasswordDialog({
     <Dialog
       open={open}
       onOpenChange={(v) => {
+        if (forced) return
         if (!v) reset()
         onOpenChange(v)
       }}
     >
-      <DialogContent>
+      <DialogContent showCloseButton={!forced}>
         <DialogHeader>
-          <DialogTitle>Cambiar contraseña</DialogTitle>
-          <DialogDescription>Define tu nueva contraseña de acceso.</DialogDescription>
+          <DialogTitle>{forced ? 'Cambia tu contraseña' : 'Cambiar contraseña'}</DialogTitle>
+          <DialogDescription>
+            {forced
+              ? 'Es tu primer ingreso, debes establecer una contraseña nueva para continuar.'
+              : 'Define tu nueva contraseña de acceso.'}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
