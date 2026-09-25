@@ -4,7 +4,7 @@ import { getProyectoId } from '@/lib/proyectoIds'
 import { useCachedQuery } from '@/lib/useCachedQuery'
 import { invalidate } from '@/lib/queryCache'
 import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
-import { loadObraCrConfig, loadObraCrModulos } from '../lib/supaData'
+import { loadCodigosDespachados, loadObraCrConfig, loadObraCrModulos } from '../lib/supaData'
 import { combinarModulos, type ModuloCombinado } from '../lib/matrix'
 import type { ObraSubcontrato } from '../lib/categorias'
 
@@ -22,14 +22,15 @@ export function useObraCrData() {
 
   const fetcher = useCallback(async () => {
     const proyectoId = await getProyectoId(proyectoSlug!)
-    const [modulos, config] = await Promise.all([loadObraCrModulos(proyectoId), loadObraCrConfig(proyectoId)])
-    return { modulos, config }
+    const [modulos, config, despachados] = await Promise.all([loadObraCrModulos(proyectoId), loadObraCrConfig(proyectoId), loadCodigosDespachados(proyectoId)])
+    return { modulos, config, despachados: new Set(despachados) }
   }, [proyectoSlug])
 
   const { data, loading, error } = useCachedQuery(proyectoSlug ? obraCrCacheKey(proyectoSlug) : null, fetcher, 60_000)
 
+  // Módulos despachados (guía emitida en despachos_gd) salen de todas las vistas de Avance Obra.
   const todosLosModulos: ModuloCombinado[] = useMemo(
-    () => (data ? combinarModulos(data.modulos, data.config) : []),
+    () => (data ? combinarModulos(data.modulos, data.config).filter((m) => !data.despachados.has(m.code)) : []),
     [data],
   )
   // Si el usuario tiene un subcontrato asociado, Avance Obra se restringe a los

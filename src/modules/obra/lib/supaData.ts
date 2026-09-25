@@ -22,6 +22,12 @@ export async function loadObraCrModulos(proyectoId: string): Promise<ObraCrModul
   return (data ?? []) as ObraCrModuloDb[]
 }
 
+// Códigos de módulo (M-00212) con guía de despacho emitida — cruzan con obra_cr_modulos.code.
+export async function loadCodigosDespachados(proyectoId: string): Promise<string[]> {
+  const data = await unwrap(supabase.from('despachos_gd').select('modulo').eq('proyecto_id', proyectoId).not('modulo', 'is', null))
+  return (data ?? []).map((d) => d.modulo as string)
+}
+
 export interface ObraCrConfigDb {
   modulo_num: number
   categoria: AsignacionCategoria

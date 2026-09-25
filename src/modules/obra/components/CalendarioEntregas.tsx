@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Card, CardContent } from '@/modules/financiero/components/ui/card'
 import { Badge } from '@/modules/financiero/components/ui/badge'
 import { ASIGNACION_DEFS, SUBCONTRATO_LABEL, type AsignacionCategoria } from '../lib/categorias'
-import { buildEntregaSemanas, DIAS_SEMANA, type EntregaItem, type VentanaSemanas } from '../lib/matrix'
+import { buildEntregaSemanas, DIAS_SEMANA, type EntregaItem, type RangoFechas, type VentanaSemanas } from '../lib/matrix'
 
 const BADGE_VARIANT: Record<AsignacionCategoria, 'default' | 'secondary' | 'warning' | 'success'> = {
   terminaciones: 'default',
@@ -31,10 +31,11 @@ interface CalendarioEntregasProps {
   esPendiente?: (item: EntregaItem) => boolean
   emptyMessage?: string
   ventana?: VentanaSemanas
+  rango?: Partial<RangoFechas>
 }
 
-export default function CalendarioEntregas({ entregas, onEntregaClick, onDiaClick, onMoverEntrega, esPendiente, emptyMessage, ventana }: CalendarioEntregasProps) {
-  const semanas = buildEntregaSemanas(entregas, ventana)
+export default function CalendarioEntregas({ entregas, onEntregaClick, onDiaClick, onMoverEntrega, esPendiente, emptyMessage, ventana, rango }: CalendarioEntregasProps) {
+  const semanas = buildEntregaSemanas(entregas, ventana, rango)
   const arrastrando = useRef<EntregaItem | null>(null)
   const [diaDestino, setDiaDestino] = useState<string | null>(null)
 

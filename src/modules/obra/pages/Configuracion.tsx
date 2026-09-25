@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/modules/financiero/components/ui/card'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Input } from '@/modules/financiero/components/ui/input'
@@ -150,11 +151,25 @@ function AsignacionDialog({
 }
 
 function AsignacionesCard() {
+  const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const { modulos: todos, loading } = useObraCrData()
   const { guardarTodo, guardando } = useObraCrConfigBatchSave()
   const [cambios, setCambios] = useState<Map<string, ObraCrConfigCambio>>(new Map())
   const [filtro, setFiltro] = useState('')
   const [dialogo, setDialogo] = useState<DialogoState | null>(null)
+  const rangoKey = `obra.config.rango.${proyectoSlug}`
+  const [{ desde, hasta }, setRango] = useState<{ desde: string; hasta: string }>(() => {
+    try {
+      const raw = localStorage.getItem(rangoKey)
+      if (raw) return JSON.parse(raw)
+    } catch { /* storage bloqueado: sin filtro */ }
+    return { desde: '', hasta: '' }
+  })
+  useEffect(() => {
+    try { localStorage.setItem(rangoKey, JSON.stringify({ desde, hasta })) } catch { /* ignorar */ }
+  }, [rangoKey, desde, hasta])
+  const setDesde = (v: string) => setRango((r) => ({ ...r, desde: v }))
+  const setHasta = (v: string) => setRango((r) => ({ ...r, hasta: v }))
 
   const pendientes = useMemo(() => todos.filter((m) => !isModuloTerminado(m)), [todos])
 
@@ -258,15 +273,31 @@ function AsignacionesCard() {
               </div>
             </div>
 
+            <div className="space-y-3">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Desde</label>
+                <Input type="date" value={desde} max={hasta || undefined} onChange={(e) => setDesde(e.target.value)} className="h-8 w-40 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Hasta</label>
+                <Input type="date" value={hasta} min={desde || undefined} onChange={(e) => setHasta(e.target.value)} className="h-8 w-40 text-xs" />
+              </div>
+              {(desde || hasta) && (
+                <Button variant="outline" size="sm" className="h-8" onClick={() => setRango({ desde: '', hasta: '' })}>Limpiar</Button>
+              )}
+            </div>
             <CalendarioEntregas
               ventana={{ atras: 1, adelante: 4 }}
+              rango={{ desde, hasta }}
               entregas={entregas}
               onEntregaClick={(item) => setDialogo({ moduloNum: item.moduloNum, categoria: item.categoria, nuevo: false })}
               onDiaClick={(fecha) => setDialogo({ moduloNum: null, categoria: null, nuevo: true, fechaInicial: fecha })}
               onMoverEntrega={(item, nuevaFecha) => confirmarCambio({ moduloNum: item.moduloNum, categoria: item.categoria, subcontrato: item.subcontrato, fechaEntrega: nuevaFecha })}
               esPendiente={(item) => cambios.has(claveCambio(item.moduloNum, item.categoria))}
-              emptyMessage="Sin asignaciones todavía — elegí un módulo de la lista o hacé clic en un día para programarlo."
+              emptyMessage={desde || hasta ? 'Sin entregas en el rango de fechas elegido.' : 'Sin asignaciones todavía — elegí un módulo de la lista o hacé clic en un día para programarlo.'}
             />
+            </div>
           </div>
         )}
       </CardContent>
