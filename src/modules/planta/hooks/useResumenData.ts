@@ -10,6 +10,7 @@ import {
   loadForecastMensualSeleccionado,
   loadModulosDespachados,
   loadPptoCatalogo,
+  loadPresupuestoMensual,
   loadPresupuestoTotal,
   type AvanceEconProyRow,
 } from '../lib/supaData'
@@ -17,6 +18,7 @@ import {
 interface ResumenSupaData {
   compras: DetalleGdRow[]
   presupuestoTotal: number | null
+  presupuestoMensual: Record<string, number>
   pptoCatalogo: Record<string, number>
   despachados: { modulo: string | null; fecha: string | null }[]
   avanceProy: AvanceEconProyRow[]
@@ -56,10 +58,13 @@ export function getHomeAvance(
   presupuestoTotal: number | null,
   excelFallback: ParsedDashboardData['homeAvance'],
   forecastSeleccionado?: string | null,
+  presupuestoMensual: Record<string, number> = {},
 ) {
   if (!avanceProy.length) return excelFallback
   const anio = new Date().getFullYear()
-  const ppto = presupuestoTotal || 1
+  // Cada mes se mide contra el presupuesto vigente en ese mes (Configuración → Presupuesto por mes);
+  // sin valor propio, contra el presupuesto total actual.
+  const pptoDelMes = (mes: number) => presupuestoMensual[`${anio}-${mes}`] || presupuestoTotal || 1
   const montoMes: Record<string, number> = {}
   for (const c of compras) {
     const key = `${c.anioGuia ?? anio}-${c.mes}`
@@ -77,6 +82,7 @@ export function getHomeAvance(
     const mes = i + 1
     let real = montoMes[`${anio}-${mes}`] || 0
     if (mes === 1) real += preAnio
+    const ppto = pptoDelMes(mes)
     return { mes: nombre, avEcon: ppto > 0 ? real / ppto : null, avEconProy: proyMap[mes] ?? null }
   })
 }
@@ -88,15 +94,16 @@ export function useResumenData(excelData: ParsedDashboardData | null, hasta?: Da
 
   const fetcher = useCallback(async (): Promise<ResumenSupaData> => {
     const proyectoId = await getProyectoId(proyectoSlug!)
-    const [compras, ppto, catalogo, despachados, proy, forecastSeleccionado] = await Promise.all([
+    const [compras, ppto, pptoMensual, catalogo, despachados, proy, forecastSeleccionado] = await Promise.all([
       loadCompras(proyectoId),
       loadPresupuestoTotal(),
+      loadPresupuestoMensual(),
       loadPptoCatalogo(),
       loadModulosDespachados(proyectoId),
       loadAvanceEconProy(new Date().getFullYear()),
       loadForecastMensualSeleccionado(),
     ])
-    return { compras, presupuestoTotal: ppto, pptoCatalogo: catalogo, despachados, avanceProy: proy, forecastSeleccionado }
+    return { compras, presupuestoTotal: ppto, presupuestoMensual: pptoMensual, pptoCatalogo: catalogo, despachados, avanceProy: proy, forecastSeleccionado }
   }, [proyectoSlug])
 
   const { data, loading } = useCachedQuery<ResumenSupaData>(proyectoSlug ? `resumen_data:${proyectoSlug}` : null, fetcher, 60_000)
@@ -196,7 +203,7 @@ export function useResumenData(excelData: ParsedDashboardData | null, hasta?: Da
     })
 
     // Avance económico mensual/acumulado
-    const ha = getHomeAvance(compras, avanceProy, presupuestoTotal, excelData?.homeAvance ?? [], forecastSeleccionado)
+    const ha = getHomeAvance(compras, avanceProy, presupuestoTotal, excelData?.homeAvance ?? [], forecastSeleccionado, data?.presupuestoMensual)
     const anioCorte = hoy.getFullYear()
     const curMes = anioCorte > new Date().getFullYear() ? 12 : hoy.getMonth() + 1
     const haFilt = ha.filter((x) => {

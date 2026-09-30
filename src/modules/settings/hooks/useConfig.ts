@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabaseClient'
 import { useCachedQuery } from '@/lib/useCachedQuery'
+import { invalidatePrefix } from '@/lib/queryCache'
+import { PRESUPUESTO_MENSUAL_KEY, loadPresupuestoMensual } from '@/modules/planta/lib/supaData'
 
 async function loadTotalComprado(): Promise<number> {
   const PAGE = 1000
@@ -57,6 +59,51 @@ export function useConfigFinanciero() {
   )
 
   return { totalComprado: data?.totalComprado ?? null, presupuesto: data?.presupuesto ?? null, loading, guardarPresupuesto }
+}
+
+/** Presupuesto por mes (config.presupuesto_mensual). Un mes vacío usa el presupuesto total. */
+export function usePresupuestoMensual() {
+  const [anio, setAnio] = useState(new Date().getFullYear())
+  const [valores, setValores] = useState<string[]>(Array(12).fill(''))
+  const [loading, setLoading] = useState(true)
+
+  const refetch = useCallback(async () => {
+    setLoading(true)
+    try {
+      const mapa = await loadPresupuestoMensual()
+      setValores(MESES.map((_, i) => (mapa[`${anio}-${i + 1}`] ? String(Math.round(mapa[`${anio}-${i + 1}`])) : '')))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al cargar el presupuesto por mes')
+    }
+    setLoading(false)
+  }, [anio])
+
+  useEffect(() => {
+    refetch()
+  }, [refetch])
+
+  const actualizar = useCallback((mesIdx: number, texto: string) => {
+    setValores((v) => v.map((x, i) => (i === mesIdx ? texto : x)))
+  }, [])
+
+  const guardar = useCallback(async () => {
+    const invalido = valores.findIndex((t) => t.trim() !== '' && !(parseFloat(t) > 0))
+    if (invalido >= 0) throw new Error(`El presupuesto de ${MESES[invalido]} no es válido`)
+    // Se relee antes de escribir: el JSON guarda todos los años y aquí solo se reemplaza el visible.
+    const mapa = await loadPresupuestoMensual()
+    for (let m = 1; m <= 12; m++) delete mapa[`${anio}-${m}`]
+    valores.forEach((t, i) => {
+      if (parseFloat(t) > 0) mapa[`${anio}-${i + 1}`] = Math.round(parseFloat(t))
+    })
+    const { error } = await supabase
+      .from('config')
+      .upsert({ key: PRESUPUESTO_MENSUAL_KEY, value: JSON.stringify(mapa) }, { onConflict: 'key' })
+    if (error) throw new Error(error.message)
+    invalidatePrefix('resumen_data:') // los gráficos de avance económico se recalculan al volver
+    await refetch()
+  }, [anio, valores, refetch])
+
+  return { anio, setAnio, valores, actualizar, loading, guardar }
 }
 
 export function useRitmoProyeccion() {
