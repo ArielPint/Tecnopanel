@@ -6,6 +6,30 @@ export async function loadPresupuestoTotal(): Promise<number | null> {
   return data?.value != null ? parseFloat(data.value) || null : null
 }
 
+/** config.presupuesto_mensual: JSON {"2026-1": 6579000000, ...}, clave `${anio}-${mes}`. Un mes sin
+ *  valor usa presupuesto_total. Sirve para que un cambio de presupuesto no reescriba el avance
+ *  económico de los meses ya cerrados. Va en config (no en una tabla) para no migrar el esquema. */
+export const PRESUPUESTO_MENSUAL_KEY = 'presupuesto_mensual'
+
+export function parsePresupuestoMensual(value: string | null | undefined): Record<string, number> {
+  try {
+    const obj = JSON.parse(value || '{}') as Record<string, unknown>
+    const out: Record<string, number> = {}
+    for (const [k, v] of Object.entries(obj)) {
+      const n = typeof v === 'number' ? v : parseFloat(String(v))
+      if (/^\d{4}-\d{1,2}$/.test(k) && n > 0) out[k] = n
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+export async function loadPresupuestoMensual(): Promise<Record<string, number>> {
+  const data = await unwrap(supabase.from('config').select('value').eq('key', PRESUPUESTO_MENSUAL_KEY).maybeSingle())
+  return parsePresupuestoMensual(data?.value)
+}
+
 export async function loadForecastMensualSeleccionado(): Promise<string | null> {
   const data = await unwrap(supabase.from('config').select('value').eq('key', 'forecast_mensual_seleccionado').maybeSingle())
   return data?.value || null

@@ -13,7 +13,7 @@ import { useAvanceProduccionExcel } from '@/modules/planta/hooks/useAvanceProduc
 import { useDotacionMod } from '@/modules/planta/hooks/useDotacionMod'
 import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 import { useParams } from 'react-router-dom'
-import { useConfigFinanciero, useRitmoProyeccion, useTablaAnual, useAvanceEconProy, useForecastMensualSeleccionado, MESES } from '../hooks/useConfig'
+import { useConfigFinanciero, usePresupuestoMensual, useRitmoProyeccion, useTablaAnual, useAvanceEconProy, useForecastMensualSeleccionado, MESES } from '../hooks/useConfig'
 
 const ANIOS = [2026, 2027, 2028]
 
@@ -28,6 +28,7 @@ export default function Config() {
       <AvanceProduccionUploadCard />
       <DotacionModCard />
       <PresupuestoCard />
+      <PresupuestoMensualCard />
       <RitmoCard />
       <AvanceEconProyCard />
       <TablaAnualCard
@@ -313,6 +314,93 @@ function PresupuestoCard() {
         </div>
         <Button size="sm" disabled={guardando} onClick={onGuardar}>
           {guardando ? 'Guardando…' : 'Guardar presupuesto'}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+function PresupuestoMensualCard() {
+  const { presupuesto } = useConfigFinanciero()
+  const { anio, setAnio, valores, actualizar, loading, guardar } = usePresupuestoMensual()
+  const [guardando, setGuardando] = useState(false)
+
+  async function onGuardar() {
+    setGuardando(true)
+    try {
+      await guardar()
+      toast.success('Presupuesto por mes guardado')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al guardar')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>📅 Presupuesto por mes</CardTitle>
+        <CardDescription>
+          Presupuesto contra el que se mide el avance económico de cada mes. Un mes vacío usa el presupuesto total
+          ({fmtM(presupuesto)}). Sirve para que un cambio de presupuesto no altere los meses ya cerrados.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Label>Año</Label>
+          <Select value={String(anio)} onValueChange={(v) => setAnio(parseInt(v))}>
+            <SelectTrigger className="w-28">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ANIOS.map((a) => (
+                <SelectItem key={a} value={String(a)}>
+                  {a}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Mes</TableHead>
+                <TableHead className="text-right">Presupuesto del mes ($)</TableHead>
+                <TableHead className="text-right">Se calcula con</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {MESES.map((mes, i) => {
+                const propio = parseFloat(valores[i]) > 0
+                return (
+                  <TableRow key={mes}>
+                    <TableCell>{mes}</TableCell>
+                    <TableCell className="text-right">
+                      <Input
+                        type="number"
+                        thousands
+                        min={0}
+                        step={1000000}
+                        className="ml-auto w-44 text-right"
+                        placeholder="Presupuesto total"
+                        value={loading ? '' : valores[i]}
+                        onChange={(e) => actualizar(i, e.target.value)}
+                      />
+                    </TableCell>
+                    <TableCell className={`text-right tabular-nums ${propio ? 'font-medium' : 'text-muted-foreground'}`}>
+                      {fmtM(propio ? parseFloat(valores[i]) : presupuesto)}
+                      {!propio && ' (total)'}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
+        <Button size="sm" disabled={guardando || loading} onClick={onGuardar}>
+          {guardando ? 'Guardando…' : 'Guardar presupuesto por mes'}
         </Button>
       </CardContent>
     </Card>
