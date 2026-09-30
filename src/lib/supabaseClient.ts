@@ -22,11 +22,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 const LAST_SESSION_DATE_KEY = 'tp_last_session_date'
 const todayStr = () => new Date().toISOString().slice(0, 10)
 
-supabase.auth.onAuthStateChange((_event, session) => {
+supabase.auth.onAuthStateChange((event, session) => {
   if (!session) return
   const today = todayStr()
   const lastDate = localStorage.getItem(LAST_SESSION_DATE_KEY)
-  if (lastDate && lastDate !== today) {
+  // SIGNED_IN = login recién hecho: solo sella la fecha. Antes el sello de ayer lo deslogueaba
+  // al instante (primer login de cada día) y el hub quedaba en "Sin acceso".
+  if (event !== 'SIGNED_IN' && lastDate && lastDate !== today) {
     localStorage.removeItem(LAST_SESSION_DATE_KEY)
     void supabase.auth.signOut()
     return

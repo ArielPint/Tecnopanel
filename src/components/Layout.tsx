@@ -14,6 +14,7 @@ import {
   Users,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
+import { useAccesoUsuario } from '../hooks/useAccesoUsuario'
 import { useThemeStore } from '../store/themeStore'
 import ChangePasswordDialog from './ChangePasswordDialog'
 import GlobalSearch from './GlobalSearch'
@@ -35,13 +36,13 @@ const navSections = [
     label: 'Principal',
     items: [
       { to: '/', label: 'Dashboard', end: true, icon: LayoutDashboard },
-      { to: '/proyectos', label: 'Proyectos', end: false, icon: Building2 },
+      { to: '/proyectos', label: 'Proyectos', end: false, icon: Building2, requiere: 'admin' },
     ],
   },
   {
     label: 'Gestión',
     // ponytail: GeoVictoria oculto del nav hasta setear GV_APIKEY/GV_SECRET en prod — ruta sigue viva en App.tsx
-    items: [{ to: '/crm', label: 'CRM', end: false, icon: Briefcase }],
+    items: [{ to: '/crm', label: 'CRM', end: false, icon: Briefcase, requiere: 'crm' }],
   },
   {
     label: 'Sistema',
@@ -49,11 +50,21 @@ const navSections = [
       // "Gestión" acá es el módulo transversal (§3.6: Reportes/Documentos/Alertas/...) — mismo
       // nivel que Usuarios/Proyectos en la nav. No confundir con la sección de arriba, también
       // llamada "Gestión" (agrupador de nav preexistente, sin relación con este módulo).
-      { to: '/gestion', label: 'Gestión', end: false, icon: ClipboardList },
-      { to: '/usuarios', label: 'Usuarios', end: false, icon: Users },
+      { to: '/gestion', label: 'Gestión', end: false, icon: ClipboardList, requiere: 'gestion' },
+      { to: '/usuarios', label: 'Usuarios', end: false, icon: Users, requiere: 'admin' },
     ],
   },
 ]
+
+// Mismos gates que las rutas en App.tsx (ProtectedRoute requiere=...): solo se muestra lo que el
+// usuario puede abrir. '/proyectos' exige admin porque su ruta no trae slug.
+function useNavSections() {
+  const acceso = useAccesoUsuario()
+  const ok = { admin: acceso.isAdmin, crm: acceso.tieneCrm, gestion: acceso.tieneGestion }
+  return navSections
+    .map((s) => ({ ...s, items: s.items.filter((i) => !('requiere' in i) || ok[i.requiere as keyof typeof ok]) }))
+    .filter((s) => s.items.length > 0)
+}
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
@@ -65,9 +76,10 @@ const pageTitles: Record<string, string> = {
 }
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
+  const sections = useNavSections()
   return (
     <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
-      {navSections.map((section) => (
+      {sections.map((section) => (
         <div key={section.label}>
           <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             {section.label}
@@ -122,6 +134,7 @@ export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [changePasswordOpen, setChangePasswordOpen] = useState(false)
+  const navItems = useNavSections().flatMap((s) => s.items)
 
   const initials = (user?.email ?? '?').slice(0, 2).toUpperCase()
   const pageTitle = pageTitles[location.pathname] ?? 'TecnoPanel'
@@ -138,7 +151,7 @@ export default function Layout() {
         <SidebarHead collapsed={collapsed} isDark={isDark} />
         {collapsed ? (
           <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-            {navSections.flatMap((s) => s.items).map((item) => (
+            {navItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
