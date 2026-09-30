@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { X, ChevronRight, Upload, Link2, FileText, Clock, User, Loader2, Trash2, ExternalLink, MessageCircle, Send, Plus, FileSpreadsheet } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { fmtMontoCLP } from '@/lib/montoCLP'
-import { nombreParaStorage } from '@/lib/storageKey'
+import { errorTamanoArchivo, nombreParaStorage } from '@/lib/storageKey'
 import jsPDF from 'jspdf'
 import { toast } from 'sonner'
 import tecnopanelLogo from '@/assets/tecnopanel-logo-color.png'
@@ -972,6 +972,8 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   }
 
   async function uploadFile(file: File, tareaId?: string) {
+    const errTamano = errorTamanoArchivo(file)
+    if (errTamano) { toast.error(errTamano); return }
     setUploading(true)
     const ext = file.name.split('.').pop() ?? ''
     const path = opp.id + '/' + Date.now() + '-' + nombreParaStorage(file.name)
@@ -1547,7 +1549,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
         <div className="space-y-2">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">PDF de la OC</label>
-            <input type="file" accept=".pdf" onChange={ev => setOcFile(ev.target.files?.[0] ?? null)}
+            <input type="file" accept=".pdf" onChange={ev => {
+              const f = ev.target.files?.[0] ?? null
+              const errTamano = f && errorTamanoArchivo(f)
+              if (errTamano) { toast.error(errTamano); setOcFile(null); ev.target.value = ''; return }
+              setOcFile(f)
+            }}
               className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-200 file:text-xs file:font-medium file:bg-gray-50 hover:file:bg-gray-100" />
             {cierre?.storage_oc_path && !ocFile && (
               <button type="button" onClick={() => openFile('archivo', cierre.storage_oc_path!)}

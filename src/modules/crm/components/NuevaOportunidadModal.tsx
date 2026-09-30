@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Loader2, X } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { nombreParaStorage } from '@/lib/storageKey'
+import { errorTamanoArchivo, nombreParaStorage } from '@/lib/storageKey'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import MontoInput from '@/components/MontoInput'
 import type { TipoVenta, TipoSubsidioVit, ZonaTermicaVit, TipologiaVitPrecio } from '@/modules/crm/types/database'
@@ -500,7 +500,13 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
           {form.tipo_venta !== 'VIT' && (
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Plano (PDF / DWG / Autocad)</label>
-              <input type="file" accept=".pdf,.dwg,.dxf" onChange={e => setArchivo(e.target.files?.[0] ?? null)}
+              <input type="file" accept=".pdf,.dwg,.dxf" onChange={e => {
+                const f = e.target.files?.[0] ?? null
+                const errTamano = f && errorTamanoArchivo(f)
+                // Se rechaza al elegirlo: si no, la oportunidad se creaba igual y quedaba sin su plano.
+                if (errTamano) { setError(errTamano); setArchivo(null); e.target.value = ''; return }
+                setError(''); setArchivo(f)
+              }}
                 className="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-200 file:text-xs file:font-medium file:bg-gray-50 hover:file:bg-gray-100" />
             </div>
           )}
