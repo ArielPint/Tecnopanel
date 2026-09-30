@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type Session } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -17,23 +17,33 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-// Logout diario por seguridad: sesión persistida se invalida si cambió el día local
-// desde la última validación.
-const LAST_SESSION_DATE_KEY = 'tp_last_session_date'
-const todayStr = () => new Date().toISOString().slice(0, 10)
+// Logout diario por seguridad: una sesión vale solo el día (hora local) en que se inició.
+// No sirve mirar el evento: supabase-js emite SIGNED_IN también al abrir la página y al volver
+// a la pestaña, así que una sesión de ayer pasaba por login nuevo y no se cerraba.
+const fechaLocal = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
 
-supabase.auth.onAuthStateChange((event, session) => {
-  if (!session) return
-  const today = todayStr()
-  const lastDate = localStorage.getItem(LAST_SESSION_DATE_KEY)
-  // SIGNED_IN = login recién hecho: solo sella la fecha. Antes el sello de ayer lo deslogueaba
-  // al instante (primer login de cada día) y el hub quedaba en "Sin acceso".
-  if (event !== 'SIGNED_IN' && lastDate && lastDate !== today) {
-    localStorage.removeItem(LAST_SESSION_DATE_KEY)
-    void supabase.auth.signOut()
-    return
+/** Hora del login real. Sale del claim `amr` del access token: GoTrue lo fija al autenticarse y no
+ *  lo toca al renovar el token. user.last_sign_in_at queda solo de respaldo, porque el GoTrue
+ *  del servidor propio lo actualiza en cada renovación y una sesión de ayer parecería de hoy. */
+function horaDeLogin(session: Session): Date | null {
+  try {
+    const payload = JSON.parse(atob(session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    const ts = Math.max(...((payload.amr ?? []) as { timestamp: number }[]).map((a) => a.timestamp))
+    if (Number.isFinite(ts)) return new Date(ts * 1000)
+  } catch {
+    // token ilegible: se usa el respaldo
   }
-  localStorage.setItem(LAST_SESSION_DATE_KEY, today)
+  return session.user.last_sign_in_at ? new Date(session.user.last_sign_in_at) : null
+}
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  if (!session) return
+  const login = horaDeLogin(session)
+  if (!login || fechaLocal(login) === fechaLocal(new Date())) return
+  // scope 'local': cierra solo este navegador. El default (global) revocaba también la sesión
+  // que el usuario ya había abierto hoy en otro equipo.
+  // Fuera del callback: supabase-js se cuelga si se espera una operación de auth dentro de él.
+  setTimeout(() => void supabase.auth.signOut({ scope: 'local' }), 0)
 })
 
 // Query resultó falló silenciosamente en ~15+ call sites (solo se destructuraba `data`).
