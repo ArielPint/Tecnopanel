@@ -8,6 +8,8 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from '@/modules/financiero/components/ui/chart'
+import { toast } from 'sonner'
+import { Checkbox } from '@/modules/financiero/components/ui/checkbox'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { useProyExtraAvEcon } from '@/modules/settings/hooks/useConfig'
 import type { ResumenData } from '../hooks/useResumenData'
@@ -142,15 +144,17 @@ export function AvanceEconomicoChart({
   isAdmin?: boolean
   institucional?: boolean
 }) {
-  const { valor: proyExtra, guardar: guardarProyExtra } = useProyExtraAvEcon()
+  const { valor: proyExtra, activo: proyExtraActivo, loading: proyExtraLoading, guardar: guardarProyExtra, guardarActivo: guardarProyExtraActivo } = useProyExtraAvEcon()
 
   if (!data.length) {
     return <div className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">Sin datos de avance económico</div>
   }
 
   // readOnly (dashboard Ejecutivo): sin la barra de proyExtra, que pisaba la etiqueta
-  // del "proyectado" cuando ambas caían en el mismo mes.
-  const chartData = readOnly ? data : data.map((d, i) => ({ ...d, proyExtra: i === data.length - 1 ? proyExtra : null }))
+  // del "proyectado" cuando ambas caían en el mismo mes. Mientras carga tampoco, para que no
+  // aparezca un instante y desaparezca si está desactivada.
+  const mostrarExtra = !readOnly && !proyExtraLoading && proyExtraActivo
+  const chartData = mostrarExtra ? data.map((d, i) => ({ ...d, proyExtra: i === data.length - 1 ? proyExtra : null })) : data
   const config = {
     real: { label: 'Avance económico real', color: institucional ? INST.rojo : '#d42b1e' },
     proyectado: { label: 'Proyectado mensual', color: institucional ? INST.plomo : '#4f8ef7' },
@@ -181,31 +185,41 @@ export function AvanceEconomicoChart({
           <Line type="monotone" dataKey="proyectado" stroke="var(--color-proyectado)" strokeWidth={2.5} dot connectNulls>
             <LabelList dataKey="proyectado" content={lineaLabel} />
           </Line>
-          {!readOnly && (
+          {mostrarExtra && (
             <Bar dataKey="proyExtra" barSize={BAR_SIZE} fill="none" stroke="#f5a623" strokeWidth={2} strokeDasharray="4 3" radius={4}>
               <LabelList dataKey="proyExtra" position="top" style={VALUE_LABEL_STYLE} formatter={labelFmt(fmtPr)} />
             </Bar>
           )}
         </ComposedChart>
       </ChartContainer>
-      {!readOnly && (
+      {!readOnly && isAdmin && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <label htmlFor="proy-extra">Proyectado adicional del último mes:</label>
-          {isAdmin ? (
-            <Input
-              id="proy-extra"
-              type="number"
-              step="0.1"
-              value={proyExtra}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value)
-                if (!isNaN(v) && v >= 0) guardarProyExtra(v)
-              }}
-              className="h-7 w-20"
-            />
-          ) : (
-            <span className="font-medium text-foreground">{proyExtra}</span>
-          )}
+          <Checkbox
+            id="proy-extra-activo"
+            checked={proyExtraActivo}
+            disabled={proyExtraLoading}
+            onCheckedChange={(v) => guardarProyExtraActivo(v === true).catch((err: Error) => toast.error(err.message))}
+          />
+          <label htmlFor="proy-extra-activo" className="cursor-pointer">Proyectado adicional del último mes:</label>
+          <Input
+            id="proy-extra"
+            type="number"
+            step="0.1"
+            value={proyExtra}
+            disabled={!proyExtraActivo}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value)
+              if (!isNaN(v) && v >= 0) guardarProyExtra(v)
+            }}
+            className="h-7 w-20"
+          />
+          <span>%</span>
+        </div>
+      )}
+      {!readOnly && !isAdmin && mostrarExtra && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>Proyectado adicional del último mes:</span>
+          <span className="font-medium text-foreground">{proyExtra}</span>
           <span>%</span>
         </div>
       )}

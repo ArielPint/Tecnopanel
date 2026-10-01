@@ -141,13 +141,18 @@ export function useRitmoProyeccion() {
 
 export function useProyExtraAvEcon() {
   const [valor, setValor] = useState(4.5)
+  // config.proy_extra_avEcon_activo ('true'/'false'). Sin la fila se muestra, como antes de existir.
+  const [activo, setActivo] = useState(true)
   const [loading, setLoading] = useState(true)
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase.from('config').select('value').eq('key', 'proy_extra_avEcon').maybeSingle()
+    const { data, error } = await supabase.from('config').select('key, value').in('key', ['proy_extra_avEcon', 'proy_extra_avEcon_activo'])
     if (error) toast.error(error.message)
-    if (data?.value != null) setValor(parseFloat(data.value) || 4.5)
+    for (const r of data ?? []) {
+      if (r.key === 'proy_extra_avEcon' && r.value != null) setValor(parseFloat(r.value) || 4.5)
+      if (r.key === 'proy_extra_avEcon_activo') setActivo(r.value !== 'false')
+    }
     setLoading(false)
   }, [])
 
@@ -161,7 +166,19 @@ export function useProyExtraAvEcon() {
     setValor(nuevoValor)
   }, [])
 
-  return { valor, loading, guardar }
+  const guardarActivo = useCallback(async (nuevo: boolean) => {
+    setActivo(nuevo) // optimista: el gráfico responde al instante; se revierte si falla
+    // upsert: la fila no existe hasta el primer cambio
+    const { error } = await supabase
+      .from('config')
+      .upsert({ key: 'proy_extra_avEcon_activo', value: String(nuevo) }, { onConflict: 'key' })
+    if (error) {
+      setActivo(!nuevo)
+      throw new Error(error.message)
+    }
+  }, [])
+
+  return { valor, activo, loading, guardar, guardarActivo }
 }
 
 export function useForecastMensualSeleccionado() {
