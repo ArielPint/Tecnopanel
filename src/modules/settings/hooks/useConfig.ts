@@ -3,7 +3,12 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabaseClient'
 import { useCachedQuery } from '@/lib/useCachedQuery'
 import { invalidatePrefix } from '@/lib/queryCache'
-import { PRESUPUESTO_MENSUAL_KEY, loadPresupuestoMensual } from '@/modules/planta/lib/supaData'
+import {
+  AVANCE_AJUSTE_MENSUAL_KEY,
+  PRESUPUESTO_MENSUAL_KEY,
+  loadAjusteAvanceMensual,
+  loadPresupuestoMensual,
+} from '@/modules/planta/lib/supaData'
 
 async function loadTotalComprado(): Promise<number> {
   const PAGE = 1000
@@ -61,17 +66,27 @@ export function useConfigFinanciero() {
   return { totalComprado: data?.totalComprado ?? null, presupuesto: data?.presupuesto ?? null, loading, guardarPresupuesto }
 }
 
-/** Presupuesto por mes (config.presupuesto_mensual). Un mes vacío usa el presupuesto total. */
+/** "0,192213" o "0.192213" → número; vacío → null; texto inválido → NaN. */
+export function parseDecimal(texto: string): number | null {
+  const t = texto.trim()
+  if (!t) return null
+  return /^-?\d+([.,]\d+)?$/.test(t) ? parseFloat(t.replace(',', '.')) : NaN
+}
+
+/** Presupuesto por mes (config.presupuesto_mensual; un mes vacío usa el presupuesto total) y avance
+ *  adicional por mes en puntos porcentuales (config.avance_ajuste_mensual; vacío = sin ajuste). */
 export function usePresupuestoMensual() {
   const [anio, setAnio] = useState(new Date().getFullYear())
   const [valores, setValores] = useState<string[]>(Array(12).fill(''))
+  const [ajustes, setAjustes] = useState<string[]>(Array(12).fill(''))
   const [loading, setLoading] = useState(true)
 
   const refetch = useCallback(async () => {
     setLoading(true)
     try {
-      const mapa = await loadPresupuestoMensual()
+      const [mapa, mapaAjuste] = await Promise.all([loadPresupuestoMensual(), loadAjusteAvanceMensual()])
       setValores(MESES.map((_, i) => (mapa[`${anio}-${i + 1}`] ? String(Math.round(mapa[`${anio}-${i + 1}`])) : '')))
+      setAjustes(MESES.map((_, i) => (mapaAjuste[`${anio}-${i + 1}`] != null ? String(mapaAjuste[`${anio}-${i + 1}`]).replace('.', ',') : '')))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al cargar el presupuesto por mes')
     }
@@ -86,24 +101,41 @@ export function usePresupuestoMensual() {
     setValores((v) => v.map((x, i) => (i === mesIdx ? texto : x)))
   }, [])
 
+  const actualizarAjuste = useCallback((mesIdx: number, texto: string) => {
+    setAjustes((v) => v.map((x, i) => (i === mesIdx ? texto : x)))
+  }, [])
+
   const guardar = useCallback(async () => {
     const invalido = valores.findIndex((t) => t.trim() !== '' && !(parseFloat(t) > 0))
     if (invalido >= 0) throw new Error(`El presupuesto de ${MESES[invalido]} no es válido`)
-    // Se relee antes de escribir: el JSON guarda todos los años y aquí solo se reemplaza el visible.
-    const mapa = await loadPresupuestoMensual()
-    for (let m = 1; m <= 12; m++) delete mapa[`${anio}-${m}`]
+    const ajusteInvalido = ajustes.findIndex((t) => Number.isNaN(parseDecimal(t)))
+    if (ajusteInvalido >= 0) throw new Error(`El avance adicional de ${MESES[ajusteInvalido]} no es válido (usa por ejemplo 0,192213)`)
+    // Se relee antes de escribir: cada JSON guarda todos los años y aquí solo se reemplaza el visible.
+    const [mapa, mapaAjuste] = await Promise.all([loadPresupuestoMensual(), loadAjusteAvanceMensual()])
+    for (let m = 1; m <= 12; m++) {
+      delete mapa[`${anio}-${m}`]
+      delete mapaAjuste[`${anio}-${m}`]
+    }
     valores.forEach((t, i) => {
       if (parseFloat(t) > 0) mapa[`${anio}-${i + 1}`] = Math.round(parseFloat(t))
     })
-    const { error } = await supabase
-      .from('config')
-      .upsert({ key: PRESUPUESTO_MENSUAL_KEY, value: JSON.stringify(mapa) }, { onConflict: 'key' })
+    ajustes.forEach((t, i) => {
+      const n = parseDecimal(t)
+      if (n) mapaAjuste[`${anio}-${i + 1}`] = n
+    })
+    const { error } = await supabase.from('config').upsert(
+      [
+        { key: PRESUPUESTO_MENSUAL_KEY, value: JSON.stringify(mapa) },
+        { key: AVANCE_AJUSTE_MENSUAL_KEY, value: JSON.stringify(mapaAjuste) },
+      ],
+      { onConflict: 'key' },
+    )
     if (error) throw new Error(error.message)
     invalidatePrefix('resumen_data:') // los gráficos de avance económico se recalculan al volver
     await refetch()
-  }, [anio, valores, refetch])
+  }, [anio, valores, ajustes, refetch])
 
-  return { anio, setAnio, valores, actualizar, loading, guardar }
+  return { anio, setAnio, valores, ajustes, actualizar, actualizarAjuste, loading, guardar }
 }
 
 export function useRitmoProyeccion() {
