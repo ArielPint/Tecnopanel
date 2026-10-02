@@ -30,6 +30,30 @@ export async function loadPresupuestoMensual(): Promise<Record<string, number>> 
   return parsePresupuestoMensual(data?.value)
 }
 
+/** config.avance_ajuste_mensual: JSON {"2026-9": 0.192213, ...}, en puntos porcentuales que se suman
+ *  al avance económico real de ese mes (y por lo tanto al acumulado desde ese mes). Puede ser
+ *  negativo. Sirve para compensar, p. ej., una baja de presupuesto sin tocar las compras. */
+export const AVANCE_AJUSTE_MENSUAL_KEY = 'avance_ajuste_mensual'
+
+export function parseAjusteAvanceMensual(value: string | null | undefined): Record<string, number> {
+  try {
+    const obj = JSON.parse(value || '{}') as Record<string, unknown>
+    const out: Record<string, number> = {}
+    for (const [k, v] of Object.entries(obj)) {
+      const n = typeof v === 'number' ? v : parseFloat(String(v))
+      if (/^\d{4}-\d{1,2}$/.test(k) && Number.isFinite(n) && n !== 0) out[k] = n
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+export async function loadAjusteAvanceMensual(): Promise<Record<string, number>> {
+  const data = await unwrap(supabase.from('config').select('value').eq('key', AVANCE_AJUSTE_MENSUAL_KEY).maybeSingle())
+  return parseAjusteAvanceMensual(data?.value)
+}
+
 export async function loadForecastMensualSeleccionado(): Promise<string | null> {
   const data = await unwrap(supabase.from('config').select('value').eq('key', 'forecast_mensual_seleccionado').maybeSingle())
   return data?.value || null

@@ -13,7 +13,7 @@ import { useAvanceProduccionExcel } from '@/modules/planta/hooks/useAvanceProduc
 import { useDotacionMod } from '@/modules/planta/hooks/useDotacionMod'
 import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 import { useParams } from 'react-router-dom'
-import { useConfigFinanciero, usePresupuestoMensual, useRitmoProyeccion, useTablaAnual, useAvanceEconProy, useForecastMensualSeleccionado, MESES } from '../hooks/useConfig'
+import { parseDecimal, useConfigFinanciero, usePresupuestoMensual,useRitmoProyeccion, useTablaAnual, useAvanceEconProy, useForecastMensualSeleccionado, MESES } from '../hooks/useConfig'
 
 const ANIOS = [2026, 2027, 2028]
 
@@ -322,7 +322,7 @@ function PresupuestoCard() {
 
 function PresupuestoMensualCard() {
   const { presupuesto } = useConfigFinanciero()
-  const { anio, setAnio, valores, actualizar, loading, guardar } = usePresupuestoMensual()
+  const { anio, setAnio, valores, ajustes, actualizar, actualizarAjuste, loading, guardar } = usePresupuestoMensual()
   const [guardando, setGuardando] = useState(false)
 
   async function onGuardar() {
@@ -343,7 +343,8 @@ function PresupuestoMensualCard() {
         <CardTitle>📅 Presupuesto por mes</CardTitle>
         <CardDescription>
           Presupuesto contra el que se mide el avance económico de cada mes. Un mes vacío usa el presupuesto total
-          ({fmtM(presupuesto)}). Sirve para que un cambio de presupuesto no altere los meses ya cerrados.
+          ({fmtM(presupuesto)}). Sirve para que un cambio de presupuesto no altere los meses ya cerrados. El avance
+          adicional se suma, en puntos porcentuales, al avance económico real de ese mes y al acumulado desde ese mes.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -369,6 +370,7 @@ function PresupuestoMensualCard() {
                 <TableHead>Mes</TableHead>
                 <TableHead className="text-right">Presupuesto del mes ($)</TableHead>
                 <TableHead className="text-right">Se calcula con</TableHead>
+                <TableHead className="text-right">Avance adicional (%)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -392,6 +394,17 @@ function PresupuestoMensualCard() {
                     <TableCell className={`text-right tabular-nums ${propio ? 'font-medium' : 'text-muted-foreground'}`}>
                       {fmtM(propio ? parseFloat(valores[i]) : presupuesto)}
                       {!propio && ' (total)'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        className="ml-auto w-28 text-right"
+                        placeholder="0"
+                        aria-invalid={Number.isNaN(parseDecimal(ajustes[i])) || undefined}
+                        value={loading ? '' : ajustes[i]}
+                        onChange={(e) => actualizarAjuste(i, e.target.value)}
+                      />
                     </TableCell>
                   </TableRow>
                 )
