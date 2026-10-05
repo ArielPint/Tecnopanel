@@ -9,7 +9,8 @@ import { useStock } from '../hooks/useStock'
 import { useCatalogoGD } from '@/modules/logistica/hooks/useCatalogoGD'
 import { normCod } from '@/modules/logistica/lib/calc'
 
-function observacion(equivMod: number | null): { label: string; className: string; rank: number } | null {
+function observacion(cantidad: number, equivMod: number | null): { label: string; className: string; rank: number } | null {
+  if (cantidad <= 0) return { label: 'Sin stock', className: 'text-destructive', rank: -1 }
   if (equivMod == null) return null
   if (equivMod < 15) return { label: 'Stock Crítico', className: 'text-destructive', rank: 0 }
   if (equivMod < 25) return { label: 'Stock Medio', className: 'text-warning', rank: 1 }
@@ -37,7 +38,7 @@ export default function StockConfig() {
     .map((s) => {
       const cpm = cpmPorCodigo.get(normCod(s.codigo)) ?? null
       const equivMod = cpm ? s.cantidad_disponible / cpm : null
-      return { ...s, equivMod, obs: observacion(equivMod) }
+      return { ...s, equivMod, obs: observacion(s.cantidad_disponible, equivMod) }
     })
 
   if (obsDir != null) {
@@ -54,7 +55,7 @@ export default function StockConfig() {
         <CardHeader>
           <CardTitle>📦 Stock de productos</CardTitle>
           <CardDescription>
-            Sube el Excel de stock (columnas: código, descripción, unidad, cantidad). Cada carga reemplaza la cantidad disponible por código.
+            Sube el Excel de stock (columnas: código, descripción, unidad, cantidad). Cada carga reemplaza la cantidad disponible por código; los productos que no vengan en el archivo quedan sin stock.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -67,7 +68,8 @@ export default function StockConfig() {
           {error && <p className="text-xs text-destructive">{error}</p>}
           {lastResult && !error && (
             <p className="text-xs text-success">
-              {lastResult.nuevos} producto(s) nuevo(s), {lastResult.actualizados} actualizado(s).
+              {lastResult.nuevos} producto(s) nuevo(s), {lastResult.actualizados} actualizado(s)
+              {lastResult.sinStock > 0 && `, ${lastResult.sinStock} sin stock (no venían en el archivo)`}.
             </p>
           )}
           <Button asChild disabled={uploading}>
@@ -114,7 +116,9 @@ export default function StockConfig() {
                   <TableCell className="font-mono text-xs text-primary">{s.codigo}</TableCell>
                   <TableCell className="text-sm">{s.descripcion}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{s.unidad}</TableCell>
-                  <TableCell className="text-right">{s.cantidad_disponible}</TableCell>
+                  <TableCell className="text-right">
+                    {s.cantidad_disponible > 0 ? s.cantidad_disponible : <span className="text-xs font-semibold text-destructive">Sin stock</span>}
+                  </TableCell>
                   <TableCell className="text-right">{s.equivMod != null ? s.equivMod.toFixed(2) : '—'}</TableCell>
                   <TableCell className={s.obs ? `text-xs font-semibold ${s.obs.className}` : 'text-xs text-muted-foreground'}>
                     {s.obs?.label ?? '—'}

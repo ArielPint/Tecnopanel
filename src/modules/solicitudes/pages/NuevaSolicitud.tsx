@@ -92,7 +92,7 @@ export default function NuevaSolicitud() {
   const { proyectoSlug } = useParams<{ proyectoSlug: string }>()
   const { allProducts } = useCatalogoGD()
   const { grupos, responsables, cargarReceta } = useGruposResponsables()
-  const { solicitudes, crear, actualizarItems, marcarUsada } = useSolicitudes()
+  const { solicitudes, crear, actualizarItems, enviar } = useSolicitudes()
 
   // Namespaced por usuario: sessionStorage sobrevive cambios de cuenta en la misma
   // pestaña/navegador, y un borrador de otro usuario no debe filtrarse al siguiente.
@@ -351,7 +351,7 @@ export default function NuevaSolicitud() {
       window.location.href = buildMailto(lastSaved.numero, lastSaved.grupoNombre, lastSaved.responsableNombre, lastSaved.items, lastSaved.observacion)
     }
     try {
-      await marcarUsada(lastSaved.id)
+      await enviar([lastSaved.id])
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No se pudo marcar como usada')
     }
