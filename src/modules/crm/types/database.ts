@@ -32,6 +32,7 @@ export interface Cliente {
   razon_social: string
   rut: string
   tipo: 'empresa' | 'persona_natural'
+  giro: string | null
   rubro: string | null
   ciudad: string | null
   contacto_nombre: string | null

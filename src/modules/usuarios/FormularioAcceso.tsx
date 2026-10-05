@@ -32,6 +32,7 @@ function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: Proye
     apellido: acceso?.apellido ?? '',
     email: acceso?.email ?? '',
     password: '',
+    exigirCambioClave: false,
     activo: acceso?.activo ?? true,
     isSuperAdmin: acceso?.isSuperAdmin ?? false,
     rol: acceso?.rol ?? 'vendedor',
@@ -183,6 +184,12 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                   autoComplete="new-password"
                   placeholder="Mínimo 6 caracteres"
                 />
+                {!!form.password && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={!!form.exigirCambioClave} onCheckedChange={(v) => setForm((f) => ({ ...f, exigirCambioClave: !!v }))} />
+                    Debe cambiar la contraseña en el siguiente inicio de sesión
+                  </label>
+                )}
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="a-sucursal">Sucursal</Label>
