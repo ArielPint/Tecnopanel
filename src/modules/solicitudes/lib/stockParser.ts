@@ -36,6 +36,7 @@ export function parseStock(wb: XLSX.WorkBook): StockRow[] {
 export interface StockUpsertResult {
   nuevos: number
   actualizados: number
+  sinStock: number
 }
 
 const LOTE = 500
@@ -63,5 +64,9 @@ export async function upsertStock(rows: StockRow[], userId: string): Promise<Sto
     if (error) throw new Error(error.message)
   }
 
-  return { nuevos, actualizados }
+  // Lo que no viene en el archivo queda en 0 → "Sin stock".
+  const { data: sinStock, error: rpcError } = await supabase.rpc('stock_marcar_ausentes', { p_codigos: rows.map((r) => r.codigo) })
+  if (rpcError) throw new Error(rpcError.message)
+
+  return { nuevos, actualizados, sinStock: (sinStock as number | null) ?? 0 }
 }

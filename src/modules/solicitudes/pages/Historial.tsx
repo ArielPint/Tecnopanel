@@ -15,6 +15,7 @@ import { useCatalogoGD, type Producto } from '@/modules/logistica/hooks/useCatal
 import ProductoAutocomplete from '@/modules/logistica/components/ProductoAutocomplete'
 import { useAuth } from '../hooks/useAuth'
 import { useGruposResponsables } from '../hooks/useGruposResponsables'
+import { useStock } from '../hooks/useStock'
 import { useSolicitudes, type EstadoSolicitud, type ItemSolicitud, type Solicitud } from '../hooks/useSolicitudes'
 import {
   buildMailto,
@@ -57,10 +58,18 @@ export default function Historial() {
       .rpc('usuarios_restringidos_solicitudes')
       .then(({ data }) => setRestringidos(new Set((data as string[] | null) ?? [])))
   }, [])
-  const { solicitudes, eliminar, actualizarItems, marcarUsada } = useSolicitudes()
+  const { solicitudes, eliminar, actualizarItems, enviar } = useSolicitudes()
   const { allProducts, pppMap } = useCatalogoGD()
+  const { stock } = useStock()
 
   const normCod = (c: string) => String(c || '').trim().toUpperCase()
+  const stockPorCodigo = useMemo(() => new Map(stock.map((p) => [normCod(p.codigo), p.cantidad_disponible])), [stock])
+  // Stock actual del producto; sin fila en el catálogo o en 0 → "Sin stock".
+  const celdaStock = (it: ItemSolicitud) => {
+    const disp = stockPorCodigo.get(normCod(it.codigo)) ?? 0
+    if (disp <= 0) return <span className="text-xs font-semibold text-destructive">Sin stock</span>
+    return <span className={disp < it.cantidad_real ? 'font-semibold text-warning' : ''}>{disp}</span>
+  }
   const pppDe = (codigo: string) => {
     const st = pppMap[normCod(codigo)]
     return st && st.cant > 0 ? st.monto / st.cant : null
@@ -153,7 +162,7 @@ export default function Historial() {
       } else {
         window.location.href = buildMailto(s.numero, grupoN, respN, s.items, s.observacion)
       }
-      await marcarUsada(s.id)
+      await enviar([s.id])
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No se pudo enviar')
     } finally {
@@ -193,7 +202,7 @@ export default function Historial() {
       } else {
         window.location.href = buildMailtoAgrupado(paraEmail)
       }
-      await Promise.all(items.map((s) => marcarUsada(s.id)))
+      await enviar(items.map((s) => s.id))
       setSeleccion(new Set())
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No se pudo enviar agrupado')
@@ -383,6 +392,7 @@ export default function Historial() {
                                     <TableHead>Descripción</TableHead>
                                     <TableHead className="text-center">Cant. Sol.</TableHead>
                                     <TableHead className="text-center">Cant. Real</TableHead>
+                                    <TableHead className="text-center">Stock</TableHead>
                                     <TableHead>Unidad</TableHead>
                                     {!soloCantidadReal && <TableHead className="w-10" />}
                                   </TableRow>
@@ -410,6 +420,7 @@ export default function Historial() {
                                           onChange={(e) => cambiarCantidad(i, 'cantidad_real', e.target.value)}
                                         />
                                       </TableCell>
+                                      <TableCell className="text-center tabular-nums">{celdaStock(it)}</TableCell>
                                       <TableCell className="text-xs text-muted-foreground">{it.unidad}</TableCell>
                                       {!soloCantidadReal && (
                                         <TableCell>
@@ -449,6 +460,7 @@ export default function Historial() {
                                   <TableHead>Descripción</TableHead>
                                   <TableHead className="text-center">Cant. Sol.</TableHead>
                                   <TableHead className="text-center">Cant. Real</TableHead>
+                                  <TableHead className="text-center">Stock</TableHead>
                                   <TableHead>Unidad</TableHead>
                                   <TableHead className="text-center">Módulos</TableHead>
                                 </TableRow>
@@ -463,6 +475,7 @@ export default function Historial() {
                                       <TableCell className="text-sm">{it.descripcion}</TableCell>
                                       <TableCell className="text-center">{it.cantidad}</TableCell>
                                       <TableCell className="text-center">{it.cantidad_real}</TableCell>
+                                      <TableCell className="text-center tabular-nums">{celdaStock(it)}</TableCell>
                                       <TableCell className="text-xs text-muted-foreground">{it.unidad}</TableCell>
                                       <TableCell className="text-center font-semibold text-primary">{modulos != null ? modulos.toFixed(2) : '—'}</TableCell>
                                     </TableRow>
@@ -470,7 +483,7 @@ export default function Historial() {
                                 })}
                                 {s.observacion && (
                                   <TableRow>
-                                    <TableCell colSpan={7} className="text-xs text-muted-foreground">
+                                    <TableCell colSpan={8} className="text-xs text-muted-foreground">
                                       📝 {s.observacion}
                                     </TableCell>
                                   </TableRow>

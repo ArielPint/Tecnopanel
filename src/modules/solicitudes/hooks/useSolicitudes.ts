@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
 import { useCachedQuery } from '@/lib/useCachedQuery'
+import { invalidate } from '@/lib/queryCache'
 
 export interface ItemSolicitud {
   codigo: string
@@ -77,10 +78,13 @@ export function useSolicitudes() {
     [refetch, proyectoSlug],
   )
 
-  const marcarUsada = useCallback(
-    async (id: string) => {
-      const { error } = await supabase.from('solicitudes').update({ estado: 'usada', usada_en: new Date().toISOString() }).eq('id', id)
+  // Marca 'usada' y descuenta la cantidad real del stock, en una transacción (RPC);
+  // solo las que siguen pendientes, así un doble envío no descuenta dos veces.
+  const enviar = useCallback(
+    async (ids: string[]) => {
+      const { error } = await supabase.rpc('solicitudes_enviar', { p_ids: ids })
       if (error) throw new Error(error.message)
+      invalidate('stock_productos')
       await refetch()
     },
     [refetch],
@@ -107,5 +111,5 @@ export function useSolicitudes() {
     [refetch],
   )
 
-  return { solicitudes, loading, crear, marcarUsada, eliminar, actualizarItems }
+  return { solicitudes, loading, crear, enviar, eliminar, actualizarItems }
 }
