@@ -4,9 +4,11 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import { usePermisos } from '@/modules/crm/contexts/PermisosContext'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
+import { errorDatosBasicos } from '@/modules/crm/lib/clienteCampos'
+import { REGIONES_COMUNAS } from '@/modules/crm/components/NuevaOportunidadModal'
 
 interface Cliente {
-  id: string; razon_social: string; rut: string; tipo: string; rubro: string
+  id: string; razon_social: string; rut: string; tipo: string; giro: string; rubro: string
   direccion: string; ciudad: string; region: string
   contacto_nombre: string; contacto_email: string; contacto_fono: string
   notas: string; created_at: string
@@ -22,11 +24,12 @@ interface HistorialEntry {
   usuario?: { nombre: string; apellido: string } | null
 }
 
-const BLANK_CLIENTE = { razon_social:'', rut:'', tipo:'empresa', rubro:'', direccion:'', ciudad:'', region:'', contacto_nombre:'', contacto_email:'', contacto_fono:'', notas:'' }
+const BLANK_CLIENTE = { razon_social:'', rut:'', tipo:'empresa', giro:'', rubro:'', direccion:'', ciudad:'', region:'', contacto_nombre:'', contacto_email:'', contacto_fono:'', notas:'' }
+const INPUT_CLS = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red'
 const BLANK_CONTACTO = { nombre:'', cargo:'', email:'', fono:'', observaciones:'' }
 
 const CAMPO_LABEL: Record<string, string> = {
-  razon_social: 'Razón Social', rut: 'RUT', tipo: 'Tipo', rubro: 'Rubro',
+  razon_social: 'Razón Social', rut: 'RUT', tipo: 'Tipo', giro: 'Giro', rubro: 'Rubro',
   direccion: 'Dirección', ciudad: 'Ciudad', region: 'Región',
   contacto_nombre: 'Contacto', contacto_email: 'Email contacto',
   contacto_fono: 'Fono contacto', notas: 'Notas',
@@ -53,6 +56,7 @@ export default function Clientes() {
   const [newContacto, setNewContacto] = useState<string | null>(null)
   const [contactoForm, setContactoForm] = useState<typeof BLANK_CONTACTO>(BLANK_CONTACTO)
   const [saving, setSaving] = useState(false)
+  const [errorCliente, setErrorCliente] = useState('')
   const [search, setSearch] = useState('')
 
   async function load() {
@@ -115,13 +119,16 @@ export default function Clientes() {
   }
 
   async function saveCliente() {
+    const err = errorDatosBasicos(clienteForm)
+    if (err) { setErrorCliente(err); return }
+    setErrorCliente('')
     setSaving(true)
     if (editCliente) {
       const { error } = await supabase.from('clientes').update(clienteForm).eq('id', editCliente.id)
       if (handleSupabaseError(error, 'Clientes.saveCliente.update')) { setSaving(false); return }
       await registrarHistorial(editCliente.id, 'modificacion', {
         razon_social: editCliente.razon_social, rut: editCliente.rut, tipo: editCliente.tipo,
-        rubro: editCliente.rubro, direccion: editCliente.direccion, ciudad: editCliente.ciudad,
+        giro: editCliente.giro, rubro: editCliente.rubro, direccion: editCliente.direccion, ciudad: editCliente.ciudad,
         region: editCliente.region, contacto_nombre: editCliente.contacto_nombre,
         contacto_email: editCliente.contacto_email, contacto_fono: editCliente.contacto_fono,
         notas: editCliente.notas,
@@ -165,11 +172,11 @@ export default function Clientes() {
   }
 
   function openEditCliente(c: Cliente) {
-    setClienteForm({ razon_social:c.razon_social, rut:c.rut, tipo:c.tipo, rubro:c.rubro||'', direccion:c.direccion||'', ciudad:c.ciudad||'', region:c.region||'', contacto_nombre:c.contacto_nombre||'', contacto_email:c.contacto_email||'', contacto_fono:c.contacto_fono||'', notas:c.notas||'' })
-    setEditCliente(c); setNewCliente(false)
+    setClienteForm({ razon_social:c.razon_social, rut:c.rut, tipo:c.tipo, giro:c.giro||'', rubro:c.rubro||'', direccion:c.direccion||'', ciudad:c.ciudad||'', region:c.region||'', contacto_nombre:c.contacto_nombre||'', contacto_email:c.contacto_email||'', contacto_fono:c.contacto_fono||'', notas:c.notas||'' })
+    setEditCliente(c); setNewCliente(false); setErrorCliente('')
   }
 
-  function openNewCliente() { setClienteForm(BLANK_CLIENTE); setNewCliente(true); setEditCliente(null) }
+  function openNewCliente() { setClienteForm(BLANK_CLIENTE); setNewCliente(true); setEditCliente(null); setErrorCliente('') }
 
   function openEditContacto(c: Contacto) {
     setContactoForm({ nombre:c.nombre, cargo:c.cargo||'', email:c.email||'', fono:c.fono||'', observaciones:c.observaciones||'' })
@@ -191,6 +198,13 @@ export default function Clientes() {
     c.rut?.includes(search) ||
     c.ciudad?.toLowerCase().includes(search.toLowerCase())
   )
+
+  function campo(k: keyof typeof BLANK_CLIENTE, label: string, cls = '', placeholder = '', type = 'text') {
+    return (
+      <div className={cls}><label className="text-xs font-medium text-gray-600 block mb-1">{label}</label>
+        <input type={type} value={clienteForm[k]} placeholder={placeholder} onChange={e => setClienteForm(f => ({ ...f, [k]: e.target.value }))} className={INPUT_CLS}/></div>
+    )
+  }
 
   if (loading) return <div className="flex items-center justify-center h-full"><div className="w-8 h-8 border-2 border-crm-red border-t-transparent rounded-full animate-spin"/></div>
 
@@ -345,29 +359,41 @@ export default function Clientes() {
               <button onClick={() => { setEditCliente(null); setNewCliente(false) }} className="p-1.5 rounded hover:bg-gray-100"><X size={16}/></button>
             </div>
             <div className="px-6 py-4 space-y-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Datos obligatorios</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="sm:col-span-2"><label className="text-xs font-medium text-gray-600 block mb-1">Razón Social *</label><input value={clienteForm.razon_social} onChange={e => setClienteForm(f => ({ ...f, razon_social: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red"/></div>
-                <div><label className="text-xs font-medium text-gray-600 block mb-1">RUT *</label><input value={clienteForm.rut} onChange={e => setClienteForm(f => ({ ...f, rut: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red"/></div>
+                {campo('rut', 'RUT *', '', '76.123.456-7')}
+                {campo('giro', 'Giro *')}
+                {campo('razon_social', 'Nombre / Razón social *', 'sm:col-span-2')}
+                {campo('contacto_fono', 'Teléfono *')}
+                {campo('contacto_email', 'Correo *', '', '', 'email')}
+              </div>
+              <div className="pt-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Datos complementarios</p>
+                <p className="text-[11px] text-gray-400">Se exigen al cargar la OC en Negociación.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="text-xs font-medium text-gray-600 block mb-1">Tipo</label>
-                  <select value={clienteForm.tipo} onChange={e => setClienteForm(f => ({ ...f, tipo: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red">
-                    <option value="empresa">Empresa</option><option value="persona">Persona</option><option value="gobierno">Gobierno</option>
+                  <select value={clienteForm.tipo} onChange={e => setClienteForm(f => ({ ...f, tipo: e.target.value }))} className={INPUT_CLS}>
+                    <option value="empresa">Empresa</option><option value="persona_natural">Persona natural</option>
                   </select>
                 </div>
-                <div><label className="text-xs font-medium text-gray-600 block mb-1">Rubro</label><input value={clienteForm.rubro} onChange={e => setClienteForm(f => ({ ...f, rubro: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red"/></div>
-                <div><label className="text-xs font-medium text-gray-600 block mb-1">Ciudad</label><input value={clienteForm.ciudad} onChange={e => setClienteForm(f => ({ ...f, ciudad: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red"/></div>
-                <div className="sm:col-span-2"><label className="text-xs font-medium text-gray-600 block mb-1">Dirección</label><input value={clienteForm.direccion} onChange={e => setClienteForm(f => ({ ...f, direccion: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red"/></div>
+                {campo('rubro', 'Rubro')}
+                {campo('contacto_nombre', 'Nombre de contacto', 'sm:col-span-2')}
+                {campo('direccion', 'Dirección', 'sm:col-span-2')}
+                {campo('ciudad', 'Ciudad')}
+                <div><label className="text-xs font-medium text-gray-600 block mb-1">Región</label>
+                  <select value={clienteForm.region} onChange={e => setClienteForm(f => ({ ...f, region: e.target.value }))} className={INPUT_CLS}>
+                    <option value="">—</option>
+                    {[...new Set([...Object.keys(REGIONES_COMUNAS), clienteForm.region].filter(Boolean))].map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
               </div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-1">Contacto principal</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="sm:col-span-2"><label className="text-xs font-medium text-gray-600 block mb-1">Nombre</label><input value={clienteForm.contacto_nombre} onChange={e => setClienteForm(f => ({ ...f, contacto_nombre: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red"/></div>
-                <div><label className="text-xs font-medium text-gray-600 block mb-1">Email</label><input value={clienteForm.contacto_email} onChange={e => setClienteForm(f => ({ ...f, contacto_email: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red"/></div>
-                <div><label className="text-xs font-medium text-gray-600 block mb-1">Teléfono</label><input value={clienteForm.contacto_fono} onChange={e => setClienteForm(f => ({ ...f, contacto_fono: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red"/></div>
-              </div>
-              <div><label className="text-xs font-medium text-gray-600 block mb-1">Notas</label><textarea value={clienteForm.notas} onChange={e => setClienteForm(f => ({ ...f, notas: e.target.value }))} rows={2} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-crm-red resize-none"/></div>
+              <div><label className="text-xs font-medium text-gray-600 block mb-1">Notas</label><textarea value={clienteForm.notas} onChange={e => setClienteForm(f => ({ ...f, notas: e.target.value }))} rows={2} className={INPUT_CLS + ' resize-none'}/></div>
+              {errorCliente && <p className="text-xs text-red-600">{errorCliente}</p>}
             </div>
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0 bg-white">
               <button onClick={() => { setEditCliente(null); setNewCliente(false) }} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
-              <button onClick={saveCliente} disabled={saving || !clienteForm.razon_social.trim() || !clienteForm.rut.trim()} className="px-4 py-2 text-sm bg-crm-red text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50">{saving ? 'Guardando...' : 'Guardar'}</button>
+              <button onClick={saveCliente} disabled={saving} className="px-4 py-2 text-sm bg-crm-red text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50">{saving ? 'Guardando...' : 'Guardar'}</button>
             </div>
           </div>
         </div>

@@ -74,6 +74,8 @@ export interface AccesoInput {
   apellido: string
   email: string
   password?: string
+  /** Con password: el usuario debe cambiarla en su próximo ingreso (profiles.must_change_password). */
+  exigirCambioClave?: boolean
   activo: boolean
   isSuperAdmin: boolean
   rol: string
@@ -287,9 +289,12 @@ export function useAccesos() {
       if (error) throw new Error(error.message)
       if (data?.error) throw new Error(data.error)
       const userId = data.id as string
-      if (input.isSuperAdmin || !input.activo) {
+      if (input.isSuperAdmin || !input.activo || input.exigirCambioClave) {
         await supabase.functions.invoke('manage-access', {
-          body: { action: 'update', userId, is_super_admin: input.isSuperAdmin, activo: input.activo },
+          body: {
+            action: 'update', userId, is_super_admin: input.isSuperAdmin, activo: input.activo,
+            ...(input.exigirCambioClave ? { must_change_password: true } : {}),
+          },
         })
       }
       await syncAccesos(userId, input)
@@ -318,6 +323,13 @@ export function useAccesos() {
         })
         if (pwError) throw new Error(pwError.message)
         if (pwData?.error) throw new Error(pwData.error)
+        if (input.exigirCambioClave) {
+          const { error: flagError, data: flagData } = await supabase.functions.invoke('manage-access', {
+            body: { action: 'update', userId: id, must_change_password: true },
+          })
+          if (flagError) throw new Error(flagError.message)
+          if (flagData?.error) throw new Error(flagData.error)
+        }
       }
       await syncAccesos(id, input)
       await refetch()

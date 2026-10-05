@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { errorTamanoArchivo, nombreParaStorage } from '@/lib/storageKey'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import MontoInput from '@/components/MontoInput'
+import { CAMPOS_BASICOS, CAMPO_CLIENTE_LABEL, errorDatosBasicos } from '@/modules/crm/lib/clienteCampos'
 import type { TipoVenta, TipoSubsidioVit, ZonaTermicaVit, TipologiaVitPrecio } from '@/modules/crm/types/database'
 
 interface Cliente { id: string; razon_social: string }
@@ -106,7 +107,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [showNuevoCliente, setShowNuevoCliente] = useState(false)
-  const [nuevoCliente, setNuevoCliente] = useState({ razon_social: '', rut: '', rubro: '' })
+  const [nuevoCliente, setNuevoCliente] = useState({ rut: '', razon_social: '', giro: '', contacto_fono: '', contacto_email: '' })
   const [creandoCliente, setCreandoCliente] = useState(false)
   const [errorCliente, setErrorCliente] = useState('')
 
@@ -146,20 +147,22 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
   const totalClp = totalUf * valorUfNum
 
   async function crearClienteInline() {
-    if (!nuevoCliente.razon_social.trim()) { setErrorCliente('La razón social es requerida'); return }
-    if (!nuevoCliente.rut.trim()) { setErrorCliente('El RUT es requerido'); return }
+    const errBasicos = errorDatosBasicos(nuevoCliente)
+    if (errBasicos) { setErrorCliente(errBasicos); return }
     setCreandoCliente(true); setErrorCliente('')
     const { data, error: err } = await supabase.from('clientes').insert({
       razon_social: nuevoCliente.razon_social.trim(),
       rut: nuevoCliente.rut.trim(),
-      rubro: nuevoCliente.rubro.trim() || null,
+      giro: nuevoCliente.giro.trim(),
+      contacto_fono: nuevoCliente.contacto_fono.trim(),
+      contacto_email: nuevoCliente.contacto_email.trim(),
       creado_por: profile?.id ?? null,
     }).select('id,razon_social').single()
     if (err) { setErrorCliente(err.message); setCreandoCliente(false); return }
     const nuevo = data as Cliente
     setClientes(cs => [...cs, nuevo].sort((a, b) => a.razon_social.localeCompare(b.razon_social)))
     setForm(f => ({ ...f, cliente_id: nuevo.id }))
-    setNuevoCliente({ razon_social: '', rut: '', rubro: '' })
+    setNuevoCliente({ rut: '', razon_social: '', giro: '', contacto_fono: '', contacto_email: '' })
     setShowNuevoCliente(false); setCreandoCliente(false)
   }
 
@@ -300,13 +303,13 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
               </div>
               {showNuevoCliente ? (
                 <div className="bg-gray-50 rounded-lg p-3 space-y-2 mb-2">
-                  <input value={nuevoCliente.razon_social} onChange={e => setNuevoCliente(c=>({...c,razon_social:e.target.value}))}
-                    placeholder="Razón social *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <input value={nuevoCliente.rut} onChange={e => setNuevoCliente(c=>({...c,rut:e.target.value}))}
-                      placeholder="RUT *" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
-                    <input value={nuevoCliente.rubro} onChange={e => setNuevoCliente(c=>({...c,rubro:e.target.value}))}
-                      placeholder="Rubro" className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900" />
+                    {CAMPOS_BASICOS.map(k => (
+                      <input key={k} type={k === 'contacto_email' ? 'email' : 'text'} value={nuevoCliente[k as keyof typeof nuevoCliente]}
+                        onChange={e => setNuevoCliente(c => ({ ...c, [k]: e.target.value }))}
+                        placeholder={CAMPO_CLIENTE_LABEL[k] + ' *'}
+                        className={'w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900' + (k === 'razon_social' ? ' sm:col-span-2' : '')} />
+                    ))}
                   </div>
                   {errorCliente && <p className="text-xs text-red-600">{errorCliente}</p>}
                   <button type="button" onClick={crearClienteInline} disabled={creandoCliente}

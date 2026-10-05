@@ -16,6 +16,10 @@ import type { Oportunidad, Profile, PerfilBasico, OportunidadHistorialEtapa, Opo
 import { familiasVisibles, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
 import { notificar, ROLES_GERENCIA, ROLES_GERENCIA_ADMIN } from '@/modules/crm/lib/notificaciones'
 import { HITOS_VIT, hitoVitCumplido } from '@/modules/crm/lib/hitosVit'
+import { CAMPOS_BASICOS, CAMPOS_OC, CAMPO_CLIENTE_LABEL, camposFaltantes, esEmailValido, type CampoCliente } from '@/modules/crm/lib/clienteCampos'
+
+const CAMPOS_CLIENTE_OC: CampoCliente[] = [...CAMPOS_BASICOS, ...CAMPOS_OC]
+type ClienteOc = { id: string } & Record<CampoCliente, string | null>
 
 const REGIONES = Object.keys(REGIONES_COMUNAS)
 
@@ -365,6 +369,10 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   const [ocForm, setOcForm] = useState({ numero_oc: '', monto_oc: '', fecha_oc: '' })
   const [ocFile, setOcFile] = useState<File | null>(null)
   const [savingOc, setSavingOc] = useState(false)
+  // Cliente para la OC: al guardarla se exige la ficha completa (ver lib/clienteCampos).
+  const [clienteOc, setClienteOc] = useState<ClienteOc | null>(null)
+  const [clienteOcForm, setClienteOcForm] = useState<Partial<Record<CampoCliente, string>>>({})
+  const [clientesLista, setClientesLista] = useState<{ id: string; razon_social: string; rut: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -472,6 +480,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
     const c = cierreRes.data as Cierre | null
     setCierre(c)
     setOcForm({ numero_oc: c?.numero_oc ?? '', monto_oc: c?.monto_oc != null ? String(c.monto_oc) : '', fecha_oc: c?.fecha_oc ?? '' })
+    if (oportunidad.etapa_actual === 'Negociación') await loadClienteOc(oportunidad.cliente_id)
     setLoading(false)
   }
 
@@ -657,8 +666,41 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
     await loadAll()
   }
 
+  async function loadClienteOc(clienteId: string | null) {
+    setClienteOcForm({})
+    if (!clienteId) {
+      setClienteOc(null)
+      const { data, error } = await supabase.from('clientes').select('id,razon_social,rut').order('razon_social')
+      handleSupabaseError(error, 'OportunidadDrawer.loadClientesLista')
+      setClientesLista(data ?? [])
+      return
+    }
+    const { data, error } = await supabase.from('clientes').select('id,' + CAMPOS_CLIENTE_OC.join(',')).eq('id', clienteId).maybeSingle()
+    handleSupabaseError(error, 'OportunidadDrawer.loadClienteOc')
+    setClienteOc((data as unknown as ClienteOc | null) ?? null)
+  }
+
+  const faltantesClienteOc = clienteOc ? camposFaltantes(clienteOc, CAMPOS_CLIENTE_OC) : []
+
+  async function completarClienteOc(): Promise<boolean> {
+    if (!clienteOc) { toast.error('Selecciona el cliente de la oportunidad antes de guardar la OC'); return false }
+    const datos = Object.fromEntries(faltantesClienteOc.map(k => [k, (clienteOcForm[k] ?? '').trim()]))
+    const siguen = camposFaltantes(datos, faltantesClienteOc)
+    if (siguen.length) { toast.error('Completa los datos del cliente: ' + siguen.map(k => CAMPO_CLIENTE_LABEL[k]).join(', ')); return false }
+    if (datos.contacto_email && !esEmailValido(datos.contacto_email)) { toast.error('El correo no es válido'); return false }
+    if (!faltantesClienteOc.length && opp.cliente_id === clienteOc.id) return true
+    const { error } = await supabase.rpc('crm_completar_cliente_oc', {
+      p_oportunidad_id: opp.id, p_cliente_id: clienteOc.id, p_datos: datos,
+    })
+    if (handleSupabaseError(error, 'OportunidadDrawer.completarClienteOc')) return false
+    setOpp(o => ({ ...o, cliente_id: clienteOc.id }))
+    await loadClienteOc(clienteOc.id)
+    return true
+  }
+
   async function guardarOc() {
     setSavingOc(true)
+    if (!(await completarClienteOc())) { setSavingOc(false); return }
     let storagePath = cierre?.storage_oc_path ?? null
     if (ocFile) {
       const path = opp.id + '/oc-' + Date.now() + '-' + nombreParaStorage(ocFile.name)
@@ -1546,6 +1588,49 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
         {ta('motivo_perdida','Motivo de pérdida (si aplica)','Solo relevante si la oportunidad se marca como Perdido')}
 
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-2">Orden de Compra</p>
+        <div className="space-y-2 bg-gray-50 rounded-lg p-3">
+          <p className="text-xs font-semibold text-gray-600">Datos del cliente *</p>
+          {!clienteOc && (
+            <select value="" onChange={ev => loadClienteOc(ev.target.value || null)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-crm-red">
+              <option value="">Selecciona el cliente…</option>
+              {clientesLista.map(c => <option key={c.id} value={c.id}>{c.razon_social} · {c.rut}</option>)}
+            </select>
+          )}
+          {clienteOc && (
+            <p className="text-xs text-gray-700">
+              {clienteOc.razon_social} · {clienteOc.rut}
+              {!opp.cliente_id && (
+                <button type="button" onClick={() => loadClienteOc(null)} className="ml-2 text-crm-red hover:underline">Cambiar</button>
+              )}
+            </p>
+          )}
+          {clienteOc && faltantesClienteOc.length === 0 && (
+            <p className="text-xs text-green-700">Ficha del cliente completa.</p>
+          )}
+          {clienteOc && faltantesClienteOc.length > 0 && (
+            <>
+              <p className="text-[11px] text-gray-500">Para guardar la OC hay que completar la ficha del cliente:</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {faltantesClienteOc.map(k => (
+                  <div key={k}><label className="block text-xs font-medium text-gray-600 mb-1">{CAMPO_CLIENTE_LABEL[k]} *</label>
+                    {k === 'region' ? (
+                      <select value={clienteOcForm.region ?? ''} onChange={ev => setClienteOcForm(f => ({ ...f, region: ev.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-crm-red">
+                        <option value="">—</option>
+                        {Object.keys(REGIONES_COMUNAS).map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    ) : (
+                      <input type={k === 'contacto_email' ? 'email' : 'text'} value={clienteOcForm[k] ?? ''}
+                        onChange={ev => setClienteOcForm(f => ({ ...f, [k]: ev.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-crm-red" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         <div className="space-y-2">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">PDF de la OC</label>

@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'update') {
-      const { userId, nombre, apellido, email, activo, is_super_admin } = body
+      const { userId, nombre, apellido, email, activo, is_super_admin, must_change_password } = body
       if (!userId) return json({ error: 'Falta userId' }, 400)
 
       const patch: Record<string, unknown> = {}
@@ -74,6 +74,7 @@ Deno.serve(async (req) => {
       if (email !== undefined) patch.email = email
       if (activo !== undefined) patch.activo = activo
       if (is_super_admin !== undefined) patch.is_super_admin = is_super_admin
+      if (must_change_password !== undefined) patch.must_change_password = must_change_password
 
       const { error } = await admin.from('profiles').update(patch).eq('id', userId)
       if (error) return json({ error: error.message }, 400)
