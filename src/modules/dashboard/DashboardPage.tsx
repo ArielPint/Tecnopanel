@@ -80,6 +80,10 @@ export default function DashboardPage() {
     return <Navigate to="/crm" replace />
   }
 
+  if (acceso.escenario === 'solo_sip') {
+    return <Navigate to="/produccion" replace />
+  }
+
   if (acceso.escenario === 'solo_proyecto') {
     // Si tiene más de un proyecto obra (futuro, hoy siempre 1), manda al selector /proyectos en vez de adivinar cuál.
     if (!soloProyectoSlug) return <Navigate to="/proyectos" replace />
@@ -127,13 +131,25 @@ export default function DashboardPage() {
             <ArrowRight className="h-4 w-4" />
           </Link>
         ))}
-        <Link
-          to="/crm"
-          className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
-        >
-          CRM Tecnopanel
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+        {/* Con Producción SIP el selector ya no implica CRM: se puede llegar aquí con obra + SIP */}
+        {acceso.tieneCrm && (
+          <Link
+            to="/crm"
+            className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
+          >
+            CRM Tecnopanel
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        )}
+        {acceso.tieneSip && (
+          <Link
+            to="/produccion"
+            className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
+          >
+            Producción Paneles SIP
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        )}
       </div>
     )
   }

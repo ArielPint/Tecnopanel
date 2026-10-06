@@ -63,7 +63,7 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
   // El enlace al portal se muestra a cualquiera que realmente tenga acceso al hub
   // (algun proyecto, Gestion o admin), no solo a rol='admin'.
   const acceso = useAccesoUsuario()
-  const tienePortal = acceso.isAdmin || acceso.tieneProyecto || acceso.tieneGestion
+  const tienePortal = acceso.isAdmin || acceso.tieneProyecto || acceso.tieneGestion || acceso.tieneSip
   const rol = profile?.rol ?? ''
   const [changingPass, setChangingPass] = useState(false)
   const [newPass, setNewPass] = useState('')

@@ -19,6 +19,8 @@ import EstadosPagoApp from './modules/estados_pago/EstadosPagoApp'
 import SettingsApp from './modules/settings/SettingsApp'
 import GeoVictoriaPage from './modules/gestion/GeoVictoriaPage'
 import GestionApp from './modules/gestion/GestionApp'
+import SipApp from './modules/sip/SipApp'
+import SipLoginPage from './modules/sip/pages/Login'
 import { useAuthStore } from './store/authStore'
 
 export default function App() {
@@ -34,6 +36,16 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/crm/login" element={<CrmLoginPage />} />
+        {/* Portal Producción de Paneles SIP: web propia como el CRM, con su login (misma cuenta del hub) */}
+        <Route path="/produccion/login" element={<SipLoginPage />} />
+        <Route
+          path="/produccion/*"
+          element={
+            <ProtectedRoute loginPath="/produccion/login" requiere="sip">
+              <SipApp />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/crm/*"
           element={

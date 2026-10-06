@@ -1,5 +1,10 @@
 import { supabase } from './supabaseClient'
 
+/** Pseudo-proyecto ancla de los accesos del portal Producción de Paneles SIP (slug 'produccion-sip',
+ *  tipo 'sistema'). Id fijo, creado por la migración 20261006120000_produccion_sip.sql: no hace falta
+ *  consultarlo, y así el hub no se cae en una base que todavía no tiene el portal. */
+export const SIP_ANCLA_ID = '043e6b57-8c97-4eef-8bf2-53d117afc5df'
+
 const cache = new Map<string, Promise<string>>()
 
 export function getProyectoId(slug: string): Promise<string> {

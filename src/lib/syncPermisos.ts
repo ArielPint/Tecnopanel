@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient'
-import { getProyectoId } from './proyectoIds'
+import { getProyectoId, SIP_ANCLA_ID } from './proyectoIds'
 
 async function reemplazarPermisos(userId: string, proyectoId: string, filas: { modulo_key: string; accion: string }[]) {
   const { error: delErr } = await supabase.from('permisos').delete().eq('user_id', userId).eq('proyecto_id', proyectoId)
@@ -76,6 +76,21 @@ export async function syncPermisosProyecto(
 export async function syncPermisosGestion(userId: string, ver: boolean) {
   const proyectoId = await getProyectoId('sistema')
   await reemplazarPermisos(userId, proyectoId, ver ? [{ modulo_key: 'gestion', accion: 'ver' }] : [])
+}
+
+/**
+ * Portal Producción de Paneles SIP: transversal, sobre su propio ancla (SIP_ANCLA_ID). Un permiso por
+ * módulo, como el CRM: la clave del formulario es "<modulo>:<accion>" y en la base va como
+ * modulo_key 'pnl:<modulo>'.
+ */
+export async function syncPermisosSip(userId: string, acciones: Record<string, boolean>) {
+  const filas = Object.entries(acciones)
+    .filter(([, on]) => on)
+    .map(([clave]) => {
+      const separador = clave.lastIndexOf(':')
+      return { modulo_key: `pnl:${clave.slice(0, separador)}`, accion: clave.slice(separador + 1) }
+    })
+  await reemplazarPermisos(userId, SIP_ANCLA_ID, filas)
 }
 
 /** Rol de negocio por proyecto (catálogo abierto, ver Fase E1) — reemplaza el 'full_access' decorativo. */

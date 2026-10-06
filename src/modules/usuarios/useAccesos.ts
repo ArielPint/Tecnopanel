@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { getProyectoId } from '@/lib/proyectoIds'
-import { syncPermisosCrm, syncPermisosGestion, syncPermisosProyecto, syncRolNegocio } from '@/lib/syncPermisos'
+import { getProyectoId, SIP_ANCLA_ID } from '@/lib/proyectoIds'
+import { syncPermisosCrm, syncPermisosGestion, syncPermisosProyecto, syncPermisosSip, syncRolNegocio } from '@/lib/syncPermisos'
+import { normalizarAccionesSip } from '@/modules/sip/lib/accesos'
 
 export interface ProyectoObra {
   id: string
@@ -60,6 +61,8 @@ export interface Acceso {
   crmAcciones: Record<string, boolean>
   /** Acceso al módulo Gestión (§3.6) — permisos(modulo_key='gestion', accion='ver'), no es un proyecto. */
   gestionVer: boolean
+  /** Portal Producción SIP: clave "<modulo>:<accion>" (en la base, modulo_key 'pnl:<modulo>' sobre SIP_ANCLA_ID). */
+  sipAcciones: Record<string, boolean>
   /** Grupo fijo (profiles.grupo_id) para acceso restringido a Solicitudes — un único grupo, no por proyecto. */
   grupoId: number | null
   /** Ficha de subcontratista vinculada — si tiene valor, este usuario es el portal de ese subcontratista. */
@@ -84,6 +87,7 @@ export interface AccesoInput {
   crmModulos: string[]
   crmAcciones: Record<string, boolean>
   gestionVer: boolean
+  sipAcciones: Record<string, boolean>
   grupoId: number | null
   subcontratistaId: string | null
   sucursal: string | null
@@ -127,6 +131,7 @@ async function syncAccesos(userId: string, input: AccesoInput) {
     ...syncsProyectos,
     syncPermisosCrm(userId, input.crmModulos, input.crmAcciones),
     syncPermisosGestion(userId, input.gestionVer),
+    syncPermisosSip(userId, normalizarAccionesSip(input.sipAcciones)),
     input.crmRolNegocio ? syncRolNegocio(userId, crmId, input.crmRolNegocio) : Promise.resolve(),
   ])
   const { error } = await supabase.from('profiles').update({ rol: input.rol, grupo_id: input.grupoId, sucursal: input.sucursal }).eq('id', userId)
@@ -253,6 +258,12 @@ export function useAccesos() {
         if (x.proyecto_id === crmId && x.accion !== 'ver') crmAcciones[`${x.modulo_key}:${x.accion}`] = true
       }
       const gestionVer = misPermisos.some((x) => x.proyecto_id === sistemaId && x.modulo_key === 'gestion' && x.accion === 'ver')
+      // "<modulo>:<accion>" a partir de modulo_key 'pnl:<modulo>' (ver syncPermisosSip)
+      const sipAcciones = Object.fromEntries(
+        misPermisos
+          .filter((x) => x.proyecto_id === SIP_ANCLA_ID && x.modulo_key.startsWith('pnl:'))
+          .map((x) => [`${x.modulo_key.slice(4)}:${x.accion}`, true]),
+      )
       return {
         id: p.id,
         nombre: p.nombre,
@@ -266,6 +277,7 @@ export function useAccesos() {
         crmModulos,
         crmAcciones,
         gestionVer,
+        sipAcciones,
         grupoId: p.grupo_id,
         sucursal: p.sucursal ?? null,
         subcontratistaId: (subcontratistas ?? []).find((s) => s.user_id === p.id)?.id ?? null,

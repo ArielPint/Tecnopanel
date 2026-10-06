@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/modules/financiero/c
 import { PAGE_MAP, FINANCIERO_EDIT_GROUPS, ESTADOS_PAGO_ACCION_GROUPS, ESTADOS_PAGO_INGRESOS_ACCION_GROUPS, ROLES } from '@/modules/settings/lib/pageMap'
 import { SUCURSALES } from '@/lib/lineasNegocio'
 import { ROL_META, MODULOS as CRM_MODULOS, CRM_ACCION_GROUPS } from '@/modules/crm/lib/roles'
+import { SIP_MODULOS, claveAcceso as claveSip, normalizarAccionesSip } from '@/modules/sip/lib/accesos'
 import { proyectoAccesoVacio, type Acceso, type AccesoInput, type ProyectoAcceso, type ProyectoObra } from './useAccesos'
 
 const OBRA_MODULOS = Object.keys(PAGE_MAP)
@@ -41,6 +42,7 @@ function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: Proye
     crmModulos: acceso?.crmModulos ?? [],
     crmAcciones: acceso?.crmAcciones ?? {},
     gestionVer: acceso?.gestionVer ?? false,
+    sipAcciones: acceso?.sipAcciones ?? {},
     grupoId: acceso?.grupoId ?? null,
     subcontratistaId: acceso?.subcontratistaId ?? null,
     sucursal: acceso?.sucursal ?? null,
@@ -151,10 +153,11 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
         </DialogHeader>
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <Tabs defaultValue="cuenta">
-            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
+            <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
               <TabsTrigger value="cuenta">Cuenta</TabsTrigger>
               <TabsTrigger value="proyecto">Accesos Proyecto</TabsTrigger>
               <TabsTrigger value="crm">Accesos CRM</TabsTrigger>
+              <TabsTrigger value="sip">Producción SIP</TabsTrigger>
             </TabsList>
 
             <TabsContent value="cuenta" className="flex flex-col gap-3 pt-2">
@@ -489,6 +492,58 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                     )}
                   </div>
                 ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="sip" className="flex flex-col gap-3 pt-2">
+              <p className="text-[11px] text-muted-foreground">
+                Portal Producción de Paneles SIP (/produccion): transversal a la empresa, no depende de proyectos. Un acceso
+                por módulo; con cualquiera de ellos la persona entra al portal y ve el Dashboard. Los admin ya tienen todo.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Label>Módulos con acceso</Label>
+                {SIP_MODULOS.map((m) => {
+                  const ver = claveSip(m.key, 'ver')
+                  const activo = form.sipAcciones[ver] ?? false
+                  return (
+                    <div key={m.key} className="flex flex-col gap-1.5">
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={activo}
+                          onCheckedChange={(v) =>
+                            setForm((f) => {
+                              // Quitar el módulo quita todas sus acciones
+                              if (v) return { ...f, sipAcciones: { ...f.sipAcciones, [ver]: true } }
+                              const sin = Object.fromEntries(Object.entries(f.sipAcciones).filter(([k]) => !k.startsWith(`${m.key}:`)))
+                              return { ...f, sipAcciones: sin }
+                            })
+                          }
+                        />
+                        {m.label}
+                      </label>
+                      {activo && m.acciones.length > 1 && (
+                        <div className="ml-6 flex flex-col gap-1 rounded-md border p-2">
+                          {m.acciones
+                            .filter((a) => a.key !== 'ver')
+                            .map((a) => {
+                              const key = claveSip(m.key, a.key)
+                              return (
+                                <label key={a.key} className="flex items-center gap-1.5 text-xs">
+                                  <Checkbox
+                                    checked={form.sipAcciones[key] ?? false}
+                                    onCheckedChange={(v) =>
+                                      setForm((f) => ({ ...f, sipAcciones: normalizarAccionesSip({ ...f.sipAcciones, [key]: !!v }) }))
+                                    }
+                                  />
+                                  {a.label}
+                                </label>
+                              )
+                            })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </TabsContent>
           </Tabs>
