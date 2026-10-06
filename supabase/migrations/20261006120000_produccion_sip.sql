@@ -34,7 +34,7 @@ values ('043e6b57-8c97-4eef-8bf2-53d117afc5df', 'Producción Paneles SIP (sistem
 on conflict (id) do update set nombre = excluded.nombre, descripcion = excluded.descripcion;
 
 create or replace function public.pnl_ancla_id()
-returns uuid language sql immutable as $$
+returns uuid language sql immutable set search_path = public as $$
   select '043e6b57-8c97-4eef-8bf2-53d117afc5df'::uuid
 $$;
 
@@ -242,6 +242,8 @@ end $$;
 drop trigger if exists pnl_lineas_consumos on public.pnl_lineas;
 create trigger pnl_lineas_consumos after insert or update of panel_id on public.pnl_lineas
   for each row execute function public.pnl_linea_consumos();
+-- funcion de trigger: no se llama por RPC (el trigger se dispara igual)
+revoke execute on function public.pnl_linea_consumos() from public, anon, authenticated;
 
 
 -- ---------------------------------------------------------------- vistas (con la RLS de quien consulta)
