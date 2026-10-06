@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/store/authStore'
-import { getProyectoId } from '@/lib/proyectoIds'
+import { getProyectoId, SIP_ANCLA_ID } from '@/lib/proyectoIds'
 
-export type Escenario = 'hub_completo' | 'solo_proyecto' | 'solo_crm' | 'selector_portales' | 'sin_acceso'
+export type Escenario = 'hub_completo' | 'solo_proyecto' | 'solo_crm' | 'solo_sip' | 'selector_portales' | 'sin_acceso'
 
 export interface ProyectoObra {
   id: string
@@ -21,6 +21,8 @@ interface AccesoUsuario {
   tieneProyecto: boolean
   /** permisos(modulo_key='gestion') sobre el proyecto pseudo `tipo='sistema'` — ver §3.6/syncPermisosGestion. */
   tieneGestion: boolean
+  /** Cualquier fila en `permisos` sobre el ancla SIP (SIP_ANCLA_ID): portal Producción de Paneles SIP. */
+  tieneSip: boolean
   /** Proyectos tipo obra con permiso real — Fase F: antes era un boolean fijo a La Chacra, ahora N proyectos. */
   proyectosObra: ProyectoObra[]
 }
@@ -33,6 +35,7 @@ const ESTADO_INICIAL: AccesoUsuario = {
   tieneCrm: false,
   tieneProyecto: false,
   tieneGestion: false,
+  tieneSip: false,
   proyectosObra: [],
 }
 
@@ -49,7 +52,7 @@ export function useAccesoUsuario(): AccesoUsuario {
     if (authLoading) return
 
     if (!userId) {
-      setEstado({ loading: false, escenario: null, isAdmin: false, isSuperAdmin: false, tieneCrm: false, tieneProyecto: false, tieneGestion: false, proyectosObra: [] })
+      setEstado({ ...ESTADO_INICIAL, loading: false })
       return
     }
 
@@ -80,7 +83,7 @@ export function useAccesoUsuario(): AccesoUsuario {
         if (cancelado) return
 
         if (!profile || profile.activo === false) {
-          setEstado({ loading: false, escenario: 'sin_acceso', isAdmin: false, isSuperAdmin: false, tieneCrm: false, tieneProyecto: false, tieneGestion: false, proyectosObra: [] })
+          setEstado({ ...ESTADO_INICIAL, loading: false, escenario: 'sin_acceso' })
           return
         }
         const isAdmin = profile.rol === 'admin'
@@ -88,21 +91,25 @@ export function useAccesoUsuario(): AccesoUsuario {
         const proyectosConAcceso = new Set((permisos ?? []).map((p) => p.proyecto_id))
         const tieneCrm = isAdmin || proyectosConAcceso.has(crmId)
         const tieneGestion = isAdmin || proyectosConAcceso.has(sistemaId)
+        const tieneSip = isAdmin || isSuperAdmin || proyectosConAcceso.has(SIP_ANCLA_ID)
         const proyectosObra = (obras ?? []).filter((p) => isAdmin || proyectosConAcceso.has(p.id))
         const tieneProyecto = proyectosObra.length > 0
 
         if (isAdmin) {
-          setEstado({ loading: false, escenario: 'hub_completo', isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, proyectosObra })
+          setEstado({ loading: false, escenario: 'hub_completo', isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, tieneSip, proyectosObra })
           return
         }
 
+        // Producción SIP cuenta como un portal más: con otro acceso va al selector; solo, aterriza en /produccion
+        const portales = [tieneCrm, tieneProyecto, tieneSip].filter(Boolean).length
         let escenario: Escenario
-        if (tieneCrm && tieneProyecto) escenario = 'selector_portales'
+        if (portales > 1) escenario = 'selector_portales'
         else if (tieneCrm) escenario = 'solo_crm'
         else if (tieneProyecto) escenario = 'solo_proyecto'
+        else if (tieneSip) escenario = 'solo_sip'
         else escenario = 'sin_acceso'
 
-        setEstado({ loading: false, escenario, isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, proyectosObra })
+        setEstado({ loading: false, escenario, isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, tieneSip, proyectosObra })
       } catch (err) {
         if (cancelado) return
         // Mismo race de token que getProyectoId (ver comentario ahí): profiles/permisos no
@@ -114,7 +121,7 @@ export function useAccesoUsuario(): AccesoUsuario {
           return
         }
         console.error('useAccesoUsuario: error al resolver acceso', err)
-        setEstado({ loading: false, escenario: 'sin_acceso', isAdmin: false, isSuperAdmin: false, tieneCrm: false, tieneProyecto: false, tieneGestion: false, proyectosObra: [] })
+        setEstado({ ...ESTADO_INICIAL, loading: false, escenario: 'sin_acceso' })
       }
     }
 

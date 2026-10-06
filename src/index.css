@@ -40,9 +40,13 @@
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 232 15% 11%;
     --sidebar-border: 240 19% 91%;
+
+    /* Controles nativos (lista de <select>, calendario de <input type="date">, scroll) en el tema del hub */
+    color-scheme: light;
   }
 
   .dark {
+    color-scheme: dark;
     --background: 225 21% 7%;
     --foreground: 233 26% 93%;
     --card: 226 20% 13%;
@@ -86,6 +90,14 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased transition-colors;
+  }
+
+  /* La lista abierta de un <select> nativo la dibuja el navegador: con fondo transparente en el
+     control, en modo oscuro quedaba texto claro sobre la lista blanca y no se leía nada. */
+  select option,
+  select optgroup {
+    background-color: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
   }
 
   h1, h2, h3 {

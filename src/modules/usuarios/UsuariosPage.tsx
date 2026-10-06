@@ -2,6 +2,9 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAccesos, type Acceso } from './useAccesos'
 import FormularioAcceso from './FormularioAcceso'
+
+/** Módulos de Producción SIP con acceso: claves '<modulo>:ver' marcadas */
+const nSip = (a: Acceso) => Object.entries(a.sipAcciones).filter(([k, v]) => v && k.endsWith(':ver')).length
 import { Card, CardContent } from '@/modules/financiero/components/ui/card'
 import { Badge } from '@/modules/financiero/components/ui/badge'
 import { Button } from '@/modules/financiero/components/ui/button'
@@ -116,8 +119,10 @@ export default function UsuariosPage() {
                           ) : null
                         })}
                         {a.crmModulos.length > 0 && <Badge variant="outline">CRM ({a.crmModulos.length})</Badge>}
+                        {nSip(a) > 0 && <Badge variant="outline">Producción SIP ({nSip(a)})</Badge>}
                         {proyectosObra.every((proy) => (a.proyectos[proy.id]?.modulos.length ?? 0) === 0) &&
-                          a.crmModulos.length === 0 && <span className="text-sm text-muted-foreground">Sin accesos</span>}
+                          a.crmModulos.length === 0 &&
+                          nSip(a) === 0 && <span className="text-sm text-muted-foreground">Sin accesos</span>}
                       </div>
                     </TableCell>
                     <TableCell>

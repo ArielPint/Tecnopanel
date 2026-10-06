@@ -5,6 +5,7 @@ import {
   Building2,
   ChevronLeft,
   ClipboardList,
+  Factory,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -42,7 +43,11 @@ const navSections = [
   {
     label: 'Gestión',
     // ponytail: GeoVictoria oculto del nav hasta setear GV_APIKEY/GV_SECRET en prod — ruta sigue viva en App.tsx
-    items: [{ to: '/crm', label: 'CRM', end: false, icon: Briefcase, requiere: 'crm' }],
+    items: [
+      { to: '/crm', label: 'CRM', end: false, icon: Briefcase, requiere: 'crm' },
+      // Portal propio como el CRM (/produccion), transversal: accesos por módulo sobre el ancla SIP_ANCLA_ID.
+      { to: '/produccion', label: 'Producción Paneles SIP', end: false, icon: Factory, requiere: 'sip' },
+    ],
   },
   {
     label: 'Sistema',
@@ -60,7 +65,7 @@ const navSections = [
 // usuario puede abrir. '/proyectos' exige admin porque su ruta no trae slug.
 function useNavSections() {
   const acceso = useAccesoUsuario()
-  const ok = { admin: acceso.isAdmin, crm: acceso.tieneCrm, gestion: acceso.tieneGestion }
+  const ok = { admin: acceso.isAdmin, crm: acceso.tieneCrm, gestion: acceso.tieneGestion, sip: acceso.tieneSip }
   return navSections
     .map((s) => ({ ...s, items: s.items.filter((i) => !('requiere' in i) || ok[i.requiere as keyof typeof ok]) }))
     .filter((s) => s.items.length > 0)
