@@ -1,3 +1,4 @@
+import { Toaster } from '@/modules/financiero/components/ui/sonner'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import LogisticaLayout from './pages/LogisticaLayout'
 
@@ -27,6 +28,8 @@ export default function LogisticaApp() {
   return (
     <AuthProvider>
       <LogisticaGate />
+      {/* Sin esto ningún toast del módulo se ve (validaciones del Registro GD incluidas). */}
+      <Toaster />
     </AuthProvider>
   )
 }
