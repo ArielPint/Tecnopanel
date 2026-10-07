@@ -225,7 +225,7 @@ export default function ReporteGrupo() {
       </div>
 
       {!cargando && keys.length === 0 ? (
-        <EmptyState icon={Users} title={registros.length ? 'Sin resultados — ajustá los filtros.' : 'Sin registros.'} />
+        <EmptyState icon={Users} title={registros.length ? 'Sin resultados — ajusta los filtros.' : 'Sin registros.'} />
       ) : (
         <div className="space-y-2">
           {keys.map((key) => {

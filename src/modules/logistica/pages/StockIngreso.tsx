@@ -153,7 +153,7 @@ export default function StockIngreso() {
       </div>
 
       {!loading && stock.items.length === 0 ? (
-        <EmptyState icon={Boxes} title="Sin materiales — usá + Agregar material para comenzar" />
+        <EmptyState icon={Boxes} title="Sin materiales — usa + Agregar material para comenzar" />
       ) : (
         <div className="rounded-md border">
           <Table>

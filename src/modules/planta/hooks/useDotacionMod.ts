@@ -108,7 +108,7 @@ export function useDotacionMod() {
         // Con el mes elegido a mano manda también el año elegido; si no, el año
         // sale de la planilla y el del selector queda de último recurso.
         const anio = periodo?.mes != null ? (periodo.anio ?? d.anio ?? delNombre.anio) : (d.anio ?? delNombre.anio ?? periodo?.anio)
-        if (!anio || !mes) throw new Error(`No se pudo deducir el mes desde la hoja "${d.hoja}" — elegí mes y año a mano`)
+        if (!anio || !mes) throw new Error(`No se pudo deducir el mes desde la hoja "${d.hoja}" — elige mes y año a mano`)
         await guardar({
           anio,
           mes,

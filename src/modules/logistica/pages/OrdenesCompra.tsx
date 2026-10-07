@@ -31,7 +31,7 @@ export default function OrdenesCompra() {
       </div>
 
       {!loading && filtradas.length === 0 ? (
-        <EmptyState icon={FileText} title={search ? 'Ninguna OC coincide con la búsqueda' : 'Sin órdenes de compra. Usá + Nueva OC.'} />
+        <EmptyState icon={FileText} title={search ? 'Ninguna OC coincide con la búsqueda' : 'Sin órdenes de compra. Usa + Nueva OC.'} />
       ) : (
         <div className="rounded-md border">
           <Table>

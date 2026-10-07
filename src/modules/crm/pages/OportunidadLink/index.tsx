@@ -56,7 +56,7 @@ export default function OportunidadLink() {
       <div className="p-6">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center max-w-md mx-auto">
           <p className="text-sm font-semibold text-gray-700">No se puede abrir la oportunidad</p>
-          <p className="text-xs text-gray-500 mt-1.5">No existe o no tenés acceso a ella.</p>
+          <p className="text-xs text-gray-500 mt-1.5">No existe o no tienes acceso a ella.</p>
           <button onClick={volver} className="mt-4 px-4 py-2 text-sm bg-crm-red text-white rounded-lg font-medium hover:bg-red-700">
             Volver al dashboard
           </button>

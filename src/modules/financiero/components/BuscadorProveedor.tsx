@@ -54,7 +54,7 @@ export default function BuscadorProveedor({ rut, onRutChange, onResolved }: Busc
         <div className="flex items-end gap-2">
           <div className="flex flex-1 flex-col gap-1.5">
             <Label htmlFor="proveedor_nombre_nuevo" className="text-xs text-warning">
-              Proveedor nuevo — ingresá el nombre para guardarlo
+              Proveedor nuevo — ingresa el nombre para guardarlo
             </Label>
             <Input
               id="proveedor_nombre_nuevo"

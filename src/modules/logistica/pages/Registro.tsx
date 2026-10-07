@@ -166,7 +166,7 @@ export default function Registro() {
       </div>
 
       {!loading && !cargandoDeps && filtrados.length === 0 ? (
-        <EmptyState icon={ClipboardList} title={registros.length ? 'Sin resultados — ajustá los filtros.' : 'Sin registros. Usá + Nueva entrada.'} />
+        <EmptyState icon={ClipboardList} title={registros.length ? 'Sin resultados — ajusta los filtros.' : 'Sin registros. Usa + Nueva entrada.'} />
       ) : (
         <div className="rounded-md border">
           <Table>
