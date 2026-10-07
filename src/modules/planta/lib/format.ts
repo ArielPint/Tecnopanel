@@ -75,13 +75,22 @@ export interface MesOrden {
   lbl: string
 }
 
-// Orden de meses del proyecto: siempre Oct 2025 primero, luego 2026 completo
-export const MESES_ORDER: MesOrden[] = [
-  { n: 10, y: 2025, lbl: 'Oct 2025' }, { n: 11, y: 2025, lbl: 'Nov 2025' }, { n: 12, y: 2025, lbl: 'Dic 2025' },
-  { n: 1, y: 2026, lbl: 'Ene 2026' }, { n: 2, y: 2026, lbl: 'Feb 2026' }, { n: 3, y: 2026, lbl: 'Mar 2026' },
-  { n: 4, y: 2026, lbl: 'Abr 2026' }, { n: 5, y: 2026, lbl: 'May 2026' }, { n: 6, y: 2026, lbl: 'Jun 2026' },
-  { n: 7, y: 2026, lbl: 'Jul 2026' }, { n: 8, y: 2026, lbl: 'Ago 2026' }, { n: 9, y: 2026, lbl: 'Sep 2026' },
-]
+const MES_LBL = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+
+// Orden de meses del proyecto: desde Oct 2025 (inicio) hasta diciembre del año
+// siguiente al actual. Se genera en vez de listarse a mano: la lista fija terminaba
+// en Sep 2026 y los gráficos mensuales descartaban las compras de octubre en adelante.
+// Los gráficos solo muestran meses con datos, así que los meses futuros no aparecen.
+function mesesProyecto(hoy: Date = new Date()): MesOrden[] {
+  const out: MesOrden[] = []
+  const finY = hoy.getFullYear() + 1
+  for (let y = 2025, n = 10; y <= finY; n === 12 ? ((n = 1), y++) : n++) {
+    out.push({ n, y, lbl: `${MES_LBL[n - 1]} ${y}` })
+  }
+  return out
+}
+
+export const MESES_ORDER: MesOrden[] = mesesProyecto()
 
 // Etiqueta del mes en curso, con el mismo formato que MESES_ORDER y que el mesLbl
 // de useDespachosData ("Sep 2026"), para poder marcarlo como parcial en los
@@ -95,7 +104,8 @@ export function demoMesActual() {
   console.assert(mesActualLbl(new Date(2026, 8, 7)) === 'Sep 2026', mesActualLbl(new Date(2026, 8, 7)) ?? 'null')
   console.assert(mesActualLbl(new Date(2025, 9, 1)) === 'Oct 2025', mesActualLbl(new Date(2025, 9, 1)) ?? 'null')
   // fuera del rango del proyecto no marca nada en vez de inventar un mes
-  console.assert(mesActualLbl(new Date(2027, 0, 15)) === null, 'fuera de rango debe dar null')
+  console.assert(mesActualLbl(new Date(2025, 8, 15)) === null, 'fuera de rango debe dar null')
+  console.assert(mesActualLbl(new Date(2026, 9, 7)) === 'Oct 2026', 'debe incluir los meses posteriores a Sep 2026')
   const lbl = mesActualLbl(new Date(2026, 8, 7))
   console.assert(lbl != null && /^[A-Z][a-z]{2} \d{4}$/.test(lbl), `formato inesperado: ${lbl}`)
 }
