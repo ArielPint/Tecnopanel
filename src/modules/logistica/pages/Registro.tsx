@@ -53,7 +53,7 @@ export default function Registro() {
   const { allProducts, loading: loadingCatalogo } = useCatalogoGD()
   const { responsables, grupos, loading: loadingResp } = useResponsables()
   const { ordenes, guias, loading: loadingOC } = useOrdenesCompra()
-  const { registros, loading, error, crearMulti, actualizarSingle, eliminar } = useRegistroCompras()
+  const { registros, loading, error, crearMulti, actualizarVarios, eliminar } = useRegistroCompras()
 
   const [search, setSearch] = useState('')
   const [gdFiltro, setGdFiltro] = useState('')
@@ -159,7 +159,7 @@ export default function Registro() {
             responsables={responsables}
             gdOCMap={gdOCMap}
             onCrear={(meta, lineas, solicitudNumero) => crearMulti(meta, lineas, perfil?.name ?? 'anon', solicitudNumero)}
-            onActualizar={(id, input) => actualizarSingle(id, input, perfil?.name ?? 'anon')}
+            onActualizar={(cambios) => actualizarVarios(cambios, perfil?.name ?? 'anon')}
             onEliminar={eliminar}
           />
         )}
@@ -278,7 +278,7 @@ export default function Registro() {
           responsables={responsables}
           gdOCMap={gdOCMap}
           onCrear={(meta, lineas, solicitudNumero) => crearMulti(meta, lineas, perfil?.name ?? 'anon', solicitudNumero)}
-          onActualizar={(id, input) => actualizarSingle(id, input, perfil?.name ?? 'anon')}
+          onActualizar={(cambios) => actualizarVarios(cambios, perfil?.name ?? 'anon')}
           onEliminar={eliminar}
         />
       )}
