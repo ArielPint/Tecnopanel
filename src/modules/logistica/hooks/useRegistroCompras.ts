@@ -162,14 +162,20 @@ export function useRegistroCompras() {
 
   // Actualiza varias líneas de una guía y recarga UNA vez al final: con una recarga por línea
   // (miles de filas cada una) guardar una guía de 25 productos disparaba 25 recargas en paralelo.
-  // Devuelve cuántas líneas no se pudieron guardar.
+  // Se guardan de a LINEAS_EN_PARALELO: con las 25 a la vez el servidor propio (Caddy → PostgREST)
+  // cortaba algunas conexiones (502). Devuelve cuántas líneas no se pudieron guardar.
   const actualizarVarios = useCallback(
     async (cambios: { id: string; input: EdicionSingle }[], createdBy: string) => {
       if (!cambios.length) return 0
       const proyectoId = await getProyectoId(proyectoSlug!)
-      const resultados = await Promise.allSettled(cambios.map(({ id, input }) => actualizarLinea(proyectoId, id, input, createdBy)))
+      let fallidas = 0
+      for (let i = 0; i < cambios.length; i += LINEAS_EN_PARALELO) {
+        const tramo = cambios.slice(i, i + LINEAS_EN_PARALELO)
+        const resultados = await Promise.allSettled(tramo.map(({ id, input }) => actualizarLinea(proyectoId, id, input, createdBy)))
+        fallidas += resultados.filter((r) => r.status === 'rejected').length
+      }
       await refetch()
-      return resultados.filter((r) => r.status === 'rejected').length
+      return fallidas
     },
     [refetch, proyectoSlug],
   )
@@ -192,6 +198,8 @@ export function useRegistroCompras() {
 
   return { registros, loading, error, refetch, crearMulti, actualizarVarios, eliminar }
 }
+
+const LINEAS_EN_PARALELO = 5
 
 async function actualizarLinea(proyectoId: string, id: string, input: EdicionSingle, createdBy: string) {
   const fechaMes = new Date(input.fechaGuia + 'T12:00:00').getMonth() + 1
