@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { ClipboardList } from 'lucide-react'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/financiero/components/ui/select'
@@ -45,6 +45,9 @@ function calcularTotales(rows: RegistroCompra[], pptoMap: Record<string, number 
   return { sumCantSol, sumDevol, sumCantRec, sumVTI, vundAvg, pptoAvg, difUndAvg: vundAvg - pptoAvg, sumDifT, pctAvg, sumMontoGD, nGDs: gds.size }
 }
 
+// La tabla puede tener miles de líneas — se dibuja por tramos para no colgar el navegador.
+const PAGINA = 200
+
 export default function Registro() {
   const { perfil, puedeEditar } = useAuth()
   const { allProducts, loading: loadingCatalogo } = useCatalogoGD()
@@ -58,6 +61,11 @@ export default function Registro() {
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
   const [tipo, setTipo] = useState('')
+  const [visibles, setVisibles] = useState(PAGINA)
+  const [editando, setEditando] = useState<RegistroCompra | null>(null)
+  // Los inputs de texto responden al instante; el filtrado pesado corre en segundo plano.
+  const searchDiferido = useDeferredValue(search)
+  const gdFiltroDiferido = useDeferredValue(gdFiltro)
 
   const grupoPorResponsable = useMemo(() => {
     const map: Record<string, number | null> = {}
@@ -83,8 +91,8 @@ export default function Registro() {
   }, [allProducts])
 
   const filtrados = useMemo(() => {
-    const q = search.toLowerCase()
-    const gdQ = gdFiltro.trim().toLowerCase()
+    const q = searchDiferido.toLowerCase()
+    const gdQ = gdFiltroDiferido.trim().toLowerCase()
     return registros.filter((r) => {
       if (gdQ && !String(r.gd).toLowerCase().includes(gdQ)) return false
       if (grupoFiltro && grupoPorResponsable[r.responsable ?? ''] !== grupoFiltro) return false
@@ -97,7 +105,9 @@ export default function Registro() {
       }
       return true
     })
-  }, [registros, search, gdFiltro, grupoFiltro, grupoPorResponsable, desde, hasta, tipo])
+  }, [registros, searchDiferido, gdFiltroDiferido, grupoFiltro, grupoPorResponsable, desde, hasta, tipo])
+
+  useEffect(() => setVisibles(PAGINA), [filtrados])
 
   const montoPorGD = useMemo(() => {
     const map: Record<string, number> = {}
@@ -183,7 +193,7 @@ export default function Registro() {
             ) : (
               <>
                 <TableBody>
-                  {filtrados.map((r) => {
+                  {filtrados.slice(0, visibles).map((r) => {
                     const ppto = getPPTO(r, pptoMap)
                     const difT = calcDifT(r, ppto)
                     const pct = calcPct(r, ppto)
@@ -205,21 +215,21 @@ export default function Registro() {
                         <TableCell className="text-right font-semibold tabular-nums text-success">{formatCLP(montoPorGD[r.gd] || 0)}</TableCell>
                         {puedeEditar && (
                           <TableCell>
-                            <FormularioRegistro
-                              registro={r}
-                              registros={registros}
-                              allProducts={allProducts}
-                              responsables={responsables}
-                              gdOCMap={gdOCMap}
-                              onCrear={(meta, lineas, solicitudNumero) => crearMulti(meta, lineas, perfil?.name ?? 'anon', solicitudNumero)}
-                              onActualizar={(id, input) => actualizarSingle(id, input, perfil?.name ?? 'anon')}
-                              onEliminar={eliminar}
-                            />
+                            <Button variant="outline" size="sm" onClick={() => setEditando(r)}>Editar</Button>
                           </TableCell>
                         )}
                       </TableRow>
                     )
                   })}
+                  {filtrados.length > visibles && (
+                    <TableRow>
+                      <TableCell colSpan={13 + (puedeEditar ? 1 : 0)} className="text-center">
+                        <span className="mr-3 text-xs text-muted-foreground">Mostrando {visibles} de {filtrados.length}</span>
+                        <Button variant="outline" size="sm" onClick={() => setVisibles((v) => v + PAGINA)}>Mostrar {Math.min(PAGINA, filtrados.length - visibles)} más</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setVisibles(filtrados.length)}>Mostrar todos</Button>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
                 {filtrados.length > 0 && (
                   <tfoot>
@@ -255,6 +265,22 @@ export default function Registro() {
             )}
           </Table>
         </div>
+      )}
+
+      {editando && (
+        <FormularioRegistro
+          key={editando.id}
+          abiertoInicial
+          onCerrar={() => setEditando(null)}
+          registro={editando}
+          registros={registros}
+          allProducts={allProducts}
+          responsables={responsables}
+          gdOCMap={gdOCMap}
+          onCrear={(meta, lineas, solicitudNumero) => crearMulti(meta, lineas, perfil?.name ?? 'anon', solicitudNumero)}
+          onActualizar={(id, input) => actualizarSingle(id, input, perfil?.name ?? 'anon')}
+          onEliminar={eliminar}
+        />
       )}
     </div>
   )

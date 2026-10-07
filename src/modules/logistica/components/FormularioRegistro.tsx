@@ -15,6 +15,9 @@ import type { EdicionSingle, LineaProducto, MetaEntrada, RegistroCompra } from '
 import ProductoAutocomplete from './ProductoAutocomplete'
 
 const MES_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+// Una guía de despacho admite entre 20 y 25 productos según el caso — se toma el tope (25);
+// si vienen más, van en otra guía.
+const MAX_PRODUCTOS_GUIA = 25
 
 interface Props {
   registro?: RegistroCompra
@@ -25,6 +28,10 @@ interface Props {
   onCrear: (meta: MetaEntrada, lineas: LineaProducto[], solicitudNumero: number | null) => Promise<void>
   onActualizar: (id: string, input: EdicionSingle) => Promise<void>
   onEliminar: (id: string) => Promise<void>
+  // Modo "abierto desde afuera": la tabla monta UN solo formulario de edición para
+  // la fila clickeada (en vez de uno por fila) — se abre al montar y avisa al cerrar.
+  abiertoInicial?: boolean
+  onCerrar?: () => void
 }
 
 // Línea del formulario — cuando trae `id` es una línea que ya existe en la BD
@@ -65,9 +72,14 @@ function montoLinea(l: LineaEditable) {
   return cs > 0 && dv > 0 ? (vt * (cs - dv)) / cs : vt
 }
 
-export default function FormularioRegistro({ registro, registros, allProducts, responsables, gdOCMap, onCrear, onActualizar, onEliminar }: Props) {
+export default function FormularioRegistro({ registro, registros, allProducts, responsables, gdOCMap, onCrear, onActualizar, onEliminar, abiertoInicial, onCerrar }: Props) {
   const esEdicion = !!registro
-  const [open, setOpen] = useState(false)
+  const [open, setOpenState] = useState(!!abiertoInicial)
+
+  function setOpen(v: boolean) {
+    setOpenState(v)
+    if (!v) onCerrar?.()
+  }
   const [enviando, setEnviando] = useState(false)
 
   const [fechaGuia, setFechaGuia] = useState(registro?.fecha_guia ?? hoy())
@@ -76,7 +88,7 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
   const [obs, setObs] = useState(registro?.obs_modulo ?? '')
   const [responsable, setResponsable] = useState(registro?.responsable ?? '')
 
-  const [lineas, setLineas] = useState<LineaEditable[]>([lineaVacia()])
+  const [lineas, setLineas] = useState<LineaEditable[]>(() => (abiertoInicial && registro ? lineasDeGuia(registro) : [lineaVacia()]))
   const [idsEliminados, setIdsEliminados] = useState<string[]>([])
 
   // Solo aplica a "+ Nueva entrada" (crear una guía desde cero)
@@ -100,15 +112,19 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
 
   // Trae todas las líneas de la guía del registro clickeado — editar una línea
   // edita la guía completa, no solo esa línea.
+  function lineasDeGuia(reg: RegistroCompra) {
+    const lineasGuia = registros.filter((r) => r.gd === reg.gd).map((r) => lineaDesdeRegistro(r, allProducts))
+    return lineasGuia.length ? lineasGuia : [lineaVacia()]
+  }
+
   function cargarGuiaCompleta() {
     if (!registro) return
-    const lineasGuia = registros.filter((r) => r.gd === registro.gd).map((r) => lineaDesdeRegistro(r, allProducts))
     setFechaGuia(registro.fecha_guia ?? hoy())
     setFechaSol(registro.fecha_sol ?? hoy())
     setGd(registro.gd)
     setObs(registro.obs_modulo ?? '')
     setResponsable(registro.responsable ?? '')
-    setLineas(lineasGuia.length ? lineasGuia : [lineaVacia()])
+    setLineas(lineasDeGuia(registro))
     setIdsEliminados([])
   }
 
@@ -156,7 +172,13 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
         setSolMsg({ text: 'No se encontró esa solicitud.', ok: false })
         return
       }
-      if (data.estado === 'usada' && !confirm(`La solicitud N° ${numero} ya fue usada en un Registro GD anteriormente. ¿Cargarla de todas formas?`)) {
+      // Lo ya cargado de esta solicitud en guías anteriores, por código.
+      const previas = registros.filter((r) => r.solicitud_numero === numero)
+      const gdsPrevias = [...new Set(previas.map((r) => r.gd))]
+      const yaCargado: Record<string, number> = {}
+      for (const r of previas) yaCargado[normCod(r.codigo)] = (yaCargado[normCod(r.codigo)] || 0) + (r.cantidad_sol || 0)
+      // Guías anteriores a que existiera el vínculo: no hay cómo descontar, se avisa.
+      if (data.estado === 'usada' && !gdsPrevias.length && !confirm(`La solicitud N° ${numero} ya fue usada en un Registro GD anteriormente (sin detalle de qué guía). ¿Cargarla completa de todas formas?`)) {
         setSolMsg(null)
         return
       }
@@ -165,23 +187,41 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
       setObs(data.observacion ?? '')
       if (respNombre) setResponsable(respNombre)
       const items = (data.items ?? []) as { codigo: string; descripcion?: string; unidad?: string; cantidad?: number; cantidad_real?: number }[]
-      const nuevasLineas: LineaEditable[] = items.map((it) => {
-        const prod = allProducts.find((p) => normCod(p.codigo) === normCod(it.codigo))
+      const pendientes: LineaEditable[] = []
+      for (const it of items) {
+        const cod = normCod(it.codigo)
         const cantReal = it.cantidad_real ?? it.cantidad ?? 0
-        return {
+        // Un mismo código puede venir en más de una fila de la solicitud: se descuenta en orden.
+        const descontar = Math.min(cantReal, yaCargado[cod] || 0)
+        yaCargado[cod] = (yaCargado[cod] || 0) - descontar
+        const falta = cantReal - descontar
+        if (falta <= 0) continue
+        const prod = allProducts.find((p) => normCod(p.codigo) === cod)
+        pendientes.push({
           codigo: it.codigo,
           descripcion: prod?.descripcion ?? it.descripcion ?? '',
           unidad: prod?.unidad ?? it.unidad ?? '',
           tipo_producto: '',
           ppto: prod?.ppto ?? 0,
-          cantidad_sol: cantReal,
+          cantidad_sol: falta,
           devolucion: 0,
           valor_total_item: 0,
-        }
-      })
-      setLineas(nuevasLineas.length ? nuevasLineas : [lineaVacia()])
+        })
+      }
+      const enGuias = gdsPrevias.length ? ` Ya cargada en GD ${gdsPrevias.join(', ')}.` : ''
+      if (!pendientes.length) {
+        setSolMsg({ text: `Solicitud N° ${numero}: todos sus productos ya están cargados.${enGuias}`, ok: false })
+        return
+      }
+      const cargar = pendientes.slice(0, MAX_PRODUCTOS_GUIA)
+      const quedan = pendientes.length - cargar.length
+      setLineas(cargar)
       setSolCargada(numero)
-      setSolMsg({ text: `Solicitud N° ${numero} cargada (${items.length} producto(s)).`, ok: true })
+      setSolMsg({
+        text: `Solicitud N° ${numero}: ${cargar.length} producto(s) cargado(s).${enGuias}` +
+          (quedan ? ` Quedan ${quedan} para otra guía (máx. ${MAX_PRODUCTOS_GUIA} por guía).` : ''),
+        ok: true,
+      })
     } catch (e) {
       setSolMsg({ text: e instanceof Error ? e.message : 'Error al buscar', ok: false })
     } finally {
@@ -226,6 +266,10 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
       toast.error('Agrega al menos un producto')
       return
     }
+    if (!esEdicion && lineas.filter((l) => l.codigo).length > MAX_PRODUCTOS_GUIA) {
+      toast.error(`Una guía admite máximo ${MAX_PRODUCTOS_GUIA} productos — deja el resto para otra guía`)
+      return
+    }
     if (lineas.some((l) => l.codigo && (!l.cantidad_sol || l.cantidad_sol <= 0))) {
       toast.error('Hay producto(s) con Cant. Sol. en 0 — completa la cantidad antes de guardar')
       return
@@ -246,7 +290,7 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
           ),
         )
         const nuevas = lineas.filter((l) => !l.id && l.codigo)
-        if (nuevas.length) await onCrear(meta, nuevas, null)
+        if (nuevas.length) await onCrear(meta, nuevas, registro?.solicitud_numero ?? null)
         const fallidas = [...delResultados, ...updResultados].filter((r) => r.status === 'rejected').length
         if (fallidas) {
           throw new Error(`Guía actualizada parcialmente: ${fallidas} línea(s) no se guardaron. Revisa y reintenta.`)
@@ -276,11 +320,13 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
         }
       }}
     >
-      <DialogTrigger asChild>
-        <Button variant={esEdicion ? 'outline' : 'default'} size={esEdicion ? 'sm' : 'default'}>
-          {esEdicion ? 'Editar' : '+ Nueva entrada'}
-        </Button>
-      </DialogTrigger>
+      {!abiertoInicial && (
+        <DialogTrigger asChild>
+          <Button variant={esEdicion ? 'outline' : 'default'} size={esEdicion ? 'sm' : 'default'}>
+            {esEdicion ? 'Editar' : '+ Nueva entrada'}
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{esEdicion ? `Editar guía ${registro?.gd ?? ''}` : 'Nueva entrada'}</DialogTitle>

@@ -24,6 +24,9 @@ export interface RegistroCompra {
   valor_ppto: number | null
   valor_total_item: number | null
   responsable: string | null
+  // N° de la solicitud de materiales de la que salió la línea — una solicitud puede
+  // repartirse en varias guías (máx. 25 productos por guía).
+  solicitud_numero: number | null
   created_by: string | null
   created_at: string | null
   updated_at: string | null
@@ -131,6 +134,7 @@ export function useRegistroCompras() {
             valor_und: vu,
             valor_ppto: l.ppto,
             responsable: meta.responsable,
+            solicitud_numero: solicitudNumero,
             created_at: nowIso,
             updated_at: nowIso,
             created_by: createdBy,
@@ -140,11 +144,13 @@ export function useRegistroCompras() {
       const { error: insError } = await supabase.from('registro_compras').insert(records)
       if (insError) throw new Error(insError.message)
       if (solicitudNumero != null) {
+        // Solo la primera guía la marca: las siguientes no pisan `usada_en`.
         const { error: solError } = await supabase
           .from('solicitudes')
           .update({ estado: 'usada', usada_en: new Date().toISOString() })
           .eq('numero', solicitudNumero)
           .eq('proyecto_id', proyectoId)
+          .neq('estado', 'usada')
         if (solError) throw new Error(solError.message)
         // Cross-invalidation: useSolicitudes.ts cachea por proyectoSlug, misma key acá.
         invalidate(`solicitudes:${proyectoSlug}`)
