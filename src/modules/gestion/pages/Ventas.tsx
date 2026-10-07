@@ -142,7 +142,7 @@ export default function Ventas({ esAdmin }: { esAdmin: boolean }) {
     return (
       <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
         Todavía no hay ventas que mostrar. La venta se reconoce al despachar: aparece acá cuando existan guías de
-        despacho en los proyectos a los que tenés acceso.
+        despacho en los proyectos a los que tienes acceso.
       </p>
     )
   }

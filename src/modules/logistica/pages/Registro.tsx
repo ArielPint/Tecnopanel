@@ -53,7 +53,7 @@ export default function Registro() {
   const { allProducts, loading: loadingCatalogo } = useCatalogoGD()
   const { responsables, grupos, loading: loadingResp } = useResponsables()
   const { ordenes, guias, loading: loadingOC } = useOrdenesCompra()
-  const { registros, loading, error, crearMulti, actualizarSingle, eliminar } = useRegistroCompras()
+  const { registros, loading, error, crearMulti, actualizarVarios, eliminar } = useRegistroCompras()
 
   const [search, setSearch] = useState('')
   const [gdFiltro, setGdFiltro] = useState('')
@@ -159,14 +159,14 @@ export default function Registro() {
             responsables={responsables}
             gdOCMap={gdOCMap}
             onCrear={(meta, lineas, solicitudNumero) => crearMulti(meta, lineas, perfil?.name ?? 'anon', solicitudNumero)}
-            onActualizar={(id, input) => actualizarSingle(id, input, perfil?.name ?? 'anon')}
+            onActualizar={(cambios) => actualizarVarios(cambios, perfil?.name ?? 'anon')}
             onEliminar={eliminar}
           />
         )}
       </div>
 
       {!loading && !cargandoDeps && filtrados.length === 0 ? (
-        <EmptyState icon={ClipboardList} title={registros.length ? 'Sin resultados — ajustá los filtros.' : 'Sin registros. Usá + Nueva entrada.'} />
+        <EmptyState icon={ClipboardList} title={registros.length ? 'Sin resultados — ajusta los filtros.' : 'Sin registros. Usa + Nueva entrada.'} />
       ) : (
         <div className="rounded-md border">
           <Table>
@@ -278,7 +278,7 @@ export default function Registro() {
           responsables={responsables}
           gdOCMap={gdOCMap}
           onCrear={(meta, lineas, solicitudNumero) => crearMulti(meta, lineas, perfil?.name ?? 'anon', solicitudNumero)}
-          onActualizar={(id, input) => actualizarSingle(id, input, perfil?.name ?? 'anon')}
+          onActualizar={(cambios) => actualizarVarios(cambios, perfil?.name ?? 'anon')}
           onEliminar={eliminar}
         />
       )}

@@ -94,7 +94,7 @@ export function parseAvanceProduccion(wb: XLSX.WorkBook): AvanceProduccionRow[] 
   const iTipo = col('TIPO')
   const iEstado = col('ESTADO MODULO')
   if (iModulo < 0) {
-    throw new Error(`No se encontró la columna "N° MÓDULO" en la hoja "${sheetName}" — revisá el encabezado del archivo.`)
+    throw new Error(`No se encontró la columna "N° MÓDULO" en la hoja "${sheetName}" — revisa el encabezado del archivo.`)
   }
 
   const checkCols = Object.entries(CODE_TO_CHECK_COLUMN).map(([code, colName]) => ({ code, idx: col(colName) }))

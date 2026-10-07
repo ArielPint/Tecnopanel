@@ -160,51 +160,29 @@ export function useRegistroCompras() {
     [refetch, proyectoSlug],
   )
 
-  const actualizarSingle = useCallback(
-    async (id: string, input: EdicionSingle, createdBy: string) => {
+  // Actualiza varias líneas de una guía y recarga UNA vez al final: con una recarga por línea
+  // (miles de filas cada una) guardar una guía de 25 productos disparaba 25 recargas en paralelo.
+  // Devuelve cuántas líneas no se pudieron guardar.
+  const actualizarVarios = useCallback(
+    async (cambios: { id: string; input: EdicionSingle }[], createdBy: string) => {
+      if (!cambios.length) return 0
       const proyectoId = await getProyectoId(proyectoSlug!)
-      const fechaMes = new Date(input.fechaGuia + 'T12:00:00').getMonth() + 1
-      const cr = input.cantidadSol - input.devolucion
-      const vu = cr ? input.valorTotalItem / cr : 0
-      const record = {
-        fecha_guia: input.fechaGuia || null,
-        fecha_sol: input.fechaSol || null,
-        obs_modulo: input.obs,
-        mes: fechaMes,
-        gd: input.gd,
-        oc: input.oc,
-        codigo: input.codigo,
-        descripcion: input.descripcion,
-        unidad: input.unidad,
-        tipo_producto: input.tipoProducto,
-        cantidad_sol: input.cantidadSol,
-        devolucion: input.devolucion,
-        cantidad_rec: cr,
-        valor_total_item: input.valorTotalItem,
-        valor_und: vu,
-        valor_ppto: input.ppto,
-        responsable: input.responsable,
-        updated_at: new Date().toISOString(),
-        created_by: createdBy,
-      }
-      const { error: updError } = await supabase
-        .from('registro_compras')
-        .update(record)
-        .eq('id', id)
-        .eq('proyecto_id', proyectoId)
-      if (updError) throw new Error(updError.message)
+      const resultados = await Promise.allSettled(cambios.map(({ id, input }) => actualizarLinea(proyectoId, id, input, createdBy)))
       await refetch()
+      return resultados.filter((r) => r.status === 'rejected').length
     },
     [refetch, proyectoSlug],
   )
 
+  // Borra varias líneas en una sola consulta (todo o nada) y recarga una vez.
   const eliminar = useCallback(
-    async (id: string) => {
+    async (ids: string[]) => {
+      if (!ids.length) return
       const proyectoId = await getProyectoId(proyectoSlug!)
       const { error: delError } = await supabase
         .from('registro_compras')
         .delete()
-        .eq('id', id)
+        .in('id', ids)
         .eq('proyecto_id', proyectoId)
       if (delError) throw new Error(delError.message)
       await refetch()
@@ -212,5 +190,38 @@ export function useRegistroCompras() {
     [refetch, proyectoSlug],
   )
 
-  return { registros, loading, error, refetch, crearMulti, actualizarSingle, eliminar }
+  return { registros, loading, error, refetch, crearMulti, actualizarVarios, eliminar }
+}
+
+async function actualizarLinea(proyectoId: string, id: string, input: EdicionSingle, createdBy: string) {
+  const fechaMes = new Date(input.fechaGuia + 'T12:00:00').getMonth() + 1
+  const cr = input.cantidadSol - input.devolucion
+  const vu = cr ? input.valorTotalItem / cr : 0
+  const record = {
+    fecha_guia: input.fechaGuia || null,
+    fecha_sol: input.fechaSol || null,
+    obs_modulo: input.obs,
+    mes: fechaMes,
+    gd: input.gd,
+    oc: input.oc,
+    codigo: input.codigo,
+    descripcion: input.descripcion,
+    unidad: input.unidad,
+    tipo_producto: input.tipoProducto,
+    cantidad_sol: input.cantidadSol,
+    devolucion: input.devolucion,
+    cantidad_rec: cr,
+    valor_total_item: input.valorTotalItem,
+    valor_und: vu,
+    valor_ppto: input.ppto,
+    responsable: input.responsable,
+    updated_at: new Date().toISOString(),
+    created_by: createdBy,
+  }
+  const { error: updError } = await supabase
+    .from('registro_compras')
+    .update(record)
+    .eq('id', id)
+    .eq('proyecto_id', proyectoId)
+  if (updError) throw new Error(updError.message)
 }

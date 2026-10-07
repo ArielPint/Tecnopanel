@@ -99,10 +99,10 @@ export default function FormularioOC({ ordenCompra, ordenesCompra, onCreate, onU
       if (faltantes.length > 0) {
         toast.warning(`No se pudo leer del PDF: ${faltantes.join(', ')}. Completalo manualmente.`)
       } else {
-        toast.success('Datos extraídos del PDF — revisá antes de guardar')
+        toast.success('Datos extraídos del PDF — revisa antes de guardar')
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo extraer datos del PDF, completá el formulario manualmente')
+      toast.error(err instanceof Error ? err.message : 'No se pudo extraer datos del PDF, completa el formulario manualmente')
     } finally {
       setExtrayendo(false)
     }
@@ -183,7 +183,7 @@ export default function FormularioOC({ ordenCompra, ordenesCompra, onCreate, onU
             {ocDuplicada && (
               <p className="flex items-center gap-1.5 text-sm text-warning">
                 <AlertTriangle className="size-3.5 shrink-0" />
-                Ya existe la OC {ocDuplicada.numero_oc} — revisá que no sea un duplicado.
+                Ya existe la OC {ocDuplicada.numero_oc} — revisa que no sea un duplicado.
               </p>
             )}
           </div>

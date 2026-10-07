@@ -240,7 +240,7 @@ function AsignacionesCard() {
         {loading ? (
           <p className="py-6 text-center text-sm text-muted-foreground">Cargando…</p>
         ) : !todos.length ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Sin módulos — subí primero el archivo CR.</p>
+          <p className="py-6 text-center text-sm text-muted-foreground">Sin módulos — sube primero el archivo CR.</p>
         ) : (
           <div className="grid gap-4 lg:grid-cols-[16rem_1fr]">
             <div className="space-y-2">
@@ -295,7 +295,7 @@ function AsignacionesCard() {
               onDiaClick={(fecha) => setDialogo({ moduloNum: null, categoria: null, nuevo: true, fechaInicial: fecha })}
               onMoverEntrega={(item, nuevaFecha) => confirmarCambio({ moduloNum: item.moduloNum, categoria: item.categoria, subcontrato: item.subcontrato, fechaEntrega: nuevaFecha })}
               esPendiente={(item) => cambios.has(claveCambio(item.moduloNum, item.categoria))}
-              emptyMessage={desde || hasta ? 'Sin entregas en el rango de fechas elegido.' : 'Sin asignaciones todavía — elegí un módulo de la lista o hacé clic en un día para programarlo.'}
+              emptyMessage={desde || hasta ? 'Sin entregas en el rango de fechas elegido.' : 'Sin asignaciones todavía — elige un módulo de la lista o haz clic en un día para programarlo.'}
             />
             </div>
           </div>

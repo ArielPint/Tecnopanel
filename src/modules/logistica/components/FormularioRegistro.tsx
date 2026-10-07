@@ -26,8 +26,9 @@ interface Props {
   responsables: Responsable[]
   gdOCMap: Record<string, string>
   onCrear: (meta: MetaEntrada, lineas: LineaProducto[], solicitudNumero: number | null) => Promise<void>
-  onActualizar: (id: string, input: EdicionSingle) => Promise<void>
-  onEliminar: (id: string) => Promise<void>
+  // Devuelve cuántas líneas no se pudieron guardar.
+  onActualizar: (cambios: { id: string; input: EdicionSingle }[]) => Promise<number>
+  onEliminar: (ids: string[]) => Promise<void>
   // Modo "abierto desde afuera": la tabla monta UN solo formulario de edición para
   // la fila clickeada (en vez de uno por fila) — se abre al montar y avisa al cerrar.
   abiertoInicial?: boolean
@@ -236,15 +237,10 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
     if (!confirm(`¿Eliminar la guía ${registro.gd} completa? Se borrarán sus ${registros.filter((r) => r.gd === registro.gd).length} línea(s). Esta acción no se puede deshacer.`)) return
     setEnviando(true)
     try {
-      const idsGuia = registros.filter((r) => r.gd === registro.gd).map((r) => r.id)
-      const resultados = await Promise.allSettled(idsGuia.map((id) => onEliminar(id)))
-      const fallidas = resultados.filter((r) => r.status === 'rejected').length
-      if (fallidas) {
-        toast.error(`Guía eliminada parcialmente: ${fallidas} de ${idsGuia.length} línea(s) no se pudieron borrar. Reintenta antes de continuar.`)
-      } else {
-        toast.success('Guía eliminada')
-        setOpen(false)
-      }
+      // Una sola consulta: se borra la guía completa o nada.
+      await onEliminar(registros.filter((r) => r.gd === registro.gd).map((r) => r.id))
+      toast.success('Guía eliminada')
+      setOpen(false)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al eliminar')
     } finally {
@@ -278,20 +274,21 @@ export default function FormularioRegistro({ registro, registros, allProducts, r
     try {
       const meta: MetaEntrada = { fechaGuia, fechaSol, obs, gd, oc: gdOCMap[gd] ?? '', responsable }
       if (esEdicion) {
-        const delResultados = await Promise.allSettled(idsEliminados.map((id) => onEliminar(id)))
+        await onEliminar(idsEliminados)
+        setIdsEliminados([])
         const existentes = lineas.filter((l): l is LineaEditable & { id: string } => !!l.id && !!l.codigo)
-        const updResultados = await Promise.allSettled(
-          existentes.map((l) =>
-            onActualizar(l.id, {
+        const fallidas = await onActualizar(
+          existentes.map((l) => ({
+            id: l.id,
+            input: {
               fechaGuia, fechaSol, obs, gd, oc: gdOCMap[gd] ?? '', responsable,
               codigo: l.codigo, descripcion: l.descripcion, unidad: l.unidad, tipoProducto: l.tipo_producto,
               cantidadSol: l.cantidad_sol, devolucion: l.devolucion, valorTotalItem: l.valor_total_item, ppto: l.ppto,
-            }),
-          ),
+            },
+          })),
         )
         const nuevas = lineas.filter((l) => !l.id && l.codigo)
         if (nuevas.length) await onCrear(meta, nuevas, registro?.solicitud_numero ?? null)
-        const fallidas = [...delResultados, ...updResultados].filter((r) => r.status === 'rejected').length
         if (fallidas) {
           throw new Error(`Guía actualizada parcialmente: ${fallidas} línea(s) no se guardaron. Revisa y reintenta.`)
         }

@@ -190,7 +190,7 @@ export default function FormularioFactura({ factura, facturas, ordenesCompra, on
             {facturaDuplicada && (
               <p className="flex items-center gap-1.5 text-sm text-warning">
                 <AlertTriangle className="size-3.5 shrink-0" />
-                Ya existe una factura {facturaDuplicada.numero_factura} de este proveedor — revisá que no sea un
+                Ya existe una factura {facturaDuplicada.numero_factura} de este proveedor — revisa que no sea un
                 duplicado.
               </p>
             )}

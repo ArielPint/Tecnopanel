@@ -916,7 +916,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
     if (tieneTipologias) await guardarLineas()
     setSaving(false)
     if (handleSupabaseError(error, 'OportunidadDrawer.saveGeneral')) return
-    if (!data?.length) { toast.error('No tenés permiso para guardar esta oportunidad'); return }
+    if (!data?.length) { toast.error('No tienes permiso para guardar esta oportunidad'); return }
     await avisarFechasHitosCambiadas()
     // Estando en Oportunidad, completar los campos requeridos avanza sola a Negociacion.
     // El auto-avance espera a que las etapas internas 1 a 3 esten cumplidas: si no, el RPC
