@@ -20,7 +20,7 @@ function UploadCard() {
     <Card>
       <CardHeader>
         <CardTitle>📋 Archivo CR (avance en obra)</CardTitle>
-        <CardDescription>Sube el Excel con la hoja "CR" — alimenta el checklist por partida de las vistas Por Contratista y Vista General</CardDescription>
+        <CardDescription>Sube el Excel del CR (hojas "Edificio N°…" + "Compromisos", o el formato antiguo con la hoja "CR") — alimenta el checklist por partida de las vistas Por Contratista y Vista General</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {error && <p className="text-xs text-destructive">{error}</p>}

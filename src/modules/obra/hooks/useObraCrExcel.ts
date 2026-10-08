@@ -22,9 +22,9 @@ export function useObraCrExcel() {
     try {
       const buf = await file.arrayBuffer()
       const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true, dense: true })
-      const rows = parseCR(wb)
+      const { formato, rows } = parseCR(wb)
       const proyectoId = await getProyectoId(proyectoSlug!)
-      const result = await seedObraCrModulos(proyectoId, rows)
+      const result = await seedObraCrModulos(proyectoId, rows, formato === 'edificios')
       const { error: upError } = await supabase.storage.from(BUCKET).upload(OBJECT_PATH, file, { upsert: true })
       if (upError) throw upError
       setLastResult(result)
