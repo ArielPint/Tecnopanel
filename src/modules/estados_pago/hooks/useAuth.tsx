@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/authStore'
 
 export type EstadosPagoTab = 'listado' | 'subcontratos'
 
-// Una cuenta de subcontratista (subcontratistas.user_id) no pasa por el sistema de
+// Una cuenta de subcontratista (subcontratista_usuarios) no pasa por el sistema de
 // permisos por proyecto — su acceso lo resuelve directo el RLS basado en su propia
 // ficha (`subcontratista_actual()` en la base). Acá solo hace falta saber si el
 // usuario logueado es una de esas cuentas, para habilitarle ver/crear su Listado
@@ -22,14 +22,9 @@ function useEsSubcontratista() {
       return
     }
     let cancelado = false
-    supabase
-      .from('subcontratistas')
-      .select('id')
-      .eq('user_id', userId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelado) setEsSubcontratista(!!data)
-      })
+    supabase.rpc('subcontratista_actual').then(({ data }) => {
+      if (!cancelado) setEsSubcontratista(!!data)
+    })
     return () => {
       cancelado = true
     }
