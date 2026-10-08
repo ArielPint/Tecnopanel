@@ -93,13 +93,20 @@ export interface AccesoInput {
   sucursal: string | null
 }
 
-// Vincula (o desvincula) la ficha de subcontratista con este usuario — desvincula
-// primero cualquier ficha que tuviera este user_id antes, por si cambió la selección.
+// Vincula (o desvincula) este usuario con una ficha de subcontratista. Un subcontratista
+// puede tener varios usuarios (subcontratista_usuarios); cada usuario, a lo sumo uno.
+// También limpia el vínculo viejo de una sola cuenta (subcontratistas.user_id).
 async function syncSubcontratistaLink(userId: string, subcontratistaId: string | null) {
   const { error: unlinkErr } = await supabase.from('subcontratistas').update({ user_id: null }).eq('user_id', userId)
   if (unlinkErr) throw new Error(unlinkErr.message)
-  if (!subcontratistaId) return
-  const { error } = await supabase.from('subcontratistas').update({ user_id: userId }).eq('id', subcontratistaId)
+  if (!subcontratistaId) {
+    const { error } = await supabase.from('subcontratista_usuarios').delete().eq('user_id', userId)
+    if (error) throw new Error(error.message)
+    return
+  }
+  const { error } = await supabase
+    .from('subcontratista_usuarios')
+    .upsert({ user_id: userId, subcontratista_id: subcontratistaId }, { onConflict: 'user_id' })
   if (error) throw new Error(error.message)
 }
 
@@ -173,7 +180,7 @@ export function useAccesos() {
       supabase.from('permisos').select('user_id, proyecto_id, modulo_key, accion'),
       supabase.from('project_access').select('user_id, proyecto_id, rol_negocio'),
       supabase.functions.invoke('manage-access', { body: { action: 'list_last_logins' } }),
-      supabase.from('subcontratistas').select('id, user_id').not('user_id', 'is', null),
+      supabase.from('subcontratista_usuarios').select('user_id, subcontratista_id'),
     ])
     const primerError = profilesError || permisosError || accessError || subcontratistasError
     if (primerError) {
@@ -280,7 +287,7 @@ export function useAccesos() {
         sipAcciones,
         grupoId: p.grupo_id,
         sucursal: p.sucursal ?? null,
-        subcontratistaId: (subcontratistas ?? []).find((s) => s.user_id === p.id)?.id ?? null,
+        subcontratistaId: (subcontratistas ?? []).find((s) => s.user_id === p.id)?.subcontratista_id ?? null,
         ultimoIngreso: logins[p.id] ?? null,
       }
     })

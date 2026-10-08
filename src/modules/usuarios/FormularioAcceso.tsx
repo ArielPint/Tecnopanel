@@ -79,12 +79,10 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
     if (!open) return
     supabase
       .from('subcontratistas')
-      .select('id, nombre, user_id')
+      .select('id, nombre')
       .eq('activo', true)
       .order('nombre')
-      .then(({ data }) =>
-        setSubcontratistas((data ?? []).filter((s) => !s.user_id || s.id === acceso?.subcontratistaId)),
-      )
+      .then(({ data }) => setSubcontratistas(data ?? []))
   }, [open, acceso])
 
   function toggleCrmModulo(modulo: string, checked: boolean) {
@@ -244,7 +242,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                   </SelectContent>
                 </Select>
                 <p className="text-[11px] text-muted-foreground">
-                  Si se vincula, dale también acceso al proyecto con el módulo &quot;Estados de Pago&quot; (pestaña
+                  Un subcontratista puede tener varios usuarios vinculados. Si se vincula, dale también acceso al proyecto con el módulo &quot;Estados de Pago&quot; (pestaña
                   Listado, acción Crear) para que aparezca en su menú — la base de datos lo limita a ver y cargar
                   solo lo suyo aunque tenga ese permiso.
                 </p>
