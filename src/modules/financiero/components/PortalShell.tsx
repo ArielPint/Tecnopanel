@@ -13,7 +13,7 @@ import {
 } from '@/modules/financiero/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/modules/financiero/components/ui/sheet'
 import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
-import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
+import { useOtrosPortales } from '@/hooks/useOtrosPortales'
 import { useProyectoActual } from '@/hooks/useProyectoActual'
 import { useThemeStore } from '@/store/themeStore'
 import { useAuthStore } from '@/store/authStore'
@@ -58,10 +58,8 @@ const COLLAPSE_KEY = 'tecnopanel-hub-portal-sidebar-collapsed'
 export default function PortalShell({ actual, children, hideAside }: { actual: ModuloKey; children: ReactNode; hideAside?: boolean }) {
   const { proyectoSlug = '' } = useParams<{ proyectoSlug: string }>()
   const acceso = usePermisosProyecto(proyectoSlug)
-  const { escenario } = useAccesoUsuario()
-  // Solo mostrar "volver" si hay algo más a lo que volver — un usuario con
-  // acceso a un único proyecto y nada de CRM no tiene Hub que ver.
-  const tieneHub = escenario === 'hub_completo' || escenario === 'selector_portales'
+  // "Volver" solo para quien tiene hub (admin o Gestión); los demás ven sus otros portales en el menú
+  const { conHub: tieneHub, portales } = useOtrosPortales({ tipo: 'proyecto', slug: proyectoSlug })
   const { nombre } = useProyectoActual()
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1')
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -98,6 +96,14 @@ export default function PortalShell({ actual, children, hideAside }: { actual: M
         ))}
         {acceso.isAdmin && (
           <ItemLink to={`${base}/settings`} label="Configuración" activo={actual === 'settings'} onNavigate={onNavigate} />
+        )}
+        {portales.length > 0 && (
+          <>
+            <p className="mt-5 mb-1 px-3 text-[11px] font-semibold tracking-wide text-sidebar-foreground/50 uppercase">Otros portales</p>
+            {portales.map((pt) => (
+              <ItemLink key={pt.to} to={pt.to} label={pt.label} activo={false} onNavigate={onNavigate} />
+            ))}
+          </>
         )}
       </nav>
     </>

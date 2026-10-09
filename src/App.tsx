@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
+import AterrizajeProyecto from './components/AterrizajeProyecto'
 import LoginPage from './modules/usuarios/LoginPage'
 import ResetPasswordPage from './modules/usuarios/ResetPasswordPage'
 import CrmLoginPage from './modules/crm/pages/Login'
@@ -68,6 +69,15 @@ export default function App() {
           element={
             <ProtectedRoute loginPath="/crm/login" requiere="crm">
               <ConCarga><CrmApp /></ConCarga>
+            </ProtectedRoute>
+          }
+        />
+        {/* entrada al proyecto sin módulo: va al primero con acceso */}
+        <Route
+          path="/proyectos/:proyectoSlug"
+          element={
+            <ProtectedRoute requiere="proyecto">
+              <AterrizajeProyecto />
             </ProtectedRoute>
           }
         />

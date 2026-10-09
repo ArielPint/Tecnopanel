@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { LayoutDashboard, Target, Compass, Hammer, Ruler, Landmark, Users, Building2, LogOut, ChevronRight, X, ClipboardCheck, KeyRound, Trophy, Home, BarChart3 } from 'lucide-react'
 import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import { usePermisos } from '@/modules/crm/contexts/PermisosContext'
-import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
+import { useOtrosPortales } from '@/hooks/useOtrosPortales'
 import { supabase } from '@/lib/supabaseClient'
 import { TecnopanelMark, TecnopanelWordmark } from '@/components/TecnopanelLogo'
 
@@ -60,10 +60,8 @@ interface SidebarProps {
 export default function Sidebar({ open = false, onClose }: SidebarProps) {
   const { profile, signOut } = useAuth()
   const { canAccess, loading } = usePermisos()
-  // El enlace al portal se muestra a cualquiera que realmente tenga acceso al hub
-  // (algun proyecto, Gestion, Prevencion o admin), no solo a rol='admin'.
-  const acceso = useAccesoUsuario()
-  const tienePortal = acceso.isAdmin || acceso.tieneProyecto || acceso.tieneGestion || acceso.tieneSip || acceso.tieneSso
+  // Enlace al hub para quien lo tiene (admin o Gestión); los demás ven directo sus otros portales
+  const { conHub: tienePortal, portales } = useOtrosPortales({ tipo: 'crm' })
   const rol = profile?.rol ?? ''
   const [changingPass, setChangingPass] = useState(false)
   const [newPass, setNewPass] = useState('')
@@ -100,7 +98,8 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
         {GRUPOS.map(grupo => {
           const visibles = grupo.modulos.filter(m => canAccess(MODULO_PERMISO[m] ?? m))
           const conPortal = grupo.label === 'Sistema' && tienePortal
-          if (!visibles.length && !conPortal) return null
+          const conOtros = grupo.label === 'Sistema' && portales.length > 0
+          if (!visibles.length && !conPortal && !conOtros) return null
           return (
             <div key={grupo.label}>
               <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-2 mb-1.5">
@@ -138,6 +137,20 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
                     <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
                   </NavLink>
                 )}
+                {conOtros && portales.map((pt) => (
+                  <NavLink
+                    key={pt.to}
+                    to={pt.to}
+                    onClick={onClose}
+                    className="group flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 text-white/60 hover:bg-white/10 hover:text-white"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <pt.icon size={16} />
+                      {pt.label}
+                    </span>
+                    <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+                  </NavLink>
+                ))}
               </div>
             </div>
           )

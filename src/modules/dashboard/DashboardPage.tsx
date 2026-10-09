@@ -3,6 +3,7 @@ import { Navigate, Link } from 'react-router-dom'
 import { useDashboardData } from './useDashboardData'
 import { fmtMontoCLP } from '@/lib/montoCLP'
 import { useCrmResumen } from './useCrmResumen'
+import { MODULOS_ATERRIZAJE } from '@/lib/aterrizaje'
 import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
 import { usePermisosProyecto } from '@/hooks/usePermisosProyecto'
 import { KPI_LABELS } from './types'
@@ -47,18 +48,6 @@ function PercentBar({ value }: { value: number | undefined }) {
   )
 }
 
-// Orden de prioridad de aterrizaje para 'solo_proyecto' — el primero al que el usuario
-// tenga acceso real (módulo habilitado en el proyecto + permiso). 'dashboard' ya no se
-// asume por defecto: un usuario con solo 'solicitudes' rebotaba sin acceso (ver DashboardPlantaGate).
-const MODULOS_ATERRIZAJE: { modulo: string; ruta: string }[] = [
-  { modulo: 'dashboard', ruta: 'dashboard' },
-  { modulo: 'obra', ruta: 'obra' },
-  { modulo: 'produccion', ruta: 'produccion' },
-  { modulo: 'logistica', ruta: 'logistica' },
-  { modulo: 'solicitudes', ruta: 'solicitudes' },
-  { modulo: 'financiero', ruta: 'financiero' },
-  { modulo: 'estados_pago', ruta: 'estados-pago' },
-]
 
 export default function DashboardPage() {
   const acceso = useAccesoUsuario()
@@ -127,7 +116,7 @@ export default function DashboardPage() {
         {acceso.proyectosObra.map((p) => (
           <Link
             key={p.id}
-            to={`/proyectos/${p.slug}/dashboard`}
+            to={`/proyectos/${p.slug}`}
             className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
           >
             {p.nombre}
@@ -259,7 +248,7 @@ export default function DashboardPage() {
                   return (
                     <TableRow key={p.id}>
                       <TableCell className="font-bold">
-                        <Link to={`/proyectos/${p.slug}/dashboard`} className="hover:underline hover:text-brand">
+                        <Link to={`/proyectos/${p.slug}`} className="hover:underline hover:text-brand">
                           {p.nombre}
                         </Link>
                       </TableCell>

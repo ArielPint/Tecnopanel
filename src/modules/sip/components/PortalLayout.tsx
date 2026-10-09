@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { ArrowLeft, Boxes, ClipboardList, Factory, KeyRound, Layers, LayoutDashboard, LogOut, Menu, Moon, Plus, Sun } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
-import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
+import { useOtrosPortales } from '@/hooks/useOtrosPortales'
 import ChangePasswordDialog from '@/components/ChangePasswordDialog'
 import { TecnopanelMark } from '@/components/TecnopanelLogo'
 import { Button } from '@/modules/financiero/components/ui/button'
@@ -36,9 +36,8 @@ function useMenu() {
 
 function Menu_({ onNavigate }: { onNavigate?: () => void }) {
   const grupos = useMenu()
-  const acceso = useAccesoUsuario()
-  // Volver al hub solo si hay algo más que el portal (mismo criterio que el sidebar del CRM)
-  const tieneHub = acceso.isAdmin || acceso.tieneProyecto || acceso.tieneGestion || acceso.tieneCrm
+  // Volver al hub solo para quien lo tiene (admin o Gestión); los demás ven sus otros portales
+  const { conHub: tieneHub, portales } = useOtrosPortales({ tipo: 'sip' })
 
   return (
     <nav className="flex flex-1 flex-col overflow-y-auto px-3 py-4">
@@ -67,6 +66,24 @@ function Menu_({ onNavigate }: { onNavigate?: () => void }) {
             </div>
           </div>
         ))}
+        {portales.length > 0 && (
+          <div>
+            <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Otros portales</p>
+            <div className="space-y-0.5">
+              {portales.map((pt) => (
+                <Link
+                  key={pt.to}
+                  to={pt.to}
+                  onClick={onNavigate}
+                  className="flex items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-2 text-[13.5px] font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <pt.icon className="h-[18px] w-[18px] shrink-0" />
+                  {pt.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       {tieneHub && (
         <Link
