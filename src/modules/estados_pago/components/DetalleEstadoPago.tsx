@@ -84,7 +84,7 @@ export default function DetalleEstadoPago({ estadoPago, subcontratoLabel, onCamb
           Detalle
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             EP {estadoPago.numero_ep} — {subcontratoLabel}
@@ -92,7 +92,7 @@ export default function DetalleEstadoPago({ estadoPago, subcontratoLabel, onCamb
         </DialogHeader>
 
         <div className="flex flex-col gap-5 text-sm">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Badge variant={ESTADO_VARIANT[estadoPago.estado]}>{ESTADO_LABEL[estadoPago.estado]}</Badge>
             {estadoPago.periodo && <span className="text-muted-foreground">Período: {estadoPago.periodo}</span>}
           </div>

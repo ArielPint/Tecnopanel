@@ -92,7 +92,7 @@ export default function Auditoria() {
                             Ver cambios
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
+                        <DialogContent className="sm:max-w-2xl">
                           <DialogHeader>
                             <DialogTitle>
                               {nombreTabla(entry.tabla_afectada)} — {entry.accion}

@@ -131,7 +131,7 @@ export default function CrearProyectoDialog({ onCreado }: { onCreado: () => void
           </div>
           <div className="space-y-2">
             <Label>Línea de negocio</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {catalogo.map((l) => (
                 <label key={l.id} className="flex items-center gap-2 text-sm">
                   <Checkbox

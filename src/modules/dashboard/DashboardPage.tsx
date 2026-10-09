@@ -83,6 +83,9 @@ export default function DashboardPage() {
   if (acceso.escenario === 'solo_sip') {
     return <Navigate to="/produccion" replace />
   }
+  if (acceso.escenario === 'solo_sso') {
+    return <Navigate to="/prevencion" replace />
+  }
 
   if (acceso.escenario === 'solo_proyecto') {
     // Si tiene más de un proyecto obra (futuro, hoy siempre 1), manda al selector /proyectos en vez de adivinar cuál.
@@ -131,7 +134,7 @@ export default function DashboardPage() {
             <ArrowRight className="h-4 w-4" />
           </Link>
         ))}
-        {/* Con Producción SIP el selector ya no implica CRM: se puede llegar aquí con obra + SIP */}
+        {/* Con Producción SIP o Prevención el selector ya no implica CRM: se puede llegar aquí con obra + otro portal */}
         {acceso.tieneCrm && (
           <Link
             to="/crm"
@@ -147,6 +150,15 @@ export default function DashboardPage() {
             className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
           >
             Producción Paneles SIP
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        )}
+        {acceso.tieneSso && (
+          <Link
+            to="/prevencion"
+            className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
+          >
+            Prevención de Riesgos
             <ArrowRight className="h-4 w-4" />
           </Link>
         )}

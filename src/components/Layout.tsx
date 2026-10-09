@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ClipboardList,
   Factory,
+  HardHat,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -19,6 +20,7 @@ import { useAccesoUsuario } from '../hooks/useAccesoUsuario'
 import { useThemeStore } from '../store/themeStore'
 import ChangePasswordDialog from './ChangePasswordDialog'
 import GlobalSearch from './GlobalSearch'
+import NotificacionesSso from '@/modules/sso/components/NotificacionesSso'
 import { TecnopanelMark, TecnopanelWordmark } from './TecnopanelLogo'
 import { Avatar, AvatarFallback } from '@/modules/financiero/components/ui/avatar'
 import {
@@ -47,6 +49,8 @@ const navSections = [
       { to: '/crm', label: 'CRM', end: false, icon: Briefcase, requiere: 'crm' },
       // Portal propio como el CRM (/produccion), transversal: accesos por módulo sobre el ancla SIP_ANCLA_ID.
       { to: '/produccion', label: 'Producción Paneles SIP', end: false, icon: Factory, requiere: 'sip' },
+      // Portal propio como el CRM (/prevencion), transversal: accesos por módulo sobre el ancla SSO_ANCLA_ID.
+      { to: '/prevencion', label: 'Prevención de Riesgos', end: false, icon: HardHat, requiere: 'sso' },
     ],
   },
   {
@@ -65,7 +69,7 @@ const navSections = [
 // usuario puede abrir. '/proyectos' exige admin porque su ruta no trae slug.
 function useNavSections() {
   const acceso = useAccesoUsuario()
-  const ok = { admin: acceso.isAdmin, crm: acceso.tieneCrm, gestion: acceso.tieneGestion, sip: acceso.tieneSip }
+  const ok = { admin: acceso.isAdmin, crm: acceso.tieneCrm, gestion: acceso.tieneGestion, sip: acceso.tieneSip, sso: acceso.tieneSso }
   return navSections
     .map((s) => ({ ...s, items: s.items.filter((i) => !('requiere' in i) || ok[i.requiere as keyof typeof ok]) }))
     .filter((s) => s.items.length > 0)
@@ -140,6 +144,7 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [changePasswordOpen, setChangePasswordOpen] = useState(false)
   const navItems = useNavSections().flatMap((s) => s.items)
+  const { tieneSso } = useAccesoUsuario()
 
   const initials = (user?.email ?? '?').slice(0, 2).toUpperCase()
   const pageTitle = pageTitles[location.pathname] ?? 'TecnoPanel'
@@ -214,6 +219,7 @@ export default function Layout() {
           </div>
           <div className="flex items-center gap-1.5">
             <GlobalSearch />
+            {tieneSso && <NotificacionesSso />}
             <button
               onClick={toggleMode}
               className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"

@@ -56,7 +56,7 @@ export default function UsuariosPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-extrabold">Usuarios</h1>
           <p className="text-sm text-muted-foreground">
@@ -87,76 +87,89 @@ export default function UsuariosPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Usuario</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Accesos</TableHead>
-                  <TableHead>Último ingreso</TableHead>
+                  <TableHead className="hidden sm:table-cell">Estado</TableHead>
+                  <TableHead className="hidden md:table-cell">Accesos</TableHead>
+                  <TableHead className="hidden lg:table-cell">Último ingreso</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {accesos.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell>
-                      <div className="font-bold">
-                        {a.nombre} {a.apellido}
-                      </div>
-                      <div className="text-[12.5px] text-muted-foreground">{a.email}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1.5">
-                        <Badge variant={a.activo ? 'success' : 'secondary'}>{a.activo ? 'Activo' : 'Inactivo'}</Badge>
-                        {a.isSuperAdmin && <Badge variant="warning">Super admin</Badge>}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1.5">
-                        {proyectosObra.map((proy) => {
-                          const n = a.proyectos[proy.id]?.modulos.length ?? 0
-                          return n > 0 ? (
-                            <Badge key={proy.id} variant="outline">
-                              {proy.nombre} ({n})
-                            </Badge>
-                          ) : null
-                        })}
-                        {a.crmModulos.length > 0 && <Badge variant="outline">CRM ({a.crmModulos.length})</Badge>}
-                        {nSip(a) > 0 && <Badge variant="outline">Producción SIP ({nSip(a)})</Badge>}
-                        {proyectosObra.every((proy) => (a.proyectos[proy.id]?.modulos.length ?? 0) === 0) &&
-                          a.crmModulos.length === 0 &&
-                          nSip(a) === 0 && <span className="text-sm text-muted-foreground">Sin accesos</span>}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const ui = formatUltimoIngreso(a.ultimoIngreso)
-                        return ui ? (
-                          <div>
-                            <div className="text-sm">{ui.relativo}</div>
-                            <div className="text-[12.5px] text-muted-foreground">{ui.absoluto}</div>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">Nunca</span>
-                        )
-                      })()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-1.5">
-                        <FormularioAcceso
-                          acceso={a}
-                          proyectosObra={proyectosObra}
-                          onGuardar={(input) => actualizar(a.id, input)}
-                          trigger={
-                            <Button size="icon" variant="ghost">
-                              <Pencil size={14} />
-                            </Button>
-                          }
-                        />
-                        <Button size="icon" variant="ghost" onClick={() => onEliminar(a)}>
-                          <Trash2 size={14} />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {accesos.map((a) => {
+                  const estado = (
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge variant={a.activo ? 'success' : 'secondary'}>{a.activo ? 'Activo' : 'Inactivo'}</Badge>
+                      {a.isSuperAdmin && <Badge variant="warning">Super admin</Badge>}
+                    </div>
+                  )
+                  // módulos de Prevención: claves '<modulo>:ver' marcadas
+                  const nSso = Object.entries(a.ssoAcciones).filter(([k, v]) => v && k.endsWith(':ver')).length
+                  const accesosBadges = (
+                    <div className="flex flex-wrap gap-1.5">
+                      {proyectosObra.map((proy) => {
+                        const n = a.proyectos[proy.id]?.modulos.length ?? 0
+                        return n > 0 ? (
+                          <Badge key={proy.id} variant="outline">
+                            {proy.nombre} ({n})
+                          </Badge>
+                        ) : null
+                      })}
+                      {a.crmModulos.length > 0 && <Badge variant="outline">CRM ({a.crmModulos.length})</Badge>}
+                      {nSip(a) > 0 && <Badge variant="outline">Producción SIP ({nSip(a)})</Badge>}
+                      {nSso > 0 && <Badge variant="outline">Prevención ({nSso})</Badge>}
+                      {proyectosObra.every((proy) => (a.proyectos[proy.id]?.modulos.length ?? 0) === 0) &&
+                        a.crmModulos.length === 0 &&
+                        nSip(a) === 0 &&
+                        nSso === 0 && <span className="text-sm text-muted-foreground">Sin accesos</span>}
+                    </div>
+                  )
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell>
+                        <div className="font-bold">
+                          {a.nombre} {a.apellido}
+                        </div>
+                        <div className="break-all text-[12.5px] text-muted-foreground">{a.email}</div>
+                        {/* en pantallas angostas las columnas se ocultan: su contenido va aquí */}
+                        <div className="mt-1.5 flex flex-col gap-1.5 md:hidden">
+                          <div className="sm:hidden">{estado}</div>
+                          {accesosBadges}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">{estado}</TableCell>
+                      <TableCell className="hidden md:table-cell">{accesosBadges}</TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {(() => {
+                          const ui = formatUltimoIngreso(a.ultimoIngreso)
+                          return ui ? (
+                            <div>
+                              <div className="text-sm">{ui.relativo}</div>
+                              <div className="text-[12.5px] text-muted-foreground">{ui.absoluto}</div>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Nunca</span>
+                          )
+                        })()}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1.5">
+                          <FormularioAcceso
+                            acceso={a}
+                            proyectosObra={proyectosObra}
+                            onGuardar={(input) => actualizar(a.id, input)}
+                            trigger={
+                              <Button size="icon" variant="ghost">
+                                <Pencil size={14} />
+                              </Button>
+                            }
+                          />
+                          <Button size="icon" variant="ghost" onClick={() => onEliminar(a)}>
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}

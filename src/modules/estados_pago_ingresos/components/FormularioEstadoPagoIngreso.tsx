@@ -102,7 +102,7 @@ export default function FormularioEstadoPagoIngreso({ estadoPago, trigger, onCre
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{esEdicion ? 'Editar Estado de Pago' : 'Nuevo Estado de Pago'}</DialogTitle>
         </DialogHeader>

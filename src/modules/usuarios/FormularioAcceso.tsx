@@ -12,6 +12,7 @@ import { PAGE_MAP, FINANCIERO_EDIT_GROUPS, ESTADOS_PAGO_ACCION_GROUPS, ESTADOS_P
 import { SUCURSALES } from '@/lib/lineasNegocio'
 import { ROL_META, MODULOS as CRM_MODULOS, CRM_ACCION_GROUPS } from '@/modules/crm/lib/roles'
 import { SIP_MODULOS, claveAcceso as claveSip, normalizarAccionesSip } from '@/modules/sip/lib/accesos'
+import { SSO_MODULOS, claveAcceso, normalizarAccionesSso } from '@/modules/sso/lib/accesos'
 import { proyectoAccesoVacio, type Acceso, type AccesoInput, type ProyectoAcceso, type ProyectoObra } from './useAccesos'
 
 const OBRA_MODULOS = Object.keys(PAGE_MAP)
@@ -43,6 +44,7 @@ function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: Proye
     crmAcciones: acceso?.crmAcciones ?? {},
     gestionVer: acceso?.gestionVer ?? false,
     sipAcciones: acceso?.sipAcciones ?? {},
+    ssoAcciones: acceso?.ssoAcciones ?? {},
     grupoId: acceso?.grupoId ?? null,
     subcontratistaId: acceso?.subcontratistaId ?? null,
     sucursal: acceso?.sucursal ?? null,
@@ -145,21 +147,22 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="flex flex-col overflow-hidden sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{acceso ? 'Editar usuario' : 'Nuevo usuario'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="flex flex-col gap-4">
-          <Tabs defaultValue="cuenta">
-            <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
+        <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
+          <Tabs defaultValue="cuenta" className="flex min-h-0 flex-1 flex-col">
+            <TabsList className="grid h-auto w-full shrink-0 grid-cols-2 sm:grid-cols-5">
               <TabsTrigger value="cuenta">Cuenta</TabsTrigger>
-              <TabsTrigger value="proyecto">Accesos Proyecto</TabsTrigger>
-              <TabsTrigger value="crm">Accesos CRM</TabsTrigger>
+              <TabsTrigger value="proyecto"><span className="hidden sm:inline">Accesos&nbsp;</span>Proyecto</TabsTrigger>
+              <TabsTrigger value="crm"><span className="hidden sm:inline">Accesos&nbsp;</span>CRM</TabsTrigger>
               <TabsTrigger value="sip">Producción SIP</TabsTrigger>
+              <TabsTrigger value="prevencion"><span className="hidden sm:inline">Accesos&nbsp;</span>Prevención</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="cuenta" className="flex flex-col gap-3 pt-2">
-              <div className="grid grid-cols-2 gap-3">
+            <TabsContent value="cuenta" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="a-nombre">Nombre</Label>
                   <Input id="a-nombre" value={form.nombre} onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))} autoFocus required />
@@ -211,15 +214,15 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                   Hoy es solo informativo: el filtro real por sucursal se activa en una fase posterior.
                 </p>
               </div>
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-start gap-2 text-sm [&>button]:mt-0.5">
                 <Checkbox checked={form.activo} onCheckedChange={(v) => setForm((f) => ({ ...f, activo: !!v }))} />
                 Usuario activo
               </label>
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-start gap-2 text-sm [&>button]:mt-0.5">
                 <Checkbox checked={form.isSuperAdmin} onCheckedChange={(v) => setForm((f) => ({ ...f, isSuperAdmin: !!v }))} />
                 Super admin (puede administrar usuarios y accesos)
               </label>
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-start gap-2 text-sm [&>button]:mt-0.5">
                 <Checkbox checked={form.gestionVer} onCheckedChange={(v) => setForm((f) => ({ ...f, gestionVer: !!v }))} />
                 Acceso a Gestión (Reportes, Documentos, Alertas — módulo global del hub)
               </label>
@@ -249,7 +252,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               </div>
             </TabsContent>
 
-            <TabsContent value="proyecto" className="flex flex-col gap-4 pt-2">
+            <TabsContent value="proyecto" className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1 pt-2">
               {proyectosObra.length === 0 && (
                 <p className="text-sm text-muted-foreground">Aún no hay proyectos creados en el portal.</p>
               )}
@@ -280,14 +283,14 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                         const marcado = pa.modulos.includes(pid)
                         return (
                           <div key={pid} className="flex flex-col gap-1.5">
-                            <label className="flex items-center gap-2 text-sm">
+                            <label className="flex items-start gap-2 text-sm [&>button]:mt-0.5">
                               <Checkbox checked={marcado} onCheckedChange={(v) => toggleModuloProyecto(proy.id, pid, !!v)} />
                               {def.label}
                             </label>
                             {marcado && pid !== 'financiero' && (
                               <div className="ml-6 flex flex-wrap gap-x-4 gap-y-1 rounded-md border p-2">
                                 {Object.entries(def.tabs).map(([tabKey, tabLabel]) => (
-                                  <label key={tabKey} className="flex items-center gap-1.5 text-xs">
+                                  <label key={tabKey} className="flex items-start gap-1.5 text-xs">
                                     <Checkbox
                                       checked={(pa.tabs[pid] ?? []).includes(tabKey)}
                                       onCheckedChange={(v) => toggleTabProyecto(proy.id, pid, tabKey, !!v)}
@@ -305,7 +308,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                       <div className="flex flex-col gap-1.5 rounded-md border p-3">
                         <Label className="text-xs text-muted-foreground">Edición en Financiero</Label>
                         {FINANCIERO_EDIT_GROUPS.map((g) => (
-                          <label key={g.key} className="flex items-center gap-1.5 text-xs">
+                          <label key={g.key} className="flex items-start gap-1.5 text-xs">
                             <Checkbox
                               checked={pa.financieroEdit[g.key] ?? false}
                               onCheckedChange={(v) =>
@@ -341,7 +344,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                     {pa.modulos.includes('logistica') && (
                       <div className="flex flex-col gap-1.5 rounded-md border p-3">
                         <Label className="text-xs text-muted-foreground">Edición en Logística</Label>
-                        <label className="flex items-center gap-1.5 text-xs">
+                        <label className="flex items-start gap-1.5 text-xs">
                           <Checkbox
                             checked={pa.logisticaEdit}
                             onCheckedChange={(v) => setProyectoAcceso(proy.id, { logisticaEdit: !!v })}
@@ -353,7 +356,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                     {pa.modulos.includes('solicitudes') && (
                       <div className="flex flex-col gap-1.5 rounded-md border p-3">
                         <Label className="text-xs text-muted-foreground">Edición en Solicitudes de Materiales</Label>
-                        <label className="flex items-center gap-1.5 text-xs">
+                        <label className="flex items-start gap-1.5 text-xs">
                           <Checkbox
                             checked={pa.solicitudesEdit}
                             onCheckedChange={(v) => setProyectoAcceso(proy.id, { solicitudesEdit: !!v })}
@@ -362,14 +365,14 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                         </label>
                         {pa.tabs.solicitudes?.includes('catalogo') && (
                           <>
-                            <label className="flex items-center gap-1.5 text-xs">
+                            <label className="flex items-start gap-1.5 text-xs">
                               <Checkbox
                                 checked={pa.solicitudesCatalogoCrearEditar}
                                 onCheckedChange={(v) => setProyectoAcceso(proy.id, { solicitudesCatalogoCrearEditar: !!v })}
                               />
                               Puede agregar y editar productos del catálogo (sin necesitar acceso a Logística)
                             </label>
-                            <label className="flex items-center gap-1.5 text-xs">
+                            <label className="flex items-start gap-1.5 text-xs">
                               <Checkbox
                                 checked={pa.solicitudesCatalogoEliminar}
                                 onCheckedChange={(v) => setProyectoAcceso(proy.id, { solicitudesCatalogoEliminar: !!v })}
@@ -407,7 +410,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                       <div className="flex flex-col gap-1.5 rounded-md border p-3">
                         <Label className="text-xs text-muted-foreground">Acciones en Estados de Pago</Label>
                         {ESTADOS_PAGO_ACCION_GROUPS.map((g) => (
-                          <label key={g.key} className="flex items-center gap-1.5 text-xs">
+                          <label key={g.key} className="flex items-start gap-1.5 text-xs">
                             <Checkbox
                               checked={pa.estadosPagoAcciones[g.key] ?? false}
                               onCheckedChange={(v) =>
@@ -423,7 +426,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                       <div className="flex flex-col gap-1.5 rounded-md border p-3">
                         <Label className="text-xs text-muted-foreground">Acciones en Estados de Pago (Ingresos)</Label>
                         {ESTADOS_PAGO_INGRESOS_ACCION_GROUPS.map((g) => (
-                          <label key={g.key} className="flex items-center gap-1.5 text-xs">
+                          <label key={g.key} className="flex items-start gap-1.5 text-xs">
                             <Checkbox
                               checked={pa.estadosPagoIngresosAcciones[g.key] ?? false}
                               onCheckedChange={(v) =>
@@ -440,7 +443,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               })}
             </TabsContent>
 
-            <TabsContent value="crm" className="flex flex-col gap-3 pt-2">
+            <TabsContent value="crm" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
               <div className="flex flex-col gap-1.5">
                 <Label>Rol en CRM</Label>
                 <Select
@@ -466,7 +469,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                 <Label>Módulos con acceso</Label>
                 {CRM_MODULOS.map((m) => (
                   <div key={m} className="flex flex-col gap-1.5">
-                    <label className="flex items-center gap-2 text-sm">
+                    <label className="flex items-start gap-2 text-sm [&>button]:mt-0.5">
                       <Checkbox checked={form.crmModulos.includes(m)} onCheckedChange={(v) => toggleCrmModulo(m, !!v)} />
                       {m}
                     </label>
@@ -475,7 +478,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                         {CRM_ACCION_GROUPS[m].map((g) => {
                           const key = `${m}:${g.key}`
                           return (
-                            <label key={g.key} className="flex items-center gap-1.5 text-xs">
+                            <label key={g.key} className="flex items-start gap-1.5 text-xs">
                               <Checkbox
                                 checked={form.crmAcciones[key] ?? false}
                                 onCheckedChange={(v) =>
@@ -493,7 +496,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               </div>
             </TabsContent>
 
-            <TabsContent value="sip" className="flex flex-col gap-3 pt-2">
+            <TabsContent value="sip" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
               <p className="text-[11px] text-muted-foreground">
                 Portal Producción de Paneles SIP (/produccion): transversal a la empresa, no depende de proyectos. Un acceso
                 por módulo; con cualquiera de ellos la persona entra al portal y ve el Dashboard. Los admin ya tienen todo.
@@ -505,7 +508,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                   const activo = form.sipAcciones[ver] ?? false
                   return (
                     <div key={m.key} className="flex flex-col gap-1.5">
-                      <label className="flex items-center gap-2 text-sm">
+                      <label className="flex items-start gap-2 text-sm [&>button]:mt-0.5">
                         <Checkbox
                           checked={activo}
                           onCheckedChange={(v) =>
@@ -526,7 +529,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                             .map((a) => {
                               const key = claveSip(m.key, a.key)
                               return (
-                                <label key={a.key} className="flex items-center gap-1.5 text-xs">
+                                <label key={a.key} className="flex items-start gap-1.5 text-xs">
                                   <Checkbox
                                     checked={form.sipAcciones[key] ?? false}
                                     onCheckedChange={(v) =>
@@ -544,9 +547,61 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                 })}
               </div>
             </TabsContent>
+
+            <TabsContent value="prevencion" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
+              <p className="text-[11px] text-muted-foreground">
+                Portal de Prevención de Riesgos (/prevencion): transversal a la empresa, no depende de proyectos. Un acceso por
+                módulo; con cualquiera de ellos la persona entra al portal y ve el Dashboard. Los admin ya tienen todo.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Label>Módulos con acceso</Label>
+                {SSO_MODULOS.map((m) => {
+                  const ver = claveAcceso(m.key, 'ver')
+                  const activo = form.ssoAcciones[ver] ?? false
+                  return (
+                    <div key={m.key} className="flex flex-col gap-1.5">
+                      <label className="flex items-start gap-2 text-sm [&>button]:mt-0.5">
+                        <Checkbox
+                          checked={activo}
+                          onCheckedChange={(v) =>
+                            setForm((f) => {
+                              // Quitar el módulo quita todas sus acciones
+                              if (v) return { ...f, ssoAcciones: { ...f.ssoAcciones, [ver]: true } }
+                              const sin = Object.fromEntries(Object.entries(f.ssoAcciones).filter(([k]) => !k.startsWith(`${m.key}:`)))
+                              return { ...f, ssoAcciones: sin }
+                            })
+                          }
+                        />
+                        {m.label}
+                      </label>
+                      {activo && m.acciones.length > 1 && (
+                        <div className="ml-6 flex flex-col gap-1 rounded-md border p-2">
+                          {m.acciones
+                            .filter((a) => a.key !== 'ver')
+                            .map((a) => {
+                              const key = claveAcceso(m.key, a.key)
+                              return (
+                                <label key={a.key} className="flex items-start gap-1.5 text-xs">
+                                  <Checkbox
+                                    checked={form.ssoAcciones[key] ?? false}
+                                    onCheckedChange={(v) =>
+                                      setForm((f) => ({ ...f, ssoAcciones: normalizarAccionesSso({ ...f.ssoAcciones, [key]: !!v }) }))
+                                    }
+                                  />
+                                  {a.label}
+                                </label>
+                              )
+                            })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </TabsContent>
           </Tabs>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0 border-t pt-3">
             <Button type="submit" disabled={enviando}>
               {enviando ? 'Guardando…' : 'Guardar'}
             </Button>

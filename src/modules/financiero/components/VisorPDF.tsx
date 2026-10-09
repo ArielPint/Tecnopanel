@@ -31,7 +31,7 @@ export default function VisorPDF({ pdfPath }: VisorPDFProps) {
           <FileText className="size-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>PDF</DialogTitle>
         </DialogHeader>
