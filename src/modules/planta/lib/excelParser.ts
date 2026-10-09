@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx'
+import type { WorkBook } from 'xlsx'
+import type { XLSXLib } from '@/lib/cargarLibrerias'
 import { N, parseDate } from './format'
 
 export interface CurvaRow {
@@ -134,14 +135,14 @@ export interface ParsedDashboardData {
   proyeccion: ProyeccionRow[]
 }
 
-function sheetRows(wb: XLSX.WorkBook, name: string): unknown[][] {
+function sheetRows(XLSX: XLSXLib, wb: WorkBook, name: string): unknown[][] {
   const ws = wb.Sheets[name]
   if (!ws) return []
   return XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true, dateNF: 'yyyy-mm-dd' }) as unknown[][]
 }
 
-export function parseWorkbook(wb: XLSX.WorkBook): ParsedDashboardData {
-  const curva: CurvaRow[] = sheetRows(wb, 'CURVA')
+export function parseWorkbook(wb: WorkBook, XLSX: XLSXLib): ParsedDashboardData {
+  const curva: CurvaRow[] = sheetRows(XLSX, wb, 'CURVA')
     .slice(1)
     .filter((r) => r[0])
     .map((r) => ({
@@ -153,7 +154,7 @@ export function parseWorkbook(wb: XLSX.WorkBook): ParsedDashboardData {
       m2RealAcum: N(r[12]), m2RealDiario: N(r[13]),
     }))
 
-  const modulos: ModuloRow[] = sheetRows(wb, 'AVANCE')
+  const modulos: ModuloRow[] = sheetRows(XLSX, wb, 'AVANCE')
     .slice(1)
     .filter((r) => r[0])
     .map((r) => ({
@@ -164,7 +165,7 @@ export function parseWorkbook(wb: XLSX.WorkBook): ParsedDashboardData {
       tiempoProy: N(r[61]), tiempoReal: N(r[62]),
     }))
 
-  const detalleGD: DetalleGdRow[] = sheetRows(wb, 'DETALLE GD')
+  const detalleGD: DetalleGdRow[] = sheetRows(XLSX, wb, 'DETALLE GD')
     .slice(1)
     .filter((r) => r[0] && r[13] != null)
     .map((r) => {
@@ -181,7 +182,7 @@ export function parseWorkbook(wb: XLSX.WorkBook): ParsedDashboardData {
       }
     })
 
-  const homeAvanceRows = sheetRows(wb, 'HOME AVANCE')
+  const homeAvanceRows = sheetRows(XLSX, wb, 'HOME AVANCE')
   const hi = homeAvanceRows.findIndex((r) => r.indexOf('MESES') >= 0)
   const homeAvance: HomeAvanceRow[] =
     hi < 0
@@ -198,7 +199,7 @@ export function parseWorkbook(wb: XLSX.WorkBook): ParsedDashboardData {
             }))
         })()
 
-  const productos: ProductoRow[] = sheetRows(wb, 'PRODUCTOS')
+  const productos: ProductoRow[] = sheetRows(XLSX, wb, 'PRODUCTOS')
     .slice(1)
     .filter((r) => r[0] && r[1])
     .map((r) => ({
@@ -210,7 +211,7 @@ export function parseWorkbook(wb: XLSX.WorkBook): ParsedDashboardData {
       variacion: N(r[23]), pctAvPedidos: N(r[25]),
     }))
 
-  const membranaCielo: MembranaCieloRow[] = sheetRows(wb, 'MEMBRANA_CIELO')
+  const membranaCielo: MembranaCieloRow[] = sheetRows(XLSX, wb, 'MEMBRANA_CIELO')
     .slice(1)
     .filter((r) => r[0])
     .map((r) => ({
@@ -218,7 +219,7 @@ export function parseWorkbook(wb: XLSX.WorkBook): ParsedDashboardData {
       membranaEstado: r[4], membranaFecha: r[5],
     }))
 
-  const avplan: AvPlanRow[] = sheetRows(wb, 'AV_PLAN')
+  const avplan: AvPlanRow[] = sheetRows(XLSX, wb, 'AV_PLAN')
     .slice(1)
     .filter((r) => r[0])
     .map((r) => ({
@@ -228,7 +229,7 @@ export function parseWorkbook(wb: XLSX.WorkBook): ParsedDashboardData {
       termReal: N(r[7]), termRealAcum: N(r[8]),
     }))
 
-  const despachos: DespachoRow[] = sheetRows(wb, 'GD_MODULOS')
+  const despachos: DespachoRow[] = sheetRows(XLSX, wb, 'GD_MODULOS')
     .slice(1)
     .filter((r) => r[1])
     .map((r) => ({
@@ -237,7 +238,7 @@ export function parseWorkbook(wb: XLSX.WorkBook): ParsedDashboardData {
       modulo: r[6], torre: r[7], tipo: r[8], acumulado: N(r[9]),
     }))
 
-  const proyeccion: ProyeccionRow[] = sheetRows(wb, 'GD_MODULOS')
+  const proyeccion: ProyeccionRow[] = sheetRows(XLSX, wb, 'GD_MODULOS')
     .slice(1)
     .filter((r) => r[12] != null && r[14] != null)
     .map((r) => ({

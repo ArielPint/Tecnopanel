@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef } from 'react'
 import { X, ChevronRight, Upload, Link2, FileText, Clock, User, Loader2, Trash2, ExternalLink, MessageCircle, Send, Plus, FileSpreadsheet } from 'lucide-react'
-import * as XLSX from 'xlsx'
+import type { WorkSheet } from 'xlsx'
 import { fmtMontoCLP } from '@/lib/montoCLP'
 import { errorTamanoArchivo, nombreParaStorage } from '@/lib/storageKey'
-import jsPDF from 'jspdf'
+import { cargarJsPDF, cargarXLSX, type JsPDF, type XLSXLib } from '@/lib/cargarLibrerias'
 import { toast } from 'sonner'
 import tecnopanelLogo from '@/assets/tecnopanel-logo-color.png'
 import { supabase } from '@/lib/supabaseClient'
@@ -31,7 +31,7 @@ const TERMINOS_CONDICIONES_DEFAULT = 'La cotización es válida por un período 
 
 // Calcula el resumen de costos desde la hoja "ANALISIS" (agrupa por Nombre Estructura,
 // costo_total = suma(Cantidad Total * PPTO) del grupo, costo_unitario = costo_total / Cantidad Estructura).
-function parseAnalisisExcel(ws: XLSX.WorkSheet): { items: CubicacionItem[]; viviendasDetectadas: string[] } {
+function parseAnalisisExcel(XLSX: XLSXLib, ws: WorkSheet): { items: CubicacionItem[]; viviendasDetectadas: string[] } {
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1')
   const cell = (r: number, c: number) => ws[XLSX.utils.encode_cell({ r, c })]?.v
   const headerRow = range.s.r
@@ -92,7 +92,7 @@ function parseAnalisisExcel(ws: XLSX.WorkSheet): { items: CubicacionItem[]; vivi
 function money(n: number) { return formatCLP(Math.round(n)) }
 
 // Dibuja una tabla de costos (titulo + encabezado + items + subtotal) tipo la del presupuesto de referencia.
-function drawBloqueCostos(doc: jsPDF, x: number, y: number, w: number, titulo: string, items: CubicacionItem[], factor: number): { y: number; subtotal: number } {
+function drawBloqueCostos(doc: JsPDF, x: number, y: number, w: number, titulo: string, items: CubicacionItem[], factor: number): { y: number; subtotal: number } {
   const rowH = 5.5
   const colDesc = x + 2
   const colUnit = x + w * 0.58
@@ -137,7 +137,7 @@ function drawBloqueCostos(doc: jsPDF, x: number, y: number, w: number, titulo: s
 }
 
 // Dibuja la sección completa de una tipología: barra de cabecera (cliente | tipología-proyecto | fecha) + sus bloques.
-function drawSeccionTipologia(doc: jsPDF, y: number, cliente: string, tituloCabecera: string, fecha: string, grupos: [string, CubicacionItem[]][], factor: number): { y: number; total: number } {
+function drawSeccionTipologia(doc: JsPDF, y: number, cliente: string, tituloCabecera: string, fecha: string, grupos: [string, CubicacionItem[]][], factor: number): { y: number; total: number } {
   const x = 15, w = 180
   if (y > 250) { doc.addPage(); y = 20 }
   doc.setFillColor(237, 50, 36); doc.rect(x, y, w, 7, 'F')
@@ -488,13 +488,14 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
     setParsingExcel(true); setExcelError('')
     try {
       const buf = await file.arrayBuffer()
+      const XLSX = await cargarXLSX()
       const wb = XLSX.read(buf, { type: 'array', cellDates: true })
       const sheetName = wb.SheetNames.find(n => n.trim().toUpperCase().startsWith('ANALISIS'))
       if (!sheetName) {
         setExcelError('No se encontró la hoja "ANALISIS" en este Excel.')
         setParsingExcel(false); return
       }
-      const { items, viviendasDetectadas } = parseAnalisisExcel(wb.Sheets[sheetName])
+      const { items, viviendasDetectadas } = parseAnalisisExcel(XLSX, wb.Sheets[sheetName])
       if (items.length === 0) {
         setExcelError('No se reconocieron ítems en la hoja "ANALISIS" de este Excel.')
       } else {
@@ -551,6 +552,12 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
     const clienteNombre = (opp.cliente as { razon_social?: string } | undefined)?.razon_social || costosData['cubicacion_cliente'] || ''
     const fecha = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')
 
+    const jsPDF = await cargarJsPDF().catch(() => null)
+    if (!jsPDF) {
+      toast.error('No se pudo cargar el generador de PDF. Revisa tu conexión e inténtalo de nuevo.')
+      setGenerandoPdf(false)
+      return
+    }
     const doc = new jsPDF({ unit: 'mm', format: 'a4' })
     doc.addImage(tecnopanelLogo, 'PNG', 15, 12, 32, 23)
     doc.setDrawColor(237, 50, 36); doc.setLineWidth(1); doc.line(15, 42, 195, 42)

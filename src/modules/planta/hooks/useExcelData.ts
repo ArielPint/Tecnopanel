@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import * as XLSX from 'xlsx'
 import { toast } from 'sonner'
+import { cargarXLSX } from '@/lib/cargarLibrerias'
 import { supabase } from '@/lib/supabaseClient'
 import { parseWorkbook, type ParsedDashboardData } from '../lib/excelParser'
 
@@ -23,9 +23,9 @@ export function useExcelData() {
         return
       }
       try {
-        const buf = await data.arrayBuffer()
+        const [buf, XLSX] = await Promise.all([data.arrayBuffer(), cargarXLSX()])
         const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true, dense: true })
-        if (!cancelado) setExcelData(parseWorkbook(wb))
+        if (!cancelado) setExcelData(parseWorkbook(wb, XLSX))
       } catch {
         // Archivo corrupto en el bucket — se deja el prompt de subida manual como fallback
       } finally {
@@ -42,9 +42,9 @@ export function useExcelData() {
     setUploading(true)
     setError(null)
     try {
-      const buf = await file.arrayBuffer()
+      const [buf, XLSX] = await Promise.all([file.arrayBuffer(), cargarXLSX()])
       const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true, dense: true })
-      const parsed = parseWorkbook(wb)
+      const parsed = parseWorkbook(wb, XLSX)
       const { error: upError } = await supabase.storage.from(BUCKET).upload(OBJECT_PATH, file, { upsert: true })
       if (upError) throw upError
       setExcelData(parsed)

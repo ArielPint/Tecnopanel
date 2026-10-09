@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import * as XLSX from 'xlsx'
+import { cargarXLSX } from '@/lib/cargarLibrerias'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
@@ -20,8 +20,9 @@ export function useAvanceProduccionExcel() {
     setError(null)
     try {
       const buf = await file.arrayBuffer()
+      const XLSX = await cargarXLSX()
       const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true, dense: true })
-      const rows = parseAvanceProduccion(wb)
+      const rows = parseAvanceProduccion(wb, XLSX)
       const proyectoId = await getProyectoId(proyectoSlug!)
       const result = await seedPlantaModulos(proyectoId, rows)
       const { error: upError } = await supabase.storage.from(BUCKET).upload(OBJECT_PATH, file, { upsert: true })

@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf'
+import { cargarJsPDF } from '@/lib/cargarLibrerias'
 import { PROYECTO_CONST, WIP_CONST } from './email'
 import type { ItemSolicitud } from '../hooks/useSolicitudes'
 
@@ -12,7 +12,8 @@ export interface SolicitudParaPdf {
 
 // Respaldo local de la solicitud, sin depender de email — jsPDF ya está instalado
 // en el proyecto (mismo patrón que el presupuesto del CRM), no hace falta backend.
-export function descargarSolicitudPdf(data: SolicitudParaPdf) {
+export async function descargarSolicitudPdf(data: SolicitudParaPdf) {
+  const jsPDF = await cargarJsPDF()
   const doc = new jsPDF()
   const now = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
 

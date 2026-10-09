@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx'
+import type { WorkBook, WorkSheet } from 'xlsx'
+import type { XLSXLib } from '@/lib/cargarLibrerias'
 import { supabase } from '@/lib/supabaseClient'
 import { CATEGORY_DEFS, findCategoriaForPartida, normalize } from './categorias'
 
@@ -76,10 +77,10 @@ function armarModulos(columns: Col[], partidas: PartidaRow[], esTerminado: (col:
   })
 }
 
-export function parseCR(wb: XLSX.WorkBook): ParseCRResult {
-  if (wb.Sheets['CR']) return { formato: 'cr', rows: parseHojaCR(wb.Sheets['CR']) }
+export function parseCR(wb: WorkBook, XLSX: XLSXLib): ParseCRResult {
+  if (wb.Sheets['CR']) return { formato: 'cr', rows: parseHojaCR(XLSX, wb.Sheets['CR']) }
   const hojasEdificio = wb.SheetNames.filter((n) => normalize(n).startsWith('edificio'))
-  if (hojasEdificio.length) return { formato: 'edificios', rows: parseEdificios(wb, hojasEdificio) }
+  if (hojasEdificio.length) return { formato: 'edificios', rows: parseEdificios(XLSX, wb, hojasEdificio) }
   throw new Error('No se encontró la hoja "CR" ni hojas "Edificio N°…" en el archivo.')
 }
 
@@ -88,7 +89,7 @@ export function parseCR(wb: XLSX.WorkBook): ParseCRResult {
 // desde col B). A diferencia del html, acá NO se lee la fila 19 (equipo W/C):
 // esa asignación ahora vive en obra_cr_config, cargada a mano en la pestaña
 // Configuración en vez de venir del Excel de Entrega Contratistas.
-function parseHojaCR(sheet: XLSX.WorkSheet): ObraCrModuloRow[] {
+function parseHojaCR(XLSX: XLSXLib, sheet: WorkSheet): ObraCrModuloRow[] {
   const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true }) as unknown[][]
 
   const ROW18 = data[17] || []
@@ -132,7 +133,7 @@ function parseHojaCR(sheet: XLSX.WorkSheet): ObraCrModuloRow[] {
 //     datos se ignoran solos porque no calzan con ninguna partida conocida).
 // El tipo no viene escrito por módulo: el total de partidas mayor es HUMEDO y el menor SECO.
 // Terminado = módulo marcado "RF" en la hoja "Compromisos" (ver modulosConRF).
-function parseEdificios(wb: XLSX.WorkBook, hojas: string[]): ObraCrModuloRow[] {
+function parseEdificios(XLSX: XLSXLib, wb: WorkBook, hojas: string[]): ObraCrModuloRow[] {
   const columns: (Col & { total: number })[] = []
   const partidas = new Map<string, unknown[]>()
 
@@ -175,13 +176,13 @@ function parseEdificios(wb: XLSX.WorkBook, hojas: string[]): ObraCrModuloRow[] {
 
   if (!partidas.size) throw new Error('No se encontraron partidas reconocidas (columna A) en las hojas "Edificio".')
 
-  const conRF = modulosConRF(wb)
+  const conRF = modulosConRF(XLSX, wb)
   return armarModulos(columns, [...partidas].map(([name, rowData]) => ({ name, rowData })), (col) => conRF.has(col.num))
 }
 
 // Hoja "Compromisos": bloques por día con celdas "242 H  (W)" y, en la celda de abajo,
 // el resultado (1/0, o "R1"/"RF" cuando hubo recepción). Solo "RF" cuenta como terminado.
-function modulosConRF(wb: XLSX.WorkBook): Set<number> {
+function modulosConRF(XLSX: XLSXLib, wb: WorkBook): Set<number> {
   const nombre = wb.SheetNames.find((n) => normalize(n) === 'compromisos')
   const conRF = new Set<number>()
   if (!nombre) return conRF

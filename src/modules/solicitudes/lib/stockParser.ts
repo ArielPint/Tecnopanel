@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx'
+import type { WorkBook } from 'xlsx'
+import type { XLSXLib } from '@/lib/cargarLibrerias'
 import { supabase } from '@/lib/supabaseClient'
 
 export interface StockRow {
@@ -10,7 +11,7 @@ export interface StockRow {
 
 // Columnas por posición (0:código, 1:descripción, 2:unidad, 3:stock) — el nombre de
 // la hoja y de los encabezados varía según la fecha de exportación del Excel.
-export function parseStock(wb: XLSX.WorkBook): StockRow[] {
+export function parseStock(wb: WorkBook, XLSX: XLSXLib): StockRow[] {
   const sheetName = wb.SheetNames[0]
   const ws = sheetName ? wb.Sheets[sheetName] : undefined
   if (!ws) throw new Error('El archivo no tiene hojas.')

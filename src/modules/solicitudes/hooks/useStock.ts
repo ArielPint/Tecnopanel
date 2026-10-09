@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import * as XLSX from 'xlsx'
+import { cargarXLSX } from '@/lib/cargarLibrerias'
 import { supabase } from '@/lib/supabaseClient'
 import { useCachedQuery } from '@/lib/useCachedQuery'
 import { parseStock, upsertStock, type StockUpsertResult } from '../lib/stockParser'
@@ -37,8 +37,9 @@ export function useStock() {
     setError(null)
     try {
       const buf = await file.arrayBuffer()
+      const XLSX = await cargarXLSX()
       const wb = XLSX.read(new Uint8Array(buf), { type: 'array', dense: true })
-      const rows = parseStock(wb)
+      const rows = parseStock(wb, XLSX)
       const result = await upsertStock(rows, perfil!.id)
       setLastResult(result)
       await refetch()

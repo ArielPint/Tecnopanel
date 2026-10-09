@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import { cargarXLSX } from '@/lib/cargarLibrerias'
 
 const XLSURL = 'https://raw.githubusercontent.com/ArielPint/LA-CHACRA/main/data/ubicaciones.xlsx'
 
@@ -17,6 +17,7 @@ export interface CatalogoModulos {
 export async function loadCatalogoModulos(): Promise<CatalogoModulos> {
   const res = await fetch(XLSURL)
   const buf = await res.arrayBuffer()
+  const XLSX = await cargarXLSX()
   const wb = XLSX.read(buf, { type: 'array' })
   const ws = wb.Sheets['BASE'] || wb.Sheets[wb.SheetNames[0]]
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as unknown[][]
