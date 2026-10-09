@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './modules/usuarios/LoginPage'
 import ResetPasswordPage from './modules/usuarios/ResetPasswordPage'
 import CrmLoginPage from './modules/crm/pages/Login'
 import SipLoginPage from './modules/sip/pages/Login'
+import PrevencionLoginPage from './modules/sso/pages/Login'
 import { useAuthStore } from './store/authStore'
 import { ConCarga, diferido } from './lib/cargaDiferida'
 
@@ -25,6 +26,7 @@ const SettingsApp = diferido(() => import('./modules/settings/SettingsApp'))
 const GeoVictoriaPage = diferido(() => import('./modules/gestion/GeoVictoriaPage'))
 const GestionApp = diferido(() => import('./modules/gestion/GestionApp'))
 const SipApp = diferido(() => import('./modules/sip/SipApp'))
+const PrevencionApp = diferido(() => import('./modules/sso/PrevencionApp'))
 
 export default function App() {
   const init = useAuthStore((s) => s.init)
@@ -49,6 +51,18 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        {/* Portal de Prevención: web propia como el CRM, con su login (misma cuenta del hub) */}
+        <Route path="/prevencion/login" element={<PrevencionLoginPage />} />
+        <Route
+          path="/prevencion/*"
+          element={
+            <ProtectedRoute loginPath="/prevencion/login" requiere="sso">
+              <ConCarga><PrevencionApp /></ConCarga>
+            </ProtectedRoute>
+          }
+        />
+        {/* versión anterior, dentro del hub */}
+        <Route path="/sso/*" element={<Navigate to="/prevencion" replace />} />
         <Route
           path="/crm/*"
           element={

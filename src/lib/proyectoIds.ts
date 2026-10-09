@@ -5,6 +5,12 @@ import { supabase } from './supabaseClient'
  *  consultarlo, y así el hub no se cae en una base que todavía no tiene el portal. */
 export const SIP_ANCLA_ID = '043e6b57-8c97-4eef-8bf2-53d117afc5df'
 
+/** Pseudo-proyecto ancla de los accesos del módulo SSO / Prevención (slug 'sso', tipo 'sistema').
+ *  Id fijo, creado por la migración 20260930120000_sso_prevencion.sql: no hace falta consultarlo, y
+ *  así el hub no se cae en una base que todavía no tiene el módulo. Es propio y no el de Gestión
+ *  ('sistema'): syncPermisosGestion reemplaza todas las filas del usuario en ese ancla. */
+export const SSO_ANCLA_ID = '9cb074b8-9085-4b96-9600-0b7fde3d036e'
+
 const cache = new Map<string, Promise<string>>()
 
 export function getProyectoId(slug: string): Promise<string> {

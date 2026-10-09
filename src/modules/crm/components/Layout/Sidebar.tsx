@@ -61,9 +61,9 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
   const { profile, signOut } = useAuth()
   const { canAccess, loading } = usePermisos()
   // El enlace al portal se muestra a cualquiera que realmente tenga acceso al hub
-  // (algun proyecto, Gestion o admin), no solo a rol='admin'.
+  // (algun proyecto, Gestion, Prevencion o admin), no solo a rol='admin'.
   const acceso = useAccesoUsuario()
-  const tienePortal = acceso.isAdmin || acceso.tieneProyecto || acceso.tieneGestion || acceso.tieneSip
+  const tienePortal = acceso.isAdmin || acceso.tieneProyecto || acceso.tieneGestion || acceso.tieneSip || acceso.tieneSso
   const rol = profile?.rol ?? ''
   const [changingPass, setChangingPass] = useState(false)
   const [newPass, setNewPass] = useState('')

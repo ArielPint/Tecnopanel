@@ -1,0 +1,56 @@
+// Rutas del portal de Prevención, en un solo lugar (antes vivía dentro del hub en /sso).
+export const RUTA = {
+  inicio: '/prevencion',
+  login: '/prevencion/login',
+  hallazgos: '/prevencion/hallazgos',
+  nuevoHallazgo: '/prevencion/hallazgos/nuevo',
+  indicadoresHallazgos: '/prevencion/hallazgos/indicadores',
+  hallazgo: (id: string) => `/prevencion/hallazgos/${id}`,
+  accidentes: '/prevencion/accidentes',
+  indicadoresAccidentes: '/prevencion/accidentes/indicadores',
+  dotacion: '/prevencion/accidentes/dotacion',
+  nuevoEvento: '/prevencion/accidentes/nuevo',
+  evento: (id: string) => `/prevencion/accidentes/${id}`,
+  editarEvento: (id: string) => `/prevencion/accidentes/${id}/editar`,
+  inspecciones: '/prevencion/inspecciones',
+  inspeccionesRealizadas: '/prevencion/inspecciones/realizadas',
+  plantillas: '/prevencion/inspecciones/plantillas',
+  plantilla: (id: string) => `/prevencion/inspecciones/plantillas/${id}`,
+  nuevaPlantilla: '/prevencion/inspecciones/plantillas/nueva',
+  nuevaInspeccion: (checklistId?: string, areaId?: string | null) => {
+    const q = new URLSearchParams()
+    if (checklistId) q.set('plantilla', checklistId)
+    if (areaId) q.set('area', areaId)
+    const s = q.toString()
+    return `/prevencion/inspecciones/nueva${s ? `?${s}` : ''}`
+  },
+  inspeccion: (id: string) => `/prevencion/inspecciones/${id}`,
+  capacitaciones: '/prevencion/capacitaciones',
+  vigenciasCapacitaciones: '/prevencion/capacitaciones/vigencias',
+  nuevaCapacitacion: '/prevencion/capacitaciones/nueva',
+  capacitacion: (id: string) => `/prevencion/capacitaciones/${id}`,
+  editarCapacitacion: (id: string) => `/prevencion/capacitaciones/${id}/editar`,
+  epp: '/prevencion/epp',
+  reposicionesEpp: '/prevencion/epp/reposiciones',
+  /** con trabajador: el formulario parte con él elegido (desde su ficha o desde Reposiciones) */
+  nuevaEntrega: (trabajadorId?: string) => `/prevencion/epp/nueva${trabajadorId ? `?trabajador=${trabajadorId}` : ''}`,
+  entrega: (id: string) => `/prevencion/epp/${id}`,
+  editarEntrega: (id: string) => `/prevencion/epp/${id}/editar`,
+  comite: '/prevencion/comite',
+  acuerdosComite: '/prevencion/comite/acuerdos',
+  integrantesComite: '/prevencion/comite/integrantes',
+  nuevaReunion: (comiteId: string) => `/prevencion/comite/reuniones/nueva?comite=${comiteId}`,
+  reunion: (id: string) => `/prevencion/comite/reuniones/${id}`,
+  editarReunion: (id: string) => `/prevencion/comite/reuniones/${id}/editar`,
+  documentos: '/prevencion/documentos',
+  nuevoDocumento: '/prevencion/documentos/nuevo',
+  documento: (id: string) => `/prevencion/documentos/${id}`,
+  editarDocumento: (id: string) => `/prevencion/documentos/${id}/editar`,
+  trabajadores: '/prevencion/trabajadores',
+  trabajador: (id: string) => `/prevencion/trabajadores/${id}`,
+  configuracion: '/prevencion/configuracion',
+  configEmpresas: '/prevencion/configuracion/empresas',
+  configExamenes: '/prevencion/configuracion/examenes',
+  configCapacitaciones: '/prevencion/configuracion/capacitaciones',
+  configEpp: '/prevencion/configuracion/epp',
+}

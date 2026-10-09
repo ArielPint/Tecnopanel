@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient'
-import { getProyectoId, SIP_ANCLA_ID } from './proyectoIds'
+import { getProyectoId, SIP_ANCLA_ID, SSO_ANCLA_ID } from './proyectoIds'
 
 async function reemplazarPermisos(userId: string, proyectoId: string, filas: { modulo_key: string; accion: string }[]) {
   const { error: delErr } = await supabase.from('permisos').delete().eq('user_id', userId).eq('proyecto_id', proyectoId)
@@ -91,6 +91,21 @@ export async function syncPermisosSip(userId: string, acciones: Record<string, b
       return { modulo_key: `pnl:${clave.slice(0, separador)}`, accion: clave.slice(separador + 1) }
     })
   await reemplazarPermisos(userId, SIP_ANCLA_ID, filas)
+}
+
+/**
+ * Portal de Prevención: transversal, sobre su propio ancla (SSO_ANCLA_ID) y no sobre 'sistema', así
+ * reemplazar los permisos de uno no borra los del otro. Un permiso por módulo, como el CRM: la clave
+ * del formulario es "<modulo>:<accion>" y en la base va como modulo_key 'sso:<modulo>'.
+ */
+export async function syncPermisosSso(userId: string, acciones: Record<string, boolean>) {
+  const filas = Object.entries(acciones)
+    .filter(([, on]) => on)
+    .map(([clave]) => {
+      const separador = clave.lastIndexOf(':')
+      return { modulo_key: `sso:${clave.slice(0, separador)}`, accion: clave.slice(separador + 1) }
+    })
+  await reemplazarPermisos(userId, SSO_ANCLA_ID, filas)
 }
 
 /** Rol de negocio por proyecto (catálogo abierto, ver Fase E1) — reemplaza el 'full_access' decorativo. */
