@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx'
+import type { WorkBook } from 'xlsx'
+import type { XLSXLib } from '@/lib/cargarLibrerias'
 import { supabase } from '@/lib/supabaseClient'
 
 export type Subcontrato = 'WEDO' | 'CONBES'
@@ -14,7 +15,7 @@ export interface AvanceProduccionRow {
 
 // Hoja "SUBCONTRATO" (agregada 2026-08-26): N° MÓDULO / N° SERIE / SUBCONTRATO,
 // solo WEDO o CONBES. Opcional — archivos viejos sin esta hoja siguen andando igual.
-function parseSubcontratoSheet(wb: XLSX.WorkBook): Map<string, Subcontrato> {
+function parseSubcontratoSheet(XLSX: XLSXLib, wb: WorkBook): Map<string, Subcontrato> {
   const map = new Map<string, Subcontrato>()
   const ws = wb.Sheets['SUBCONTRATO']
   if (!ws) return map
@@ -79,7 +80,7 @@ function esDone(v: unknown): boolean {
   return !isNaN(n) && n >= 0.5
 }
 
-export function parseAvanceProduccion(wb: XLSX.WorkBook): AvanceProduccionRow[] {
+export function parseAvanceProduccion(wb: WorkBook, XLSX: XLSXLib): AvanceProduccionRow[] {
   const sheetName = wb.SheetNames.includes('BD_AVANCE')
     ? 'BD_AVANCE'
     : (wb.SheetNames.find((n) => /AVANCE/i.test(n)) ?? wb.SheetNames[0])
@@ -98,7 +99,7 @@ export function parseAvanceProduccion(wb: XLSX.WorkBook): AvanceProduccionRow[] 
   }
 
   const checkCols = Object.entries(CODE_TO_CHECK_COLUMN).map(([code, colName]) => ({ code, idx: col(colName) }))
-  const subcontratoPorModulo = parseSubcontratoSheet(wb)
+  const subcontratoPorModulo = parseSubcontratoSheet(XLSX, wb)
 
   const out: AvanceProduccionRow[] = []
   for (let i = 1; i < rows.length; i++) {

@@ -1,6 +1,7 @@
-import * as XLSX from 'xlsx'
+import { cargarXLSX } from '@/lib/cargarLibrerias'
 
-export function exportarExcel(nombreArchivo: string, filas: Record<string, unknown>[]) {
+export async function exportarExcel(nombreArchivo: string, filas: Record<string, unknown>[]) {
+  const XLSX = await cargarXLSX()
   const hoja = XLSX.utils.json_to_sheet(filas)
   const libro = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(libro, hoja, 'Datos')

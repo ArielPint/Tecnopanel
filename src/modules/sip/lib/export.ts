@@ -1,19 +1,20 @@
-import * as XLSX from 'xlsx'
+import type { WorkSheet } from 'xlsx'
+import { cargarXLSX, type XLSXLib } from '@/lib/cargarLibrerias'
 import type { ConsumoV, LineaV, ParteV } from './api'
 import type { MaterialConsumido } from './calculo'
 import { fmtFecha, fmtHora, serialExcel } from './formato'
 
 // Fechas como número de serie con formato (con Date, SheetJS las corre un día por la zona horaria).
-function conFechas(hoja: XLSX.WorkSheet, columna: number, filas: number) {
+function conFechas(XLSX: XLSXLib, hoja: WorkSheet, columna: number, filas: number) {
   for (let r = 1; r <= filas; r++) {
     const c = hoja[XLSX.utils.encode_cell({ r, c: columna })]
     if (c && typeof c.v === 'number') c.z = 'dd-mm-yyyy'
   }
 }
 
-function hoja<T extends object>(filas: T[], anchos: number[], columnaFecha?: number) {
+function hoja<T extends object>(XLSX: XLSXLib, filas: T[], anchos: number[], columnaFecha?: number) {
   const h = XLSX.utils.json_to_sheet(filas)
-  if (columnaFecha !== undefined) conFechas(h, columnaFecha, filas.length)
+  if (columnaFecha !== undefined) conFechas(XLSX, h, columnaFecha, filas.length)
   h['!cols'] = anchos.map((wch) => ({ wch }))
   return h
 }
@@ -21,7 +22,8 @@ function hoja<T extends object>(filas: T[], anchos: number[], columnaFecha?: num
 const tramo = (desde: string | null, hasta: string | null) => (desde && hasta ? `${fmtHora(desde)}-${fmtHora(hasta)}` : 'Día completo')
 
 /** Registro de producción: una fila por panel de cada registro. */
-export function exportarRegistroExcel(lineas: LineaV[], partes: ParteV[], desde: string, hasta: string) {
+export async function exportarRegistroExcel(lineas: LineaV[], partes: ParteV[], desde: string, hasta: string) {
+  const XLSX = await cargarXLSX()
   const porParte = new Map(partes.map((p) => [p.id, p]))
   const filas = lineas.map((l) => {
     const p = porParte.get(l.parte_id)
@@ -42,12 +44,13 @@ export function exportarRegistroExcel(lineas: LineaV[], partes: ParteV[], desde:
     }
   })
   const libro = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(libro, hoja(filas, [12, 13, 11, 13, 46, 9, 11, 9, 11, 22, 16, 24, 30], 0), 'Producción')
+  XLSX.utils.book_append_sheet(libro, hoja(XLSX, filas, [12, 13, 11, 13, 46, 9, 11, 9, 11, 22, 16, 24, 30], 0), 'Producción')
   XLSX.writeFile(libro, `produccion-sip_${fmtFecha(desde)}_a_${fmtFecha(hasta)}.xlsx`)
 }
 
 /** Consumo de materiales: resumen por material, por día y el detalle por panel. */
-export function exportarConsumoExcel(resumen: MaterialConsumido[], consumos: ConsumoV[], desde: string, hasta: string) {
+export async function exportarConsumoExcel(resumen: MaterialConsumido[], consumos: ConsumoV[], desde: string, hasta: string) {
+  const XLSX = await cargarXLSX()
   const r = resumen.map((m) => ({
     Código: m.codigo,
     Material: m.descripcion,
@@ -80,23 +83,24 @@ export function exportarConsumoExcel(resumen: MaterialConsumido[], consumos: Con
   }))
 
   const libro = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(libro, hoja(r, [12, 46, 10, 15, 18, 12]), 'Resumen')
-  XLSX.utils.book_append_sheet(libro, hoja(porDia, [12, 12, 46, 10, 12], 0), 'Por día')
-  XLSX.utils.book_append_sheet(libro, hoja(detalle, [12, 13, 16, 12, 46, 10, 11, 15, 11, 12], 0), 'Detalle')
+  XLSX.utils.book_append_sheet(libro, hoja(XLSX, r, [12, 46, 10, 15, 18, 12]), 'Resumen')
+  XLSX.utils.book_append_sheet(libro, hoja(XLSX, porDia, [12, 12, 46, 10, 12], 0), 'Por día')
+  XLSX.utils.book_append_sheet(libro, hoja(XLSX, detalle, [12, 13, 16, 12, 46, 10, 11, 15, 11, 12], 0), 'Detalle')
   XLSX.writeFile(libro, `consumo-materiales-sip_${fmtFecha(desde)}_a_${fmtFecha(hasta)}.xlsx`)
 }
 
 /** Resultado de la calculadora. */
-export function exportarCalculoExcel(pedido: { codigo: string; descripcion: string; cantidad: number }[], materiales: MaterialConsumido[]) {
+export async function exportarCalculoExcel(pedido: { codigo: string; descripcion: string; cantidad: number }[], materiales: MaterialConsumido[]) {
+  const XLSX = await cargarXLSX()
   const libro = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(
     libro,
-    hoja(pedido.map((p) => ({ 'Código panel': p.codigo, Panel: p.descripcion, Cantidad: p.cantidad })), [13, 50, 10]),
+    hoja(XLSX, pedido.map((p) => ({ 'Código panel': p.codigo, Panel: p.descripcion, Cantidad: p.cantidad })), [13, 50, 10]),
     'Paneles',
   )
   XLSX.utils.book_append_sheet(
     libro,
-    hoja(materiales.map((m) => ({ Código: m.codigo, Material: m.descripcion, Unidad: m.unidad, Cantidad: m.total })), [12, 46, 10, 14]),
+    hoja(XLSX, materiales.map((m) => ({ Código: m.codigo, Material: m.descripcion, Unidad: m.unidad, Cantidad: m.total })), [12, 46, 10, 14]),
     'Materiales',
   )
   XLSX.writeFile(libro, 'calculo-materiales-sip.xlsx')

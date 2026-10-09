@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx'
+import type { WorkBook } from 'xlsx'
+import { cargarXLSX, type XLSXLib } from '@/lib/cargarLibrerias'
 import { supabase } from '@/lib/supabaseClient'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import type { HitosVit } from '@/modules/crm/types/database'
@@ -28,13 +29,14 @@ const dias = (desde: string | null | undefined, hasta: string | null | undefined
   return Math.round((fin.getTime() - new Date(desde).getTime()) / 86400000)
 }
 
-function hoja(libro: XLSX.WorkBook, nombre: string, filas: Fila[]) {
+function hoja(XLSX: XLSXLib, libro: WorkBook, nombre: string, filas: Fila[]) {
   if (filas.length === 0) return
   XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(filas), nombre.slice(0, 31))
 }
 
 /** Arma el Excel completo y lo descarga. Devuelve cuantas oportunidades exporto. */
 export async function exportarOportunidades(): Promise<number> {
+  const XLSX = await cargarXLSX()
   const [opps, tipologias, hist, tareas, datosEtapa, docs, asigs, mensajes, perfiles, lineas] =
     await Promise.all([
       supabase.from('oportunidades').select('*, cliente:clientes(*)').order('codigo'),
@@ -65,7 +67,7 @@ export async function exportarOportunidades(): Promise<number> {
 
   const libro = XLSX.utils.book_new()
 
-  hoja(libro, 'Oportunidades', filas.map((o) => {
+  hoja(XLSX, libro, 'Oportunidades', filas.map((o) => {
     const c = (o.cliente ?? {}) as Record<string, string | null>
     const hitos = (o.hitos_vit ?? {}) as HitosVit
     const fila: Fila = {
@@ -130,7 +132,7 @@ export async function exportarOportunidades(): Promise<number> {
     return fila
   }))
 
-  hoja(libro, 'Tipologías', (tipologias.data ?? []).map((t) => ({
+  hoja(XLSX, libro, 'Tipologías', (tipologias.data ?? []).map((t) => ({
     'Código': cod(t.oportunidad_id),
     'Oportunidad': nom(t.oportunidad_id),
     'Tipología': t.tipologia,
@@ -174,10 +176,10 @@ export async function exportarOportunidades(): Promise<number> {
       })
     }
   }
-  hoja(libro, 'Cubicación', cubicacion)
-  hoja(libro, 'Datos por etapa', otrosDatos)
+  hoja(XLSX, libro, 'Cubicación', cubicacion)
+  hoja(XLSX, libro, 'Datos por etapa', otrosDatos)
 
-  hoja(libro, 'Historial de etapas', (hist.data ?? []).map((h) => ({
+  hoja(XLSX, libro, 'Historial de etapas', (hist.data ?? []).map((h) => ({
     'Código': cod(h.oportunidad_id),
     'Oportunidad': nom(h.oportunidad_id),
     'Etapa': h.etapa,
@@ -188,7 +190,7 @@ export async function exportarOportunidades(): Promise<number> {
     'Notas': h.notas,
   })))
 
-  hoja(libro, 'Tareas', (tareas.data ?? []).map((t) => ({
+  hoja(XLSX, libro, 'Tareas', (tareas.data ?? []).map((t) => ({
     'Código': cod(t.oportunidad_id),
     'Oportunidad': nom(t.oportunidad_id),
     'Título': t.titulo,
@@ -205,7 +207,7 @@ export async function exportarOportunidades(): Promise<number> {
     'Creada': fechaHora(t.created_at),
   })))
 
-  hoja(libro, 'Responsables', (asigs.data ?? []).map((a) => ({
+  hoja(XLSX, libro, 'Responsables', (asigs.data ?? []).map((a) => ({
     'Código': cod(a.oportunidad_id),
     'Oportunidad': nom(a.oportunidad_id),
     'Etapa': a.etapa,
@@ -214,7 +216,7 @@ export async function exportarOportunidades(): Promise<number> {
     'Asignado': fechaHora(a.created_at),
   })))
 
-  hoja(libro, 'Documentos', (docs.data ?? []).map((d) => ({
+  hoja(XLSX, libro, 'Documentos', (docs.data ?? []).map((d) => ({
     'Código': cod(d.oportunidad_id),
     'Oportunidad': nom(d.oportunidad_id),
     'Etapa': d.etapa,
@@ -228,7 +230,7 @@ export async function exportarOportunidades(): Promise<number> {
     'URL': d.url,
   })))
 
-  hoja(libro, 'Mensajes', (mensajes.data ?? []).map((m) => ({
+  hoja(XLSX, libro, 'Mensajes', (mensajes.data ?? []).map((m) => ({
     'Código': cod(m.oportunidad_id),
     'Oportunidad': nom(m.oportunidad_id),
     'Etapa': m.etapa,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import * as XLSX from 'xlsx'
+import { cargarXLSX } from '@/lib/cargarLibrerias'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabaseClient'
 import { getProyectoId } from '@/lib/proyectoIds'
@@ -99,6 +99,7 @@ export function useDotacionMod() {
       setError(null)
       try {
         const buf = await file.arrayBuffer()
+        const XLSX = await cargarXLSX()
         const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true })
         const d = parseDotacion(wb, XLSX)
         // Si la hoja no trae el período (planillas con hojas "Hoja1"), se intenta

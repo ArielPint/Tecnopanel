@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import { cargarXLSX } from '@/lib/cargarLibrerias'
 import type { FilaImportacion } from './api'
 
 // Lee el Excel de listas de materiales de SAP (como PNL_SIP.xlsx): una fila por material de cada
@@ -60,6 +60,7 @@ export interface ResultadoLectura {
 }
 
 export async function leerExcelRecetas(archivo: File): Promise<ResultadoLectura> {
+  const XLSX = await cargarXLSX()
   const libro = XLSX.read(await archivo.arrayBuffer(), { type: 'array' })
   const hoja = libro.Sheets[libro.SheetNames[0]]
   const matriz = XLSX.utils.sheet_to_json<unknown[]>(hoja, { header: 1, blankrows: false, raw: true })
@@ -120,7 +121,8 @@ export async function leerExcelRecetas(archivo: File): Promise<ResultadoLectura>
 }
 
 /** Plantilla vacía con los encabezados que reconoce el importador. */
-export function descargarPlantillaRecetas() {
+export async function descargarPlantillaRecetas() {
+  const XLSX = await cargarXLSX()
   const hoja = XLSX.utils.aoa_to_sheet([
     ['Número de artículo', 'Descripción del artículo', 'Nº', 'Descripción', 'Cantidad base', 'Nombre de unidad de medida'],
     ['6602003', 'PNL-STD 11,1/57/STD 11,1 ; 1220x2440x78mm', '2001005', 'OSB APA Protec 11,1mm (1,22x2,44m)', 2, 'UNIDAD'],
