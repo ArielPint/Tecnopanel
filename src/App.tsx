@@ -4,24 +4,27 @@ import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './modules/usuarios/LoginPage'
 import ResetPasswordPage from './modules/usuarios/ResetPasswordPage'
-import UsuariosPage from './modules/usuarios/UsuariosPage'
-import DashboardPage from './modules/dashboard/DashboardPage'
-import ProyectosPage from './modules/proyectos/ProyectosPage'
-import CrmApp from './modules/crm/CrmApp'
 import CrmLoginPage from './modules/crm/pages/Login'
-import FinancieroApp from './modules/financiero/FinancieroApp'
-import DashboardPlantaApp from './modules/planta/DashboardPlantaApp'
-import ProduccionApp from './modules/planta/ProduccionApp'
-import ObraApp from './modules/obra/ObraApp'
-import LogisticaApp from './modules/logistica/LogisticaApp'
-import SolicitudesApp from './modules/solicitudes/SolicitudesApp'
-import EstadosPagoApp from './modules/estados_pago/EstadosPagoApp'
-import SettingsApp from './modules/settings/SettingsApp'
-import GeoVictoriaPage from './modules/gestion/GeoVictoriaPage'
-import GestionApp from './modules/gestion/GestionApp'
-import SipApp from './modules/sip/SipApp'
 import SipLoginPage from './modules/sip/pages/Login'
 import { useAuthStore } from './store/authStore'
+import { ConCarga, diferido } from './lib/cargaDiferida'
+
+// Cada sección se descarga recién al entrar a ella
+const UsuariosPage = diferido(() => import('./modules/usuarios/UsuariosPage'))
+const DashboardPage = diferido(() => import('./modules/dashboard/DashboardPage'))
+const ProyectosPage = diferido(() => import('./modules/proyectos/ProyectosPage'))
+const CrmApp = diferido(() => import('./modules/crm/CrmApp'))
+const FinancieroApp = diferido(() => import('./modules/financiero/FinancieroApp'))
+const DashboardPlantaApp = diferido(() => import('./modules/planta/DashboardPlantaApp'))
+const ProduccionApp = diferido(() => import('./modules/planta/ProduccionApp'))
+const ObraApp = diferido(() => import('./modules/obra/ObraApp'))
+const LogisticaApp = diferido(() => import('./modules/logistica/LogisticaApp'))
+const SolicitudesApp = diferido(() => import('./modules/solicitudes/SolicitudesApp'))
+const EstadosPagoApp = diferido(() => import('./modules/estados_pago/EstadosPagoApp'))
+const SettingsApp = diferido(() => import('./modules/settings/SettingsApp'))
+const GeoVictoriaPage = diferido(() => import('./modules/gestion/GeoVictoriaPage'))
+const GestionApp = diferido(() => import('./modules/gestion/GestionApp'))
+const SipApp = diferido(() => import('./modules/sip/SipApp'))
 
 export default function App() {
   const init = useAuthStore((s) => s.init)
@@ -42,7 +45,7 @@ export default function App() {
           path="/produccion/*"
           element={
             <ProtectedRoute loginPath="/produccion/login" requiere="sip">
-              <SipApp />
+              <ConCarga><SipApp /></ConCarga>
             </ProtectedRoute>
           }
         />
@@ -50,7 +53,7 @@ export default function App() {
           path="/crm/*"
           element={
             <ProtectedRoute loginPath="/crm/login" requiere="crm">
-              <CrmApp />
+              <ConCarga><CrmApp /></ConCarga>
             </ProtectedRoute>
           }
         />
@@ -58,7 +61,7 @@ export default function App() {
           path="/proyectos/:proyectoSlug/financiero/*"
           element={
             <ProtectedRoute requiere="proyecto">
-              <FinancieroApp />
+              <ConCarga><FinancieroApp /></ConCarga>
             </ProtectedRoute>
           }
         />
@@ -66,7 +69,7 @@ export default function App() {
           path="/proyectos/:proyectoSlug/dashboard/*"
           element={
             <ProtectedRoute requiere="proyecto">
-              <DashboardPlantaApp />
+              <ConCarga><DashboardPlantaApp /></ConCarga>
             </ProtectedRoute>
           }
         />
@@ -74,7 +77,7 @@ export default function App() {
           path="/proyectos/:proyectoSlug/produccion/*"
           element={
             <ProtectedRoute requiere="proyecto">
-              <ProduccionApp />
+              <ConCarga><ProduccionApp /></ConCarga>
             </ProtectedRoute>
           }
         />
@@ -82,7 +85,7 @@ export default function App() {
           path="/proyectos/:proyectoSlug/obra/*"
           element={
             <ProtectedRoute requiere="proyecto">
-              <ObraApp />
+              <ConCarga><ObraApp /></ConCarga>
             </ProtectedRoute>
           }
         />
@@ -90,7 +93,7 @@ export default function App() {
           path="/proyectos/:proyectoSlug/logistica/*"
           element={
             <ProtectedRoute requiere="proyecto">
-              <LogisticaApp />
+              <ConCarga><LogisticaApp /></ConCarga>
             </ProtectedRoute>
           }
         />
@@ -98,7 +101,7 @@ export default function App() {
           path="/proyectos/:proyectoSlug/solicitudes/*"
           element={
             <ProtectedRoute requiere="proyecto">
-              <SolicitudesApp />
+              <ConCarga><SolicitudesApp /></ConCarga>
             </ProtectedRoute>
           }
         />
@@ -106,7 +109,7 @@ export default function App() {
           path="/proyectos/:proyectoSlug/estados-pago/*"
           element={
             <ProtectedRoute requiere="proyecto">
-              <EstadosPagoApp />
+              <ConCarga><EstadosPagoApp /></ConCarga>
             </ProtectedRoute>
           }
         />
@@ -114,7 +117,7 @@ export default function App() {
           path="/proyectos/:proyectoSlug/settings/*"
           element={
             <ProtectedRoute requiere="proyecto">
-              <SettingsApp />
+              <ConCarga><SettingsApp /></ConCarga>
             </ProtectedRoute>
           }
         />
@@ -125,21 +128,21 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="/" element={<DashboardPage />} />
+          <Route path="/" element={<ConCarga><DashboardPage /></ConCarga>} />
           <Route
             path="/proyectos"
             element={
               <ProtectedRoute requiere="proyecto">
-                <ProyectosPage />
+                <ConCarga><ProyectosPage /></ConCarga>
               </ProtectedRoute>
             }
           />
-          <Route path="/geovictoria" element={<GeoVictoriaPage />} />
+          <Route path="/geovictoria" element={<ConCarga><GeoVictoriaPage /></ConCarga>} />
           <Route
             path="/gestion"
             element={
               <ProtectedRoute requiere="gestion">
-                <GestionApp />
+                <ConCarga><GestionApp /></ConCarga>
               </ProtectedRoute>
             }
           />
@@ -147,7 +150,7 @@ export default function App() {
             path="/usuarios"
             element={
               <ProtectedRoute requiere="admin">
-                <UsuariosPage />
+                <ConCarga><UsuariosPage /></ConCarga>
               </ProtectedRoute>
             }
           />
