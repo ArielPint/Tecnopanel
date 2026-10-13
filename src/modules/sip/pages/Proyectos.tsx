@@ -16,11 +16,13 @@ import { useCatalogo } from '../hooks/useCatalogo'
 
 type Edicion = Omit<ProyectoPropio, 'id'> & { id?: string }
 
-/** Listado de proyectos que se pueden elegir al registrar producción, además de las obras del hub. */
+/** Listado de proyectos que se pueden elegir al registrar producción: los de SAP (activos), los propios
+ *  del portal y las obras del hub. */
 export default function Proyectos() {
   const { puede } = usePermisosSip('recetas')
   const editable = puede('editar')
-  const { proyectos, proyectosPropios, loading, recargar } = useCatalogo()
+  const { proyectos, proyectosPropios, proyectosSap, loading, recargar } = useCatalogo()
+  const sapActivos = proyectosSap.filter((p) => p.activo)
   const [edicion, setEdicion] = useState<Edicion | null>(null)
   const [guardando, setGuardando] = useState(false)
 
@@ -56,7 +58,9 @@ export default function Proyectos() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">Proyectos o clientes que se pueden elegir al registrar producción.</p>
+        <p className="text-sm text-muted-foreground">
+          Proyectos que se pueden elegir al registrar producción. Los de SAP se sincronizan solos (los que tienen Cubicación abierta); aquí puedes agregar otros.
+        </p>
         {editable && (
           <Button onClick={() => setEdicion({ nombre: '', activo: true })}>
             <Plus className="mr-1 h-4 w-4" /> Nuevo proyecto
@@ -66,7 +70,7 @@ export default function Proyectos() {
 
       <Card>
         <CardContent className="pt-4">
-          {proyectosPropios.length === 0 && proyectos.length === 0 ? (
+          {proyectosPropios.length === 0 && proyectos.length === 0 && sapActivos.length === 0 ? (
             <Vacio>Aún no hay proyectos.</Vacio>
           ) : (
             <Table>
@@ -101,6 +105,19 @@ export default function Proyectos() {
                         </div>
                       </TableCell>
                     )}
+                  </TableRow>
+                ))}
+                {sapActivos.map((p) => (
+                  <TableRow key={p.codigo}>
+                    <TableCell>
+                      <span className="font-semibold">{p.nombre}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {p.codigo}
+                        {p.cliente && ` · ${p.cliente}`}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">SAP{p.of_numero ? ` (OF Cubicación ${p.of_numero})` : ''}</TableCell>
+                    {editable && <TableCell />}
                   </TableRow>
                 ))}
                 {proyectos.map((o) => (

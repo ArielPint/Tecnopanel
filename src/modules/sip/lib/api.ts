@@ -63,7 +63,8 @@ export interface LineaV {
   total: number
   proyecto_id: string | null
   pnl_proyecto_id: string | null
-  /** nombre de la obra del hub o del proyecto propio */
+  sap_proyecto_codigo: string | null
+  /** nombre del proyecto SAP, de la obra del hub o del proyecto propio */
   proyecto_nombre: string | null
   referencia: string | null
 }
@@ -76,6 +77,7 @@ export interface ConsumoV {
   panel_codigo: string
   proyecto_id: string | null
   pnl_proyecto_id: string | null
+  sap_proyecto_codigo: string | null
   referencia: string | null
   material_id: string
   material_codigo: string
@@ -107,6 +109,7 @@ export interface LineaInput {
   rechazados: number
   proyecto_id: string | null
   pnl_proyecto_id: string | null
+  sap_proyecto_codigo: string | null
   referencia: string
 }
 

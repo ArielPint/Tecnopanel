@@ -5,32 +5,43 @@ import {
   listarPaneles,
   listarProyectos,
   listarProyectosPropios,
+  listarProyectosSap,
   listarRecetas,
   type Material,
   type Panel,
   type Proyecto,
   type ProyectoPropio,
+  type ProyectoSap,
   type RecetaFila,
 } from '../lib/api'
 import { opcionesDestino } from '../lib/destinos'
 
-/** Paneles, materiales, recetas y proyectos: lo usan casi todas las pantallas del portal. */
+/** Paneles, materiales, recetas y proyectos (SAP, obras y propios): lo usan casi todas las pantallas del portal. */
 export function useCatalogo() {
   const [paneles, setPaneles] = useState<Panel[]>([])
   const [materiales, setMateriales] = useState<Material[]>([])
   const [recetas, setRecetas] = useState<RecetaFila[]>([])
   const [proyectos, setProyectos] = useState<Proyecto[]>([])
   const [proyectosPropios, setProyectosPropios] = useState<ProyectoPropio[]>([])
+  const [proyectosSap, setProyectosSap] = useState<ProyectoSap[]>([])
   const [loading, setLoading] = useState(true)
 
   const recargar = useCallback(async () => {
     try {
-      const [p, m, r, pr, pp] = await Promise.all([listarPaneles(), listarMateriales(), listarRecetas(), listarProyectos(), listarProyectosPropios()])
+      const [p, m, r, pr, pp, ps] = await Promise.all([
+        listarPaneles(),
+        listarMateriales(),
+        listarRecetas(),
+        listarProyectos(),
+        listarProyectosPropios(),
+        listarProyectosSap(),
+      ])
       setPaneles(p)
       setMateriales(m)
       setRecetas(r)
       setProyectos(pr)
       setProyectosPropios(pp)
+      setProyectosSap(ps)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No se pudo cargar el catálogo')
     } finally {
@@ -52,10 +63,10 @@ export function useCatalogo() {
       /** Paneles que se pueden producir: activos y con receta */
       panelesProducibles: paneles.filter((p) => p.activo && conReceta.has(p.id)),
       tieneReceta: (panelId: string) => conReceta.has(panelId),
-      /** Obras del hub + proyectos propios, para los <select> (valor 'h:<id>' / 'p:<id>') */
-      destinos: opcionesDestino(proyectos, proyectosPropios),
+      /** Proyectos SAP + obras del hub + proyectos propios, para los <select> (ver lib/destinos) */
+      destinos: opcionesDestino(proyectos, proyectosPropios, proyectosSap),
     }
-  }, [paneles, materiales, recetas, proyectos, proyectosPropios])
+  }, [paneles, materiales, recetas, proyectos, proyectosPropios, proyectosSap])
 
-  return { paneles, materiales, recetas, proyectos, proyectosPropios, loading, recargar, ...derivados }
+  return { paneles, materiales, recetas, proyectos, proyectosPropios, proyectosSap, loading, recargar, ...derivados }
 }
