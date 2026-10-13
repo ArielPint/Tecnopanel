@@ -25,7 +25,7 @@ interface LineaForm {
   panel_id: string
   buenos: string
   rechazados: string
-  /** 'h:<obra>' | 'p:<proyecto propio>' | '' (ver lib/destinos) */
+  /** 's:<proyecto SAP>' | 'h:<obra>' | 'p:<proyecto propio>' | '' (ver lib/destinos) */
   destino: string
   referencia: string
 }
