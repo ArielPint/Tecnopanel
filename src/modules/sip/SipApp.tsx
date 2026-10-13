@@ -15,6 +15,12 @@ import Paneles from './pages/Paneles'
 import Panel from './pages/Panel'
 import Materiales from './pages/Materiales'
 import Proyectos from './pages/Proyectos'
+import Cortes from './pages/Cortes'
+import FormCorte from './pages/FormCorte'
+import ParteCorte from './pages/ParteCorte'
+import ProyectosSap from './pages/ProyectosSap'
+import ProyectoSap from './pages/ProyectoSap'
+import Stock from './pages/Stock'
 
 // Portal Producción de Paneles SIP: web propia como el CRM y Prevención, en /produccion.
 // Transversal a la empresa, con un permiso por módulo sobre el ancla SIP_ANCLA_ID. La sesión y el
@@ -60,6 +66,21 @@ function ModuloConsumo() {
   )
 }
 
+function ModuloCortes() {
+  return (
+    <div className="space-y-4">
+      <Encabezado titulo="Cortes de paneles" descripcion="Paneles cortados por proyecto de SAP, modelo de vivienda y tipo de corte. Salen del stock de paneles." />
+      <nav className="flex gap-1 border-b">
+        <Pestana to={RUTA.cortes} end>
+          Registro
+        </Pestana>
+        <Pestana to={RUTA.proyectosSap}>Proyectos SAP</Pestana>
+      </nav>
+      <Outlet />
+    </div>
+  )
+}
+
 function ModuloRecetas() {
   return (
     <div className="space-y-4">
@@ -85,6 +106,16 @@ export default function SipApp() {
         <Route path="registro/nuevo" element={<ConModulo modulo="produccion"><FormParte /></ConModulo>} />
         <Route path="registro/:id" element={<ConModulo modulo="produccion"><Parte /></ConModulo>} />
         <Route path="registro/:id/editar" element={<ConModulo modulo="produccion"><FormParte /></ConModulo>} />
+        <Route path="cortes" element={<ConModulo modulo="cortes"><ModuloCortes /></ConModulo>}>
+          <Route index element={<Cortes />} />
+          <Route path="proyectos" element={<ProyectosSap />} />
+        </Route>
+        {/* el detalle y el formulario van sin las pestañas */}
+        <Route path="cortes/proyectos/:codigo" element={<ConModulo modulo="cortes"><ProyectoSap /></ConModulo>} />
+        <Route path="cortes/nuevo" element={<ConModulo modulo="cortes"><FormCorte /></ConModulo>} />
+        <Route path="cortes/:id" element={<ConModulo modulo="cortes"><ParteCorte /></ConModulo>} />
+        <Route path="cortes/:id/editar" element={<ConModulo modulo="cortes"><FormCorte /></ConModulo>} />
+        <Route path="stock" element={<ConModulo modulo="stock"><Stock /></ConModulo>} />
         <Route path="consumo" element={<ConModulo modulo="consumo"><ModuloConsumo /></ConModulo>}>
           <Route index element={<Consumo />} />
           <Route path="calculadora" element={<Calculadora />} />

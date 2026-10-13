@@ -8,12 +8,12 @@ import { Input } from '@/modules/financiero/components/ui/input'
 import { Label } from '@/modules/financiero/components/ui/label'
 import { Textarea } from '@/modules/financiero/components/ui/textarea'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
-import { cn } from '@/lib/utils'
 import { Cargando, selectClase } from '../components/comunes'
 import { guardarParte, obtenerParte, type LineaInput } from '../lib/api'
 import { calcularMateriales } from '../lib/calculo'
 import { aDestino, deDestino } from '../lib/destinos'
 import SelectorDestino from '../components/SelectorDestino'
+import Cuando from '../components/Cuando'
 import { fmtCant, fmtHora, hoyChile } from '../lib/formato'
 import { RUTA } from '../lib/rutas'
 import { usePermisosSip } from '../hooks/usePermisosSip'
@@ -41,13 +41,6 @@ const nuevaLinea = (base?: Partial<LineaForm>): LineaForm => ({
 })
 
 const entero = (s: string) => (s.trim() === '' ? 0 : Number(s))
-
-/** Tramo sugerido para un ingreso por hora: la hora que acaba de terminar. */
-function tramoSugerido(): { desde: string; hasta: string } {
-  const h = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Santiago', hour: '2-digit', hourCycle: 'h23' }).format(new Date()))
-  const desde = Math.max(0, h - 1)
-  return { desde: `${String(desde).padStart(2, '0')}:00`, hasta: `${String(desde + 1).padStart(2, '0')}:00` }
-}
 
 export default function FormParte() {
   const { id } = useParams<{ id: string }>()
@@ -175,59 +168,15 @@ export default function FormParte() {
         </p>
       )}
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Cuándo</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap items-end gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="f-fecha">Fecha</Label>
-            <Input id="f-fecha" type="date" value={fecha} max={hoyChile()} onChange={(e) => e.target.value && setFecha(e.target.value)} required className="w-auto" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>Ingreso</Label>
-            <div className="inline-flex rounded-md border p-0.5" role="radiogroup">
-              {[
-                { v: false, label: 'Día completo' },
-                { v: true, label: 'Por hora' },
-              ].map((o) => (
-                <button
-                  key={o.label}
-                  type="button"
-                  role="radio"
-                  aria-checked={porHora === o.v}
-                  onClick={() => {
-                    setPorHora(o.v)
-                    if (o.v && !horaDesde) {
-                      const t = tramoSugerido()
-                      setHoraDesde(t.desde)
-                      setHoraHasta(t.hasta)
-                    }
-                  }}
-                  className={cn(
-                    'rounded px-3 py-1.5 text-sm font-medium transition-colors',
-                    porHora === o.v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          {porHora && (
-            <div className="flex items-end gap-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="f-desde">Desde</Label>
-                <Input id="f-desde" type="time" value={horaDesde} onChange={(e) => setHoraDesde(e.target.value)} required className="w-auto" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="f-hasta">Hasta</Label>
-                <Input id="f-hasta" type="time" value={horaHasta} onChange={(e) => setHoraHasta(e.target.value)} required className="w-auto" />
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <Cuando
+        valor={{ fecha, porHora, horaDesde, horaHasta }}
+        onChange={(v) => {
+          setFecha(v.fecha)
+          setPorHora(v.porHora)
+          setHoraDesde(v.horaDesde)
+          setHoraHasta(v.horaHasta)
+        }}
+      />
 
       <Card>
         <CardHeader className="pb-3">

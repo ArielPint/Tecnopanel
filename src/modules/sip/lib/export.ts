@@ -1,6 +1,6 @@
 import type { WorkSheet } from 'xlsx'
 import { cargarXLSX, type XLSXLib } from '@/lib/cargarLibrerias'
-import type { ConsumoV, LineaV, ParteV } from './api'
+import type { ConsumoV, LineaCorteV, LineaV, ParteV } from './api'
 import type { MaterialConsumido } from './calculo'
 import { fmtFecha, fmtHora, serialExcel } from './formato'
 
@@ -104,4 +104,34 @@ export async function exportarCalculoExcel(pedido: { codigo: string; descripcion
     'Materiales',
   )
   XLSX.writeFile(libro, 'calculo-materiales-sip.xlsx')
+}
+
+/** Registro de cortes: una fila por panel de cada registro, con su proyecto de SAP y la maquila. */
+export async function exportarCortesExcel(lineas: LineaCorteV[], desde: string, hasta: string) {
+  const XLSX = await cargarXLSX()
+  const filas = lineas.map((l) => {
+    const m2 = Math.round(l.cortados * l.m2_panel * 100) / 100
+    return {
+      Fecha: serialExcel(l.fecha),
+      Horario: tramo(l.hora_desde, l.hora_hasta),
+      'N° registro': l.parte_numero,
+      'Proyecto SAP': l.proyecto_codigo,
+      Proyecto: l.proyecto_nombre,
+      'Modelo vivienda': l.modelo_vivienda,
+      'Tipo panel': l.tipo_panel,
+      'Código panel': l.panel_codigo,
+      Panel: l.panel_descripcion,
+      'Código corte': l.corte_codigo,
+      Corte: l.corte_descripcion,
+      Cortados: l.cortados,
+      Rechazados: l.rechazados,
+      'm² cortados': m2,
+      'Precio m²': l.precio_m2 ?? '',
+      'Maquila $': Math.round(m2 * (l.precio_m2 ?? 0)),
+      'OT / pedido': l.referencia ?? '',
+    }
+  })
+  const libro = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(libro, hoja(XLSX, filas, [12, 13, 11, 12, 34, 18, 16, 13, 42, 12, 32, 10, 11, 12, 10, 12, 16], 0), 'Cortes')
+  XLSX.writeFile(libro, `cortes-sip_${fmtFecha(desde)}_a_${fmtFecha(hasta)}.xlsx`)
 }
