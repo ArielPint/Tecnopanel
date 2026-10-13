@@ -282,3 +282,193 @@ export async function listarConsumosParte(parteId: string): Promise<ConsumoV[]> 
   const filas = revisar(await supabase.from('pnl_consumos_v').select('*').eq('parte_id', parteId).order('material_codigo')) ?? []
   return filas.map((f) => num(f, ['cantidad_unitaria', 'cantidad_buenos', 'cantidad_merma', 'cantidad_total']))
 }
+
+// ---------------------------------------------------------------- cortes y stock (migración 20261013120000)
+
+/** Panel de la estructura de un proyecto de SAP con su corte: lo planificado y lo cortado. */
+export interface ItemSap {
+  id: string
+  proyecto_codigo: string
+  proyecto_nombre: string
+  cliente: string | null
+  of_numero: number | null
+  proyecto_activo: boolean
+  sap_linea: number
+  modelo_vivienda: string
+  viviendas: number
+  estructura: string
+  tipo_panel: string
+  panel_id: string
+  panel_codigo: string
+  panel_descripcion: string
+  m2_panel: number
+  paneles_por_vivienda: number
+  paneles_plan: number
+  corte_codigo: string
+  corte_descripcion: string
+  precio_m2: number | null
+  corte_m2_plan: number | null
+  cortados: number
+  rechazados: number
+  /** false: ya no está en la estructura de SAP (se conserva porque tiene cortes) */
+  vigente: boolean
+}
+
+export interface ProyectoSap {
+  codigo: string
+  nombre: string
+  cliente: string | null
+  of_numero: number | null
+  of_estado: string | null
+  creado: string | null
+  activo: boolean
+  sincronizado_at: string
+}
+
+export interface ParteCorteV {
+  id: string
+  numero: number
+  fecha: string
+  hora_desde: string | null
+  hora_hasta: string | null
+  observacion: string | null
+  created_by: string
+  registrado_por: string | null
+  created_at: string
+  updated_by: string | null
+  corregido_por: string | null
+  updated_at: string
+  lineas: number
+  cortados: number
+  rechazados: number
+  m2_cortados: number
+}
+
+export interface LineaCorteV {
+  id: string
+  parte_id: string
+  parte_numero: number
+  fecha: string
+  hora_desde: string | null
+  hora_hasta: string | null
+  item_id: string
+  proyecto_codigo: string
+  proyecto_nombre: string
+  modelo_vivienda: string
+  tipo_panel: string
+  panel_id: string
+  panel_codigo: string
+  panel_descripcion: string
+  m2_panel: number
+  corte_codigo: string
+  corte_descripcion: string
+  precio_m2: number | null
+  cortados: number
+  rechazados: number
+  total: number
+  referencia: string | null
+}
+
+export interface LineaCorteInput {
+  id?: string
+  item_id: string
+  cortados: number
+  rechazados: number
+  referencia: string
+}
+
+export interface StockPanel {
+  panel_id: string
+  panel_codigo: string
+  panel_descripcion: string
+  activo: boolean
+  inicial: number
+  inicial_actualizado: string | null
+  fabricados: number
+  cortados: number
+  rechazados_corte: number
+  disponible: number
+}
+
+const NUM_ITEM: (keyof ItemSap)[] = ['viviendas', 'm2_panel', 'paneles_por_vivienda', 'paneles_plan', 'precio_m2', 'corte_m2_plan']
+const numItem = (i: ItemSap): ItemSap => {
+  const c = num(i, NUM_ITEM)
+  if (i.precio_m2 == null) c.precio_m2 = null
+  if (i.corte_m2_plan == null) c.corte_m2_plan = null
+  return c
+}
+const numLineaCorte = (l: LineaCorteV): LineaCorteV => ({ ...num(l, ['m2_panel']), precio_m2: l.precio_m2 == null ? null : Number(l.precio_m2) })
+
+export async function listarProyectosSap(): Promise<ProyectoSap[]> {
+  return todas((a, b) => supabase.from('pnl_sap_proyectos').select('*').order('codigo', { ascending: false }).range(a, b))
+}
+
+export async function listarItemsSap(proyectoCodigo?: string): Promise<ItemSap[]> {
+  const filas = await todas<ItemSap>((a, b) => {
+    let q = supabase.from('pnl_sap_items_v').select('*')
+    if (proyectoCodigo) q = q.eq('proyecto_codigo', proyectoCodigo)
+    return q.order('proyecto_codigo', { ascending: false }).order('sap_linea').range(a, b)
+  })
+  return filas.map(numItem)
+}
+
+export async function listarPartesCorte(desde: string, hasta: string): Promise<ParteCorteV[]> {
+  const filas = await todas<ParteCorteV>((a, b) =>
+    supabase.from('pnl_partes_corte_v').select('*').gte('fecha', desde).lte('fecha', hasta)
+      .order('fecha', { ascending: false }).order('hora_desde', { ascending: false, nullsFirst: false }).order('numero', { ascending: false })
+      .range(a, b),
+  )
+  return filas.map((f) => num(f, ['m2_cortados']))
+}
+
+export async function listarLineasCorte(filtro: { desde: string; hasta: string } | { proyecto: string }): Promise<LineaCorteV[]> {
+  const filas = await todas<LineaCorteV>((a, b) => {
+    let q = supabase.from('pnl_lineas_corte_v').select('*')
+    q = 'proyecto' in filtro ? q.eq('proyecto_codigo', filtro.proyecto) : q.gte('fecha', filtro.desde).lte('fecha', filtro.hasta)
+    return q.order('fecha').order('id').range(a, b)
+  })
+  return filas.map(numLineaCorte)
+}
+
+export async function obtenerParteCorte(id: string): Promise<{ parte: ParteCorteV; lineas: LineaCorteV[] }> {
+  const [parte, lineas] = await Promise.all([
+    supabase.from('pnl_partes_corte_v').select('*').eq('id', id).maybeSingle(),
+    supabase.from('pnl_lineas_corte_v').select('*').eq('parte_id', id).order('proyecto_codigo').order('panel_codigo'),
+  ])
+  const p = revisar(parte)
+  if (!p) throw new Error('El registro no existe o no tienes acceso')
+  return { parte: num(p, ['m2_cortados']), lineas: (revisar(lineas) ?? []).map(numLineaCorte) }
+}
+
+export async function guardarParteCorte(datos: {
+  id?: string
+  fecha: string
+  hora_desde: string | null
+  hora_hasta: string | null
+  observacion: string
+  lineas: LineaCorteInput[]
+}): Promise<string> {
+  return revisar(
+    await supabase.rpc('pnl_guardar_parte_corte', {
+      p_parte_id: datos.id ?? null,
+      p_fecha: datos.fecha,
+      p_hora_desde: datos.hora_desde,
+      p_hora_hasta: datos.hora_hasta,
+      p_observacion: datos.observacion,
+      p_lineas: datos.lineas,
+    }),
+  )
+}
+
+export async function eliminarParteCorte(id: string) {
+  revisar(await supabase.from('pnl_partes_corte').delete().eq('id', id))
+}
+
+export async function listarStock(): Promise<StockPanel[]> {
+  return revisar(await supabase.rpc('pnl_stock_paneles')) ?? []
+}
+
+/** Fija el stock inicial de un panel (0 lo deja en cero). La base rechaza si lo ya cortado queda sin respaldo. */
+export async function guardarStockInicial(panelId: string, cantidad: number) {
+  revisar(await supabase.from('pnl_stock_inicial').upsert({ panel_id: panelId, cantidad }, { onConflict: 'panel_id' }))
+}

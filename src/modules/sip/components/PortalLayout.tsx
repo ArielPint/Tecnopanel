@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ArrowLeft, Boxes, ClipboardList, Factory, KeyRound, Layers, LayoutDashboard, LogOut, Menu, Moon, Plus, Sun } from 'lucide-react'
+import { ArrowLeft, Boxes, ClipboardList, Factory, KeyRound, Layers, LayoutDashboard, LogOut, Menu, Moon, Package, Plus, Scissors, Sun } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useOtrosPortales } from '@/hooks/useOtrosPortales'
@@ -19,6 +19,8 @@ import { usePermisosSip } from '../hooks/usePermisosSip'
 
 const ICONO: Record<ModuloSip, typeof LayoutDashboard> = {
   produccion: ClipboardList,
+  cortes: Scissors,
+  stock: Package,
   consumo: Boxes,
   recetas: Layers,
 }
@@ -104,7 +106,7 @@ function Marca() {
       <TecnopanelMark size={28} className="shrink-0" />
       <div className="leading-tight">
         <p className="text-sm font-extrabold">Producción Paneles SIP</p>
-        <p className="text-[11px] text-muted-foreground">Registro y consumo de materiales</p>
+        <p className="text-[11px] text-muted-foreground">Fabricación, cortes y stock</p>
       </div>
     </div>
   )
@@ -154,14 +156,23 @@ export default function PortalLayout() {
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            {puedeEn('produccion', 'crear') && (
-              <Button asChild size="sm" className="mr-1">
-                <Link to={RUTA.nuevoParte}>
-                  <Plus className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Registrar producción</span>
-                </Link>
-              </Button>
-            )}
+            {modulo?.key === 'cortes'
+              ? puedeEn('cortes', 'crear') && (
+                  <Button asChild size="sm" className="mr-1">
+                    <Link to={RUTA.nuevoCorte}>
+                      <Plus className="h-4 w-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Registrar corte</span>
+                    </Link>
+                  </Button>
+                )
+              : puedeEn('produccion', 'crear') && (
+                  <Button asChild size="sm" className="mr-1">
+                    <Link to={RUTA.nuevoParte}>
+                      <Plus className="h-4 w-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Registrar producción</span>
+                    </Link>
+                  </Button>
+                )}
             <button
               onClick={toggleMode}
               className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
