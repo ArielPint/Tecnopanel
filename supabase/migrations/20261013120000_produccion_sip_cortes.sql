@@ -148,15 +148,14 @@ revoke execute on function public.pnl_linea_corte_item() from public, anon, auth
 
 -- ---------------------------------------------------------------- stock y su bloqueo
 
--- Disponible de un panel, sin RLS (lo usan el bloqueo y la vista)
+-- Disponible de un panel, sin RLS. Solo la usa el bloqueo (no se expone por la API)
 create or replace function public.pnl_stock_disponible(p_panel_id uuid)
 returns int language sql stable security definer set search_path = public as $$
   select (coalesce((select cantidad from pnl_stock_inicial where panel_id = p_panel_id), 0)
         + coalesce((select sum(buenos) from pnl_lineas where panel_id = p_panel_id), 0)
         - coalesce((select sum(cortados + rechazados) from pnl_lineas_corte where panel_id = p_panel_id), 0))::int
 $$;
-revoke execute on function public.pnl_stock_disponible(uuid) from public, anon;
-grant  execute on function public.pnl_stock_disponible(uuid) to authenticated;
+revoke execute on function public.pnl_stock_disponible(uuid) from public, anon, authenticated;
 
 -- Antes de tocar el stock de un panel se toma su candado hasta el fin de la transaccion: dos
 -- cortes simultaneos del mismo panel no pueden pasar los dos con el mismo disponible.
