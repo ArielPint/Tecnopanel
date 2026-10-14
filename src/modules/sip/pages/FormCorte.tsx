@@ -15,6 +15,8 @@ import { etiquetaItem } from '../lib/cortes'
 import { fmtHora, fmtNum, hoyChile } from '../lib/formato'
 import { RUTA } from '../lib/rutas'
 import { usePermisosSip } from '../hooks/usePermisosSip'
+import { useSucursalSip } from '../hooks/useSucursalSip'
+import type { Sucursal } from '@/lib/lineasNegocio'
 
 interface LineaForm {
   key: string
@@ -42,11 +44,15 @@ export default function FormCorte() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { puede, userId, loading: permisosLoading } = usePermisosSip('cortes')
+  const { fija, porDefecto, loading: sucursalLoading } = useSucursalSip()
 
   const [items, setItems] = useState<ItemSap[]>([])
   const [stock, setStock] = useState<StockPanel[]>([])
   const [cargando, setCargando] = useState(true)
   const [autor, setAutor] = useState<string | null>(null)
+  const [sucursal, setSucursal] = useState<Sucursal | ''>('')
+  /** sucursal con que se guardó el registro que se corrige */
+  const [sucursalOriginal, setSucursalOriginal] = useState<Sucursal | null>(null)
   const [cuando, setCuando] = useState<ValorCuando>({ fecha: hoyChile(), porHora: false, horaDesde: '', horaHasta: '' })
   const [observacion, setObservacion] = useState('')
   const [lineas, setLineas] = useState<LineaForm[]>([nuevaLinea()])
@@ -54,16 +60,20 @@ export default function FormCorte() {
   const [yaDescontado, setYaDescontado] = useState<Map<string, number>>(new Map())
   const [guardando, setGuardando] = useState(false)
 
+  // Al registrar se sugiere la sucursal que se está mirando; al corregir, la del registro
+  const sucursalElegida: Sucursal | '' = fija ?? (sucursal || (id ? '' : (porDefecto ?? '')))
+
   useEffect(() => {
     let cancelado = false
-    Promise.all([listarItemsSap(), listarStock(), id ? obtenerParteCorte(id) : null])
-      .then(([its, st, existente]) => {
+    Promise.all([listarItemsSap(), id ? obtenerParteCorte(id) : null])
+      .then(([its, existente]) => {
         if (cancelado) return
         setItems(its)
-        setStock(st)
         if (existente) {
           const { parte, lineas } = existente
           setAutor(parte.created_by)
+          setSucursal(parte.sucursal)
+          setSucursalOriginal(parte.sucursal)
           setCuando({ fecha: parte.fecha, porHora: !!parte.hora_desde, horaDesde: fmtHora(parte.hora_desde), horaHasta: fmtHora(parte.hora_hasta) })
           setObservacion(parte.observacion ?? '')
           setLineas(
@@ -92,8 +102,22 @@ export default function FormCorte() {
     }
   }, [id, navigate])
 
+  // El stock es de cada sucursal: se cuenta el de la elegida en el formulario
+  useEffect(() => {
+    if (!sucursalElegida) return setStock([])
+    let cancelado = false
+    listarStock(sucursalElegida)
+      .then((st) => !cancelado && setStock(st))
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'No se pudo cargar el stock'))
+    return () => {
+      cancelado = true
+    }
+  }, [sucursalElegida])
+
   const itemPorId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items])
   const disponiblePorPanel = useMemo(() => new Map(stock.map((s) => [s.panel_id, s.disponible])), [stock])
+  /** Lo ya descontado por este registro solo vuelve a estar disponible si sigue en la misma sucursal */
+  const devuelto = useMemo(() => (sucursalElegida === sucursalOriginal ? yaDescontado : new Map<string, number>()), [sucursalElegida, sucursalOriginal, yaDescontado])
 
   // Proyectos para elegir: los activos, y al corregir también los que ya trae el registro
   const proyectos = useMemo(() => {
@@ -112,13 +136,13 @@ export default function FormCorte() {
     }
     const salida = new Map<string, { disponible: number; usado: number }>()
     for (const [panel, u] of usado) {
-      const disponible = (disponiblePorPanel.get(panel) ?? 0) + (yaDescontado.get(panel) ?? 0)
+      const disponible = (disponiblePorPanel.get(panel) ?? 0) + (devuelto.get(panel) ?? 0)
       if (u > disponible) salida.set(panel, { disponible, usado: u })
     }
     return salida
-  }, [lineas, itemPorId, disponiblePorPanel, yaDescontado])
+  }, [lineas, itemPorId, disponiblePorPanel, devuelto])
 
-  if (permisosLoading || cargando) return <Cargando />
+  if (permisosLoading || sucursalLoading || cargando) return <Cargando />
   const puedeEditar = id ? puede('editar') || (puede('crear') && autor === userId) : puede('crear')
   if (!puedeEditar) return <Navigate to={id ? RUTA.corte(id) : RUTA.cortes} replace />
 
@@ -135,6 +159,7 @@ export default function FormCorte() {
       if (!Number.isInteger(c) || !Number.isInteger(r) || c < 0 || r < 0) return toast.error('Las cantidades deben ser números enteros, sin negativos')
       if (c + r === 0) return toast.error(`${itemPorId.get(l.item_id)?.panel_codigo ?? 'Un panel'}: indica cuántos se cortaron o se rechazaron`)
     }
+    if (!sucursalElegida) return toast.error('Elige la sucursal donde se cortó')
     if (faltante.size > 0) return toast.error('No hay stock suficiente para alguno de los paneles. Revisa las cantidades.')
     if (cuando.porHora && (!cuando.horaDesde || !cuando.horaHasta || cuando.horaHasta <= cuando.horaDesde))
       return toast.error('El tramo de horas no es válido: "hasta" debe ser después de "desde"')
@@ -147,6 +172,7 @@ export default function FormCorte() {
         hora_desde: cuando.porHora ? cuando.horaDesde : null,
         hora_hasta: cuando.porHora ? cuando.horaHasta : null,
         observacion,
+        sucursal: sucursalElegida,
         lineas: validas.map<LineaCorteInput>((l) => ({
           id: l.id,
           item_id: l.item_id,
@@ -181,7 +207,7 @@ export default function FormCorte() {
         </p>
       )}
 
-      <Cuando valor={cuando} onChange={setCuando} />
+      <Cuando valor={cuando} onChange={setCuando} donde={{ sucursal: sucursalElegida, onSucursal: setSucursal, fija }} />
 
       <Card>
         <CardHeader className="pb-3">
@@ -192,7 +218,7 @@ export default function FormCorte() {
             const it = itemPorId.get(l.item_id)
             const opciones = items.filter((x) => x.proyecto_codigo === l.proyecto && (x.vigente || x.id === l.item_id))
             const falta = it ? faltante.get(it.panel_id) : undefined
-            const disponible = it ? (disponiblePorPanel.get(it.panel_id) ?? 0) + (yaDescontado.get(it.panel_id) ?? 0) : null
+            const disponible = it ? (disponiblePorPanel.get(it.panel_id) ?? 0) + (devuelto.get(it.panel_id) ?? 0) : null
             return (
               <div key={l.key} className={cn('space-y-2 rounded-md border p-3', falta && 'border-destructive/60')}>
                 <div className="grid grid-cols-2 gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
@@ -266,7 +292,7 @@ export default function FormCorte() {
                       Ya cortados: <b className="text-foreground">{fmtNum(it.cortados)}</b>
                     </span>
                     <span className={cn(falta && 'font-semibold text-destructive')}>
-                      Stock de {it.panel_codigo}: {fmtNum(disponible ?? 0)}
+                      Stock de {it.panel_codigo}{sucursalElegida && ` en ${sucursalElegida}`}: {sucursalElegida ? fmtNum(disponible ?? 0) : '—'}
                       {falta && ` · faltan ${fmtNum(falta.usado - falta.disponible)}`}
                     </span>
                   </p>
@@ -286,7 +312,7 @@ export default function FormCorte() {
 
       {faltante.size > 0 && (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
-          No hay stock suficiente. Registra primero la fabricación de esos paneles o, si ya estaban en bodega, carga su stock inicial en{' '}
+          No hay stock suficiente en {sucursalElegida}. Registra primero la fabricación de esos paneles en esa sucursal o, si ya estaban en bodega, carga su stock inicial en{' '}
           <Link to={RUTA.stock} className="font-semibold underline">
             Stock de paneles
           </Link>

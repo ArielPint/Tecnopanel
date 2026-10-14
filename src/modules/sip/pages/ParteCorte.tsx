@@ -69,7 +69,9 @@ export default function ParteCorte() {
           <h1 className="mt-1 text-xl font-extrabold">
             Corte N° {parte.numero} · {fmtFecha(parte.fecha)}
           </h1>
-          <p className="text-sm text-muted-foreground">{fmtTramo(parte.hora_desde, parte.hora_hasta)}</p>
+          <p className="text-sm text-muted-foreground">
+            {fmtTramo(parte.hora_desde, parte.hora_hasta)} · {parte.sucursal}
+          </p>
         </div>
         <div className="flex gap-2">
           {puedeCorregir && (

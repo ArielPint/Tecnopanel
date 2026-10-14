@@ -142,7 +142,7 @@ export default function ProyectoSap() {
                 {[...lineas].reverse().map((l) => (
                   <TableRow key={l.id} className="cursor-pointer" onClick={() => navigate(RUTA.corte(l.parte_id))}>
                     <TableCell className="whitespace-nowrap">
-                      {fmtFecha(l.fecha)} <span className="text-xs text-muted-foreground">N° {l.parte_numero}</span>
+                      {fmtFecha(l.fecha)} <span className="text-xs text-muted-foreground">N° {l.parte_numero} · {l.sucursal}</span>
                     </TableCell>
                     <TableCell className="font-mono-tabular font-semibold">{l.panel_codigo}</TableCell>
                     <TableCell className="text-sm">{[l.modelo_vivienda, l.tipo_panel].filter(Boolean).join(' · ')}</TableCell>

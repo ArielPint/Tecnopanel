@@ -1,7 +1,11 @@
 import { supabase } from '@/lib/supabaseClient'
+import type { Sucursal } from '@/lib/lineasNegocio'
 
 // Acceso a datos del portal (migración 20261006120000_produccion_sip.sql). La RLS decide qué puede
 // leer y escribir cada uno; aquí solo se arman las consultas y se traducen los errores.
+
+/** Sucursal que se mira en los listados (migración 20261014150000): una, o las dos que vea el usuario */
+export type FiltroSucursal = Sucursal | 'todas'
 
 export interface Material {
   id: string
@@ -44,6 +48,7 @@ export interface ParteV {
   buenos: number
   rechazados: number
   m2_buenos: number
+  sucursal: Sucursal
 }
 
 export interface LineaV {
@@ -67,6 +72,7 @@ export interface LineaV {
   /** nombre del proyecto SAP, de la obra del hub o del proyecto propio */
   proyecto_nombre: string | null
   referencia: string | null
+  sucursal: Sucursal
 }
 
 export interface ConsumoV {
@@ -87,6 +93,7 @@ export interface ConsumoV {
   cantidad_buenos: number
   cantidad_merma: number
   cantidad_total: number
+  sucursal: Sucursal
 }
 
 /** Obra del hub (tabla proyectos, como La Chacra) */
@@ -153,6 +160,11 @@ const num = <T extends object>(fila: T, campos: (keyof T)[]): T => {
   const copia = { ...fila }
   for (const c of campos) copia[c] = Number(copia[c]) as T[keyof T]
   return copia
+}
+
+/** Filtra por sucursal las vistas que la traen; con 'todas', la RLS ya deja solo las que ve el usuario. */
+function enSucursal<Q extends { eq: (columna: string, valor: string) => Q }>(q: Q, sucursal: FiltroSucursal): Q {
+  return sucursal === 'todas' ? q : q.eq('sucursal', sucursal)
 }
 
 // ---------------------------------------------------------------- catálogo
@@ -224,9 +236,9 @@ export async function eliminarProyectoPropio(id: string) {
 
 // ---------------------------------------------------------------- producción
 
-export async function listarPartes(desde: string, hasta: string): Promise<ParteV[]> {
+export async function listarPartes(desde: string, hasta: string, sucursal: FiltroSucursal): Promise<ParteV[]> {
   const filas = await todas<ParteV>((a, b) =>
-    supabase.from('pnl_partes_v').select('*').gte('fecha', desde).lte('fecha', hasta)
+    enSucursal(supabase.from('pnl_partes_v').select('*').gte('fecha', desde).lte('fecha', hasta), sucursal)
       .order('fecha', { ascending: false }).order('hora_desde', { ascending: false, nullsFirst: false }).order('numero', { ascending: false })
       .range(a, b),
   )
@@ -249,10 +261,12 @@ export async function guardarParte(datos: {
   hora_desde: string | null
   hora_hasta: string | null
   observacion: string
+  sucursal: Sucursal
   lineas: LineaInput[]
 }): Promise<string> {
   return revisar(
     await supabase.rpc('pnl_guardar_parte', {
+      p_sucursal: datos.sucursal,
       p_parte_id: datos.id ?? null,
       p_fecha: datos.fecha,
       p_hora_desde: datos.hora_desde,
@@ -267,16 +281,16 @@ export async function eliminarParte(id: string) {
   revisar(await supabase.from('pnl_partes').delete().eq('id', id))
 }
 
-export async function listarLineas(desde: string, hasta: string): Promise<LineaV[]> {
+export async function listarLineas(desde: string, hasta: string, sucursal: FiltroSucursal): Promise<LineaV[]> {
   const filas = await todas<LineaV>((a, b) =>
-    supabase.from('pnl_lineas_v').select('*').gte('fecha', desde).lte('fecha', hasta).order('fecha').order('id').range(a, b),
+    enSucursal(supabase.from('pnl_lineas_v').select('*').gte('fecha', desde).lte('fecha', hasta), sucursal).order('fecha').order('id').range(a, b),
   )
   return filas.map((f) => num(f, ['m2_panel']))
 }
 
-export async function listarConsumos(desde: string, hasta: string): Promise<ConsumoV[]> {
+export async function listarConsumos(desde: string, hasta: string, sucursal: FiltroSucursal): Promise<ConsumoV[]> {
   const filas = await todas<ConsumoV>((a, b) =>
-    supabase.from('pnl_consumos_v').select('*').gte('fecha', desde).lte('fecha', hasta).order('fecha').order('linea_id').order('material_id').range(a, b),
+    enSucursal(supabase.from('pnl_consumos_v').select('*').gte('fecha', desde).lte('fecha', hasta), sucursal).order('fecha').order('linea_id').order('material_id').range(a, b),
   )
   return filas.map((f) => num(f, ['cantidad_unitaria', 'cantidad_buenos', 'cantidad_merma', 'cantidad_total']))
 }
@@ -345,6 +359,7 @@ export interface ParteCorteV {
   cortados: number
   rechazados: number
   m2_cortados: number
+  sucursal: Sucursal
 }
 
 export interface LineaCorteV {
@@ -370,6 +385,7 @@ export interface LineaCorteV {
   rechazados: number
   total: number
   referencia: string | null
+  sucursal: Sucursal
 }
 
 export interface LineaCorteInput {
@@ -415,19 +431,20 @@ export async function listarItemsSap(proyectoCodigo?: string): Promise<ItemSap[]
   return filas.map(numItem)
 }
 
-export async function listarPartesCorte(desde: string, hasta: string): Promise<ParteCorteV[]> {
+export async function listarPartesCorte(desde: string, hasta: string, sucursal: FiltroSucursal): Promise<ParteCorteV[]> {
   const filas = await todas<ParteCorteV>((a, b) =>
-    supabase.from('pnl_partes_corte_v').select('*').gte('fecha', desde).lte('fecha', hasta)
+    enSucursal(supabase.from('pnl_partes_corte_v').select('*').gte('fecha', desde).lte('fecha', hasta), sucursal)
       .order('fecha', { ascending: false }).order('hora_desde', { ascending: false, nullsFirst: false }).order('numero', { ascending: false })
       .range(a, b),
   )
   return filas.map((f) => num(f, ['m2_cortados']))
 }
 
-export async function listarLineasCorte(filtro: { desde: string; hasta: string } | { proyecto: string }): Promise<LineaCorteV[]> {
+/** Por período (en una sucursal o las dos), o todo lo cortado de un proyecto en las sucursales que ve el usuario. */
+export async function listarLineasCorte(filtro: { desde: string; hasta: string; sucursal: FiltroSucursal } | { proyecto: string }): Promise<LineaCorteV[]> {
   const filas = await todas<LineaCorteV>((a, b) => {
     let q = supabase.from('pnl_lineas_corte_v').select('*')
-    q = 'proyecto' in filtro ? q.eq('proyecto_codigo', filtro.proyecto) : q.gte('fecha', filtro.desde).lte('fecha', filtro.hasta)
+    q = 'proyecto' in filtro ? q.eq('proyecto_codigo', filtro.proyecto) : enSucursal(q.gte('fecha', filtro.desde).lte('fecha', filtro.hasta), filtro.sucursal)
     return q.order('fecha').order('id').range(a, b)
   })
   return filas.map(numLineaCorte)
@@ -449,10 +466,12 @@ export async function guardarParteCorte(datos: {
   hora_desde: string | null
   hora_hasta: string | null
   observacion: string
+  sucursal: Sucursal
   lineas: LineaCorteInput[]
 }): Promise<string> {
   return revisar(
     await supabase.rpc('pnl_guardar_parte_corte', {
+      p_sucursal: datos.sucursal,
       p_parte_id: datos.id ?? null,
       p_fecha: datos.fecha,
       p_hora_desde: datos.hora_desde,
@@ -467,11 +486,12 @@ export async function eliminarParteCorte(id: string) {
   revisar(await supabase.from('pnl_partes_corte').delete().eq('id', id))
 }
 
-export async function listarStock(): Promise<StockPanel[]> {
-  return revisar(await supabase.rpc('pnl_stock_paneles')) ?? []
+/** Stock por panel en una sucursal; con 'todas', sumado en las que ve el usuario. */
+export async function listarStock(sucursal: FiltroSucursal): Promise<StockPanel[]> {
+  return revisar(await supabase.rpc('pnl_stock_paneles', { p_sucursal: sucursal === 'todas' ? null : sucursal })) ?? []
 }
 
-/** Fija el stock inicial de un panel (0 lo deja en cero). La base rechaza si lo ya cortado queda sin respaldo. */
-export async function guardarStockInicial(panelId: string, cantidad: number) {
-  revisar(await supabase.from('pnl_stock_inicial').upsert({ panel_id: panelId, cantidad }, { onConflict: 'panel_id' }))
+/** Fija el stock inicial de un panel en una sucursal (0 lo deja en cero). La base rechaza si lo ya cortado allí queda sin respaldo. */
+export async function guardarStockInicial(panelId: string, sucursal: Sucursal, cantidad: number) {
+  revisar(await supabase.from('pnl_stock_inicial').upsert({ panel_id: panelId, sucursal, cantidad }, { onConflict: 'panel_id,sucursal' }))
 }

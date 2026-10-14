@@ -15,12 +15,14 @@ import { exportarRegistroExcel } from '../lib/export'
 import { fmtFecha, fmtNum, fmtPct, fmtTramo } from '../lib/formato'
 import { RUTA } from '../lib/rutas'
 import { usePermisosSip } from '../hooks/usePermisosSip'
+import { useSucursalSip } from '../hooks/useSucursalSip'
 import { useCatalogo } from '../hooks/useCatalogo'
 
 export default function Registro() {
   const navigate = useNavigate()
   const { puede } = usePermisosSip('produccion')
   const { paneles, destinos } = useCatalogo()
+  const { sucursal } = useSucursalSip()
   const periodo = usePeriodo('semana')
   const [partes, setPartes] = useState<ParteV[]>([])
   const [lineas, setLineas] = useState<LineaV[]>([])
@@ -32,7 +34,7 @@ export default function Registro() {
   useEffect(() => {
     let cancelado = false
     setLoading(true)
-    Promise.all([listarPartes(periodo.desde, periodo.hasta), listarLineas(periodo.desde, periodo.hasta)])
+    Promise.all([listarPartes(periodo.desde, periodo.hasta, sucursal), listarLineas(periodo.desde, periodo.hasta, sucursal)])
       .then(([p, l]) => {
         if (cancelado) return
         setPartes(p)
@@ -43,7 +45,7 @@ export default function Registro() {
     return () => {
       cancelado = true
     }
-  }, [periodo.desde, periodo.hasta])
+  }, [periodo.desde, periodo.hasta, sucursal])
 
   // Los filtros son por línea (panel, proyecto, OT); un registro se muestra si alguna línea calza
   const lineasFiltradas = useMemo(() => {
@@ -131,6 +133,7 @@ export default function Registro() {
                           <div className="font-semibold">{fmtFecha(p.fecha)}</div>
                           <div className="text-xs text-muted-foreground">
                             {fmtTramo(p.hora_desde, p.hora_hasta)} · N° {p.numero}
+                            {sucursal === 'todas' && ` · ${p.sucursal}`}
                           </div>
                         </TableCell>
                         <TableCell className="align-top">

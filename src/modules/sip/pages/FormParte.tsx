@@ -18,6 +18,8 @@ import { fmtCant, fmtHora, hoyChile } from '../lib/formato'
 import { RUTA } from '../lib/rutas'
 import { usePermisosSip } from '../hooks/usePermisosSip'
 import { useCatalogo } from '../hooks/useCatalogo'
+import { useSucursalSip } from '../hooks/useSucursalSip'
+import type { Sucursal } from '@/lib/lineasNegocio'
 
 interface LineaForm {
   key: string
@@ -47,9 +49,11 @@ export default function FormParte() {
   const navigate = useNavigate()
   const { puede, userId, loading: permisosLoading } = usePermisosSip('produccion')
   const { panelesProducibles, destinos, recetas, materiales, panelPorId, loading: catLoading } = useCatalogo()
+  const { fija, porDefecto, loading: sucursalLoading } = useSucursalSip()
 
   const [cargando, setCargando] = useState(!!id)
   const [autor, setAutor] = useState<string | null>(null)
+  const [sucursal, setSucursal] = useState<Sucursal | ''>('')
   const [fecha, setFecha] = useState(hoyChile())
   const [porHora, setPorHora] = useState(false)
   const [horaDesde, setHoraDesde] = useState('')
@@ -63,6 +67,7 @@ export default function FormParte() {
     obtenerParte(id)
       .then(({ parte, lineas }) => {
         setAutor(parte.created_by)
+        setSucursal(parte.sucursal)
         setFecha(parte.fecha)
         setPorHora(!!parte.hora_desde)
         setHoraDesde(fmtHora(parte.hora_desde))
@@ -98,9 +103,12 @@ export default function FormParte() {
     [lineas, recetas, materiales],
   )
 
-  if (permisosLoading || catLoading || cargando) return <Cargando />
+  if (permisosLoading || catLoading || sucursalLoading || cargando) return <Cargando />
   const puedeEditar = id ? puede('editar') || (puede('crear') && autor === userId) : puede('crear')
   if (!puedeEditar) return <Navigate to={id ? RUTA.parte(id) : RUTA.registro} replace />
+
+  // Al registrar se sugiere la sucursal que se está mirando; al corregir, la del registro
+  const sucursalElegida: Sucursal | '' = fija ?? (sucursal || (id ? '' : (porDefecto ?? '')))
 
   const cambiar = (key: string, cambios: Partial<LineaForm>) => setLineas((ls) => ls.map((l) => (l.key === key ? { ...l, ...cambios } : l)))
 
@@ -115,6 +123,8 @@ export default function FormParte() {
       if (!Number.isInteger(b) || !Number.isInteger(r) || b < 0 || r < 0) return toast.error('Las cantidades deben ser números enteros, sin negativos')
       if (b + r === 0) return toast.error(`${panelPorId.get(l.panel_id)?.codigo ?? 'Un panel'}: indique cuántos buenos o rechazados`)
     }
+    const donde = sucursalElegida
+    if (!donde) return toast.error('Elija la sucursal donde se fabricó')
     if (porHora && (!horaDesde || !horaHasta || horaHasta <= horaDesde)) return toast.error('El tramo de horas no es válido: "hasta" debe ser después de "desde"')
 
     setGuardando(true)
@@ -125,6 +135,7 @@ export default function FormParte() {
         hora_desde: porHora ? horaDesde : null,
         hora_hasta: porHora ? horaHasta : null,
         observacion,
+        sucursal: donde,
         lineas: validas.map<LineaInput>((l) => ({
           id: l.id,
           panel_id: l.panel_id,
@@ -169,6 +180,7 @@ export default function FormParte() {
       )}
 
       <Cuando
+        donde={{ sucursal: sucursalElegida, onSucursal: setSucursal, fija }}
         valor={{ fecha, porHora, horaDesde, horaHasta }}
         onChange={(v) => {
           setFecha(v.fecha)

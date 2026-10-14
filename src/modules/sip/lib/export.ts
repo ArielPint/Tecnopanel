@@ -30,6 +30,7 @@ export async function exportarRegistroExcel(lineas: LineaV[], partes: ParteV[], 
     return {
       Fecha: serialExcel(l.fecha),
       Horario: tramo(l.hora_desde, l.hora_hasta),
+      Sucursal: l.sucursal,
       'N° registro': l.parte_numero,
       'Código panel': l.panel_codigo,
       Panel: l.panel_descripcion,
@@ -44,7 +45,7 @@ export async function exportarRegistroExcel(lineas: LineaV[], partes: ParteV[], 
     }
   })
   const libro = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(libro, hoja(XLSX, filas, [12, 13, 11, 13, 46, 9, 11, 9, 11, 22, 16, 24, 30], 0), 'Producción')
+  XLSX.utils.book_append_sheet(libro, hoja(XLSX, filas, [12, 13, 13, 11, 13, 46, 9, 11, 9, 11, 22, 16, 24, 30], 0), 'Producción')
   XLSX.writeFile(libro, `produccion-sip_${fmtFecha(desde)}_a_${fmtFecha(hasta)}.xlsx`)
 }
 
@@ -71,6 +72,7 @@ export async function exportarConsumoExcel(resumen: MaterialConsumido[], consumo
 
   const detalle = consumos.map((c) => ({
     Fecha: serialExcel(c.fecha),
+    Sucursal: c.sucursal,
     'Código panel': c.panel_codigo,
     'OT / pedido': c.referencia ?? '',
     Código: c.material_codigo,
@@ -85,7 +87,7 @@ export async function exportarConsumoExcel(resumen: MaterialConsumido[], consumo
   const libro = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(libro, hoja(XLSX, r, [12, 46, 10, 15, 18, 12]), 'Resumen')
   XLSX.utils.book_append_sheet(libro, hoja(XLSX, porDia, [12, 12, 46, 10, 12], 0), 'Por día')
-  XLSX.utils.book_append_sheet(libro, hoja(XLSX, detalle, [12, 13, 16, 12, 46, 10, 11, 15, 11, 12], 0), 'Detalle')
+  XLSX.utils.book_append_sheet(libro, hoja(XLSX, detalle, [12, 13, 13, 16, 12, 46, 10, 11, 15, 11, 12], 0), 'Detalle')
   XLSX.writeFile(libro, `consumo-materiales-sip_${fmtFecha(desde)}_a_${fmtFecha(hasta)}.xlsx`)
 }
 
@@ -114,6 +116,7 @@ export async function exportarCortesExcel(lineas: LineaCorteV[], desde: string, 
     return {
       Fecha: serialExcel(l.fecha),
       Horario: tramo(l.hora_desde, l.hora_hasta),
+      Sucursal: l.sucursal,
       'N° registro': l.parte_numero,
       'Proyecto SAP': l.proyecto_codigo,
       Proyecto: l.proyecto_nombre,
@@ -132,6 +135,6 @@ export async function exportarCortesExcel(lineas: LineaCorteV[], desde: string, 
     }
   })
   const libro = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(libro, hoja(XLSX, filas, [12, 13, 11, 12, 34, 18, 16, 13, 42, 12, 32, 10, 11, 12, 10, 12, 16], 0), 'Cortes')
+  XLSX.utils.book_append_sheet(libro, hoja(XLSX, filas, [12, 13, 13, 11, 12, 34, 18, 16, 13, 42, 12, 32, 10, 11, 12, 10, 12, 16], 0), 'Cortes')
   XLSX.writeFile(libro, `cortes-sip_${fmtFecha(desde)}_a_${fmtFecha(hasta)}.xlsx`)
 }
