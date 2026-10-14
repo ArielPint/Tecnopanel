@@ -10,12 +10,14 @@ import { consumoPorMaterial } from '../lib/calculo'
 import { exportarConsumoExcel } from '../lib/export'
 import { fmtCant, fmtFecha, fmtNum } from '../lib/formato'
 import { usePermisosSip } from '../hooks/usePermisosSip'
+import { useSucursalSip } from '../hooks/useSucursalSip'
 import { useCatalogo } from '../hooks/useCatalogo'
 
 /** Consumo real registrado: lo que produjeron los registros del período, con la receta copiada al registrar. */
 export default function Consumo() {
   const { puede } = usePermisosSip('consumo')
   const { paneles } = useCatalogo()
+  const { sucursal } = useSucursalSip()
   const periodo = usePeriodo('mes')
   const [consumos, setConsumos] = useState<ConsumoV[]>([])
   const [loading, setLoading] = useState(true)
@@ -25,14 +27,14 @@ export default function Consumo() {
   useEffect(() => {
     let cancelado = false
     setLoading(true)
-    listarConsumos(periodo.desde, periodo.hasta)
+    listarConsumos(periodo.desde, periodo.hasta, sucursal)
       .then((c) => !cancelado && setConsumos(c))
       .catch((err) => toast.error(err instanceof Error ? err.message : 'Error al cargar'))
       .finally(() => !cancelado && setLoading(false))
     return () => {
       cancelado = true
     }
-  }, [periodo.desde, periodo.hasta])
+  }, [periodo.desde, periodo.hasta, sucursal])
 
   const filtrados = useMemo(() => (panelId ? consumos.filter((c) => c.panel_id === panelId) : consumos), [consumos, panelId])
   const resumen = useMemo(() => consumoPorMaterial(filtrados), [filtrados])

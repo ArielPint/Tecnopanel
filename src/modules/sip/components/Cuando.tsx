@@ -2,7 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/c
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Label } from '@/modules/financiero/components/ui/label'
 import { cn } from '@/lib/utils'
+import { SUCURSALES, type Sucursal } from '@/lib/lineasNegocio'
 import { hoyChile } from '../lib/formato'
+import { selectClase } from './comunes'
 
 /** Tramo sugerido para un ingreso por hora: la hora que acaba de terminar. */
 function tramoSugerido(): { desde: string; hasta: string } {
@@ -18,15 +20,42 @@ export interface ValorCuando {
   horaHasta: string
 }
 
-/** Fecha del registro y, si es por hora, su tramo. Lo usan la fabricación y los cortes. */
-export default function Cuando({ valor, onChange }: { valor: ValorCuando; onChange: (v: ValorCuando) => void }) {
+/** Sucursal del registro: quien tiene sucursal propia solo puede la suya. */
+export interface ValorSucursal {
+  sucursal: Sucursal | ''
+  onSucursal: (s: Sucursal) => void
+  fija: Sucursal | null
+}
+
+/** Sucursal y fecha del registro y, si es por hora, su tramo. Lo usan la fabricación y los cortes. */
+export default function Cuando({ valor, onChange, donde }: { valor: ValorCuando; onChange: (v: ValorCuando) => void; donde: ValorSucursal }) {
   const { fecha, porHora, horaDesde, horaHasta } = valor
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Cuándo</CardTitle>
+        <CardTitle className="text-base">Dónde y cuándo</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-wrap items-end gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="f-sucursal">Sucursal</Label>
+          <select
+            id="f-sucursal"
+            value={donde.fija ?? donde.sucursal}
+            onChange={(e) => donde.onSucursal(e.target.value as Sucursal)}
+            disabled={!!donde.fija}
+            required
+            className={`${selectClase} w-auto min-w-[150px]`}
+          >
+            <option value="" disabled>
+              Elegir…
+            </option>
+            {SUCURSALES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="f-fecha">Fecha</Label>
           <Input id="f-fecha" type="date" value={fecha} max={hoyChile()} onChange={(e) => e.target.value && onChange({ ...valor, fecha: e.target.value })} required className="w-auto" />

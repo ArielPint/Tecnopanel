@@ -11,6 +11,7 @@ import { consumoPorMaterial, porPanel, resumir, serie } from '../lib/calculo'
 import { fmtCant, fmtFecha, fmtFechaCorta, fmtNum, fmtPct, fmtTramo, hoyChile, inicioSemana, sumarDias } from '../lib/formato'
 import { RUTA } from '../lib/rutas'
 import { usePermisosSip } from '../hooks/usePermisosSip'
+import { useSucursalSip } from '../hooks/useSucursalSip'
 
 const configDia = { buenos: { label: 'Paneles buenos', color: 'hsl(var(--chart-1))' } } satisfies ChartConfig
 
@@ -34,6 +35,7 @@ function TooltipDia({ active, payload }: { active?: boolean; payload?: { payload
 
 export default function Dashboard() {
   const { puedeEn, loading: permisosLoading } = usePermisosSip()
+  const { sucursal, loading: sucursalLoading } = useSucursalSip()
   const veProduccion = puedeEn('produccion') || puedeEn('consumo')
   const veConsumo = puedeEn('consumo')
   const hoy = hoyChile()
@@ -47,20 +49,30 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (permisosLoading) return
+    if (permisosLoading || sucursalLoading) return
     if (!veProduccion) {
       setLoading(false)
       return
     }
-    Promise.all([listarLineas(desde, hoy), listarPartes(hoy, hoy), veConsumo ? listarConsumos(inicioMes, hoy) : Promise.resolve([])])
+    let cancelado = false
+    setLoading(true)
+    Promise.all([
+      listarLineas(desde, hoy, sucursal),
+      listarPartes(hoy, hoy, sucursal),
+      veConsumo ? listarConsumos(inicioMes, hoy, sucursal) : Promise.resolve([]),
+    ])
       .then(([l, p, c]) => {
+        if (cancelado) return
         setLineas(l)
         setPartesHoy(p)
         setConsumos(c)
       })
       .catch((err) => toast.error(err instanceof Error ? err.message : 'Error al cargar'))
-      .finally(() => setLoading(false))
-  }, [permisosLoading, veProduccion, veConsumo, desde, hoy, inicioMes])
+      .finally(() => !cancelado && setLoading(false))
+    return () => {
+      cancelado = true
+    }
+  }, [permisosLoading, sucursalLoading, veProduccion, veConsumo, desde, hoy, inicioMes, sucursal])
 
   const datos = useMemo(() => {
     const delMes = lineas.filter((l) => l.fecha >= inicioMes)
@@ -74,7 +86,7 @@ export default function Dashboard() {
     }
   }, [lineas, consumos, hoy, inicioMes, desde30])
 
-  if (permisosLoading || loading) return <Cargando />
+  if (permisosLoading || sucursalLoading || loading) return <Cargando />
 
   if (!veProduccion) {
     return (
@@ -94,7 +106,9 @@ export default function Dashboard() {
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-extrabold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Producción de paneles SIP al {fmtFecha(hoy)}.</p>
+        <p className="text-sm text-muted-foreground">
+          Producción de paneles SIP {sucursal === 'todas' ? 'de todas las sucursales' : `de ${sucursal}`} al {fmtFecha(hoy)}.
+        </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -140,6 +154,7 @@ export default function Dashboard() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Horario</TableHead>
+                    {sucursal === 'todas' && <TableHead className="hidden sm:table-cell">Sucursal</TableHead>}
                     <TableHead className="text-right">Buenos</TableHead>
                     <TableHead className="text-right">Rech.</TableHead>
                     <TableHead className="hidden sm:table-cell">Registrado por</TableHead>
@@ -153,6 +168,7 @@ export default function Dashboard() {
                           {fmtTramo(p.hora_desde, p.hora_hasta)}
                         </Link>
                       </TableCell>
+                      {sucursal === 'todas' && <TableCell className="hidden text-sm sm:table-cell">{p.sucursal}</TableCell>}
                       <TableCell className="text-right font-mono-tabular font-semibold">{fmtNum(p.buenos)}</TableCell>
                       <TableCell className="text-right font-mono-tabular">{p.rechazados ? fmtNum(p.rechazados) : '—'}</TableCell>
                       <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">{p.registrado_por ?? '—'}</TableCell>

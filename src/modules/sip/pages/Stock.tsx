@@ -11,11 +11,14 @@ import { Cargando, Encabezado, Tile, Vacio } from '../components/comunes'
 import { guardarStockInicial, listarStock, type StockPanel } from '../lib/api'
 import { fmtFechaHora, fmtNum } from '../lib/formato'
 import { usePermisosSip } from '../hooks/usePermisosSip'
+import { useSucursalSip } from '../hooks/useSucursalSip'
 
 /** Stock de paneles: inicial (se carga aquí) + fabricados − cortados − rechazados al cortar. */
 export default function Stock() {
   const { puede } = usePermisosSip('stock')
-  const editable = puede('editar')
+  const { sucursal } = useSucursalSip()
+  // El stock inicial es de una sucursal: con las dos a la vista se muestra sumado y no se edita
+  const editable = puede('editar') && sucursal !== 'todas'
   const [filas, setFilas] = useState<StockPanel[]>([])
   const [loading, setLoading] = useState(true)
   const [texto, setTexto] = useState('')
@@ -25,13 +28,13 @@ export default function Stock() {
 
   const recargar = useCallback(async () => {
     try {
-      setFilas(await listarStock())
+      setFilas(await listarStock(sucursal))
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al cargar')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [sucursal])
 
   useEffect(() => {
     recargar()
@@ -48,12 +51,12 @@ export default function Stock() {
   )
 
   async function guardar() {
-    if (!editando) return
+    if (!editando || sucursal === 'todas') return
     const n = editando.valor.trim() === '' ? 0 : Number(editando.valor)
     if (!Number.isInteger(n) || n < 0) return toast.error('El stock inicial debe ser un número entero, sin negativos')
     setGuardando(true)
     try {
-      await guardarStockInicial(editando.panel_id, n)
+      await guardarStockInicial(editando.panel_id, sucursal, n)
       toast.success('Stock inicial guardado')
       setEditando(null)
       await recargar()
@@ -67,12 +70,12 @@ export default function Stock() {
   return (
     <div className="space-y-4">
       <Encabezado
-        titulo="Stock de paneles"
-        descripcion="Paneles SIP disponibles para cortar: stock inicial + fabricados − cortados − rechazados al cortar."
+        titulo={sucursal === 'todas' ? 'Stock de paneles' : `Stock de paneles · ${sucursal}`}
+        descripcion="Paneles SIP disponibles para cortar: stock inicial + fabricados − cortados − rechazados al cortar. Cada sucursal tiene su propio stock."
       />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Tile titulo="Disponibles" valor={fmtNum(totales.disponible)} detalle="Todos los paneles" />
+        <Tile titulo="Disponibles" valor={fmtNum(totales.disponible)} detalle={sucursal === 'todas' ? 'Todos los paneles, sumando las sucursales' : 'Todos los paneles'} />
         <Tile titulo="Fabricados" valor={fmtNum(totales.fabricados)} detalle="Buenos, en el registro de producción" />
         <Tile titulo="Cortados" valor={fmtNum(totales.cortados)} detalle="En el registro de cortes" />
       </div>
@@ -89,9 +92,10 @@ export default function Stock() {
       </div>
       {editable && (
         <p className="text-xs text-muted-foreground">
-          El stock inicial es lo que había en bodega antes de registrar en el portal. No puedes dejarlo por debajo de lo ya cortado.
+          El stock inicial es lo que había en la bodega de {sucursal} antes de registrar en el portal. No puedes dejarlo por debajo de lo ya cortado allí.
         </p>
       )}
+      {puede('editar') && sucursal === 'todas' && <p className="text-xs text-muted-foreground">Para cargar el stock inicial, elige una sucursal arriba.</p>}
 
       <Card>
         <CardContent className="pt-4">

@@ -13,11 +13,13 @@ import { exportarCortesExcel } from '../lib/export'
 import { fmtFecha, fmtNum, fmtPct, fmtTramo } from '../lib/formato'
 import { RUTA } from '../lib/rutas'
 import { usePermisosSip } from '../hooks/usePermisosSip'
+import { useSucursalSip } from '../hooks/useSucursalSip'
 
 /** Registro de cortes por día o tramo de horas. */
 export default function Cortes() {
   const navigate = useNavigate()
   const { puede } = usePermisosSip('cortes')
+  const { sucursal } = useSucursalSip()
   const periodo = usePeriodo('semana')
   const [partes, setPartes] = useState<ParteCorteV[]>([])
   const [lineas, setLineas] = useState<LineaCorteV[]>([])
@@ -28,7 +30,7 @@ export default function Cortes() {
   useEffect(() => {
     let cancelado = false
     setLoading(true)
-    Promise.all([listarPartesCorte(periodo.desde, periodo.hasta), listarLineasCorte({ desde: periodo.desde, hasta: periodo.hasta })])
+    Promise.all([listarPartesCorte(periodo.desde, periodo.hasta, sucursal), listarLineasCorte({ desde: periodo.desde, hasta: periodo.hasta, sucursal })])
       .then(([p, l]) => {
         if (cancelado) return
         setPartes(p)
@@ -39,7 +41,7 @@ export default function Cortes() {
     return () => {
       cancelado = true
     }
-  }, [periodo.desde, periodo.hasta])
+  }, [periodo.desde, periodo.hasta, sucursal])
 
   const proyectos = useMemo(() => {
     const m = new Map<string, string>()
@@ -124,6 +126,7 @@ export default function Cortes() {
                           <div className="font-semibold">{fmtFecha(p.fecha)}</div>
                           <div className="text-xs text-muted-foreground">
                             {fmtTramo(p.hora_desde, p.hora_hasta)} · N° {p.numero}
+                            {sucursal === 'todas' && ` · ${p.sucursal}`}
                           </div>
                         </TableCell>
                         <TableCell className="align-top">
