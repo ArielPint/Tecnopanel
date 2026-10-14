@@ -116,10 +116,12 @@ export default function UsuariosPage() {
                       {a.crmModulos.length > 0 && <Badge variant="outline">CRM ({a.crmModulos.length})</Badge>}
                       {nSip(a) > 0 && <Badge variant="outline">Producción SIP ({nSip(a)})</Badge>}
                       {nSso > 0 && <Badge variant="outline">Prevención ({nSso})</Badge>}
+                      {a.ingresoRoles.length > 0 && <Badge variant="outline">Ingreso personal ({a.ingresoRoles.length})</Badge>}
                       {proyectosObra.every((proy) => (a.proyectos[proy.id]?.modulos.length ?? 0) === 0) &&
                         a.crmModulos.length === 0 &&
                         nSip(a) === 0 &&
-                        nSso === 0 && <span className="text-sm text-muted-foreground">Sin accesos</span>}
+                        nSso === 0 &&
+                        a.ingresoRoles.length === 0 && <span className="text-sm text-muted-foreground">Sin accesos</span>}
                     </div>
                   )
                   return (

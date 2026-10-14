@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Factory,
   HardHat,
+  UserPlus,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -51,6 +52,8 @@ const navSections = [
       { to: '/produccion', label: 'Producción Paneles SIP', end: false, icon: Factory, requiere: 'sip' },
       // Portal propio como el CRM (/prevencion), transversal: accesos por módulo sobre el ancla SSO_ANCLA_ID.
       { to: '/prevencion', label: 'Prevención de Riesgos', end: false, icon: HardHat, requiere: 'sso' },
+      // Portal propio (/personal), transversal: un rol por fila de permisos sobre el ancla ING_ANCLA_ID.
+      { to: '/personal', label: 'Ingreso de Personal', end: false, icon: UserPlus, requiere: 'ingreso' },
     ],
   },
   {
@@ -69,7 +72,7 @@ const navSections = [
 // usuario puede abrir. '/proyectos' exige admin porque su ruta no trae slug.
 function useNavSections() {
   const acceso = useAccesoUsuario()
-  const ok = { admin: acceso.isAdmin, crm: acceso.tieneCrm, gestion: acceso.tieneGestion, sip: acceso.tieneSip, sso: acceso.tieneSso }
+  const ok = { admin: acceso.isAdmin, crm: acceso.tieneCrm, gestion: acceso.tieneGestion, sip: acceso.tieneSip, sso: acceso.tieneSso, ingreso: acceso.tieneIngreso }
   return navSections
     .map((s) => ({ ...s, items: s.items.filter((i) => !('requiere' in i) || ok[i.requiere as keyof typeof ok]) }))
     .filter((s) => s.items.length > 0)

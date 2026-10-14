@@ -13,6 +13,7 @@ import { SUCURSALES } from '@/lib/lineasNegocio'
 import { ROL_META, MODULOS as CRM_MODULOS, CRM_ACCION_GROUPS } from '@/modules/crm/lib/roles'
 import { SIP_MODULOS, claveAcceso as claveSip, normalizarAccionesSip } from '@/modules/sip/lib/accesos'
 import { SSO_MODULOS, claveAcceso, normalizarAccionesSso } from '@/modules/sso/lib/accesos'
+import { ROLES_INGRESO } from '@/modules/personal/lib/catalogos'
 import { proyectoAccesoVacio, type Acceso, type AccesoInput, type ProyectoAcceso, type ProyectoObra } from './useAccesos'
 
 const OBRA_MODULOS = Object.keys(PAGE_MAP)
@@ -45,6 +46,7 @@ function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: Proye
     gestionVer: acceso?.gestionVer ?? false,
     sipAcciones: acceso?.sipAcciones ?? {},
     ssoAcciones: acceso?.ssoAcciones ?? {},
+    ingresoRoles: acceso?.ingresoRoles ?? [],
     grupoId: acceso?.grupoId ?? null,
     subcontratistaId: acceso?.subcontratistaId ?? null,
     sucursal: acceso?.sucursal ?? null,
@@ -153,12 +155,13 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
         </DialogHeader>
         <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
           <Tabs defaultValue="cuenta" className="flex min-h-0 flex-1 flex-col">
-            <TabsList className="grid h-auto w-full shrink-0 grid-cols-2 sm:grid-cols-5">
+            <TabsList className="grid h-auto w-full shrink-0 grid-cols-2 sm:grid-cols-6">
               <TabsTrigger value="cuenta">Cuenta</TabsTrigger>
               <TabsTrigger value="proyecto"><span className="hidden sm:inline">Accesos&nbsp;</span>Proyecto</TabsTrigger>
               <TabsTrigger value="crm"><span className="hidden sm:inline">Accesos&nbsp;</span>CRM</TabsTrigger>
               <TabsTrigger value="sip">Producción SIP</TabsTrigger>
               <TabsTrigger value="prevencion"><span className="hidden sm:inline">Accesos&nbsp;</span>Prevención</TabsTrigger>
+              <TabsTrigger value="personal">Ingreso personal</TabsTrigger>
             </TabsList>
 
             <TabsContent value="cuenta" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
@@ -211,7 +214,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                   ))}
                 </select>
                 <p className="text-[11px] text-muted-foreground">
-                  Hoy es solo informativo: el filtro real por sucursal se activa en una fase posterior.
+                  Limita lo que ve a esa sucursal en proyectos, oportunidades, ventas, Producción SIP e Ingreso de Personal.
                 </p>
               </div>
               <label className="flex items-start gap-2 text-sm [&>button]:mt-0.5">
@@ -597,6 +600,33 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                     </div>
                   )
                 })}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="personal" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
+              <p className="text-[11px] text-muted-foreground">
+                Portal Ingreso de Personal (/personal): solicitudes de ingreso de nuevo personal. Se puede marcar más de un rol. El coordinador
+                y las áreas ven solo su sucursal (pestaña Cuenta). Los admin ya tienen todo.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Label>Roles</Label>
+                {ROLES_INGRESO.map((r) => (
+                  <label key={r.key} className="flex items-start gap-2 text-sm [&>button]:mt-0.5">
+                    <Checkbox
+                      checked={form.ingresoRoles.includes(r.key)}
+                      onCheckedChange={(v) =>
+                        setForm((f) => ({
+                          ...f,
+                          ingresoRoles: v ? [...f.ingresoRoles.filter((x) => x !== r.key), r.key] : f.ingresoRoles.filter((x) => x !== r.key),
+                        }))
+                      }
+                    />
+                    <span>
+                      <span className="font-medium">{r.label}</span>
+                      <span className="block text-xs text-muted-foreground">{r.detalle}</span>
+                    </span>
+                  </label>
+                ))}
               </div>
             </TabsContent>
           </Tabs>

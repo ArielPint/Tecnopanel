@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient'
-import { getProyectoId, SIP_ANCLA_ID, SSO_ANCLA_ID } from './proyectoIds'
+import { getProyectoId, ING_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from './proyectoIds'
 
 async function reemplazarPermisos(userId: string, proyectoId: string, filas: { modulo_key: string; accion: string }[]) {
   const { error: delErr } = await supabase.from('permisos').delete().eq('user_id', userId).eq('proyecto_id', proyectoId)
@@ -106,6 +106,14 @@ export async function syncPermisosSso(userId: string, acciones: Record<string, b
       return { modulo_key: `sso:${clave.slice(0, separador)}`, accion: clave.slice(separador + 1) }
     })
   await reemplazarPermisos(userId, SSO_ANCLA_ID, filas)
+}
+
+/**
+ * Portal Ingreso de Personal: transversal, sobre su propio ancla (ING_ANCLA_ID). Un rol por fila:
+ * modulo_key 'ing:<rol>' con accion 'ver' (solicitante, coordinador, ti, bodega, prevencion, rrhh).
+ */
+export async function syncPermisosIngreso(userId: string, roles: string[]) {
+  await reemplazarPermisos(userId, ING_ANCLA_ID, roles.map((r) => ({ modulo_key: `ing:${r}`, accion: 'ver' })))
 }
 
 /** Rol de negocio por proyecto (catálogo abierto, ver Fase E1) — reemplaza el 'full_access' decorativo. */
