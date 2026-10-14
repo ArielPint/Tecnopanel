@@ -65,22 +65,6 @@ export const TIPO_CONTRATO: Record<TipoContrato, string> = {
   obra_faena: 'Por obra o faena',
 }
 
-/** Sugerencias; se puede escribir otra. */
-export const AREAS_SOLICITANTES = [
-  'Producción',
-  'Bodega',
-  'Abastecimiento',
-  'Logística y despacho',
-  'Obras y montaje',
-  'Ingeniería y proyectos',
-  'Comercial',
-  'Calidad',
-  'Mantención',
-  'Administración y finanzas',
-  'Prevención de riesgos',
-  'Gerencia',
-]
-
 export const JORNADAS = ['Administrativa', 'Turno mañana', 'Turno tarde', 'Turno noche', 'Part time']
 
 export type Situacion = 'en_proceso' | 'listo' | 'ingresado' | 'anulado'

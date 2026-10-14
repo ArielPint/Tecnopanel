@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ArrowLeft, ClipboardList, KeyRound, LogOut, Menu, Moon, Plus, Sun, UserPlus } from 'lucide-react'
+import { ArrowLeft, ClipboardList, KeyRound, LogOut, Menu, Moon, Plus, Settings, Sun, UserPlus } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useOtrosPortales } from '@/hooks/useOtrosPortales'
@@ -17,11 +17,12 @@ import { usePermisosIngreso } from '../hooks/usePermisosIngreso'
 // login propio), con los tokens del hub para que el modo claro y el oscuro funcionen igual.
 
 function Menu_({ onNavigate }: { onNavigate?: () => void }) {
-  const { puedeSolicitar } = usePermisosIngreso()
+  const { puedeSolicitar, tiene } = usePermisosIngreso()
   const { conHub, portales } = useOtrosPortales({ tipo: 'personal' })
   const items = [
     { to: RUTA.inicio, label: 'Ingresos', icon: ClipboardList, end: true },
     ...(puedeSolicitar ? [{ to: RUTA.nueva, label: 'Nueva solicitud', icon: Plus, end: true }] : []),
+    ...(tiene('rrhh') ? [{ to: RUTA.configuracion, label: 'Configuración', icon: Settings, end: true }] : []),
   ]
 
   return (
@@ -100,7 +101,14 @@ export default function PortalLayout() {
   const [cambiarClave, setCambiarClave] = useState(false)
   const isDark = mode === 'dark'
 
-  const titulo = location.pathname === RUTA.nueva ? 'Nueva solicitud' : location.pathname === RUTA.inicio ? 'Ingresos' : 'Detalle'
+  const titulo =
+    location.pathname === RUTA.nueva
+      ? 'Nueva solicitud'
+      : location.pathname === RUTA.configuracion
+        ? 'Configuración'
+        : location.pathname === RUTA.inicio
+          ? 'Ingresos'
+          : 'Detalle'
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">

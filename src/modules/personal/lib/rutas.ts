@@ -3,5 +3,6 @@ export const RUTA = {
   inicio: '/personal',
   login: '/personal/login',
   nueva: '/personal/nueva',
+  configuracion: '/personal/configuracion',
   ingreso: (id: string) => `/personal/${id}`,
 }

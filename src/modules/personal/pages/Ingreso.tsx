@@ -27,6 +27,7 @@ import {
   eliminarArchivo,
   guardarRemuneracion,
   listarArchivos,
+  listarAreas,
   listarBitacora,
   listarTareas,
   obtenerIngreso,
@@ -35,6 +36,7 @@ import {
   subirDocumento,
   subirEvidencia,
   type Archivo,
+  type Area,
   type DatosIngreso,
   type EventoBitacora,
   type Ingreso as IngresoT,
@@ -541,6 +543,12 @@ function DialogoEditar({
     observacion: ingreso.observacion,
   }))
   const [problema, setProblema] = useState<string | null>(null)
+  const [areas, setAreas] = useState<Area[]>([])
+  useEffect(() => {
+    listarAreas()
+      .then(setAreas)
+      .catch(() => setAreas([]))
+  }, [])
 
   return (
     <Dialog open onOpenChange={(o) => !o && onCerrar()}>
@@ -562,7 +570,7 @@ function DialogoEditar({
             <p className="mb-3 text-xs text-muted-foreground">
               Si quitas un requerimiento, su tarea se elimina mientras no tenga avance. Si agregas uno, se avisa al área.
             </p>
-            <CamposIngreso datos={datos} onChange={setDatos} nueva={false} />
+            <CamposIngreso datos={datos} onChange={setDatos} nueva={false} areas={areas} />
           </div>
           <DialogFooter className="items-center gap-2 border-t pt-3">
             {problema && <p className="mr-auto text-sm text-destructive">{problema}</p>}
