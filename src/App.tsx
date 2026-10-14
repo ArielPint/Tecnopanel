@@ -8,6 +8,7 @@ import ResetPasswordPage from './modules/usuarios/ResetPasswordPage'
 import CrmLoginPage from './modules/crm/pages/Login'
 import SipLoginPage from './modules/sip/pages/Login'
 import PrevencionLoginPage from './modules/sso/pages/Login'
+import PersonalLoginPage from './modules/personal/pages/Login'
 import { useAuthStore } from './store/authStore'
 import { ConCarga, diferido } from './lib/cargaDiferida'
 
@@ -28,6 +29,7 @@ const GeoVictoriaPage = diferido(() => import('./modules/gestion/GeoVictoriaPage
 const GestionApp = diferido(() => import('./modules/gestion/GestionApp'))
 const SipApp = diferido(() => import('./modules/sip/SipApp'))
 const PrevencionApp = diferido(() => import('./modules/sso/PrevencionApp'))
+const PersonalApp = diferido(() => import('./modules/personal/PersonalApp'))
 
 export default function App() {
   const init = useAuthStore((s) => s.init)
@@ -59,6 +61,16 @@ export default function App() {
           element={
             <ProtectedRoute loginPath="/prevencion/login" requiere="sso">
               <ConCarga><PrevencionApp /></ConCarga>
+            </ProtectedRoute>
+          }
+        />
+        {/* Portal Ingreso de Personal: web propia como Prevención, con su login (misma cuenta del hub) */}
+        <Route path="/personal/login" element={<PersonalLoginPage />} />
+        <Route
+          path="/personal/*"
+          element={
+            <ProtectedRoute loginPath="/personal/login" requiere="ingreso">
+              <ConCarga><PersonalApp /></ConCarga>
             </ProtectedRoute>
           }
         />

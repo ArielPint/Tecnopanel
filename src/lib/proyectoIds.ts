@@ -11,6 +11,10 @@ export const SIP_ANCLA_ID = '043e6b57-8c97-4eef-8bf2-53d117afc5df'
  *  ('sistema'): syncPermisosGestion reemplaza todas las filas del usuario en ese ancla. */
 export const SSO_ANCLA_ID = '9cb074b8-9085-4b96-9600-0b7fde3d036e'
 
+/** Pseudo-proyecto ancla de los accesos del portal Ingreso de Personal (slug 'ingreso-personal', tipo
+ *  'sistema'). Id fijo, creado por la migración 20261015120000_ingreso_personal.sql. */
+export const ING_ANCLA_ID = '5d3f8a2e-7b41-4c69-a0d2-9e6b1f4c8a17'
+
 const cache = new Map<string, Promise<string>>()
 
 export function getProyectoId(slug: string): Promise<string> {

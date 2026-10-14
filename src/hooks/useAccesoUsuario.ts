@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/store/authStore'
-import { getProyectoId, SIP_ANCLA_ID, SSO_ANCLA_ID } from '@/lib/proyectoIds'
+import { getProyectoId, ING_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from '@/lib/proyectoIds'
 
-export type Escenario = 'hub_completo' | 'solo_proyecto' | 'solo_crm' | 'solo_sip' | 'solo_sso' | 'selector_portales' | 'sin_acceso'
+export type Escenario = 'hub_completo' | 'solo_proyecto' | 'solo_crm' | 'solo_sip' | 'solo_sso' | 'solo_ingreso' | 'selector_portales' | 'sin_acceso'
 
 export interface ProyectoObra {
   id: string
@@ -25,6 +25,8 @@ interface AccesoUsuario {
   tieneSip: boolean
   /** Cualquier fila en `permisos` sobre el ancla SSO (SSO_ANCLA_ID): portal Prevención de Riesgos. */
   tieneSso: boolean
+  /** Cualquier fila en `permisos` sobre el ancla ING_ANCLA_ID: portal Ingreso de Personal. */
+  tieneIngreso: boolean
   /** Proyectos tipo obra con permiso real — Fase F: antes era un boolean fijo a La Chacra, ahora N proyectos. */
   proyectosObra: ProyectoObra[]
 }
@@ -39,6 +41,7 @@ const ESTADO_INICIAL: AccesoUsuario = {
   tieneGestion: false,
   tieneSip: false,
   tieneSso: false,
+  tieneIngreso: false,
   proyectosObra: [],
 }
 
@@ -96,26 +99,28 @@ export function useAccesoUsuario(): AccesoUsuario {
         const tieneGestion = isAdmin || proyectosConAcceso.has(sistemaId)
         const tieneSip = isAdmin || isSuperAdmin || proyectosConAcceso.has(SIP_ANCLA_ID)
         const tieneSso = isAdmin || isSuperAdmin || proyectosConAcceso.has(SSO_ANCLA_ID)
+        const tieneIngreso = isAdmin || isSuperAdmin || proyectosConAcceso.has(ING_ANCLA_ID)
         const proyectosObra = (obras ?? []).filter((p) => isAdmin || proyectosConAcceso.has(p.id))
         const tieneProyecto = proyectosObra.length > 0
 
         if (isAdmin) {
-          setEstado({ loading: false, escenario: 'hub_completo', isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, tieneSip, tieneSso, proyectosObra })
+          setEstado({ loading: false, escenario: 'hub_completo', isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, tieneSip, tieneSso, tieneIngreso, proyectosObra })
           return
         }
 
-        // Producción SIP y Prevención cuentan como un portal más: con otro acceso va al selector; solo, aterriza
-        // en /produccion o /prevencion
-        const portales = [tieneCrm, tieneProyecto, tieneSip, tieneSso].filter(Boolean).length
+        // Producción SIP, Prevención e Ingreso de Personal cuentan como un portal más: con otro acceso va al
+        // selector; solo, aterriza en /produccion, /prevencion o /personal
+        const portales = [tieneCrm, tieneProyecto, tieneSip, tieneSso, tieneIngreso].filter(Boolean).length
         let escenario: Escenario
         if (portales > 1) escenario = 'selector_portales'
         else if (tieneCrm) escenario = 'solo_crm'
         else if (tieneProyecto) escenario = 'solo_proyecto'
         else if (tieneSip) escenario = 'solo_sip'
         else if (tieneSso) escenario = 'solo_sso'
+        else if (tieneIngreso) escenario = 'solo_ingreso'
         else escenario = 'sin_acceso'
 
-        setEstado({ loading: false, escenario, isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, tieneSip, tieneSso, proyectosObra })
+        setEstado({ loading: false, escenario, isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, tieneSip, tieneSso, tieneIngreso, proyectosObra })
       } catch (err) {
         if (cancelado) return
         // Mismo race de token que getProyectoId (ver comentario ahí): profiles/permisos no
