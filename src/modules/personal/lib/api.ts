@@ -86,6 +86,13 @@ export interface EventoBitacora {
   usuario_nombre: string | null
 }
 
+/** Área que puede solicitar personal (Configuración > Áreas). */
+export interface Area {
+  id: string
+  nombre: string
+  activa: boolean
+}
+
 export interface Remuneracion {
   renta_ofrecida: number | null
   pretension_renta: number | null
@@ -95,6 +102,32 @@ export interface Remuneracion {
 function error(e: { message: string; code?: string } | null, contexto?: string): never {
   if (e?.code === '23505') throw new Error('Ya hay un ingreso abierto con ese RUT.')
   throw new Error(contexto ? `${contexto}: ${e?.message}` : (e?.message ?? 'Error desconocido'))
+}
+
+export async function listarAreas(): Promise<Area[]> {
+  const { data, error: e } = await supabase.from('ing_areas').select('id, nombre, activa').order('nombre')
+  if (e) error(e)
+  return (data ?? []) as Area[]
+}
+
+function errorArea(e: { message: string; code?: string }): never {
+  if (e.code === '23505') throw new Error('Ya existe un área con ese nombre.')
+  error(e)
+}
+
+export async function crearArea(nombre: string): Promise<void> {
+  const { error: e } = await supabase.from('ing_areas').insert({ nombre })
+  if (e) errorArea(e)
+}
+
+export async function actualizarArea(id: string, cambios: Partial<Pick<Area, 'nombre' | 'activa'>>): Promise<void> {
+  const { error: e } = await supabase.from('ing_areas').update(cambios).eq('id', id)
+  if (e) errorArea(e)
+}
+
+export async function eliminarArea(id: string): Promise<void> {
+  const { error: e } = await supabase.from('ing_areas').delete().eq('id', id)
+  if (e) error(e)
 }
 
 export async function listarIngresos(): Promise<Ingreso[]> {

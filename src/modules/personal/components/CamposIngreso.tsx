@@ -5,8 +5,8 @@ import { SUCURSALES } from '@/lib/lineasNegocio'
 import { cn } from '@/lib/utils'
 import { formatearRut, normalizarRut, rutValido } from '@/modules/sso/lib/rut'
 import { hoyChile } from '@/modules/sso/lib/estados'
-import { AREAS_SOLICITANTES, JORNADAS, REQUERIMIENTOS, TIPO_CONTRATO, type TipoContrato } from '../lib/catalogos'
-import type { DatosIngreso } from '../lib/api'
+import { JORNADAS, REQUERIMIENTOS, TIPO_CONTRATO, type TipoContrato } from '../lib/catalogos'
+import type { Area, DatosIngreso } from '../lib/api'
 
 // Campos de la solicitud, compartidos por Nueva solicitud y Editar (detalle del ingreso).
 
@@ -77,12 +77,17 @@ export default function CamposIngreso({
   datos,
   onChange,
   nueva,
+  areas,
 }: {
   datos: DatosIngreso
   onChange: (d: DatosIngreso) => void
   nueva: boolean
+  /** Configuración > Áreas. Se ofrecen las activas, más la que ya tiene la solicitud si se desactivó. */
+  areas: Area[]
 }) {
   const set = <K extends keyof DatosIngreso>(k: K, v: DatosIngreso[K]) => onChange({ ...datos, [k]: v })
+  const opcionesArea = areas.filter((a) => a.activa).map((a) => a.nombre)
+  if (datos.area && !opcionesArea.includes(datos.area)) opcionesArea.push(datos.area)
   const rutMalo = datos.rut.trim().length > 0 && !rutValido(datos.rut)
 
   return (
@@ -91,12 +96,12 @@ export default function CamposIngreso({
         <div className={grid}>
           <div className="space-y-1">
             <Label htmlFor="ip-area">Área que solicita</Label>
-            <Input id="ip-area" list="ip-areas" value={datos.area} onChange={(e) => set('area', e.target.value)} placeholder="Elige o escribe" />
-            <datalist id="ip-areas">
-              {AREAS_SOLICITANTES.map((a) => (
-                <option key={a} value={a} />
+            <select id="ip-area" value={datos.area} onChange={(e) => set('area', e.target.value)} className={selectClase}>
+              <option value="">Elegir área</option>
+              {opcionesArea.map((a) => (
+                <option key={a}>{a}</option>
               ))}
-            </datalist>
+            </select>
           </div>
           <div className="space-y-1">
             <Label htmlFor="ip-sucursal">Sucursal</Label>
