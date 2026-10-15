@@ -22,6 +22,8 @@ export interface DatosSolicitud {
 }
 
 export interface Solicitud extends DatosSolicitud {
+  /** Obligatorio en la base (CECO de SAP) */
+  centro_costo: string
   id: string
   numero: number
   estado: EstadoSolicitud
@@ -30,6 +32,9 @@ export interface Solicitud extends DatosSolicitud {
   nivel_requerido: number
   nivel_aprobado: number
   ronda: number
+  enviada_at: string | null
+  aprobada_at: string | null
+  oc_at: string | null
   motivo_cierre: string | null
   creado_por: string
   cerrado_por: string | null
@@ -38,6 +43,8 @@ export interface Solicitud extends DatosSolicitud {
   creado_por_nombre: string | null
   cerrado_por_nombre: string | null
   proyecto_nombre: string | null
+  centro_costo_nombre: string | null
+  linea: string | null
   items: number
   monto_estimado: number | null
   cotizaciones: number
@@ -48,6 +55,7 @@ export interface Solicitud extends DatosSolicitud {
   puedo_cotizar: boolean
   oc_docnums: string
   recepcion_pct: number | null
+  facturado: number | null
 }
 
 export interface Item {
@@ -101,6 +109,8 @@ export interface OcVinculada {
   cancelada: boolean | null
   total: number | null
   moneda: string | null
+  neto: number | null
+  facturado: number | null
   recepcion_pct: number | null
 }
 
@@ -128,7 +138,11 @@ export interface OcSap {
   total: number
   moneda: string | null
   comentarios: string | null
+  neto: number
+  facturado: number
   recepcion_pct: number | null
+  facturado_pct: number | null
+  cecos: string | null
   solicitudes: string | null
 }
 
@@ -433,7 +447,9 @@ export async function buscarArticulos(q: string): Promise<ArticuloSap[]> {
 export async function listarOcSap(desde: string): Promise<OcSap[]> {
   const { data, error: e } = await supabase
     .from('adq_sap_oc_v')
-    .select('doc_entry, docnum, proveedor_codigo, proveedor_nombre, fecha, fecha_entrega, abierta, cancelada, total, moneda, comentarios, recepcion_pct, solicitudes')
+    .select(
+      'doc_entry, docnum, proveedor_codigo, proveedor_nombre, fecha, fecha_entrega, abierta, cancelada, total, moneda, comentarios, neto, facturado, recepcion_pct, facturado_pct, cecos, solicitudes',
+    )
     .gte('fecha', desde)
     .order('docnum', { ascending: false })
     .limit(2000)
@@ -449,3 +465,153 @@ export async function estadoSincronizacion(): Promise<string | null> {
 
 export const fmtPesos = (n: number | null | undefined) =>
   n == null ? '—' : '$' + new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 }).format(n)
+
+// ---------------------------------------------------------------- centros de costo y control de gasto
+
+export interface CentroCosto {
+  codigo: string
+  nombre: string
+  sucursal: string | null
+  linea: string | null
+}
+
+let centros: Promise<CentroCosto[]> | null = null
+
+/** Centros de costo activos de SAP (dimensión 1). Se cachean: cambian muy de vez en cuando. */
+export function listarCentrosCosto(): Promise<CentroCosto[]> {
+  if (!centros) {
+    centros = (async () => {
+      const { data, error: e } = await supabase.from('sap_centros_costo').select('codigo, nombre, sucursal, linea').eq('activo', true).order('codigo')
+      if (e) {
+        centros = null
+        error(e)
+      }
+      return (data ?? []) as CentroCosto[]
+    })()
+  }
+  return centros
+}
+
+/** "1102 · LN SIP PTO VARAS" */
+export const etiquetaCeco = (codigo: string, nombre?: string | null) => (nombre ? `${codigo} · ${nombre}` : codigo)
+
+export interface PresupuestoSolicitud {
+  centro_costo: string
+  anio: number
+  presupuesto: number | null
+  ejecutado: number
+  comprometido: number
+  /** La solicitud ya suma en el comprometido (en aprobación o aprobada) */
+  esta_incluida: boolean
+}
+
+/** Solo para Compras y aprobadores; para el resto, null. */
+export async function presupuestoSolicitud(solicitudId: string): Promise<PresupuestoSolicitud | null> {
+  const { data, error: e } = await supabase.rpc('adq_presupuesto_solicitud', { p_solicitud_id: solicitudId })
+  if (e) error(e)
+  return ((data ?? []) as PresupuestoSolicitud[])[0] ?? null
+}
+
+export interface FacturaOc {
+  oc_doc_entry: number
+  doc_entry: number
+  docnum: number
+  folio: string | null
+  fecha: string
+  vencimiento: string | null
+  total: number
+  pagado: number
+  abierta: boolean
+  cancelada: boolean
+  neto_oc: number
+}
+
+export async function listarFacturasOc(docEntries: number[]): Promise<FacturaOc[]> {
+  if (docEntries.length === 0) return []
+  const { data, error: e } = await supabase.from('sap_oc_facturas').select('*').in('oc_doc_entry', docEntries).order('fecha')
+  if (e) error(e)
+  return (data ?? []) as FacturaOc[]
+}
+
+export interface FilaGasto {
+  anio: number
+  mes: number
+  centro_costo: string
+  centro_costo_nombre: string | null
+  sucursal: string | null
+  linea: string | null
+  proveedor_nombre: string | null
+  neto: number
+  oc: number
+}
+
+/** Gasto real en SAP (líneas de OC no canceladas) del año, por mes, CECO y proveedor. */
+export async function listarGasto(anio: number): Promise<FilaGasto[]> {
+  const filas: FilaGasto[] = []
+  // PostgREST corta en 1000 filas: se pide por páginas
+  for (let desde = 0; ; desde += 1000) {
+    const { data, error: e } = await supabase.from('adq_gasto_v').select('*').eq('anio', anio).range(desde, desde + 999)
+    if (e) error(e)
+    filas.push(...((data ?? []) as FilaGasto[]))
+    if (!data || data.length < 1000) break
+  }
+  return filas
+}
+
+export interface FilaPresupuesto {
+  centro_costo: string
+  anio: number
+  centro_costo_nombre: string | null
+  sucursal: string | null
+  linea: string | null
+  presupuesto: number | null
+  ejecutado: number
+  comprometido: number
+  solicitudes: number
+}
+
+export async function listarPresupuestos(anio: number): Promise<FilaPresupuesto[]> {
+  const { data, error: e } = await supabase.from('adq_presupuesto_v').select('*').eq('anio', anio).order('centro_costo')
+  if (e) error(e)
+  return (data ?? []) as FilaPresupuesto[]
+}
+
+export const guardarPresupuestos = (filas: { centro_costo: string; anio: number; monto: number | null }[]) =>
+  rpc('adq_guardar_presupuestos', { p: filas })
+
+export interface FilaReposicion {
+  articulo_codigo: string
+  bodega_codigo: 'B006' | 'B007'
+  sucursal: string
+  articulo_nombre: string
+  unidad: string | null
+  ultimo_precio: number | null
+  en_stock: number
+  comprometido: number
+  pedido: number
+  en_solicitud: number
+  consumo_mensual: number
+  minimo: number | null
+  reorden: number | null
+  disponible: number
+  bajo_minimo: boolean
+  sugerido: number | null
+  cobertura_dias: number | null
+}
+
+export async function listarReposicion(): Promise<FilaReposicion[]> {
+  const filas: FilaReposicion[] = []
+  for (let desde = 0; ; desde += 1000) {
+    const { data, error: e } = await supabase.from('adq_reposicion_v').select('*').order('articulo_nombre').range(desde, desde + 999)
+    if (e) error(e)
+    filas.push(...((data ?? []) as FilaReposicion[]))
+    if (!data || data.length < 1000) break
+  }
+  return filas
+}
+
+/** minimo null quita el mínimo del artículo en esa bodega. */
+export const guardarReposicion = (filas: { articulo_codigo: string; bodega_codigo: string; minimo: number | null; reorden: number | null }[]) =>
+  rpc('adq_guardar_reposicion', { p: filas })
+
+export const BODEGAS: Record<string, string> = { B006: 'Bodega Santiago', B007: 'Bodega Puerto Varas' }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Ban, Check, CheckCircle2, Circle, FileText, Link2, PackageCheck, Pencil, Plus, Send, Trash2, Undo2, Unlink, Upload, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Ban, Check, CheckCircle2, Circle, FileText, Link2, PackageCheck, Pencil, Plus, Send, Trash2, Undo2, Unlink, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/modules/financiero/components/ui/badge'
 import { Button } from '@/modules/financiero/components/ui/button'
@@ -30,12 +30,14 @@ import {
   eliminarArchivo,
   eliminarCotizacion,
   enviarAprobacion,
+  etiquetaCeco,
   fmtPesos,
   guardarItems,
   listarAprobaciones,
   listarArchivos,
   listarBitacora,
   listarCotizaciones,
+  listarFacturasOc,
   listarItems,
   listarLineasOc,
   listarNiveles,
@@ -43,6 +45,7 @@ import {
   marcarRecibida,
   nivelPara,
   obtenerSolicitud,
+  presupuestoSolicitud,
   rechazar,
   subirAdjunto,
   subirArchivoCotizacion,
@@ -53,10 +56,12 @@ import {
   type DatosCotizacion,
   type DatosSolicitud,
   type EventoBitacora,
+  type FacturaOc,
   type Item,
   type LineaOc,
   type Nivel,
   type OcVinculada,
+  type PresupuestoSolicitud,
   type ProveedorSap,
   type Solicitud as SolicitudT,
 } from '../lib/api'
@@ -118,6 +123,64 @@ function FilaArchivo({ a, puedeBorrar, onBorrar }: { a: Archivo; puedeBorrar: bo
   )
 }
 
+/** Cómo queda el presupuesto anual del CECO si esta solicitud se compra. null si no hay presupuesto cargado. */
+function saldoPresupuesto(p: PresupuestoSolicitud | null, s: SolicitudT) {
+  if (!p || p.presupuesto == null) return null
+  const esta = p.esta_incluida ? 0 : (s.monto_referencia ?? 0)
+  const usado = p.ejecutado + p.comprometido + esta
+  return { usado, disponible: p.presupuesto - usado, pct: p.presupuesto > 0 ? Math.round((100 * usado) / p.presupuesto) : 100 }
+}
+
+function TarjetaPresupuesto({ p, s }: { p: PresupuestoSolicitud; s: SolicitudT }) {
+  const saldo = saldoPresupuesto(p, s)
+  // con OC emitida la compra ya está en el ejecutado de SAP
+  const yaComprada = ['oc_emitida', 'recibida', 'rechazada', 'anulada'].includes(s.estado)
+  return (
+    <Card>
+      <CardContent className="space-y-3 pt-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-bold">
+            Presupuesto {p.anio} · CECO {p.centro_costo}
+          </h2>
+          {saldo && saldo.disponible < 0 && !yaComprada && (
+            <Badge variant="destructive">
+              <AlertTriangle /> Excede
+            </Badge>
+          )}
+        </div>
+        {p.presupuesto == null || !saldo ? (
+          <p className="text-sm text-muted-foreground">
+            Este centro de costo no tiene presupuesto cargado para {p.anio}. Ejecutado en SAP:{' '}
+            <span className="font-mono-tabular">{fmtPesos(p.ejecutado)}</span>.
+          </p>
+        ) : (
+          <>
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div className={cn('h-full', saldo.disponible < 0 ? 'bg-destructive' : 'bg-brand')} style={{ width: `${Math.min(100, saldo.pct)}%` }} />
+            </div>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <dt className="text-muted-foreground">Presupuesto anual</dt>
+              <dd className="text-right font-mono-tabular">{fmtPesos(p.presupuesto)}</dd>
+              <dt className="text-muted-foreground">Ejecutado (OC en SAP)</dt>
+              <dd className="text-right font-mono-tabular">{fmtPesos(p.ejecutado)}</dd>
+              <dt className="text-muted-foreground">Comprometido en el portal</dt>
+              <dd className="text-right font-mono-tabular">{fmtPesos(p.comprometido)}</dd>
+              {!p.esta_incluida && !yaComprada && (
+                <>
+                  <dt className="text-muted-foreground">Esta solicitud</dt>
+                  <dd className="text-right font-mono-tabular">{fmtPesos(s.monto_referencia)}</dd>
+                </>
+              )}
+              <dt className="font-semibold">{yaComprada ? 'Disponible' : 'Disponible después de esta'}</dt>
+              <dd className={cn('text-right font-mono-tabular font-semibold', saldo.disponible < 0 && 'text-destructive')}>{fmtPesos(saldo.disponible)}</dd>
+            </dl>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 const PASOS = ['Cotización', 'Aprobación', 'OC en SAP', 'Recepción'] as const
 
 function Pasos({ s }: { s: SolicitudT }) {
@@ -137,13 +200,15 @@ function Pasos({ s }: { s: SolicitudT }) {
 
 export default function Solicitud() {
   const { id = '' } = useParams<{ id: string }>()
-  const { userId, esCompras } = usePermisosAdq()
+  const { userId, esCompras, veControl } = usePermisosAdq()
   const [s, setS] = useState<SolicitudT | null>(null)
   const [items, setItems] = useState<Item[]>([])
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([])
   const [aprobaciones, setAprobaciones] = useState<Aprobacion[]>([])
   const [ocs, setOcs] = useState<OcVinculada[]>([])
   const [lineas, setLineas] = useState<LineaOc[]>([])
+  const [facturas, setFacturas] = useState<FacturaOc[]>([])
+  const [presupuesto, setPresupuesto] = useState<PresupuestoSolicitud | null>(null)
   const [archivos, setArchivos] = useState<Archivo[]>([])
   const [bitacora, setBitacora] = useState<EventoBitacora[]>([])
   const [niveles, setNiveles] = useState<Nivel[]>([])
@@ -178,13 +243,17 @@ export default function Solicitud() {
       setArchivos(ar)
       setBitacora(bi)
       setNiveles(ni)
-      setLineas(await listarLineasOc(oc.map((o) => o.doc_entry).filter((d): d is number => d != null)))
+      const docs = oc.map((o) => o.doc_entry).filter((d): d is number => d != null)
+      const [li, fa, pr] = await Promise.all([listarLineasOc(docs), listarFacturasOc(docs), veControl ? presupuestoSolicitud(id) : null])
+      setLineas(li)
+      setFacturas(fa)
+      setPresupuesto(pr)
     } catch (err) {
       toast.error(msg(err, 'Error al cargar'))
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, veControl])
 
   useEffect(() => {
     cargar()
@@ -320,8 +389,11 @@ export default function Solicitud() {
               <h2 className="text-sm font-bold sm:col-span-2">Datos</h2>
               <Dato label="Pidió">{s.creado_por_nombre}</Dato>
               <Dato label="Creada el">{fmtFechaHora(s.created_at)}</Dato>
+              <Dato label="Centro de costo">
+                {etiquetaCeco(s.centro_costo ?? '', s.centro_costo_nombre)}
+                {s.linea && <span className="block text-xs text-muted-foreground">{s.linea}</span>}
+              </Dato>
               <Dato label="Obra">{s.proyecto_nombre}</Dato>
-              <Dato label="Centro de costo">{s.centro_costo}</Dato>
               <Dato label="Lugar de entrega">{s.lugar_entrega}</Dato>
               <Dato label="Monto neto">
                 <span className="font-mono-tabular">{fmtPesos(s.monto_referencia)}</span>
@@ -390,6 +462,7 @@ export default function Solicitud() {
                 <h2 className="text-sm font-bold">Órdenes de compra en SAP</h2>
                 {ocs.map((o) => {
                   const lin = lineas.filter((l) => l.doc_entry === o.doc_entry)
+                  const fac = facturas.filter((f) => f.oc_doc_entry === o.doc_entry && !f.cancelada)
                   return (
                     <div key={o.docnum} className="space-y-2 rounded-md border p-3">
                       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -423,6 +496,26 @@ export default function Solicitud() {
                           )}
                         </div>
                       </div>
+                      {o.en_sap && !o.cancelada && (
+                        <div className="space-y-1 rounded bg-muted/40 px-2 py-1.5 text-xs">
+                          <p>
+                            Facturado <span className="font-mono-tabular font-semibold">{fmtPesos(o.facturado)}</span> de{' '}
+                            <span className="font-mono-tabular">{fmtPesos(o.neto)}</span> neto
+                            {o.neto ? ` (${Math.min(100, Math.round((100 * (o.facturado ?? 0)) / o.neto))}%)` : ''}
+                          </p>
+                          {fac.map((f) => (
+                            <p key={f.doc_entry} className="flex flex-wrap justify-between gap-x-3 text-muted-foreground">
+                              <span>
+                                Factura <span className="font-mono-tabular">{f.folio ?? f.docnum}</span> · {fmtFecha(f.fecha)}
+                              </span>
+                              <span className="font-mono-tabular">
+                                {fmtPesos(f.total)} con IVA ·{' '}
+                                {f.pagado >= f.total ? 'pagada' : f.pagado > 0 ? `pagado ${fmtPesos(f.pagado)}` : `vence ${fmtFecha(f.vencimiento)}`}
+                              </span>
+                            </p>
+                          ))}
+                        </div>
+                      )}
                       {lin.length > 0 && (
                         <table className="w-full text-xs">
                           <tbody>
@@ -446,6 +539,8 @@ export default function Solicitud() {
         </div>
 
         <div className="min-w-0 space-y-4">
+          {presupuesto && <TarjetaPresupuesto p={presupuesto} s={s} />}
+
           <Card>
             <CardContent className="space-y-3 pt-4">
               <div className="flex items-center justify-between gap-2">
@@ -659,6 +754,14 @@ export default function Solicitud() {
                   Hay {cotizaciones.length} {cotizaciones.length === 1 ? 'cotización' : 'cotizaciones'}. Lo habitual es comparar al menos tres.
                 </p>
               )}
+              {(() => {
+                const saldo = saldoPresupuesto(presupuesto && { ...presupuesto, esta_incluida: false }, { ...s, monto_referencia: dialogo.c.monto_neto })
+                return saldo && saldo.disponible < 0 ? (
+                  <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    Excede el presupuesto {presupuesto?.anio} del CECO {s.centro_costo} en {fmtPesos(-saldo.disponible)}. Los aprobadores lo verán marcado.
+                  </p>
+                ) : null
+              })()}
               {masBarata != null && dialogo.c.monto_neto > masBarata && (
                 <p className="rounded-md bg-warning/10 px-3 py-2 text-xs text-warning">
                   No es la de menor precio ({fmtPesos(masBarata)}). Explica el motivo en las observaciones de la cotización.
@@ -693,7 +796,9 @@ export default function Solicitud() {
       <DialogoTexto
         abierto={dialogo?.tipo === 'aprobar'}
         titulo={`Aprobar SC-${s.numero}`}
-        detalle={`${fmtPesos(s.monto_aprobacion)} neto con ${s.proveedor_elegido ?? '—'}. Si tu nivel alcanza, quedan aprobados también los niveles siguientes que falten.`}
+        detalle={`${fmtPesos(s.monto_aprobacion)} neto con ${s.proveedor_elegido ?? '—'}, CECO ${s.centro_costo}.${
+          (saldoPresupuesto(presupuesto, s)?.disponible ?? 0) < 0 ? ` EXCEDE el presupuesto ${presupuesto?.anio} del centro de costo.` : ''
+        } Si tu nivel alcanza, quedan aprobados también los niveles siguientes que falten.`}
         etiqueta="Comentario (opcional)"
         boton="Aprobar"
         ocupado={ocupado}

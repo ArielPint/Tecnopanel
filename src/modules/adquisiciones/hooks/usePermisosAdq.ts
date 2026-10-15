@@ -36,8 +36,11 @@ export function usePermisosAdq() {
   const esAdmin = isAdmin || isSuperAdmin
   const tiene = useCallback((rol: RolAdq) => esAdmin || roles.has(rol), [esAdmin, roles])
   const esCompras = tiene('comprador') || tiene('jefe_compras')
-  const puedeSolicitar = tiene('solicitante') || esCompras
+  const puedeSolicitar = tiene('solicitante') || tiene('bodega') || esCompras
   const nivel = tiene('aprobador_3') ? 3 : tiene('aprobador_2') ? 2 : tiene('aprobador_1') ? 1 : 0
+  // Mismo criterio que adq_ve_control() y adq_ve_reposicion()
+  const veControl = esCompras || nivel > 0
+  const veReposicion = esCompras || tiene('bodega')
 
-  return { userId: userId ?? '', tiene, esCompras, puedeSolicitar, nivel, esAdmin, loading: loading || accesoLoading }
+  return { userId: userId ?? '', tiene, esCompras, puedeSolicitar, nivel, veControl, veReposicion, esAdmin, loading: loading || accesoLoading }
 }
