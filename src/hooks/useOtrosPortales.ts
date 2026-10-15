@@ -1,11 +1,11 @@
-import { Building2, Factory, Handshake, HardHat, UserPlus, type LucideIcon } from 'lucide-react'
+import { Building2, Factory, Handshake, HardHat, ShoppingCart, UserPlus, type LucideIcon } from 'lucide-react'
 import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
 
 // Accesos directos entre portales para quien no tiene el hub: admin o Gestión entran al hub y desde
 // ahí a todo; los demás (p. ej. un proyecto + Producción SIP) no tienen hub al que volver, así que
 // cada portal les muestra en su menú los otros portales que sí tienen.
 
-export type PortalActual = { tipo: 'proyecto'; slug: string } | { tipo: 'crm' | 'sip' | 'sso' | 'personal' }
+export type PortalActual = { tipo: 'proyecto'; slug: string } | { tipo: 'crm' | 'sip' | 'sso' | 'personal' | 'adquisiciones' }
 
 export interface OtroPortal {
   to: string
@@ -25,6 +25,7 @@ export function useOtrosPortales(actual: PortalActual): { conHub: boolean; porta
   if (acceso.tieneSip && actual.tipo !== 'sip') portales.push({ to: '/produccion', label: 'Producción Paneles SIP', icon: Factory })
   if (acceso.tieneSso && actual.tipo !== 'sso') portales.push({ to: '/prevencion', label: 'Prevención de Riesgos', icon: HardHat })
   if (acceso.tieneIngreso && actual.tipo !== 'personal') portales.push({ to: '/personal', label: 'Ingreso de Personal', icon: UserPlus })
+  if (acceso.tieneAdquisiciones && actual.tipo !== 'adquisiciones') portales.push({ to: '/adquisiciones', label: 'Adquisiciones', icon: ShoppingCart })
   if (acceso.tieneCrm && actual.tipo !== 'crm') portales.push({ to: '/crm', label: 'CRM', icon: Handshake })
   return { conHub: false, portales }
 }

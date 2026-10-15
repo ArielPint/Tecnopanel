@@ -15,6 +15,10 @@ export const SSO_ANCLA_ID = '9cb074b8-9085-4b96-9600-0b7fde3d036e'
  *  'sistema'). Id fijo, creado por la migración 20261015120000_ingreso_personal.sql. */
 export const ING_ANCLA_ID = '5d3f8a2e-7b41-4c69-a0d2-9e6b1f4c8a17'
 
+/** Pseudo-proyecto ancla de los accesos del portal Adquisiciones (slug 'adquisiciones', tipo
+ *  'sistema'). Id fijo, creado por la migración 20261016120000_adquisiciones.sql. */
+export const ADQ_ANCLA_ID = 'a7c4e1d2-3b5f-4e8a-9c61-2f0d8b4e7a35'
+
 const cache = new Map<string, Promise<string>>()
 
 export function getProyectoId(slug: string): Promise<string> {

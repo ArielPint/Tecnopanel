@@ -78,6 +78,9 @@ export default function DashboardPage() {
   if (acceso.escenario === 'solo_ingreso') {
     return <Navigate to="/personal" replace />
   }
+  if (acceso.escenario === 'solo_adquisiciones') {
+    return <Navigate to="/adquisiciones" replace />
+  }
 
   if (acceso.escenario === 'solo_proyecto') {
     // Si tiene más de un proyecto obra (futuro, hoy siempre 1), manda al selector /proyectos en vez de adivinar cuál.
@@ -160,6 +163,15 @@ export default function DashboardPage() {
             className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
           >
             Ingreso de Personal
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        )}
+        {acceso.tieneAdquisiciones && (
+          <Link
+            to="/adquisiciones"
+            className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
+          >
+            Adquisiciones
             <ArrowRight className="h-4 w-4" />
           </Link>
         )}

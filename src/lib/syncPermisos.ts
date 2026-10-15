@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient'
-import { getProyectoId, ING_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from './proyectoIds'
+import { ADQ_ANCLA_ID, getProyectoId, ING_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from './proyectoIds'
 
 async function reemplazarPermisos(userId: string, proyectoId: string, filas: { modulo_key: string; accion: string }[]) {
   const { error: delErr } = await supabase.from('permisos').delete().eq('user_id', userId).eq('proyecto_id', proyectoId)
@@ -114,6 +114,14 @@ export async function syncPermisosSso(userId: string, acciones: Record<string, b
  */
 export async function syncPermisosIngreso(userId: string, roles: string[]) {
   await reemplazarPermisos(userId, ING_ANCLA_ID, roles.map((r) => ({ modulo_key: `ing:${r}`, accion: 'ver' })))
+}
+
+/**
+ * Portal Adquisiciones: transversal, sobre su propio ancla (ADQ_ANCLA_ID). Un rol por fila:
+ * modulo_key 'adq:<rol>' con accion 'ver' (solicitante, comprador, aprobador_1..3, jefe_compras).
+ */
+export async function syncPermisosAdquisiciones(userId: string, roles: string[]) {
+  await reemplazarPermisos(userId, ADQ_ANCLA_ID, roles.map((r) => ({ modulo_key: `adq:${r}`, accion: 'ver' })))
 }
 
 /** Rol de negocio por proyecto (catálogo abierto, ver Fase E1) — reemplaza el 'full_access' decorativo. */

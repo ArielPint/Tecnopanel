@@ -9,6 +9,7 @@ import CrmLoginPage from './modules/crm/pages/Login'
 import SipLoginPage from './modules/sip/pages/Login'
 import PrevencionLoginPage from './modules/sso/pages/Login'
 import PersonalLoginPage from './modules/personal/pages/Login'
+import AdquisicionesLoginPage from './modules/adquisiciones/pages/Login'
 import { useAuthStore } from './store/authStore'
 import { ConCarga, diferido } from './lib/cargaDiferida'
 
@@ -31,6 +32,7 @@ const SipApp = diferido(() => import('./modules/sip/SipApp'))
 const PrevencionApp = diferido(() => import('./modules/sso/PrevencionApp'))
 const PersonalApp = diferido(() => import('./modules/personal/PersonalApp'))
 const MonitoreoPage = diferido(() => import('./modules/monitoreo/MonitoreoPage'))
+const AdquisicionesApp = diferido(() => import('./modules/adquisiciones/AdquisicionesApp'))
 
 export default function App() {
   const init = useAuthStore((s) => s.init)
@@ -72,6 +74,16 @@ export default function App() {
           element={
             <ProtectedRoute loginPath="/personal/login" requiere="ingreso">
               <ConCarga><PersonalApp /></ConCarga>
+            </ProtectedRoute>
+          }
+        />
+        {/* Portal Adquisiciones: web propia como Ingreso de Personal, con su login (misma cuenta del hub) */}
+        <Route path="/adquisiciones/login" element={<AdquisicionesLoginPage />} />
+        <Route
+          path="/adquisiciones/*"
+          element={
+            <ProtectedRoute loginPath="/adquisiciones/login" requiere="adquisiciones">
+              <ConCarga><AdquisicionesApp /></ConCarga>
             </ProtectedRoute>
           }
         />

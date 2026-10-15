@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/store/authStore'
-import { getProyectoId, ING_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from '@/lib/proyectoIds'
+import { ADQ_ANCLA_ID, getProyectoId, ING_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from '@/lib/proyectoIds'
 
-export type Escenario = 'hub_completo' | 'solo_proyecto' | 'solo_crm' | 'solo_sip' | 'solo_sso' | 'solo_ingreso' | 'selector_portales' | 'sin_acceso'
+export type Escenario = 'hub_completo' | 'solo_proyecto' | 'solo_crm' | 'solo_sip' | 'solo_sso' | 'solo_ingreso' | 'solo_adquisiciones' | 'selector_portales' | 'sin_acceso'
 
 export interface ProyectoObra {
   id: string
@@ -27,6 +27,8 @@ interface AccesoUsuario {
   tieneSso: boolean
   /** Cualquier fila en `permisos` sobre el ancla ING_ANCLA_ID: portal Ingreso de Personal. */
   tieneIngreso: boolean
+  /** Cualquier fila en `permisos` sobre el ancla ADQ_ANCLA_ID: portal Adquisiciones. */
+  tieneAdquisiciones: boolean
   /** Proyectos tipo obra con permiso real — Fase F: antes era un boolean fijo a La Chacra, ahora N proyectos. */
   proyectosObra: ProyectoObra[]
 }
@@ -42,6 +44,7 @@ const ESTADO_INICIAL: AccesoUsuario = {
   tieneSip: false,
   tieneSso: false,
   tieneIngreso: false,
+  tieneAdquisiciones: false,
   proyectosObra: [],
 }
 
@@ -100,17 +103,18 @@ export function useAccesoUsuario(): AccesoUsuario {
         const tieneSip = isAdmin || isSuperAdmin || proyectosConAcceso.has(SIP_ANCLA_ID)
         const tieneSso = isAdmin || isSuperAdmin || proyectosConAcceso.has(SSO_ANCLA_ID)
         const tieneIngreso = isAdmin || isSuperAdmin || proyectosConAcceso.has(ING_ANCLA_ID)
+        const tieneAdquisiciones = isAdmin || isSuperAdmin || proyectosConAcceso.has(ADQ_ANCLA_ID)
         const proyectosObra = (obras ?? []).filter((p) => isAdmin || proyectosConAcceso.has(p.id))
         const tieneProyecto = proyectosObra.length > 0
 
         if (isAdmin) {
-          setEstado({ loading: false, escenario: 'hub_completo', isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, tieneSip, tieneSso, tieneIngreso, proyectosObra })
+          setEstado({ loading: false, escenario: 'hub_completo', isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, tieneSip, tieneSso, tieneIngreso, tieneAdquisiciones, proyectosObra })
           return
         }
 
-        // Producción SIP, Prevención e Ingreso de Personal cuentan como un portal más: con otro acceso va al
-        // selector; solo, aterriza en /produccion, /prevencion o /personal
-        const portales = [tieneCrm, tieneProyecto, tieneSip, tieneSso, tieneIngreso].filter(Boolean).length
+        // Producción SIP, Prevención, Ingreso de Personal y Adquisiciones cuentan como un portal más: con otro
+        // acceso va al selector; solo, aterriza en /produccion, /prevencion, /personal o /adquisiciones
+        const portales = [tieneCrm, tieneProyecto, tieneSip, tieneSso, tieneIngreso, tieneAdquisiciones].filter(Boolean).length
         let escenario: Escenario
         if (portales > 1) escenario = 'selector_portales'
         else if (tieneCrm) escenario = 'solo_crm'
@@ -118,9 +122,10 @@ export function useAccesoUsuario(): AccesoUsuario {
         else if (tieneSip) escenario = 'solo_sip'
         else if (tieneSso) escenario = 'solo_sso'
         else if (tieneIngreso) escenario = 'solo_ingreso'
+        else if (tieneAdquisiciones) escenario = 'solo_adquisiciones'
         else escenario = 'sin_acceso'
 
-        setEstado({ loading: false, escenario, isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, tieneSip, tieneSso, tieneIngreso, proyectosObra })
+        setEstado({ loading: false, escenario, isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, tieneSip, tieneSso, tieneIngreso, tieneAdquisiciones, proyectosObra })
       } catch (err) {
         if (cancelado) return
         // Mismo race de token que getProyectoId (ver comentario ahí): profiles/permisos no
