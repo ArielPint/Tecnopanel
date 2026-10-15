@@ -12,6 +12,8 @@ export const RUTA = {
   nuevoCorte: '/produccion/cortes/nuevo',
   corte: (id: string) => `/produccion/cortes/${id}`,
   editarCorte: (id: string) => `/produccion/cortes/${id}/editar`,
+  plan: '/produccion/plan',
+  cargarPlan: '/produccion/plan/cargar',
   stock: '/produccion/stock',
   consumo: '/produccion/consumo',
   calculadora: '/produccion/consumo/calculadora',

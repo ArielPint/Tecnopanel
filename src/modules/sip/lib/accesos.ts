@@ -4,7 +4,7 @@
 
 export type AccionSip = 'ver' | 'crear' | 'editar' | 'eliminar' | 'exportar'
 
-export type ModuloSip = 'produccion' | 'cortes' | 'stock' | 'consumo' | 'recetas'
+export type ModuloSip = 'produccion' | 'cortes' | 'plan' | 'stock' | 'consumo' | 'recetas'
 
 export interface DefModulo {
   key: ModuloSip
@@ -39,6 +39,16 @@ export const SIP_MODULOS: DefModulo[] = [
       { key: 'editar', label: 'Corregir cualquier registro' },
       { key: 'exportar', label: 'Exportar a Excel' },
       { key: 'eliminar', label: 'Eliminar registros' },
+    ],
+  },
+  {
+    key: 'plan',
+    label: 'Plan semanal',
+    grupo: 'Principal',
+    ruta: '/produccion/plan',
+    acciones: [
+      { key: 'ver', label: 'Ver plan vs real y los montos de las órdenes de venta de SAP' },
+      { key: 'editar', label: 'Cargar el plan de cada semana' },
     ],
   },
   {

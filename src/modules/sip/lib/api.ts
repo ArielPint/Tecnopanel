@@ -495,3 +495,96 @@ export async function listarStock(sucursal: FiltroSucursal): Promise<StockPanel[
 export async function guardarStockInicial(panelId: string, sucursal: Sucursal, cantidad: number) {
   revisar(await supabase.from('pnl_stock_inicial').upsert({ panel_id: panelId, sucursal, cantidad }, { onConflict: 'panel_id,sucursal' }))
 }
+
+// ---------------------------------------------------------------- plan semanal y ventas (20261015170000)
+
+export interface PlanFila {
+  id: string
+  sucursal: Sucursal
+  /** lunes de la semana */
+  semana: string
+  proyecto_codigo: string
+  proyecto_nombre: string
+  panel_id: string
+  panel_codigo: string
+  panel_descripcion: string
+  m2_panel: number
+  pegado: number
+  corte: number
+  updated_at: string
+  actualizado_por: string | null
+}
+
+export interface PlanInput {
+  proyecto_codigo: string
+  panel_id: string
+  pegado: number
+  corte: number
+}
+
+/** Venta de un proyecto según sus órdenes de venta de SAP */
+export interface VentaSap {
+  proyecto_codigo: string
+  ordenes: number
+  ov_numeros: string
+  monto: number
+  /** de las líneas de panel SIP */
+  monto_panel: number
+  monto_pendiente: number
+  paneles_estructura: number
+  /** monto de panel SIP / paneles de la estructura: con esto se valoriza el plan y lo real */
+  valor_panel: number | null
+  sincronizado_at: string
+}
+
+export interface OvLinea {
+  doc_entry: number
+  linea: number
+  doc_num: number
+  proyecto_codigo: string
+  fecha: string | null
+  estado: string | null
+  cliente: string | null
+  articulo: string | null
+  descripcion: string
+  tipo_vivienda: string
+  tipo_estructura: string
+  unidad: string | null
+  cantidad: number
+  entregada: number
+  pendiente: number
+  precio: number | null
+  total: number
+  es_panel: boolean
+}
+
+/** Plan de las semanas que parten entre desde y hasta (lunes), en una sucursal o en las que ve el usuario. */
+export async function listarPlan(desde: string, hasta: string, sucursal: FiltroSucursal): Promise<PlanFila[]> {
+  const filas = await todas<PlanFila>((a, b) =>
+    enSucursal(supabase.from('pnl_plan_semanal_v').select('*').gte('semana', desde).lte('semana', hasta), sucursal)
+      .order('semana').order('proyecto_codigo').order('panel_codigo')
+      .range(a, b),
+  )
+  return filas.map((f) => num(f, ['m2_panel']))
+}
+
+/** Reemplaza el plan de una semana en una sucursal. */
+export async function guardarPlan(sucursal: Sucursal, semana: string, filas: PlanInput[]): Promise<number> {
+  return revisar(await supabase.rpc('pnl_guardar_plan', { p_sucursal: sucursal, p_semana: semana, p_filas: filas }))
+}
+
+/** Venta por proyecto. Sin el permiso de plan, la RLS la deja vacía. */
+export async function listarVentasSap(): Promise<VentaSap[]> {
+  const filas = await todas<VentaSap>((a, b) => supabase.from('pnl_sap_ventas_v').select('*').order('proyecto_codigo').range(a, b))
+  return filas.map((f) => ({
+    ...num(f, ['monto', 'monto_panel', 'monto_pendiente', 'paneles_estructura']),
+    valor_panel: f.valor_panel == null ? null : Number(f.valor_panel),
+  }))
+}
+
+export async function listarOvLineas(proyectoCodigo: string): Promise<OvLinea[]> {
+  const filas = await todas<OvLinea>((a, b) =>
+    supabase.from('pnl_sap_ov_lineas').select('*').eq('proyecto_codigo', proyectoCodigo).order('doc_num').order('linea').range(a, b),
+  )
+  return filas.map((f) => ({ ...num(f, ['cantidad', 'entregada', 'pendiente', 'total']), precio: f.precio == null ? null : Number(f.precio) }))
+}

@@ -21,6 +21,8 @@ import ParteCorte from './pages/ParteCorte'
 import ProyectosSap from './pages/ProyectosSap'
 import ProyectoSap from './pages/ProyectoSap'
 import Stock from './pages/Stock'
+import Plan from './pages/Plan'
+import CargarPlan from './pages/CargarPlan'
 
 // Portal Producción de Paneles SIP: web propia como el CRM y Prevención, en /produccion.
 // Transversal a la empresa, con un permiso por módulo sobre el ancla SIP_ANCLA_ID. La sesión y el
@@ -81,6 +83,22 @@ function ModuloCortes() {
   )
 }
 
+function ModuloPlan() {
+  const { puedeEn } = usePermisosSip()
+  return (
+    <div className="space-y-4">
+      <Encabezado titulo="Plan semanal" descripcion="Paneles presupuestados por semana contra lo realmente pegado y cortado, en paneles, m² y valor de venta." />
+      <nav className="flex gap-1 border-b">
+        <Pestana to={RUTA.plan} end>
+          Plan vs real
+        </Pestana>
+        {puedeEn('plan', 'editar') && <Pestana to={RUTA.cargarPlan}>Cargar plan</Pestana>}
+      </nav>
+      <Outlet />
+    </div>
+  )
+}
+
 function ModuloRecetas() {
   return (
     <div className="space-y-4">
@@ -115,6 +133,10 @@ export default function SipApp() {
         <Route path="cortes/nuevo" element={<ConModulo modulo="cortes"><FormCorte /></ConModulo>} />
         <Route path="cortes/:id" element={<ConModulo modulo="cortes"><ParteCorte /></ConModulo>} />
         <Route path="cortes/:id/editar" element={<ConModulo modulo="cortes"><FormCorte /></ConModulo>} />
+        <Route path="plan" element={<ConModulo modulo="plan"><ModuloPlan /></ConModulo>}>
+          <Route index element={<Plan />} />
+          <Route path="cargar" element={<CargarPlan />} />
+        </Route>
         <Route path="stock" element={<ConModulo modulo="stock"><Stock /></ConModulo>} />
         <Route path="consumo" element={<ConModulo modulo="consumo"><ModuloConsumo /></ConModulo>}>
           <Route index element={<Consumo />} />

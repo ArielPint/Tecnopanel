@@ -6,10 +6,11 @@ import { Badge } from '@/modules/financiero/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 import { Cargando, Tile, Vacio } from '../components/comunes'
-import { listarItemsSap, listarLineasCorte, type ItemSap, type LineaCorteV } from '../lib/api'
+import { listarItemsSap, listarLineasCorte, listarOvLineas, listarVentasSap, type ItemSap, type LineaCorteV, type OvLinea, type VentaSap } from '../lib/api'
 import { avancePorProyecto, fmtPesos, nombreCorte } from '../lib/cortes'
-import { fmtFecha, fmtNum, fmtPct } from '../lib/formato'
+import { fmtFecha, fmtFechaHora, fmtNum, fmtPct } from '../lib/formato'
 import { RUTA } from '../lib/rutas'
+import { usePermisosSip } from '../hooks/usePermisosSip'
 import { BarraAvance } from './ProyectosSap'
 
 /** Un proyecto de SAP: su estructura por modelo de vivienda y los cortes registrados. */
@@ -18,6 +19,17 @@ export default function ProyectoSap() {
   const navigate = useNavigate()
   const [items, setItems] = useState<ItemSap[] | null>(null)
   const [lineas, setLineas] = useState<LineaCorteV[]>([])
+  const { puedeEn, loading: permisosLoading } = usePermisosSip()
+  const verVentas = !permisosLoading && puedeEn('plan', 'ver')
+  const [ov, setOv] = useState<{ lineas: OvLinea[]; venta: VentaSap | null } | null>(null)
+
+  // La orden de venta de SAP solo para quien ve el plan (montos de venta)
+  useEffect(() => {
+    if (!verVentas) return
+    Promise.all([listarOvLineas(codigo), listarVentasSap()])
+      .then(([l, v]) => setOv({ lineas: l, venta: v.find((x) => x.proyecto_codigo === codigo) ?? null }))
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'No se pudo cargar la orden de venta'))
+  }, [codigo, verVentas])
 
   useEffect(() => {
     Promise.all([listarItemsSap(codigo), listarLineasCorte({ proyecto: codigo })])
@@ -119,6 +131,8 @@ export default function ProyectoSap() {
         </Card>
       ))}
 
+      {verVentas && <OrdenVenta ov={ov} />}
+
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Cortes registrados</CardTitle>
@@ -157,5 +171,81 @@ export default function ProyectoSap() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+/** Órdenes de venta de SAP del proyecto: montos y líneas, como en SAP. Las de panel SIP valorizan el plan. */
+function OrdenVenta({ ov }: { ov: { lineas: OvLinea[]; venta: VentaSap | null } | null }) {
+  if (!ov) return <Cargando />
+  const { lineas, venta } = ov
+  return (
+    <>
+      {venta && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Tile titulo="Venta (OV SAP)" valor={fmtPesos(venta.monto)} detalle={`OV ${venta.ov_numeros} · neto`} />
+          <Tile titulo="De eso, panel SIP" valor={fmtPesos(venta.monto_panel)} detalle="Kits de panel SIP, losa y PNL" />
+          <Tile
+            titulo="Valor por panel"
+            valor={venta.valor_panel != null ? fmtPesos(venta.valor_panel) : '—'}
+            detalle={venta.valor_panel != null ? `Panel SIP ÷ ${fmtNum(venta.paneles_estructura, 1)} paneles de la estructura` : 'Sin líneas de panel SIP o sin estructura'}
+          />
+          <Tile titulo="Por entregar" valor={fmtPesos(venta.monto_pendiente)} detalle="Cantidad pendiente × precio" />
+        </div>
+      )}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Orden de venta SAP</CardTitle>
+          {venta && <p className="text-xs text-muted-foreground">Sincronizada {fmtFechaHora(venta.sincronizado_at)}. Montos netos en pesos.</p>}
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          {lineas.length === 0 ? (
+            <Vacio>Este proyecto no tiene órdenes de venta en SAP (o aún no se sincronizan).</Vacio>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Artículo</TableHead>
+                  <TableHead className="hidden md:table-cell">Tipo vivienda</TableHead>
+                  <TableHead className="text-right">Cantidad</TableHead>
+                  <TableHead className="text-right">Suministrada</TableHead>
+                  <TableHead className="text-right">Pendiente</TableHead>
+                  <TableHead className="text-right">Precio</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lineas.map((l) => (
+                  <TableRow key={`${l.doc_entry}-${l.linea}`} className={l.total ? undefined : 'text-muted-foreground'}>
+                    <TableCell>
+                      <div className="text-sm font-medium">
+                        {l.descripcion}{' '}
+                        {l.es_panel && l.total > 0 && (
+                          <Badge variant="secondary" className="ml-1">
+                            Panel SIP
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        OV {l.doc_num}
+                        {l.estado === 'C' && ' (cerrada)'}
+                        {l.tipo_estructura && ` · ${l.tipo_estructura}`}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden text-sm md:table-cell">{l.tipo_vivienda || '—'}</TableCell>
+                    <TableCell className="text-right font-mono-tabular">
+                      {fmtNum(l.cantidad, 2)} <span className="text-xs text-muted-foreground">{l.unidad}</span>
+                    </TableCell>
+                    <TableCell className="text-right font-mono-tabular">{fmtNum(l.entregada, 2)}</TableCell>
+                    <TableCell className="text-right font-mono-tabular">{l.pendiente ? fmtNum(l.pendiente, 2) : '—'}</TableCell>
+                    <TableCell className="text-right font-mono-tabular">{l.precio ? fmtPesos(l.precio) : '—'}</TableCell>
+                    <TableCell className="text-right font-mono-tabular font-semibold">{l.total ? fmtPesos(l.total) : '—'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </>
   )
 }
