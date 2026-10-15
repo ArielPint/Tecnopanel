@@ -19,6 +19,7 @@ import {
   DiferenciaAvanceEconFisicoChart,
   DistribucionModulosChart,
   M2AcumuladoChart,
+  M2PorMesChart,
   ModulosIniciadosPorMesChart,
   ModulosTerminadosPorMesChart,
   SalidaGalponPorMesChart,
@@ -39,6 +40,7 @@ const SECCIONES = [
   { key: 'modulosTerminadosPorMes', label: 'Módulos terminados por mes' },
   { key: 'modulosIniciadosPorMes', label: 'Inicio de módulos por mes' },
   { key: 'salidaGalponPorMes', label: 'Módulos terminados obra gruesa' },
+  { key: 'm2PorMes', label: 'M² por mes' },
 ] as const
 
 type SeccionKey = (typeof SECCIONES)[number]['key']
@@ -214,6 +216,10 @@ export default function Resumen({ excelData }: { excelData: ParsedDashboardData 
           <SalidaGalponPorMesChart data={resumen.salidaGalponPorMes} />
         </SectionCard>
       </div>
+
+      <SectionCard title="M² por mes" visible={esVisible('m2PorMes')} onToggle={() => toggle('m2PorMes')}>
+        <M2PorMesChart data={resumen.m2PorMes} />
+      </SectionCard>
     </div>
   )
 }
