@@ -17,24 +17,14 @@ export const ROLES_GERENCIA = ['gerente_general', 'gerente_ventas', 'jefe_ingeni
 export const ROLES_GERENCIA_ADMIN = ['admin', 'gerente_general', 'gerente_ventas']
 
 /** Único punto de creación de notificaciones del CRM: inserta las filas que alimentan la
- *  campana y dispara el correo con los ids recién creados. La edge function relee el
- *  contenido desde la tabla, así el correo nunca lleva texto ni destinatarios arbitrarios.
- *  El envío es best-effort: si el correo falla, la notificación en pantalla igual queda. */
+ *  campana. El correo lo manda el servidor (tarea TP-Correos-Notificaciones, cada minuto),
+ *  leyendo la tabla `notifications`; así también salen por correo los avisos que crea la
+ *  base sola (hitos VIT por vencer) y nunca se envía texto ni destinatarios arbitrarios. */
 export async function notificar(rows: NuevaNotificacion[], contexto: string) {
   const filas = rows.filter(r => r.user_id)
   if (!filas.length) return
   // Via RPC y no INSERT directo: RLS solo deja leer las notificaciones propias, asi que
   // un `insert(...).select('id')` dirigido a otra persona falla entero y no inserta nada.
-  const { data, error } = await supabase.rpc('crm_notificar', { p_filas: filas })
-  if (handleSupabaseError(error, contexto)) return
-  const ids = (data as string[] | null) ?? []
-  if (!ids.length) return
-  const { error: mailErr } = await supabase.functions.invoke('crm-notificar-email', {
-    body: { notification_ids: ids },
-  })
-  // El envio de correo queda pendiente para la migracion al servidor propio (falta el
-  // secret de Resend), asi que hoy este invoke falla siempre. Se registra en consola y no
-  // se molesta al usuario con un aviso en cada accion: la campana ya quedo guardada.
-  // Al retomarlo, volver a subir esto a un toast para que no falle en silencio.
-  if (mailErr) console.error(contexto + '.email', mailErr)
+  const { error } = await supabase.rpc('crm_notificar', { p_filas: filas })
+  handleSupabaseError(error, contexto)
 }
