@@ -165,6 +165,7 @@ export interface EventoBitacora {
 }
 
 export interface Nivel {
+  sucursal: string
   nivel: number
   nombre: string
   monto_desde: number
@@ -401,7 +402,7 @@ export async function comentar(solicitudId: string, texto: string): Promise<void
 }
 
 export async function listarNiveles(): Promise<Nivel[]> {
-  const { data, error: e } = await supabase.from('adq_niveles').select('*').order('nivel')
+  const { data, error: e } = await supabase.from('adq_niveles').select('*').order('sucursal').order('nivel')
   if (e) error(e)
   return (data ?? []) as Nivel[]
 }
@@ -409,9 +410,9 @@ export async function listarNiveles(): Promise<Nivel[]> {
 /** Todos juntos: la base valida que cada nivel parta en un monto mayor que el anterior. */
 export const guardarNiveles = (niveles: Nivel[]) => rpc('adq_guardar_niveles', { p: niveles })
 
-/** Nivel que exige un monto, con la misma regla que adq_nivel_para(). */
-export function nivelPara(niveles: Nivel[], monto: number | null): number {
-  return Math.max(1, ...niveles.filter((n) => n.activo && n.monto_desde <= (monto ?? 0)).map((n) => n.nivel))
+/** Nivel que exige un monto en una sucursal, con la misma regla que adq_nivel_para(). */
+export function nivelPara(niveles: Nivel[], sucursal: string, monto: number | null): number {
+  return Math.max(1, ...niveles.filter((n) => n.sucursal === sucursal && n.activo && n.monto_desde <= (monto ?? 0)).map((n) => n.nivel))
 }
 
 // ---------------------------------------------------------------- SAP (solo lectura)

@@ -14,13 +14,13 @@ import { RUTA } from '../lib/rutas'
 type Filtro = 'pendientes' | 'abiertas' | EstadoSolicitud | 'todas'
 
 /** Lo que está esperando a la persona que mira: aprobar, cotizar o vincular la OC. */
-function meToca(s: Solicitud, esCompras: boolean) {
-  return s.puedo_aprobar || s.puedo_cotizar || (esCompras && s.estado === 'aprobada')
+function meToca(s: Solicitud, comprasEn: (sucursal: string) => boolean) {
+  return s.puedo_aprobar || s.puedo_cotizar || (comprasEn(s.sucursal) && s.estado === 'aprobada')
 }
 
-function cumple(s: Solicitud, f: Filtro, esCompras: boolean) {
+function cumple(s: Solicitud, f: Filtro, comprasEn: (sucursal: string) => boolean) {
   if (f === 'todas') return true
-  if (f === 'pendientes') return meToca(s, esCompras)
+  if (f === 'pendientes') return meToca(s, comprasEn)
   if (f === 'abiertas') return ABIERTOS.includes(s.estado)
   return s.estado === f
 }
@@ -47,7 +47,7 @@ export function Etapa({ s }: { s: Solicitud }) {
 /** Solicitudes que la persona puede ver: las suyas, o las de su sucursal si compra o aprueba. */
 export default function Solicitudes() {
   const navigate = useNavigate()
-  const { esCompras, nivel, loading: cargandoPermisos } = usePermisosAdq()
+  const { esCompras, comprasEn, nivel, loading: cargandoPermisos } = usePermisosAdq()
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([])
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState<Filtro | null>(null)
@@ -71,7 +71,7 @@ export default function Solicitudes() {
     () => [...new Map(solicitudes.map((s) => [s.centro_costo, s.centro_costo_nombre])).entries()].sort(([a], [b]) => a.localeCompare(b)),
     [solicitudes],
   )
-  const pendientes = porSucursal.filter((s) => meToca(s, esCompras)).length
+  const pendientes = porSucursal.filter((s) => meToca(s, comprasEn)).length
   // Quien compra o aprueba parte en "Me toca" si tiene algo; el resto, en abiertas
   const f: Filtro = filtro ?? ((esCompras || nivel > 0) && pendientes > 0 ? 'pendientes' : 'abiertas')
 
@@ -91,7 +91,7 @@ export default function Solicitudes() {
   const lista = useMemo(() => {
     const q = texto.trim().toLowerCase().replace(/^sc-?/, '')
     return porSucursal
-      .filter((s) => cumple(s, f, esCompras))
+      .filter((s) => cumple(s, f, comprasEn))
       .filter(
         (s) =>
           !q ||
@@ -110,9 +110,9 @@ export default function Solicitudes() {
           Number(ABIERTOS.includes(b.estado) && b.prioridad === 'urgente') - Number(ABIERTOS.includes(a.estado) && a.prioridad === 'urgente') ||
           b.created_at.localeCompare(a.created_at),
       )
-  }, [porSucursal, f, texto, esCompras])
+  }, [porSucursal, f, texto, comprasEn])
 
-  const cuenta = (k: Filtro) => porSucursal.filter((s) => cumple(s, k, esCompras)).length
+  const cuenta = (k: Filtro) => porSucursal.filter((s) => cumple(s, k, comprasEn)).length
 
   return (
     <div className="space-y-4">
@@ -213,7 +213,7 @@ export default function Solicitudes() {
                     <div className="flex flex-col items-start gap-1">
                       <Badge variant={ESTADO[s.estado].variant}>{ESTADO[s.estado].label}</Badge>
                       <Etapa s={s} />
-                      {meToca(s, esCompras) && <span className="text-[11px] font-semibold text-brand">Te toca</span>}
+                      {meToca(s, comprasEn) && <span className="text-[11px] font-semibold text-brand">Te toca</span>}
                     </div>
                   </td>
                 </tr>

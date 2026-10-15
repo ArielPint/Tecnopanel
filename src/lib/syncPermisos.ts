@@ -118,8 +118,9 @@ export async function syncPermisosIngreso(userId: string, roles: string[]) {
 
 /**
  * Portal Adquisiciones: transversal, sobre su propio ancla (ADQ_ANCLA_ID). Un rol por fila:
- * modulo_key 'adq:<rol>' con accion 'ver' (solicitante, comprador, aprobador_1..3, jefe_compras).
+ * modulo_key 'adq:<rol>:<sucursal>' con accion 'ver' (rol: solicitante, bodega, comprador, aprobador_1..3, jefe_compras).
  */
+/** roles: '<rol>:<sucursal>', p. ej. 'comprador:Santiago'. */
 export async function syncPermisosAdquisiciones(userId: string, roles: string[]) {
   await reemplazarPermisos(userId, ADQ_ANCLA_ID, roles.map((r) => ({ modulo_key: `adq:${r}`, accion: 'ver' })))
 }

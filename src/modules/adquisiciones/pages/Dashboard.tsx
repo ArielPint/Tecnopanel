@@ -8,10 +8,10 @@ import { Card, CardContent } from '@/modules/financiero/components/ui/card'
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/modules/financiero/components/ui/chart'
 import { formatCLPCompact } from '@/modules/financiero/utils/formatters'
 import { exportarExcel } from '@/modules/financiero/utils/exportExcel'
-import { SUCURSALES } from '@/lib/lineasNegocio'
 import { cn } from '@/lib/utils'
 import { fmtFecha, hoyChile } from '@/modules/sso/lib/estados'
 import { ABIERTOS, ESTADO } from '../lib/catalogos'
+import { usePermisosAdq } from '../hooks/usePermisosAdq'
 import {
   etiquetaCeco,
   fmtPesos,
@@ -84,6 +84,8 @@ const pctEjec = (f: { presupuesto: number | null; ejecutado: number; comprometid
 export default function Dashboard() {
   const anioActual = Number(hoyChile().slice(0, 4))
   const [anio, setAnio] = useState(anioActual)
+  // La base ya entrega solo las sucursales donde compra o aprueba; el filtro ofrece esas
+  const { sucursales } = usePermisosAdq()
   const [sucursal, setSucursal] = useState('')
   const [ceco, setCeco] = useState('')
   const [gasto, setGasto] = useState<FilaGasto[]>([])
@@ -253,7 +255,7 @@ export default function Dashboard() {
         </select>
         <select value={sucursal} onChange={(e) => setSucursal(e.target.value)} className={selectClase} aria-label="Sucursal">
           <option value="">Todas las sucursales</option>
-          {[...SUCURSALES, SIN_SUCURSAL].map((s) => (
+          {[...sucursales.control, SIN_SUCURSAL].map((s) => (
             <option key={s}>{s}</option>
           ))}
         </select>
