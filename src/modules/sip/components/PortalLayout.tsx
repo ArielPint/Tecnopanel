@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ArrowLeft, Boxes, ClipboardList, Factory, KeyRound, Layers, LayoutDashboard, LogOut, MapPin, Menu, Moon, Package, Plus, Scissors, Sun } from 'lucide-react'
+import { ArrowLeft, Boxes, CalendarRange, ClipboardList, Factory, KeyRound, Layers, LayoutDashboard, LogOut, MapPin, Menu, Moon, Package, Plus, Scissors, Sun } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useOtrosPortales } from '@/hooks/useOtrosPortales'
@@ -24,6 +24,7 @@ import { selectClase } from './comunes'
 const ICONO: Record<ModuloSip, typeof LayoutDashboard> = {
   produccion: ClipboardList,
   cortes: Scissors,
+  plan: CalendarRange,
   stock: Package,
   consumo: Boxes,
   recetas: Layers,

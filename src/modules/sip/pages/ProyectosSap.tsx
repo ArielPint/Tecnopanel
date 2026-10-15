@@ -8,10 +8,11 @@ import { Checkbox } from '@/modules/financiero/components/ui/checkbox'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 import { Cargando, Vacio } from '../components/comunes'
-import { listarItemsSap, listarProyectosSap, type ItemSap, type ProyectoSap } from '../lib/api'
+import { listarItemsSap, listarProyectosSap, listarVentasSap, type ItemSap, type ProyectoSap, type VentaSap } from '../lib/api'
 import { avancePorProyecto, fmtPesos } from '../lib/cortes'
 import { fmtFechaHora, fmtNum, fmtPct } from '../lib/formato'
 import { RUTA } from '../lib/rutas'
+import { usePermisosSip } from '../hooks/usePermisosSip'
 
 export function BarraAvance({ valor }: { valor: number }) {
   return (
@@ -29,6 +30,16 @@ export default function ProyectosSap() {
   const [loading, setLoading] = useState(true)
   const [texto, setTexto] = useState('')
   const [verInactivos, setVerInactivos] = useState(false)
+  const { puedeEn, loading: permisosLoading } = usePermisosSip()
+  const verVentas = !permisosLoading && puedeEn('plan', 'ver')
+  const [ventas, setVentas] = useState<Map<string, VentaSap>>(new Map())
+
+  useEffect(() => {
+    if (!verVentas) return
+    listarVentasSap()
+      .then((v) => setVentas(new Map(v.map((x) => [x.proyecto_codigo, x]))))
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'No se pudieron cargar las ventas'))
+  }, [verVentas])
 
   useEffect(() => {
     Promise.all([listarItemsSap(), listarProyectosSap()])
@@ -80,6 +91,7 @@ export default function ProyectosSap() {
                     <TableHead className="text-right">Cortados</TableHead>
                     <TableHead className="w-40">Avance</TableHead>
                     <TableHead className="hidden text-right md:table-cell">Maquila plan.</TableHead>
+                    {verVentas && <TableHead className="hidden text-right md:table-cell">Venta OV</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -106,6 +118,14 @@ export default function ProyectosSap() {
                           </div>
                         </TableCell>
                         <TableCell className="hidden text-right font-mono-tabular md:table-cell">{fmtPesos(p.costoPlan)}</TableCell>
+                        {verVentas && (
+                          <TableCell className="hidden text-right font-mono-tabular md:table-cell">
+                            {(() => {
+                              const v = ventas.get(p.codigo)
+                              return v ? fmtPesos(v.monto) : '—'
+                            })()}
+                          </TableCell>
+                        )}
                       </TableRow>
                     )
                   })}
