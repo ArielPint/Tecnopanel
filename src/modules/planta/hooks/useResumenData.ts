@@ -348,6 +348,19 @@ export function useResumenData(excelData: ParsedDashboardData | null, hasta?: Da
       cantidad: galponByMes[`${m.n}-${m.y}`],
     }))
 
+    // M² ejecutados por mes (suma del avance diario real de la curva S)
+    const m2RealByMes: Record<string, number> = {}
+    for (const r of curva) {
+      const fd = parseDate(r.fecha)
+      if (!fd || isNaN(fd.getTime()) || fd > hoy || !r.m2RealDiario) continue
+      const key = `${fd.getMonth() + 1}-${fd.getFullYear()}`
+      m2RealByMes[key] = (m2RealByMes[key] || 0) + r.m2RealDiario
+    }
+    const m2PorMes = MESES_ORDER.filter((m) => m2RealByMes[`${m.n}-${m.y}`]).map((m) => ({
+      mes: m.lbl,
+      cantidad: Math.round(m2RealByMes[`${m.n}-${m.y}`]),
+    }))
+
     return {
       loading: loading && !excelData,
       // El `loading` de arriba se apaga apenas hay Excel, aunque la consulta a
@@ -366,6 +379,7 @@ export function useResumenData(excelData: ParsedDashboardData | null, hasta?: Da
       modulosTerminadosPorMes,
       modulosIniciadosPorMes,
       salidaGalponPorMes,
+      m2PorMes,
     }
   }, [excelData, data, supaCompras, presupuestoTotal, pptoCatalogo, despachados, avanceProy, forecastSeleccionado, loading, hasta])
 }

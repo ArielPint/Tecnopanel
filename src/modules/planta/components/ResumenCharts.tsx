@@ -392,6 +392,10 @@ export function SalidaGalponPorMesChart({ data, color = '#58a6ff' }: { data: Res
   return <MesCantidadBarChart data={data} color={color} label="Terminados obra gruesa" />
 }
 
+export function M2PorMesChart({ data }: { data: ResumenData['m2PorMes'] }) {
+  return <MesCantidadBarChart data={data} color="#d42b1e" label="M² ejecutados" />
+}
+
 export function M2AcumuladoChart({ data }: { data: ResumenData['m2Acumulado'] }) {
   if (!data.length) return null
   const config = {
