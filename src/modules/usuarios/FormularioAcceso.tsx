@@ -15,6 +15,7 @@ import { SIP_MODULOS, claveAcceso as claveSip, normalizarAccionesSip } from '@/m
 import { SSO_MODULOS, claveAcceso, normalizarAccionesSso } from '@/modules/sso/lib/accesos'
 import { ROLES_INGRESO } from '@/modules/personal/lib/catalogos'
 import { ROLES_ADQ } from '@/modules/adquisiciones/lib/catalogos'
+import { INFORMES_FIN, PERMISO_CONFIGURAR } from '@/modules/financiero_sap/lib/catalogos'
 import { proyectoAccesoVacio, type Acceso, type AccesoInput, type ProyectoAcceso, type ProyectoObra } from './useAccesos'
 
 const OBRA_MODULOS = Object.keys(PAGE_MAP)
@@ -49,6 +50,7 @@ function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: Proye
     ssoAcciones: acceso?.ssoAcciones ?? {},
     ingresoRoles: acceso?.ingresoRoles ?? [],
     adquisicionesRoles: acceso?.adquisicionesRoles ?? [],
+    financieroPermisos: acceso?.financieroPermisos ?? [],
     grupoId: acceso?.grupoId ?? null,
     subcontratistaId: acceso?.subcontratistaId ?? null,
     sucursal: acceso?.sucursal ?? null,
@@ -157,7 +159,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
         </DialogHeader>
         <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
           <Tabs defaultValue="cuenta" className="flex min-h-0 flex-1 flex-col">
-            <TabsList className="grid h-auto w-full shrink-0 grid-cols-2 sm:grid-cols-7">
+            <TabsList className="grid h-auto w-full shrink-0 grid-cols-2 sm:grid-cols-8">
               <TabsTrigger value="cuenta">Cuenta</TabsTrigger>
               <TabsTrigger value="proyecto"><span className="hidden sm:inline">Accesos&nbsp;</span>Proyecto</TabsTrigger>
               <TabsTrigger value="crm"><span className="hidden sm:inline">Accesos&nbsp;</span>CRM</TabsTrigger>
@@ -165,6 +167,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               <TabsTrigger value="prevencion"><span className="hidden sm:inline">Accesos&nbsp;</span>Prevención</TabsTrigger>
               <TabsTrigger value="personal">Ingreso personal</TabsTrigger>
               <TabsTrigger value="adquisiciones">Adquisiciones</TabsTrigger>
+              <TabsTrigger value="financiero">Financiero</TabsTrigger>
             </TabsList>
 
             <TabsContent value="cuenta" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
@@ -683,6 +686,78 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                   </tbody>
                 </table>
               </div>
+            </TabsContent>
+
+            <TabsContent value="financiero" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
+              <p className="text-[11px] text-muted-foreground">
+                Portal Financiero (/financiero): contabilidad de SAP por línea de negocio, centro de costo y sucursal. Cada informe se marca por
+                sucursal; quien ve una sola sucursal recibe igual su parte de la administración prorrateada. Aquí no cuenta la sucursal de la
+                pestaña Cuenta. Los admin ya tienen todo en ambas.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <th className="py-1.5 pr-2 font-semibold">Informe</th>
+                      {SUCURSALES.map((s) => (
+                        <th key={s} className="w-24 px-2 py-1.5 text-center font-semibold">
+                          {s}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {INFORMES_FIN.map((inf) => (
+                      <tr key={inf.key} className="border-b last:border-0">
+                        <td className="py-2 pr-2">
+                          <span className="font-medium">{inf.label}</span>
+                          <span className="block text-xs text-muted-foreground">{inf.detalle}</span>
+                        </td>
+                        {SUCURSALES.map((s) => {
+                          // en la base: modulo_key 'fin:<informe>:<sucursal>' (ver syncPermisosFinanciero)
+                          const clave = `${inf.key}:${s}`
+                          return (
+                            <td key={s} className="px-2 py-2 text-center [&>button]:align-middle">
+                              <Checkbox
+                                aria-label={`${inf.label} en ${s}`}
+                                checked={form.financieroPermisos.includes(clave)}
+                                onCheckedChange={(v) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    financieroPermisos: v
+                                      ? [...f.financieroPermisos.filter((x) => x !== clave), clave]
+                                      : f.financieroPermisos.filter((x) => x !== clave),
+                                  }))
+                                }
+                              />
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <label className="flex items-start gap-3 rounded-md border p-3 text-sm">
+                <Checkbox
+                  className="mt-0.5"
+                  checked={form.financieroPermisos.includes(PERMISO_CONFIGURAR)}
+                  onCheckedChange={(v) =>
+                    setForm((f) => ({
+                      ...f,
+                      financieroPermisos: v
+                        ? [...f.financieroPermisos.filter((x) => x !== PERMISO_CONFIGURAR), PERMISO_CONFIGURAR]
+                        : f.financieroPermisos.filter((x) => x !== PERMISO_CONFIGURAR),
+                    }))
+                  }
+                />
+                <span>
+                  <span className="font-medium">Configurar prorrateo</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Define por año el % de la administración (CECO 9xxx) que se reparte a cada CECO de línea. Afecta lo que ven todos.
+                  </span>
+                </span>
+              </label>
             </TabsContent>
           </Tabs>
 

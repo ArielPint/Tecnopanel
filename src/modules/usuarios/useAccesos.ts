@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { ADQ_ANCLA_ID, getProyectoId, ING_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from '@/lib/proyectoIds'
-import { syncPermisosAdquisiciones, syncPermisosCrm, syncPermisosGestion, syncPermisosIngreso, syncPermisosProyecto, syncPermisosSip, syncPermisosSso, syncRolNegocio } from '@/lib/syncPermisos'
+import { ADQ_ANCLA_ID, FIN_ANCLA_ID, getProyectoId, ING_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from '@/lib/proyectoIds'
+import { syncPermisosAdquisiciones, syncPermisosCrm, syncPermisosFinanciero, syncPermisosGestion, syncPermisosIngreso, syncPermisosProyecto, syncPermisosSip, syncPermisosSso, syncRolNegocio } from '@/lib/syncPermisos'
 import { normalizarAccionesSip } from '@/modules/sip/lib/accesos'
 import { normalizarAccionesSso } from '@/modules/sso/lib/accesos'
 
@@ -70,6 +70,8 @@ export interface Acceso {
   ingresoRoles: string[]
   /** Portal Adquisiciones: '<rol>:<sucursal>' (en la base, modulo_key 'adq:<rol>:<sucursal>' sobre ADQ_ANCLA_ID). */
   adquisicionesRoles: string[]
+  /** Portal Financiero: '<informe>:<sucursal>' o 'configurar' (en la base, modulo_key 'fin:...' sobre FIN_ANCLA_ID). */
+  financieroPermisos: string[]
   /** Grupo fijo (profiles.grupo_id) para acceso restringido a Solicitudes — un único grupo, no por proyecto. */
   grupoId: number | null
   /** Ficha de subcontratista vinculada — si tiene valor, este usuario es el portal de ese subcontratista. */
@@ -98,6 +100,7 @@ export interface AccesoInput {
   ssoAcciones: Record<string, boolean>
   ingresoRoles: string[]
   adquisicionesRoles: string[]
+  financieroPermisos: string[]
   grupoId: number | null
   subcontratistaId: string | null
   sucursal: string | null
@@ -152,6 +155,7 @@ async function syncAccesos(userId: string, input: AccesoInput) {
     syncPermisosSso(userId, normalizarAccionesSso(input.ssoAcciones)),
     syncPermisosIngreso(userId, input.ingresoRoles),
     syncPermisosAdquisiciones(userId, input.adquisicionesRoles),
+    syncPermisosFinanciero(userId, input.financieroPermisos),
     input.crmRolNegocio ? syncRolNegocio(userId, crmId, input.crmRolNegocio) : Promise.resolve(),
   ])
   const { error } = await supabase.from('profiles').update({ rol: input.rol, grupo_id: input.grupoId, sucursal: input.sucursal }).eq('id', userId)
@@ -298,6 +302,10 @@ export function useAccesos() {
       const adquisicionesRoles = misPermisos
         .filter((x) => x.proyecto_id === ADQ_ANCLA_ID && x.modulo_key.startsWith('adq:'))
         .map((x) => x.modulo_key.slice(4))
+      // '<informe>:<sucursal>' o 'configurar' a partir de modulo_key 'fin:...' (ver syncPermisosFinanciero)
+      const financieroPermisos = misPermisos
+        .filter((x) => x.proyecto_id === FIN_ANCLA_ID && x.modulo_key.startsWith('fin:'))
+        .map((x) => x.modulo_key.slice(4))
       return {
         id: p.id,
         nombre: p.nombre,
@@ -315,6 +323,7 @@ export function useAccesos() {
         ssoAcciones,
         ingresoRoles,
         adquisicionesRoles,
+        financieroPermisos,
         grupoId: p.grupo_id,
         sucursal: p.sucursal ?? null,
         subcontratistaId: (subcontratistas ?? []).find((s) => s.user_id === p.id)?.subcontratista_id ?? null,

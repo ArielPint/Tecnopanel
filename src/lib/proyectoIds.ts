@@ -19,6 +19,10 @@ export const ING_ANCLA_ID = '5d3f8a2e-7b41-4c69-a0d2-9e6b1f4c8a17'
  *  'sistema'). Id fijo, creado por la migración 20261016120000_adquisiciones.sql. */
 export const ADQ_ANCLA_ID = 'a7c4e1d2-3b5f-4e8a-9c61-2f0d8b4e7a35'
 
+/** Pseudo-proyecto ancla de los accesos del portal Financiero (slug 'financiero', tipo 'sistema').
+ *  Id fijo, creado por la migración 20261019120000_financiero_sap.sql. */
+export const FIN_ANCLA_ID = '5e0b9c3a-6f21-4d7e-8a94-c1f3e2d7b680'
+
 const cache = new Map<string, Promise<string>>()
 
 export function getProyectoId(slug: string): Promise<string> {
