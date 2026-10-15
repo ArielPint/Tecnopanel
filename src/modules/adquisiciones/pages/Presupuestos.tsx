@@ -5,13 +5,17 @@ import { Card, CardContent } from '@/modules/financiero/components/ui/card'
 import MontoInput from '@/components/MontoInput'
 import { cn } from '@/lib/utils'
 import { hoyChile } from '@/modules/sso/lib/estados'
+import { usePermisosAdq } from '../hooks/usePermisosAdq'
 import { fmtPesos, guardarPresupuestos, listarCentrosCosto, listarPresupuestos, type CentroCosto, type FilaPresupuesto } from '../lib/api'
 
 /** Presupuesto anual neto por centro de costo. Solo el jefe de compras; SAP no tiene presupuestos. */
 export default function Presupuestos() {
   const anioActual = Number(hoyChile().slice(0, 4))
   const [anio, setAnio] = useState(anioActual)
-  const [centros, setCentros] = useState<CentroCosto[]>([])
+  // Cada jefe de compras, los CECO de su sucursal (y los sin sucursal)
+  const { sucursales } = usePermisosAdq()
+  const [todos, setCentros] = useState<CentroCosto[]>([])
+  const centros = useMemo(() => todos.filter((c) => !c.sucursal || sucursales.jefe.includes(c.sucursal)), [todos, sucursales.jefe])
   const [filas, setFilas] = useState<FilaPresupuesto[]>([])
   const [anteriores, setAnteriores] = useState<FilaPresupuesto[]>([])
   const [montos, setMontos] = useState<Record<string, number | null>>({})
@@ -26,6 +30,7 @@ export default function Presupuestos() {
       setFilas(f)
       setAnteriores(a)
       setMontos(Object.fromEntries(c.map((x) => [x.codigo, f.find((y) => y.centro_costo === x.codigo)?.presupuesto ?? null])))
+      // los de otras sucursales no se tocan: no van en cambiados (centros ya viene filtrado)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al cargar')
     } finally {

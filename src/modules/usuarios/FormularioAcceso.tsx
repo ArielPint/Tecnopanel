@@ -635,30 +635,53 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
 
             <TabsContent value="adquisiciones" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
               <p className="text-[11px] text-muted-foreground">
-                Portal Adquisiciones (/adquisiciones): solicitudes de compra, cotizaciones, aprobación por montos y OC de SAP. Se puede marcar más
-                de un rol. Compras y aprobadores ven solo su sucursal (pestaña Cuenta). Los admin ya tienen todo.
+                Portal Adquisiciones (/adquisiciones): solicitudes de compra, cotizaciones, aprobación por montos y OC de SAP. Cada rol se marca por
+                sucursal: se puede ser, por ejemplo, comprador en una y aprobador en la otra. Todo lo que ve y hace queda en las sucursales marcadas
+                (aquí no cuenta la sucursal de la pestaña Cuenta). Los admin ya tienen todo en ambas.
               </p>
-              <div className="flex flex-col gap-2">
-                <Label>Roles</Label>
-                {ROLES_ADQ.map((r) => (
-                  <label key={r.key} className="flex items-start gap-2 text-sm [&>button]:mt-0.5">
-                    <Checkbox
-                      checked={form.adquisicionesRoles.includes(r.key)}
-                      onCheckedChange={(v) =>
-                        setForm((f) => ({
-                          ...f,
-                          adquisicionesRoles: v
-                            ? [...f.adquisicionesRoles.filter((x) => x !== r.key), r.key]
-                            : f.adquisicionesRoles.filter((x) => x !== r.key),
-                        }))
-                      }
-                    />
-                    <span>
-                      <span className="font-medium">{r.label}</span>
-                      <span className="block text-xs text-muted-foreground">{r.detalle}</span>
-                    </span>
-                  </label>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <th className="py-1.5 pr-2 font-semibold">Rol</th>
+                      {SUCURSALES.map((s) => (
+                        <th key={s} className="w-24 px-2 py-1.5 text-center font-semibold">
+                          {s}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ROLES_ADQ.map((r) => (
+                      <tr key={r.key} className="border-b last:border-0">
+                        <td className="py-2 pr-2">
+                          <span className="font-medium">{r.label}</span>
+                          <span className="block text-xs text-muted-foreground">{r.detalle}</span>
+                        </td>
+                        {SUCURSALES.map((s) => {
+                          // en la base: modulo_key 'adq:<rol>:<sucursal>' (ver syncPermisosAdquisiciones)
+                          const clave = `${r.key}:${s}`
+                          return (
+                            <td key={s} className="px-2 py-2 text-center [&>button]:align-middle">
+                              <Checkbox
+                                aria-label={`${r.label} en ${s}`}
+                                checked={form.adquisicionesRoles.includes(clave)}
+                                onCheckedChange={(v) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    adquisicionesRoles: v
+                                      ? [...f.adquisicionesRoles.filter((x) => x !== clave), clave]
+                                      : f.adquisicionesRoles.filter((x) => x !== clave),
+                                  }))
+                                }
+                              />
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </TabsContent>
           </Tabs>

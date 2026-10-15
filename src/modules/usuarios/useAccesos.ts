@@ -68,7 +68,7 @@ export interface Acceso {
   ssoAcciones: Record<string, boolean>
   /** Portal Ingreso de Personal: roles (en la base, modulo_key 'ing:<rol>' sobre ING_ANCLA_ID). */
   ingresoRoles: string[]
-  /** Portal Adquisiciones: roles (en la base, modulo_key 'adq:<rol>' sobre ADQ_ANCLA_ID). */
+  /** Portal Adquisiciones: '<rol>:<sucursal>' (en la base, modulo_key 'adq:<rol>:<sucursal>' sobre ADQ_ANCLA_ID). */
   adquisicionesRoles: string[]
   /** Grupo fijo (profiles.grupo_id) para acceso restringido a Solicitudes — un único grupo, no por proyecto. */
   grupoId: number | null
@@ -294,7 +294,7 @@ export function useAccesos() {
       const ingresoRoles = misPermisos
         .filter((x) => x.proyecto_id === ING_ANCLA_ID && x.modulo_key.startsWith('ing:'))
         .map((x) => x.modulo_key.slice(4))
-      // roles a partir de modulo_key 'adq:<rol>' (ver syncPermisosAdquisiciones)
+      // '<rol>:<sucursal>' a partir de modulo_key 'adq:<rol>:<sucursal>' (ver syncPermisosAdquisiciones)
       const adquisicionesRoles = misPermisos
         .filter((x) => x.proyecto_id === ADQ_ANCLA_ID && x.modulo_key.startsWith('adq:'))
         .map((x) => x.modulo_key.slice(4))

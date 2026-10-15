@@ -8,6 +8,7 @@ import { Input } from '@/modules/financiero/components/ui/input'
 import { cn } from '@/lib/utils'
 import { BODEGAS, guardarReposicion, listarReposicion, type FilaReposicion } from '../lib/api'
 import { RUTA } from '../lib/rutas'
+import { usePermisosAdq } from '../hooks/usePermisosAdq'
 import type { Prellenado } from './NuevaSolicitud'
 
 // Reposición de stock de las bodegas B006 (Santiago) y B007 (Puerto Varas). SAP no tiene mínimos
@@ -24,7 +25,13 @@ export default function Reposicion() {
   const navigate = useNavigate()
   const [filas, setFilas] = useState<FilaReposicion[]>([])
   const [loading, setLoading] = useState(true)
+  // Solo las bodegas de las sucursales donde es Compras o Bodega
+  const { sucursales } = usePermisosAdq()
+  const bodegas = (['B006', 'B007'] as const).filter((b) => sucursales.reposicion.includes(b === 'B006' ? 'Santiago' : 'Puerto Varas'))
   const [bodega, setBodega] = useState<'B006' | 'B007'>('B006')
+  useEffect(() => {
+    if (bodegas.length && !bodegas.includes(bodega)) setBodega(bodegas[0])
+  }, [bodegas.join(), bodega]) // eslint-disable-line react-hooks/exhaustive-deps
   const [filtro, setFiltro] = useState<Filtro>('bajo')
   const [texto, setTexto] = useState('')
   // ediciones de mínimo / reorden aún sin guardar
@@ -142,7 +149,7 @@ export default function Reposicion() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {(['B006', 'B007'] as const).map((b) => (
+        {bodegas.map((b) => (
           <button
             key={b}
             onClick={() => {

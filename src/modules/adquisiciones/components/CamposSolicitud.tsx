@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Label } from '@/modules/financiero/components/ui/label'
 import { Textarea } from '@/modules/financiero/components/ui/textarea'
-import { SUCURSALES } from '@/lib/lineasNegocio'
 import { cn } from '@/lib/utils'
 import { hoyChile } from '@/modules/sso/lib/estados'
 import { AREAS } from '../lib/catalogos'
+import { usePermisosAdq } from '../hooks/usePermisosAdq'
 import { etiquetaCeco, listarCentrosCosto, listarProyectos, type CentroCosto, type DatosSolicitud, type Item } from '../lib/api'
 
 // Campos de la solicitud, compartidos por Nueva solicitud y Editar (detalle).
@@ -81,11 +81,15 @@ export default function CamposSolicitud({
 }) {
   const set = <K extends keyof DatosSolicitud>(k: K, v: DatosSolicitud[K]) => onChange({ ...datos, [k]: v })
   const [proyectos, setProyectos] = useState<{ id: string; nombre: string }[]>([])
-  const [centros, setCentros] = useState<CentroCosto[]>([])
+  const [todos, setTodos] = useState<CentroCosto[]>([])
+  // Solo las sucursales donde la persona puede solicitar (rol por sucursal); los CECO sin sucursal, siempre
+  const { sucursales } = usePermisosAdq()
+  const permitidas = sucursales.solicitar
+  const centros = todos.filter((c) => !c.sucursal || permitidas.includes(c.sucursal) || c.codigo === datos.centro_costo)
 
   useEffect(() => {
     listarProyectos().then(setProyectos).catch(() => setProyectos([]))
-    listarCentrosCosto().then(setCentros).catch(() => setCentros([]))
+    listarCentrosCosto().then(setTodos).catch(() => setTodos([]))
   }, [])
 
   // El CECO dice la sucursal (4o dígito): la base la fija igual al guardar
@@ -148,7 +152,7 @@ export default function CamposSolicitud({
             className={cn(selectClase, 'disabled:opacity-70')}
           >
             <option value="">Elegir sucursal</option>
-            {SUCURSALES.map((s) => (
+            {[...new Set([...permitidas, ...(datos.sucursal ? [datos.sucursal] : [])])].map((s) => (
               <option key={s}>{s}</option>
             ))}
           </select>

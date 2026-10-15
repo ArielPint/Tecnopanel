@@ -3,8 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/modules/financiero/components/ui/button'
-import { supabase } from '@/lib/supabaseClient'
-import { useAuthStore } from '@/store/authStore'
+import { usePermisosAdq } from '../hooks/usePermisosAdq'
 import CamposSolicitud, { Seccion, datosVacios, limpiarSolicitud, validarSolicitud } from '../components/CamposSolicitud'
 import EditorItems, { itemVacio } from '../components/EditorItems'
 import { crearSolicitud, type DatosSolicitud, type Item } from '../lib/api'
@@ -20,24 +19,17 @@ export interface Prellenado {
 export default function NuevaSolicitud() {
   const navigate = useNavigate()
   const prellenado = useLocation().state as Prellenado | null
-  const userId = useAuthStore((s) => s.user?.id)
+  const { sucursales } = usePermisosAdq()
   const [datos, setDatos] = useState<DatosSolicitud>(() => ({ ...datosVacios(null), ...prellenado?.datos }))
   const [items, setItems] = useState<Item[]>(() => (prellenado?.items.length ? prellenado.items : [itemVacio()]))
   const [problema, setProblema] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
-  // Parte con la sucursal de la persona (pestaña Cuenta de Usuarios)
+  // Si solicita en una sola sucursal, parte con esa
+  const unica = sucursales.solicitar.length === 1 ? sucursales.solicitar[0] : null
   useEffect(() => {
-    if (!userId) return
-    supabase
-      .from('profiles')
-      .select('sucursal')
-      .eq('id', userId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.sucursal) setDatos((d) => (d.sucursal ? d : { ...d, sucursal: data.sucursal }))
-      })
-  }, [userId])
+    if (unica) setDatos((d) => (d.sucursal ? d : { ...d, sucursal: unica }))
+  }, [unica])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()

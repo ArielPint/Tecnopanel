@@ -200,7 +200,7 @@ function Pasos({ s }: { s: SolicitudT }) {
 
 export default function Solicitud() {
   const { id = '' } = useParams<{ id: string }>()
-  const { userId, esCompras, veControl } = usePermisosAdq()
+  const { userId, comprasEn, veControl } = usePermisosAdq()
   const [s, setS] = useState<SolicitudT | null>(null)
   const [items, setItems] = useState<Item[]>([])
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([])
@@ -290,6 +290,8 @@ export default function Solicitud() {
     )
   }
 
+  // Compras de la sucursal de esta solicitud (puede ser comprador en una y aprobador en otra)
+  const esCompras = comprasEn(s.sucursal)
   const cotizando = s.estado === 'cotizando'
   const cerrada = ['recibida', 'rechazada', 'anulada'].includes(s.estado)
   const puedeEditar = cotizando && (s.creado_por === userId || esCompras)
@@ -625,7 +627,7 @@ export default function Solicitud() {
               {s.estado === 'en_aprobacion' && (
                 <ol className="space-y-1.5">
                   {niveles
-                    .filter((n) => n.nivel <= s.nivel_requerido)
+                    .filter((n) => n.sucursal === s.sucursal && n.nivel <= s.nivel_requerido)
                     .map((n) => (
                       <li key={n.nivel} className="flex items-center gap-2 text-sm">
                         {n.nivel <= s.nivel_aprobado ? (
@@ -771,7 +773,7 @@ export default function Solicitud() {
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Va a necesitar</p>
                 <ol className="space-y-0.5">
                   {niveles
-                    .filter((n) => n.activo && n.nivel <= nivelPara(niveles, dialogo.c.monto_neto))
+                    .filter((n) => n.sucursal === s.sucursal && n.activo && n.nivel <= nivelPara(niveles, s.sucursal, dialogo.c.monto_neto))
                     .map((n) => (
                       <li key={n.nivel}>
                         Nivel {n.nivel} · {n.nombre}
