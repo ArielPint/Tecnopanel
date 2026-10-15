@@ -14,6 +14,7 @@ import {
   LogOut,
   Menu,
   Moon,
+  ShoppingCart,
   Sun,
   Users,
 } from 'lucide-react'
@@ -55,6 +56,8 @@ const navSections = [
       { to: '/prevencion', label: 'Prevención de Riesgos', end: false, icon: HardHat, requiere: 'sso' },
       // Portal propio (/personal), transversal: un rol por fila de permisos sobre el ancla ING_ANCLA_ID.
       { to: '/personal', label: 'Ingreso de Personal', end: false, icon: UserPlus, requiere: 'ingreso' },
+      // Portal propio (/adquisiciones), transversal: un rol por fila de permisos sobre el ancla ADQ_ANCLA_ID.
+      { to: '/adquisiciones', label: 'Adquisiciones', end: false, icon: ShoppingCart, requiere: 'adquisiciones' },
     ],
   },
   {
@@ -75,7 +78,7 @@ const navSections = [
 // usuario puede abrir. '/proyectos' exige admin porque su ruta no trae slug.
 function useNavSections() {
   const acceso = useAccesoUsuario()
-  const ok = { admin: acceso.isAdmin, superadmin: acceso.isSuperAdmin,crm: acceso.tieneCrm, gestion: acceso.tieneGestion, sip: acceso.tieneSip, sso: acceso.tieneSso, ingreso: acceso.tieneIngreso }
+  const ok = { admin: acceso.isAdmin, superadmin: acceso.isSuperAdmin, crm: acceso.tieneCrm, gestion: acceso.tieneGestion, sip: acceso.tieneSip, sso: acceso.tieneSso, ingreso: acceso.tieneIngreso, adquisiciones: acceso.tieneAdquisiciones }
   return navSections
     .map((s) => ({ ...s, items: s.items.filter((i) => !('requiere' in i) || ok[i.requiere as keyof typeof ok]) }))
     .filter((s) => s.items.length > 0)
