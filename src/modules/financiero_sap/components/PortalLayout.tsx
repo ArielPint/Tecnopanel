@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ArrowLeft, BarChart3, FileSpreadsheet, KeyRound, Landmark, LogOut, Menu, Moon, Percent, Receipt, Sun } from 'lucide-react'
+import { ArrowLeft, BarChart3, FileSpreadsheet, KeyRound, Landmark, ListTree, LogOut, Menu, Moon, Percent, Receipt, Scale, Sun, Tags } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useOtrosPortales } from '@/hooks/useOtrosPortales'
@@ -17,12 +17,15 @@ import { FiltrosProvider } from './Filtros'
 // los tokens del hub para que el modo claro y el oscuro funcionen igual.
 
 function Menu_({ onNavigate }: { onNavigate?: () => void }) {
-  const { veEerr, veVentas, configurar } = usePermisosFin()
+  const { veEerr, veVentas, veBalance, configurar } = usePermisosFin()
   const { conHub, portales } = useOtrosPortales({ tipo: 'financiero' })
   const items = [
     ...(veEerr ? [{ to: RUTA.inicio, label: 'Estado de resultados', icon: FileSpreadsheet, end: true }] : []),
     ...(veEerr ? [{ to: RUTA.lineas, label: 'Por línea de negocio', icon: BarChart3, end: true }] : []),
     ...(veVentas ? [{ to: RUTA.ventas, label: 'Ventas', icon: Receipt, end: true }] : []),
+    ...(veBalance ? [{ to: RUTA.balance, label: 'Balance general', icon: Scale, end: true }] : []),
+    ...(veBalance ? [{ to: RUTA.ifrs, label: 'Situación financiera IFRS', icon: ListTree, end: true }] : []),
+    ...(veBalance ? [{ to: RUTA.clasificacion, label: 'Clasificación IFRS', icon: Tags, end: true }] : []),
     ...(veEerr || configurar ? [{ to: RUTA.prorrateo, label: 'Prorrateo de administración', icon: Percent, end: true }] : []),
   ]
 
@@ -97,6 +100,9 @@ const TITULOS: Record<string, string> = {
   [RUTA.lineas]: 'Por línea de negocio',
   [RUTA.ventas]: 'Ventas',
   [RUTA.prorrateo]: 'Prorrateo de administración',
+  [RUTA.balance]: 'Balance general',
+  [RUTA.ifrs]: 'Estado de situación financiera IFRS',
+  [RUTA.clasificacion]: 'Clasificación IFRS',
 }
 
 export default function PortalLayout() {

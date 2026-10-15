@@ -12,7 +12,11 @@ export const INFORMES_FIN: { key: InformeFin; label: string; detalle: string }[]
     detalle: 'Ingresos, costos y gastos contables de SAP por línea, CECO y sucursal, con el detalle de asientos.',
   },
   { key: 'ventas', label: 'Ventas', detalle: 'Ventas según el libro de ventas de SAP (las mismas de Gestión › Ventas).' },
-  { key: 'balance', label: 'Balance', detalle: 'Activo, pasivo y patrimonio. Llega en una etapa siguiente: el permiso queda guardado desde ya.' },
+  {
+    key: 'balance',
+    label: 'Balance',
+    detalle: 'Balance general y estado de situación financiera IFRS de toda la empresa (no tiene sucursal: basta marcar una).',
+  },
 ]
 
 /** Permiso sin sucursal: modulo_key 'fin:configurar'. Edita los % de prorrateo de la administración. */

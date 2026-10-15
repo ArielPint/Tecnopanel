@@ -14,11 +14,21 @@ export interface Periodo {
   prorratear: boolean
 }
 
+/** Balance: saldos al cierre de un mes, con un comparativo. */
+export type Comparar = 'dic_anterior' | 'anio_anterior' | 'ninguno'
+export interface CorteBalance {
+  anio: number
+  mes: number
+  comparar: Comparar
+}
+
 interface Valor {
   periodo: Periodo
   setPeriodo: (p: Periodo) => void
   filtros: FiltrosCeco
   setFiltros: (f: FiltrosCeco) => void
+  corte: CorteBalance
+  setCorte: (c: CorteBalance) => void
 }
 
 const Ctx = createContext<Valor | null>(null)
@@ -28,10 +38,19 @@ function periodoInicial(): Periodo {
   return { anio: hoy.getFullYear(), mesDesde: 1, mesHasta: hoy.getMonth() + 1, prorratear: true }
 }
 
+// El mes en curso no está cerrado: el balance parte en el mes anterior.
+function corteInicial(): CorteBalance {
+  const d = new Date()
+  d.setDate(1)
+  d.setMonth(d.getMonth() - 1)
+  return { anio: d.getFullYear(), mes: d.getMonth() + 1, comparar: 'dic_anterior' }
+}
+
 export function FiltrosProvider({ children }: { children: React.ReactNode }) {
   const [periodo, setPeriodo] = useState<Periodo>(periodoInicial)
   const [filtros, setFiltros] = useState<FiltrosCeco>(SIN_FILTROS)
-  const valor = useMemo(() => ({ periodo, setPeriodo, filtros, setFiltros }), [periodo, filtros])
+  const [corte, setCorte] = useState<CorteBalance>(corteInicial)
+  const valor = useMemo(() => ({ periodo, setPeriodo, filtros, setFiltros, corte, setCorte }), [periodo, filtros, corte])
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>
 }
 
@@ -194,6 +213,70 @@ export default function BarraFiltros({ catalogos, estado, sucursales, conProrrat
           </Select>
         </Campo>
       )}
+    </div>
+  )
+}
+
+const mm = (m: number) => String(m).padStart(2, '0')
+
+/** Fecha de corte del balance y su comparativo, como 'YYYY-MM'. */
+export function useCorte() {
+  const { corte, setCorte } = useFiltros()
+  const actual = `${corte.anio}-${mm(corte.mes)}`
+  const comparativo =
+    corte.comparar === 'dic_anterior' ? `${corte.anio - 1}-12` : corte.comparar === 'anio_anterior' ? `${corte.anio - 1}-${mm(corte.mes)}` : null
+  return { corte, setCorte, actual, comparativo, cortes: comparativo ? [actual, comparativo] : [actual] }
+}
+
+/** 'YYYY-MM' -> 'al 30-09-2026' (último día del mes) */
+export function etiquetaCorte(clave: string): string {
+  const [a, m] = clave.split('-').map(Number)
+  const ultimo = new Date(a, m, 0).getDate()
+  return `${String(ultimo).padStart(2, '0')}-${mm(m)}-${a}`
+}
+
+export function BarraCorte({ estado }: { estado: EstadoSync | null }) {
+  const { corte, setCorte } = useCorte()
+  const anios = useMemo(() => {
+    const ultimo = estado?.ultimo_periodo ? Number(estado.ultimo_periodo.slice(0, 4)) : new Date().getFullYear()
+    const primero = estado?.primer_periodo ? Number(estado.primer_periodo.slice(0, 4)) : ultimo
+    const lista: number[] = []
+    for (let a = ultimo; a >= primero; a--) lista.push(a)
+    return lista
+  }, [estado])
+  const clase = 'h-9 w-full min-w-0 overflow-hidden [&>span]:truncate'
+  return (
+    <div className="grid grid-cols-2 gap-3 rounded-lg border bg-card p-3 sm:grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
+      <Campo label="Año">
+        <Select value={String(corte.anio)} onValueChange={(v) => setCorte({ ...corte, anio: Number(v) })}>
+          <SelectTrigger className={clase}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {anios.map((a) => (
+              <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Campo>
+      <Campo label="Al cierre de">
+        <Select value={String(corte.mes)} onValueChange={(v) => setCorte({ ...corte, mes: Number(v) })}>
+          <SelectTrigger className={clase}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {MESES.map((m, i) => (
+              <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Campo>
+      <Campo label="Comparar con">
+        <Select value={corte.comparar} onValueChange={(v) => setCorte({ ...corte, comparar: v as Comparar })}>
+          <SelectTrigger className={clase}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="dic_anterior">Diciembre {corte.anio - 1}</SelectItem>
+            <SelectItem value="anio_anterior">{MESES[corte.mes - 1]} {corte.anio - 1}</SelectItem>
+            <SelectItem value="ninguno">Sin comparativo</SelectItem>
+          </SelectContent>
+        </Select>
+      </Campo>
     </div>
   )
 }
