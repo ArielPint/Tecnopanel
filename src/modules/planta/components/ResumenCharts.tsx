@@ -328,6 +328,9 @@ function MesCantidadBarChart({ data, color, label }: { data: { mes: string; cant
   const hoy = new Date()
   const mesEnCurso = mesActualLbl(hoy)
   const idxParcial = mesEnCurso ? data.findIndex((d) => d.mes === mesEnCurso) : -1
+  const fmt = (v: number) => v.toLocaleString('es-CL')
+  // Ancho del eje según el valor más largo ya formateado (m² llega a miles).
+  const anchoEje = Math.max(32, fmt(Math.max(...data.map((d) => d.cantidad))).length * 8 + 8)
   const chart = (
     <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
       <BarChart data={data} margin={{ left: 8, right: 8, bottom: 16 }}>
@@ -348,9 +351,21 @@ function MesCantidadBarChart({ data, color, label }: { data: { mes: string; cant
           tick={{ fontSize: 11 }}
           tickLine={false}
           axisLine={false}
-          width={32}
+          width={anchoEje}
+          tickFormatter={fmt}
         />
-        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartTooltip
+          content={
+            <ChartTooltipContent
+              formatter={(value) => (
+                <span className="flex w-full justify-between gap-4 tabular-nums">
+                  <span>{label}</span>
+                  <span className="font-medium">{fmt(Number(value))}</span>
+                </span>
+              )}
+            />
+          }
+        />
         <Bar dataKey="cantidad" fill="var(--color-cantidad)" radius={4}>
           {data.map((_, i) =>
             i === idxParcial ? (
@@ -359,7 +374,7 @@ function MesCantidadBarChart({ data, color, label }: { data: { mes: string; cant
               <Cell key={i} fill={color} />
             ),
           )}
-          <LabelList dataKey="cantidad" position="top" style={VALUE_LABEL_STYLE} />
+          <LabelList dataKey="cantidad" position="top" style={VALUE_LABEL_STYLE} formatter={(v) => fmt(Number(v))} />
         </Bar>
       </BarChart>
     </ChartContainer>
