@@ -10,6 +10,7 @@ import SipLoginPage from './modules/sip/pages/Login'
 import PrevencionLoginPage from './modules/sso/pages/Login'
 import PersonalLoginPage from './modules/personal/pages/Login'
 import AdquisicionesLoginPage from './modules/adquisiciones/pages/Login'
+import FinancieroSapLoginPage from './modules/financiero_sap/pages/Login'
 import { useAuthStore } from './store/authStore'
 import { ConCarga, diferido } from './lib/cargaDiferida'
 
@@ -33,6 +34,7 @@ const PrevencionApp = diferido(() => import('./modules/sso/PrevencionApp'))
 const PersonalApp = diferido(() => import('./modules/personal/PersonalApp'))
 const MonitoreoPage = diferido(() => import('./modules/monitoreo/MonitoreoPage'))
 const AdquisicionesApp = diferido(() => import('./modules/adquisiciones/AdquisicionesApp'))
+const FinancieroSapApp = diferido(() => import('./modules/financiero_sap/FinancieroSapApp'))
 
 export default function App() {
   const init = useAuthStore((s) => s.init)
@@ -84,6 +86,17 @@ export default function App() {
           element={
             <ProtectedRoute loginPath="/adquisiciones/login" requiere="adquisiciones">
               <ConCarga><AdquisicionesApp /></ConCarga>
+            </ProtectedRoute>
+          }
+        />
+        {/* Portal Financiero: contabilidad de SAP por línea y sucursal, web propia con su login (misma cuenta del hub).
+            No confundir con el financiero de cada obra (/proyectos/:slug/financiero). */}
+        <Route path="/financiero/login" element={<FinancieroSapLoginPage />} />
+        <Route
+          path="/financiero/*"
+          element={
+            <ProtectedRoute loginPath="/financiero/login" requiere="financiero">
+              <ConCarga><FinancieroSapApp /></ConCarga>
             </ProtectedRoute>
           }
         />

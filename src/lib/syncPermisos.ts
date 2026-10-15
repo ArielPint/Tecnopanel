@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient'
-import { ADQ_ANCLA_ID, getProyectoId, ING_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from './proyectoIds'
+import { ADQ_ANCLA_ID, FIN_ANCLA_ID, getProyectoId, ING_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from './proyectoIds'
 
 async function reemplazarPermisos(userId: string, proyectoId: string, filas: { modulo_key: string; accion: string }[]) {
   const { error: delErr } = await supabase.from('permisos').delete().eq('user_id', userId).eq('proyecto_id', proyectoId)
@@ -123,6 +123,15 @@ export async function syncPermisosIngreso(userId: string, roles: string[]) {
 /** roles: '<rol>:<sucursal>', p. ej. 'comprador:Santiago'. */
 export async function syncPermisosAdquisiciones(userId: string, roles: string[]) {
   await reemplazarPermisos(userId, ADQ_ANCLA_ID, roles.map((r) => ({ modulo_key: `adq:${r}`, accion: 'ver' })))
+}
+
+/**
+ * Portal Financiero: transversal, sobre su propio ancla (FIN_ANCLA_ID). Un permiso por fila:
+ * modulo_key 'fin:<informe>:<sucursal>' (informe: eerr, ventas, balance) o 'fin:configurar', con accion 'ver'.
+ */
+/** permisos: '<informe>:<sucursal>' o 'configurar', p. ej. 'eerr:Santiago'. */
+export async function syncPermisosFinanciero(userId: string, permisos: string[]) {
+  await reemplazarPermisos(userId, FIN_ANCLA_ID, permisos.map((p) => ({ modulo_key: `fin:${p}`, accion: 'ver' })))
 }
 
 /** Rol de negocio por proyecto (catálogo abierto, ver Fase E1) — reemplaza el 'full_access' decorativo. */
