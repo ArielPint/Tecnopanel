@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
+  Activity,
   Briefcase,
   Building2,
   ChevronLeft,
@@ -64,6 +65,8 @@ const navSections = [
       // llamada "Gestión" (agrupador de nav preexistente, sin relación con este módulo).
       { to: '/gestion', label: 'Gestión', end: false, icon: ClipboardList, requiere: 'gestion' },
       { to: '/usuarios', label: 'Usuarios', end: false, icon: Users, requiere: 'admin' },
+      // Estado del servidor (respaldos, servicios, BD): solo superadmin. TI lo ve en /monitor/ con clave aparte.
+      { to: '/monitoreo', label: 'Monitoreo', end: false, icon: Activity, requiere: 'superadmin' },
     ],
   },
 ]
@@ -72,7 +75,7 @@ const navSections = [
 // usuario puede abrir. '/proyectos' exige admin porque su ruta no trae slug.
 function useNavSections() {
   const acceso = useAccesoUsuario()
-  const ok = { admin: acceso.isAdmin, crm: acceso.tieneCrm, gestion: acceso.tieneGestion, sip: acceso.tieneSip, sso: acceso.tieneSso, ingreso: acceso.tieneIngreso }
+  const ok = { admin: acceso.isAdmin, superadmin: acceso.isSuperAdmin,crm: acceso.tieneCrm, gestion: acceso.tieneGestion, sip: acceso.tieneSip, sso: acceso.tieneSso, ingreso: acceso.tieneIngreso }
   return navSections
     .map((s) => ({ ...s, items: s.items.filter((i) => !('requiere' in i) || ok[i.requiere as keyof typeof ok]) }))
     .filter((s) => s.items.length > 0)
@@ -85,6 +88,7 @@ const pageTitles: Record<string, string> = {
   '/geovictoria': 'GeoVictoria',
   '/gestion': 'Gestión',
   '/usuarios': 'Usuarios',
+  '/monitoreo': 'Monitoreo',
 }
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {

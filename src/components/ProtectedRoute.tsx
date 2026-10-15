@@ -11,7 +11,7 @@ export default function ProtectedRoute({
   children: React.ReactNode
   loginPath?: string
   /** Si se indica, exige que el usuario tenga ese acceso además de sesión — si no, lo manda a "/" para que aterrice donde sí tiene acceso real. */
-  requiere?: 'admin' | 'crm' | 'proyecto' | 'gestion' | 'sip' | 'sso' | 'ingreso'
+  requiere?: 'admin' | 'superadmin' | 'crm' | 'proyecto' | 'gestion' | 'sip' | 'sso' | 'ingreso'
 }) {
   const { session, loading, mustChangePassword, clearMustChangePassword } = useAuthStore()
   const acceso = useAccesoUsuario()
@@ -43,6 +43,8 @@ export default function ProtectedRoute({
     const autorizado =
       requiere === 'admin'
         ? acceso.isAdmin
+        : requiere === 'superadmin'
+          ? acceso.isSuperAdmin
         : requiere === 'crm'
           ? acceso.tieneCrm
           : requiere === 'gestion'

@@ -30,6 +30,7 @@ const GestionApp = diferido(() => import('./modules/gestion/GestionApp'))
 const SipApp = diferido(() => import('./modules/sip/SipApp'))
 const PrevencionApp = diferido(() => import('./modules/sso/PrevencionApp'))
 const PersonalApp = diferido(() => import('./modules/personal/PersonalApp'))
+const MonitoreoPage = diferido(() => import('./modules/monitoreo/MonitoreoPage'))
 
 export default function App() {
   const init = useAuthStore((s) => s.init)
@@ -187,6 +188,14 @@ export default function App() {
             element={
               <ProtectedRoute requiere="admin">
                 <ConCarga><UsuariosPage /></ConCarga>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/monitoreo"
+            element={
+              <ProtectedRoute requiere="superadmin">
+                <ConCarga><MonitoreoPage /></ConCarga>
               </ProtectedRoute>
             }
           />
