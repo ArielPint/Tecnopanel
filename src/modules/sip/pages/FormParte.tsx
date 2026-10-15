@@ -9,7 +9,7 @@ import { Label } from '@/modules/financiero/components/ui/label'
 import { Textarea } from '@/modules/financiero/components/ui/textarea'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 import { Cargando, selectClase } from '../components/comunes'
-import { guardarParte, obtenerParte, type LineaInput } from '../lib/api'
+import { guardarParte, listarItemsSap, obtenerParte, type ItemSap, type LineaInput } from '../lib/api'
 import { calcularMateriales } from '../lib/calculo'
 import { aDestino, deDestino } from '../lib/destinos'
 import SelectorDestino from '../components/SelectorDestino'
@@ -61,6 +61,33 @@ export default function FormParte() {
   const [observacion, setObservacion] = useState('')
   const [lineas, setLineas] = useState<LineaForm[]>([nuevaLinea()])
   const [guardando, setGuardando] = useState(false)
+  const [itemsSap, setItemsSap] = useState<ItemSap[] | null>(null)
+
+  // La estructura de cada proyecto SAP dice qué paneles lleva: con eso se filtra el panel de cada línea
+  useEffect(() => {
+    let cancelado = false
+    listarItemsSap()
+      .then((its) => !cancelado && setItemsSap(its))
+      .catch((err) => {
+        toast.error(err instanceof Error ? err.message : 'No se pudo cargar la estructura de los proyectos SAP')
+        if (!cancelado) setItemsSap([])
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [])
+
+  /** Paneles de la estructura de cada proyecto SAP, por código de proyecto */
+  const panelesPorProyecto = useMemo(() => {
+    const m = new Map<string, Set<string>>()
+    for (const i of itemsSap ?? []) {
+      if (!i.vigente) continue
+      let s = m.get(i.proyecto_codigo)
+      if (!s) m.set(i.proyecto_codigo, (s = new Set()))
+      s.add(i.panel_id)
+    }
+    return m
+  }, [itemsSap])
 
   useEffect(() => {
     if (!id) return
@@ -103,7 +130,7 @@ export default function FormParte() {
     [lineas, recetas, materiales],
   )
 
-  if (permisosLoading || catLoading || sucursalLoading || cargando) return <Cargando />
+  if (permisosLoading || catLoading || sucursalLoading || cargando || itemsSap === null) return <Cargando />
   const puedeEditar = id ? puede('editar') || (puede('crear') && autor === userId) : puede('crear')
   if (!puedeEditar) return <Navigate to={id ? RUTA.parte(id) : RUTA.registro} replace />
 
@@ -153,13 +180,24 @@ export default function FormParte() {
     }
   }
 
-  // Al corregir se puede dejar un panel ya desactivado; para elegir uno nuevo, solo los producibles
-  const opcionesPanel = (actual: string) => {
-    const lista = panelesProducibles.slice()
+  /** Paneles del proyecto elegido: los de su estructura en SAP. Obras, proyectos del portal, "sin
+   *  proyecto" y proyectos SAP sin estructura cargada no tienen esa relación: ofrecen todos. */
+  const panelesDelProyecto = (destino: string) => {
+    const enSap = destino.startsWith('s:') ? panelesPorProyecto.get(destino.slice(2)) : undefined
+    return enSap ? panelesProducibles.filter((p) => enSap.has(p.id)) : panelesProducibles
+  }
+
+  // Al corregir se puede dejar un panel ya desactivado o fuera de la estructura; para elegir uno nuevo, solo los del proyecto
+  const opcionesPanel = (destino: string, actual: string) => {
+    const lista = panelesDelProyecto(destino).slice()
     const p = panelPorId.get(actual)
     if (p && !lista.includes(p)) lista.unshift(p)
     return lista
   }
+
+  // Al cambiar de proyecto, el panel elegido se mantiene solo si también es de ese proyecto
+  const cambiarProyecto = (l: LineaForm, destino: string) =>
+    cambiar(l.key, { destino, panel_id: panelesDelProyecto(destino).some((p) => p.id === l.panel_id) ? l.panel_id : '' })
 
   return (
     <form onSubmit={onSubmit} className="mx-auto max-w-5xl space-y-4">
@@ -169,7 +207,7 @@ export default function FormParte() {
         </Link>
         <h1 className="mt-1 text-xl font-extrabold">{id ? 'Corregir registro' : 'Registrar producción'}</h1>
         <p className="text-sm text-muted-foreground">
-          Indique los paneles fabricados. Los materiales se calculan solos con la receta de cada panel.
+          Elija primero el proyecto: se ofrecen solo los paneles de su estructura en SAP. Los materiales se calculan solos con la receta de cada panel.
         </p>
       </div>
 
@@ -196,12 +234,23 @@ export default function FormParte() {
         </CardHeader>
         <CardContent className="space-y-3">
           {lineas.map((l, i) => (
-            <div key={l.key} className="grid grid-cols-2 gap-2 rounded-md border p-3 sm:grid-cols-[minmax(0,1fr)_90px_90px] lg:grid-cols-[minmax(0,2fr)_90px_90px_minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <div key={l.key} className="grid grid-cols-2 gap-2 rounded-md border p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_90px_90px] lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_90px_90px_minmax(0,1fr)_auto]">
+              <div className="col-span-2 flex flex-col gap-1 sm:col-span-1">
+                <Label className="text-xs">Proyecto</Label>
+                <SelectorDestino
+                  destinos={destinos}
+                  valor={l.destino}
+                  onChange={(v) => cambiarProyecto(l, v)}
+                  vacio="Sin proyecto"
+                  className="w-full"
+                  aria-label={`Proyecto línea ${i + 1}`}
+                />
+              </div>
               <div className="col-span-2 flex flex-col gap-1 sm:col-span-1">
                 <Label className="text-xs">Panel</Label>
                 <select value={l.panel_id} onChange={(e) => cambiar(l.key, { panel_id: e.target.value })} className={`${selectClase} w-full`} required aria-label={`Panel línea ${i + 1}`}>
-                  <option value="">Elegir panel…</option>
-                  {opcionesPanel(l.panel_id).map((p) => (
+                  <option value="">{opcionesPanel(l.destino, l.panel_id).length ? 'Elegir panel…' : 'El proyecto no tiene paneles con receta'}</option>
+                  {opcionesPanel(l.destino, l.panel_id).map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.codigo} · {p.descripcion}
                     </option>
@@ -215,17 +264,6 @@ export default function FormParte() {
               <div className="flex flex-col gap-1">
                 <Label className="text-xs">Rechazados</Label>
                 <Input type="number" inputMode="numeric" min={0} step={1} value={l.rechazados} onChange={(e) => cambiar(l.key, { rechazados: e.target.value })} placeholder="0" />
-              </div>
-              <div className="col-span-2 flex flex-col gap-1 sm:col-span-1">
-                <Label className="text-xs">Proyecto (opcional)</Label>
-                <SelectorDestino
-                  destinos={destinos}
-                  valor={l.destino}
-                  onChange={(v) => cambiar(l.key, { destino: v })}
-                  vacio="Sin proyecto"
-                  className="w-full"
-                  aria-label={`Proyecto línea ${i + 1}`}
-                />
               </div>
               <div className="flex flex-col gap-1">
                 <Label className="text-xs">OT / pedido (opcional)</Label>
