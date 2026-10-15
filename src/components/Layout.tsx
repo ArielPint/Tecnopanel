@@ -46,7 +46,7 @@ const navSections = [
     ],
   },
   {
-    label: 'Gestión',
+    label: 'Módulos',
     // ponytail: GeoVictoria oculto del nav hasta setear GV_APIKEY/GV_SECRET en prod — ruta sigue viva en App.tsx
     items: [
       { to: '/crm', label: 'CRM', end: false, icon: Briefcase, requiere: 'crm' },
@@ -64,8 +64,8 @@ const navSections = [
     label: 'Sistema',
     items: [
       // "Gestión" acá es el módulo transversal (§3.6: Reportes/Documentos/Alertas/...) — mismo
-      // nivel que Usuarios/Proyectos en la nav. No confundir con la sección de arriba, también
-      // llamada "Gestión" (agrupador de nav preexistente, sin relación con este módulo).
+      // nivel que Usuarios/Proyectos en la nav. La sección de arriba se llamaba "Gestión" y se
+      // renombró a "Módulos" para no confundirla con este módulo.
       { to: '/gestion', label: 'Gestión', end: false, icon: ClipboardList, requiere: 'gestion' },
       { to: '/usuarios', label: 'Usuarios', end: false, icon: Users, requiere: 'admin' },
       // Estado del servidor (respaldos, servicios, BD): solo superadmin. TI lo ve en /monitor/ con clave aparte.
