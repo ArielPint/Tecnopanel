@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/components/ui/card'
 import { cn } from '@/lib/utils'
 
-// Monitoreo del servidor (solo superadmin). Lo escribe stack\tareas\monitoreo.ps1 cada 5 minutos en
+// Monitoreo del servidor (solo superadmin). Lo escribe stack\tareas\monitoreo.ps1 (cada minuto) en
 // public.monitor_estado (tabla solo del servidor, RLS: superadmin y root). TI tiene la misma
 // información en /monitor/ con usuario y clave aparte.
 
@@ -31,10 +31,16 @@ interface DatosMonitoreo {
   checks: Check[]
   historial: CambioEstado[]
   destinatarios: string[]
+  /** Lo manda el servidor; faltaba en las primeras versiones (cada 5 min, alerta a los 10). */
+  config?: { revisionMin: number; alertaMin: number; desactualizadoMin: number }
 }
 
 const REFRESCO_MS = 60_000
-const DESACTUALIZADO_MS = 15 * 60_000
+const CONFIG_ANTERIOR = { revisionMin: 5, alertaMin: 10, desactualizadoMin: 15 }
+
+function minutos(n: number) {
+  return n === 1 ? 'cada minuto' : `cada ${n} minutos`
+}
 
 const ETIQUETA: Record<Estado, string> = { ok: 'OK', aviso: 'Aviso', falla: 'Falla' }
 
@@ -90,7 +96,8 @@ export default function MonitoreoPage() {
   }, [cargar])
 
   const grupos = datos ? Array.from(new Set(datos.checks.map((c) => c.grupo))) : []
-  const desactualizado = datos ? ahora - new Date(datos.generado).getTime() > DESACTUALIZADO_MS : false
+  const config = datos?.config ?? CONFIG_ANTERIOR
+  const desactualizado = datos ? ahora - new Date(datos.generado).getTime() > config.desactualizadoMin * 60_000 : false
   const resumen = datos?.resumen
 
   return (
@@ -99,7 +106,7 @@ export default function MonitoreoPage() {
         <div>
           <h1 className="text-xl font-bold">Monitoreo del servidor</h1>
           <p className="text-sm text-muted-foreground">
-            Portal, base de datos, respaldos y tareas de Tecnotruss-INT. Se revisa cada 5 minutos.
+            Portal, base de datos, respaldos y tareas de Tecnotruss-INT. Se revisa {minutos(config.revisionMin)}.
           </p>
         </div>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -124,7 +131,7 @@ export default function MonitoreoPage() {
 
       {desactualizado && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-          Estos datos tienen más de 15 minutos: el monitoreo no se está actualizando. Revisa la tarea TP-Monitoreo en el servidor.
+          Estos datos tienen más de {config.desactualizadoMin} minutos: el monitoreo no se está actualizando. Revisa la tarea TP-Monitoreo en el servidor.
         </div>
       )}
 
@@ -208,7 +215,7 @@ export default function MonitoreoPage() {
 
       {datos && (
         <p className="text-xs text-muted-foreground">
-          Alertas por correo (falla durante 10 minutos y recuperación) a: {datos.destinatarios.join(', ') || 'nadie'}.
+          Alertas por correo (falla durante {config.alertaMin} minutos y recuperación) a: {datos.destinatarios.join(', ') || 'nadie'}.
         </p>
       )}
     </div>
