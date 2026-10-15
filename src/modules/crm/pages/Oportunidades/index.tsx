@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Search, Trash2 } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { fmtMontoCLP } from '@/lib/montoCLP'
 import type { Oportunidad, EtapaOportunidad, TipoVenta } from '@/modules/crm/types/database'
 import OportunidadDrawer from '@/modules/crm/components/OportunidadDrawer'
 import { handleSupabaseError } from '@/modules/crm/lib/errors'
-import { useAuth } from '@/modules/crm/contexts/AuthContext'
 
 const ETAPAS: EtapaOportunidad[] = [
   'Clasificación','Oportunidad','Ingeniería','Desarrollo','Costos y Presupuestos',
@@ -31,12 +30,10 @@ const TIPO_VENTA_LABELS: Record<TipoVenta, string> = {
 // tipo_venta. En VIT se ven todas las etapas del flujo, que ya no aparecen en los
 // modulos por etapa (Ingenieria, Desarrollo, Costos y Presupuestos, Ventas, Negociacion).
 export default function Oportunidades({ soloVit = false }: { soloVit?: boolean }) {
-  const { profile } = useAuth()
   const [oportunidades, setOportunidades] = useState<Oportunidad[]>([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [selected, setSelected] = useState<Oportunidad | null>(null)
-  const [limpiando, setLimpiando] = useState(false)
 
   async function load() {
     const { data: opps, error } = await supabase
@@ -59,17 +56,6 @@ export default function Oportunidades({ soloVit = false }: { soloVit?: boolean }
     return () => window.removeEventListener('crm:oportunidad-creada', onCreada)
   }, [])
 
-  async function limpiarBase() {
-    if (!confirm('Esto borra TODAS las oportunidades (incluidas Ganadas y Perdidas) junto con su historial, documentos y datos asociados. Esta acción no se puede deshacer.\n\n¿Continuar?')) return
-    const texto = prompt('Escribí BORRAR para confirmar la limpieza total de la base de oportunidades:')
-    if (texto !== 'BORRAR') return
-    setLimpiando(true)
-    const { error } = await supabase.from('oportunidades').delete().not('id', 'is', null)
-    setLimpiando(false)
-    if (error) { alert('No se pudo limpiar la base: ' + error.message); return }
-    load()
-  }
-
   const filtradas = oportunidades
     .filter(o => (o.tipo_venta === 'VIT') === soloVit)
     .filter(o =>
@@ -89,12 +75,6 @@ export default function Oportunidades({ soloVit = false }: { soloVit?: boolean }
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar..." className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-crm-red" />
         </div>
-        {profile?.rol === 'admin' && (
-          <button onClick={limpiarBase} disabled={limpiando} title="Borra todas las oportunidades de la base"
-            className="flex items-center gap-2 bg-white border border-red-200 hover:bg-red-50 text-crm-red text-sm font-medium px-3 py-2 rounded-lg transition-colors flex-shrink-0 disabled:opacity-50">
-            <Trash2 size={16} /><span className="hidden sm:inline">{limpiando ? 'Limpiando...' : 'Limpiar base'}</span>
-          </button>
-        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
