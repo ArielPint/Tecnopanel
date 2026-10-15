@@ -236,11 +236,12 @@ create table if not exists public.adq_niveles (
   activo      boolean not null default true,
   check (nivel <> 1 or (monto_desde = 0 and activo))
 );
-insert into public.adq_niveles (nivel, nombre, monto_desde) values
-  (1, 'Jefatura', 0),
-  (2, 'Gerencia de área', 2000000),
-  (3, 'Gerencia general', 10000000)
-on conflict (nivel) do nothing;
+-- Solo la primera vez: 20261018120000_adquisiciones_sucursal.sql agrega la sucursal a la llave y
+-- copia los niveles a cada sucursal, y esta migracion se vuelve a aplicar en cada despliegue.
+insert into public.adq_niveles (nivel, nombre, monto_desde)
+select v.nivel, v.nombre, v.monto_desde
+from (values (1, 'Jefatura', 0), (2, 'Gerencia de área', 2000000), (3, 'Gerencia general', 10000000)) v(nivel, nombre, monto_desde)
+where not exists (select 1 from public.adq_niveles);
 
 create table if not exists public.adq_solicitudes (
   id uuid primary key default gen_random_uuid(),
