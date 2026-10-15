@@ -3,7 +3,10 @@ export const RUTA = {
   inicio: '/adquisiciones',
   login: '/adquisiciones/login',
   nueva: '/adquisiciones/nueva',
+  dashboard: '/adquisiciones/dashboard',
   ordenes: '/adquisiciones/ordenes',
+  presupuestos: '/adquisiciones/presupuestos',
+  reposicion: '/adquisiciones/reposicion',
   configuracion: '/adquisiciones/configuracion',
   solicitud: (id: string) => `/adquisiciones/${id}`,
 }

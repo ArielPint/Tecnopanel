@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { fmtFecha, fmtFechaHora, hoyChile, sumarDias } from '@/modules/sso/lib/estados'
 import { estadoSincronizacion, fmtPesos, listarOcSap, type OcSap } from '../lib/api'
 
-type Filtro = 'abiertas' | 'sin_sc' | 'todas'
+type Filtro = 'abiertas' | 'sin_facturar' | 'sin_sc' | 'todas'
 
 const PERIODOS = [
   { dias: 30, label: 'Últimos 30 días' },
@@ -34,8 +34,14 @@ export default function OrdenesSap() {
       .finally(() => setLoading(false))
   }, [dias])
 
-  const cumple = (o: OcSap, f: Filtro) =>
-    f === 'todas' || (f === 'abiertas' ? o.abierta && !o.cancelada : !o.solicitudes && !o.cancelada)
+  const cumple = (o: OcSap, f: Filtro) => {
+    if (f === 'todas') return true
+    if (o.cancelada) return false
+    if (f === 'abiertas') return o.abierta
+    // recibida completa (en SAP), pero con menos del 100% facturado
+    if (f === 'sin_facturar') return (o.recepcion_pct ?? 0) >= 100 && (o.facturado_pct ?? 0) < 100
+    return !o.solicitudes
+  }
 
   const lista = useMemo(() => {
     const q = texto.trim().toLowerCase()
@@ -47,7 +53,8 @@ export default function OrdenesSap() {
           String(o.docnum) === q ||
           (o.proveedor_nombre ?? '').toLowerCase().includes(q) ||
           (o.comentarios ?? '').toLowerCase().includes(q) ||
-          (o.solicitudes ?? '').toLowerCase().includes(q),
+          (o.solicitudes ?? '').toLowerCase().includes(q) ||
+          (o.cecos ?? '').toLowerCase().includes(q),
       )
   }, [ocs, filtro, texto])
 
@@ -71,6 +78,7 @@ export default function OrdenesSap() {
         {(
           [
             ['abiertas', 'Abiertas'],
+            ['sin_facturar', 'Recibidas sin facturar'],
             ['sin_sc', 'Sin solicitud'],
             ['todas', 'Todas'],
           ] as [Filtro, string][]
@@ -89,7 +97,7 @@ export default function OrdenesSap() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Buscar por N°, proveedor, comentario o SC" className="h-9 w-full sm:w-80" />
+        <Input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Buscar por N°, proveedor, comentario, CECO o SC" className="h-9 w-full sm:w-80" />
         <select value={dias} onChange={(e) => setDias(Number(e.target.value))} className="h-9 rounded-md border border-input bg-background px-2 text-sm" aria-label="Período">
           {PERIODOS.map((p) => (
             <option key={p.dias} value={p.dias}>
@@ -105,7 +113,7 @@ export default function OrdenesSap() {
         <p className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">No hay órdenes de compra con estos filtros.</p>
       ) : (
         <div className="overflow-x-auto rounded-md border bg-card">
-          <table className="w-full min-w-[860px] text-sm">
+          <table className="w-full min-w-[960px] text-sm">
             <thead>
               <tr className="border-b text-left text-[11px] uppercase tracking-wide text-muted-foreground">
                 <th className="px-3 py-2 font-semibold">OC</th>
@@ -113,6 +121,7 @@ export default function OrdenesSap() {
                 <th className="px-3 py-2 font-semibold">Fecha · entrega</th>
                 <th className="px-3 py-2 text-right font-semibold">Total con IVA</th>
                 <th className="px-3 py-2 font-semibold">Recepción</th>
+                <th className="px-3 py-2 font-semibold">Facturado</th>
                 <th className="px-3 py-2 font-semibold">Solicitud</th>
               </tr>
             </thead>
@@ -122,6 +131,7 @@ export default function OrdenesSap() {
                   <td className="px-3 py-2.5 font-mono-tabular">{o.docnum}</td>
                   <td className="px-3 py-2.5">
                     <p className="font-semibold">{o.proveedor_nombre ?? '—'}</p>
+                    {o.cecos && <p className="font-mono-tabular text-[11px] text-muted-foreground">CECO {o.cecos}</p>}
                     {o.comentarios && <p className="max-w-[340px] truncate text-xs text-muted-foreground" title={o.comentarios}>{o.comentarios}</p>}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2.5 font-mono-tabular">
@@ -144,6 +154,16 @@ export default function OrdenesSap() {
                           {o.recepcion_pct ?? 0}% · {o.abierta ? 'abierta' : 'cerrada'}
                         </p>
                       </div>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-xs">
+                    {o.cancelada ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <>
+                        <span className={cn('font-semibold tabular-nums', (o.facturado_pct ?? 0) >= 100 && 'text-success')}>{o.facturado_pct ?? 0}%</span>
+                        <span className="block font-mono-tabular text-muted-foreground">{fmtPesos(o.facturado)}</span>
+                      </>
                     )}
                   </td>
                   <td className="px-3 py-2.5 font-mono-tabular text-xs">{o.solicitudes ?? <span className="text-muted-foreground">—</span>}</td>

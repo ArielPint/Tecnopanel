@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { fmtFecha } from '@/modules/sso/lib/estados'
 import { usePermisosAdq } from '../hooks/usePermisosAdq'
 import { ABIERTOS, ESTADO, type EstadoSolicitud } from '../lib/catalogos'
-import { fmtPesos, listarSolicitudes, type Solicitud } from '../lib/api'
+import { etiquetaCeco, fmtPesos, listarSolicitudes, type Solicitud } from '../lib/api'
 import { RUTA } from '../lib/rutas'
 
 type Filtro = 'pendientes' | 'abiertas' | EstadoSolicitud | 'todas'
@@ -52,6 +52,7 @@ export default function Solicitudes() {
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState<Filtro | null>(null)
   const [sucursal, setSucursal] = useState('')
+  const [ceco, setCeco] = useState('')
   const [texto, setTexto] = useState('')
 
   useEffect(() => {
@@ -61,7 +62,15 @@ export default function Solicitudes() {
       .finally(() => setLoading(false))
   }, [])
 
-  const porSucursal = useMemo(() => solicitudes.filter((s) => !sucursal || s.sucursal === sucursal), [solicitudes, sucursal])
+  const porSucursal = useMemo(
+    () => solicitudes.filter((s) => (!sucursal || s.sucursal === sucursal) && (!ceco || s.centro_costo === ceco)),
+    [solicitudes, sucursal, ceco],
+  )
+  // los CECO que aparecen en las solicitudes visibles
+  const cecos = useMemo(
+    () => [...new Map(solicitudes.map((s) => [s.centro_costo, s.centro_costo_nombre])).entries()].sort(([a], [b]) => a.localeCompare(b)),
+    [solicitudes],
+  )
   const pendientes = porSucursal.filter((s) => meToca(s, esCompras)).length
   // Quien compra o aprueba parte en "Me toca" si tiene algo; el resto, en abiertas
   const f: Filtro = filtro ?? ((esCompras || nivel > 0) && pendientes > 0 ? 'pendientes' : 'abiertas')
@@ -91,7 +100,9 @@ export default function Solicitudes() {
           String(s.numero) === q ||
           (s.proveedor_elegido ?? '').toLowerCase().includes(q) ||
           s.oc_docnums.split(', ').includes(q) ||
-          (s.creado_por_nombre ?? '').toLowerCase().includes(q),
+          (s.creado_por_nombre ?? '').toLowerCase().includes(q) ||
+          s.centro_costo.toLowerCase().includes(q) ||
+          (s.centro_costo_nombre ?? '').toLowerCase().includes(q),
       )
       // urgentes primero entre las abiertas; después lo más nuevo
       .sort(
@@ -133,6 +144,14 @@ export default function Solicitudes() {
             <option key={s}>{s}</option>
           ))}
         </select>
+        <select value={ceco} onChange={(e) => setCeco(e.target.value)} className="h-9 max-w-[260px] rounded-md border border-input bg-background px-2 text-sm" aria-label="Centro de costo">
+          <option value="">Todos los centros de costo</option>
+          {cecos.map(([codigo, nombre]) => (
+            <option key={codigo} value={codigo}>
+              {etiquetaCeco(codigo, nombre)}
+            </option>
+          ))}
+        </select>
       </div>
 
       {loading || cargandoPermisos ? (
@@ -148,7 +167,7 @@ export default function Solicitudes() {
               <tr className="border-b text-left text-[11px] uppercase tracking-wide text-muted-foreground">
                 <th className="px-3 py-2 font-semibold">SC</th>
                 <th className="px-3 py-2 font-semibold">Qué se compra</th>
-                <th className="px-3 py-2 font-semibold">Área · sucursal</th>
+                <th className="px-3 py-2 font-semibold">CECO · sucursal</th>
                 <th className="px-3 py-2 font-semibold">Se necesita</th>
                 <th className="px-3 py-2 text-right font-semibold">Monto neto</th>
                 <th className="px-3 py-2 font-semibold">Estado</th>
@@ -179,8 +198,10 @@ export default function Solicitudes() {
                     </p>
                   </td>
                   <td className="px-3 py-2.5">
-                    <p>{s.area}</p>
-                    <p className="text-xs text-muted-foreground">{s.sucursal}</p>
+                    <p className="font-mono-tabular">{s.centro_costo}</p>
+                    <p className="max-w-[200px] truncate text-xs text-muted-foreground" title={s.centro_costo_nombre ?? undefined}>
+                      {s.area} · {s.sucursal}
+                    </p>
                   </td>
                   <td className="px-3 py-2.5 font-mono-tabular">{fmtFecha(s.fecha_requerida)}</td>
                   <td className="px-3 py-2.5 text-right font-mono-tabular">

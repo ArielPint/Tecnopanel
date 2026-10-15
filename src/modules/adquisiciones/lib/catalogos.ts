@@ -3,10 +3,15 @@
 // tablas, adq_usuario_nivel): si cambia uno, cambia el otro.
 
 /** Un rol por fila de permisos: modulo_key 'adq:<rol>', accion 'ver', sobre el ancla ADQ_ANCLA_ID. */
-export type RolAdq = 'solicitante' | 'comprador' | 'aprobador_1' | 'aprobador_2' | 'aprobador_3' | 'jefe_compras'
+export type RolAdq = 'solicitante' | 'bodega' | 'comprador' | 'aprobador_1' | 'aprobador_2' | 'aprobador_3' | 'jefe_compras'
 
 export const ROLES_ADQ: { key: RolAdq; label: string; detalle: string }[] = [
   { key: 'solicitante', label: 'Solicitante', detalle: 'Crea solicitudes de compra y sigue las suyas hasta que llegan.' },
+  {
+    key: 'bodega',
+    label: 'Bodega',
+    detalle: 'Ve la reposición de stock de las bodegas (SAP B006 y B007), define los mínimos y crea las solicitudes de reposición.',
+  },
   {
     key: 'comprador',
     label: 'Comprador',
@@ -15,7 +20,11 @@ export const ROLES_ADQ: { key: RolAdq; label: string; detalle: string }[] = [
   { key: 'aprobador_1', label: 'Aprobador nivel 1', detalle: 'Aprueba el primer nivel (todas las compras pasan por aquí) en su sucursal.' },
   { key: 'aprobador_2', label: 'Aprobador nivel 2', detalle: 'Aprueba hasta el nivel 2, incluido el 1 si está pendiente.' },
   { key: 'aprobador_3', label: 'Aprobador nivel 3', detalle: 'Aprueba todos los niveles.' },
-  { key: 'jefe_compras', label: 'Jefe de compras', detalle: 'Todo lo del comprador en ambas sucursales, y configura los montos de cada nivel de aprobación.' },
+  {
+    key: 'jefe_compras',
+    label: 'Jefe de compras',
+    detalle: 'Todo lo del comprador en ambas sucursales; configura los niveles de aprobación y carga el presupuesto anual por centro de costo.',
+  },
 ]
 
 export type EstadoSolicitud = 'cotizando' | 'en_aprobacion' | 'aprobada' | 'oc_emitida' | 'recibida' | 'rechazada' | 'anulada'

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/modules/financiero/components/ui/button'
@@ -7,15 +7,22 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/store/authStore'
 import CamposSolicitud, { Seccion, datosVacios, limpiarSolicitud, validarSolicitud } from '../components/CamposSolicitud'
 import EditorItems, { itemVacio } from '../components/EditorItems'
-import { crearSolicitud, type Item } from '../lib/api'
+import { crearSolicitud, type DatosSolicitud, type Item } from '../lib/api'
 import { RUTA } from '../lib/rutas'
+
+/** Lo que trae una solicitud armada en otra pantalla (Reposición de stock). */
+export interface Prellenado {
+  datos: Partial<DatosSolicitud>
+  items: Item[]
+}
 
 /** La llena quien necesita la compra. Compras la cotiza y la manda a aprobar. */
 export default function NuevaSolicitud() {
   const navigate = useNavigate()
+  const prellenado = useLocation().state as Prellenado | null
   const userId = useAuthStore((s) => s.user?.id)
-  const [datos, setDatos] = useState(() => datosVacios(null))
-  const [items, setItems] = useState<Item[]>([itemVacio()])
+  const [datos, setDatos] = useState<DatosSolicitud>(() => ({ ...datosVacios(null), ...prellenado?.datos }))
+  const [items, setItems] = useState<Item[]>(() => (prellenado?.items.length ? prellenado.items : [itemVacio()]))
   const [problema, setProblema] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 

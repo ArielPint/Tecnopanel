@@ -6,7 +6,7 @@ import { SUCURSALES } from '@/lib/lineasNegocio'
 import { cn } from '@/lib/utils'
 import { hoyChile } from '@/modules/sso/lib/estados'
 import { AREAS } from '../lib/catalogos'
-import { listarProyectos, type DatosSolicitud, type Item } from '../lib/api'
+import { etiquetaCeco, listarCentrosCosto, listarProyectos, type CentroCosto, type DatosSolicitud, type Item } from '../lib/api'
 
 // Campos de la solicitud, compartidos por Nueva solicitud y Editar (detalle).
 
@@ -29,6 +29,7 @@ export function validarSolicitud(d: DatosSolicitud, items: Item[], nueva: boolea
   const falta = (
     [
       ['qué se compra', d.titulo],
+      ['centro de costo', d.centro_costo],
       ['área que solicita', d.area],
       ['sucursal', d.sucursal],
     ] as const
@@ -80,10 +81,20 @@ export default function CamposSolicitud({
 }) {
   const set = <K extends keyof DatosSolicitud>(k: K, v: DatosSolicitud[K]) => onChange({ ...datos, [k]: v })
   const [proyectos, setProyectos] = useState<{ id: string; nombre: string }[]>([])
+  const [centros, setCentros] = useState<CentroCosto[]>([])
 
   useEffect(() => {
     listarProyectos().then(setProyectos).catch(() => setProyectos([]))
+    listarCentrosCosto().then(setCentros).catch(() => setCentros([]))
   }, [])
+
+  // El CECO dice la sucursal (4o dígito): la base la fija igual al guardar
+  const ceco = centros.find((c) => c.codigo === datos.centro_costo)
+  const grupos = [
+    { label: 'Líneas de negocio', items: centros.filter((c) => c.linea && c.linea !== 'Administración') },
+    { label: 'Administración', items: centros.filter((c) => c.linea === 'Administración') },
+    { label: 'Otros', items: centros.filter((c) => !c.linea) },
+  ].filter((g) => g.items.length)
 
   return (
     <Seccion titulo="Solicitud">
@@ -102,8 +113,40 @@ export default function CamposSolicitud({
           </datalist>
         </div>
         <div className="space-y-1">
+          <Label htmlFor="adq-ceco">Centro de costo</Label>
+          <select
+            id="adq-ceco"
+            value={datos.centro_costo ?? ''}
+            onChange={(e) => {
+              const c = centros.find((x) => x.codigo === e.target.value)
+              onChange({ ...datos, centro_costo: e.target.value || null, sucursal: c?.sucursal ?? datos.sucursal })
+            }}
+            className={selectClase}
+          >
+            <option value="">Elegir centro de costo</option>
+            {/* uno que ya no esté activo en SAP se sigue mostrando en solicitudes viejas */}
+            {datos.centro_costo && !ceco && <option value={datos.centro_costo}>{datos.centro_costo}</option>}
+            {grupos.map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.items.map((c) => (
+                  <option key={c.codigo} value={c.codigo}>
+                    {etiquetaCeco(c.codigo, c.nombre)}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1">
           <Label htmlFor="adq-sucursal">Sucursal</Label>
-          <select id="adq-sucursal" value={datos.sucursal} onChange={(e) => set('sucursal', e.target.value)} className={selectClase}>
+          <select
+            id="adq-sucursal"
+            value={datos.sucursal}
+            onChange={(e) => set('sucursal', e.target.value)}
+            disabled={!!ceco?.sucursal}
+            title={ceco?.sucursal ? 'La define el centro de costo' : undefined}
+            className={cn(selectClase, 'disabled:opacity-70')}
+          >
             <option value="">Elegir sucursal</option>
             {SUCURSALES.map((s) => (
               <option key={s}>{s}</option>
@@ -135,10 +178,6 @@ export default function CamposSolicitud({
               </option>
             ))}
           </select>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="adq-ceco">Centro de costo</Label>
-          <Input id="adq-ceco" value={datos.centro_costo ?? ''} onChange={(e) => set('centro_costo', e.target.value)} placeholder="Ej: 11 SIP, Mantención planta" />
         </div>
         <div className="space-y-1">
           <Label htmlFor="adq-entrega">Lugar de entrega</Label>

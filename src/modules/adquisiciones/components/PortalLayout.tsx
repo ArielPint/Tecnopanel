@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ArrowLeft, ClipboardList, KeyRound, LogOut, Menu, Moon, Plus, Receipt, Settings2, ShoppingCart, Sun } from 'lucide-react'
+import { ArrowLeft, BarChart3, ClipboardList, KeyRound, LogOut, Menu, Moon, PackageSearch, PiggyBank, Plus, Receipt, Settings2, ShoppingCart, Sun } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useOtrosPortales } from '@/hooks/useOtrosPortales'
@@ -17,12 +17,15 @@ import { usePermisosAdq } from '../hooks/usePermisosAdq'
 // propio), con los tokens del hub para que el modo claro y el oscuro funcionen igual.
 
 function Menu_({ onNavigate }: { onNavigate?: () => void }) {
-  const { puedeSolicitar, esCompras, tiene } = usePermisosAdq()
+  const { puedeSolicitar, esCompras, veControl, veReposicion, tiene } = usePermisosAdq()
   const { conHub, portales } = useOtrosPortales({ tipo: 'adquisiciones' })
   const items = [
+    ...(veControl ? [{ to: RUTA.dashboard, label: 'Dashboard', icon: BarChart3, end: true }] : []),
     { to: RUTA.inicio, label: 'Solicitudes', icon: ClipboardList, end: true },
     ...(puedeSolicitar ? [{ to: RUTA.nueva, label: 'Nueva solicitud', icon: Plus, end: true }] : []),
     ...(esCompras ? [{ to: RUTA.ordenes, label: 'Órdenes de compra SAP', icon: Receipt, end: true }] : []),
+    ...(veReposicion ? [{ to: RUTA.reposicion, label: 'Reposición de stock', icon: PackageSearch, end: true }] : []),
+    ...(tiene('jefe_compras') ? [{ to: RUTA.presupuestos, label: 'Presupuestos por CECO', icon: PiggyBank, end: true }] : []),
     ...(tiene('jefe_compras') ? [{ to: RUTA.configuracion, label: 'Niveles de aprobación', icon: Settings2, end: true }] : []),
   ]
 
@@ -95,7 +98,10 @@ function Marca() {
 const TITULOS: Record<string, string> = {
   [RUTA.inicio]: 'Solicitudes',
   [RUTA.nueva]: 'Nueva solicitud',
+  [RUTA.dashboard]: 'Dashboard',
   [RUTA.ordenes]: 'Órdenes de compra SAP',
+  [RUTA.reposicion]: 'Reposición de stock',
+  [RUTA.presupuestos]: 'Presupuestos por CECO',
   [RUTA.configuracion]: 'Niveles de aprobación',
 }
 
