@@ -153,24 +153,35 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="flex flex-col overflow-hidden sm:max-w-3xl">
+      <DialogContent className="flex flex-col overflow-hidden sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>{acceso ? 'Editar usuario' : 'Nuevo usuario'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
           <Tabs defaultValue="cuenta" className="flex min-h-0 flex-1 flex-col">
-            <TabsList className="grid h-auto w-full shrink-0 grid-cols-2 sm:grid-cols-8">
-              <TabsTrigger value="cuenta">Cuenta</TabsTrigger>
-              <TabsTrigger value="proyecto"><span className="hidden sm:inline">Accesos&nbsp;</span>Proyecto</TabsTrigger>
-              <TabsTrigger value="crm"><span className="hidden sm:inline">Accesos&nbsp;</span>CRM</TabsTrigger>
-              <TabsTrigger value="sip">Producción SIP</TabsTrigger>
-              <TabsTrigger value="prevencion"><span className="hidden sm:inline">Accesos&nbsp;</span>Prevención</TabsTrigger>
-              <TabsTrigger value="personal">Ingreso personal</TabsTrigger>
-              <TabsTrigger value="adquisiciones">Adquisiciones</TabsTrigger>
-              <TabsTrigger value="financiero">Financiero</TabsTrigger>
+            {/* Una pestaña por portal: cada una del ancho de su texto y, si no caben en una línea, bajan a la
+                siguiente (con columnas iguales los nombres largos se montaban). La altura fija de la barra
+                (h-9 del componente) se anula para que pueda crecer. Los paneles inactivos llevan
+                data-[state=inactive]:hidden: su clase flex anulaba el atributo hidden y cada uno dejaba un
+                espacio vacío sobre el panel activo. */}
+            <TabsList className="flex h-auto w-full shrink-0 flex-wrap justify-start gap-0.5 group-data-[orientation=horizontal]/tabs:h-auto">
+              {[
+                ['cuenta', 'Cuenta'],
+                ['proyecto', 'Proyecto'],
+                ['crm', 'CRM'],
+                ['sip', 'Producción SIP'],
+                ['prevencion', 'Prevención'],
+                ['personal', 'Ingreso de personal'],
+                ['adquisiciones', 'Adquisiciones'],
+                ['financiero', 'Financiero'],
+              ].map(([valor, nombre]) => (
+                <TabsTrigger key={valor} value={valor} className="h-8 flex-none px-2.5">
+                  {nombre}
+                </TabsTrigger>
+              ))}
             </TabsList>
 
-            <TabsContent value="cuenta" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
+            <TabsContent value="cuenta" className="flex data-[state=inactive]:hidden min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="a-nombre">Nombre</Label>
@@ -261,7 +272,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               </div>
             </TabsContent>
 
-            <TabsContent value="proyecto" className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1 pt-2">
+            <TabsContent value="proyecto" className="flex data-[state=inactive]:hidden min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1 pt-2">
               {proyectosObra.length === 0 && (
                 <p className="text-sm text-muted-foreground">Aún no hay proyectos creados en el portal.</p>
               )}
@@ -452,7 +463,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               })}
             </TabsContent>
 
-            <TabsContent value="crm" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
+            <TabsContent value="crm" className="flex data-[state=inactive]:hidden min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
               <div className="flex flex-col gap-1.5">
                 <Label>Rol en CRM</Label>
                 <Select
@@ -505,7 +516,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               </div>
             </TabsContent>
 
-            <TabsContent value="sip" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
+            <TabsContent value="sip" className="flex data-[state=inactive]:hidden min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
               <p className="text-[11px] text-muted-foreground">
                 Portal Producción de Paneles SIP (/produccion): transversal a la empresa, no depende de proyectos. Un acceso
                 por módulo; con cualquiera de ellos la persona entra al portal y ve el Dashboard. Los admin ya tienen todo.
@@ -557,7 +568,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               </div>
             </TabsContent>
 
-            <TabsContent value="prevencion" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
+            <TabsContent value="prevencion" className="flex data-[state=inactive]:hidden min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
               <p className="text-[11px] text-muted-foreground">
                 Portal de Prevención de Riesgos (/prevencion): transversal a la empresa, no depende de proyectos. Un acceso por
                 módulo; con cualquiera de ellos la persona entra al portal y ve el Dashboard. Los admin ya tienen todo.
@@ -609,7 +620,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               </div>
             </TabsContent>
 
-            <TabsContent value="personal" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
+            <TabsContent value="personal" className="flex data-[state=inactive]:hidden min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
               <p className="text-[11px] text-muted-foreground">
                 Portal Ingreso de Personal (/personal): solicitudes de ingreso de nuevo personal. Se puede marcar más de un rol. El coordinador
                 y las áreas ven solo su sucursal (pestaña Cuenta). Los admin ya tienen todo.
@@ -636,7 +647,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               </div>
             </TabsContent>
 
-            <TabsContent value="adquisiciones" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
+            <TabsContent value="adquisiciones" className="flex data-[state=inactive]:hidden min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
               <p className="text-[11px] text-muted-foreground">
                 Portal Adquisiciones (/adquisiciones): solicitudes de compra, cotizaciones, aprobación por montos y OC de SAP. Cada rol se marca por
                 sucursal: se puede ser, por ejemplo, comprador en una y aprobador en la otra. Todo lo que ve y hace queda en las sucursales marcadas
@@ -688,7 +699,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               </div>
             </TabsContent>
 
-            <TabsContent value="financiero" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
+            <TabsContent value="financiero" className="flex data-[state=inactive]:hidden min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
               <p className="text-[11px] text-muted-foreground">
                 Portal Financiero (/financiero): contabilidad de SAP por línea de negocio, centro de costo y sucursal. Cada informe se marca por
                 sucursal; quien ve una sola sucursal recibe igual su parte de la administración prorrateada. Aquí no cuenta la sucursal de la
