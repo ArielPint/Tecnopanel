@@ -6,6 +6,7 @@ import { useAuth } from '@/modules/crm/contexts/AuthContext'
 import MontoInput from '@/components/MontoInput'
 import { CAMPOS_BASICOS, CAMPO_CLIENTE_LABEL, errorDatosBasicos } from '@/modules/crm/lib/clienteCampos'
 import type { TipoVenta, TipoSubsidioVit, ZonaTermicaVit, TipologiaVitPrecio } from '@/modules/crm/types/database'
+import OpcionesTipologia from '@/modules/crm/components/OpcionesTipologia'
 
 interface Cliente { id: string; razon_social: string }
 
@@ -116,7 +117,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
     setForm(INIT); setError(''); setArchivo(null); setLineas([])
     supabase.from('clientes').select('id,razon_social').order('razon_social')
       .then(({ data }) => setClientes((data as Cliente[]) ?? []))
-    supabase.from('tipologia_vit_precios').select('tipologia,venta_actual_uf').order('venta_actual_uf')
+    supabase.from('tipologia_vit_precios').select('tipologia,venta_actual_uf,categoria').order('venta_actual_uf')
       .then(({ data }) => setTipologias((data as TipologiaVitPrecio[]) ?? []))
   }, [isOpen])
 
@@ -368,7 +369,7 @@ export default function NuevaOportunidadModal({ isOpen, onClose, onSuccess }: Pr
                       <select value={l.tipologia} onChange={e => actualizarLinea(idx, { tipologia: e.target.value })}
                         className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
                         <option value="">Sin tipología</option>
-                        {tipologias.map(t => <option key={t.tipologia} value={t.tipologia}>{t.tipologia} ({t.venta_actual_uf} UF)</option>)}
+                        <OpcionesTipologia tipologias={tipologias} />
                       </select>
                       <input type="number" min="0" placeholder="Cantidad" value={l.cantidad_casas}
                         onChange={e => actualizarLinea(idx, { cantidad_casas: e.target.value })}

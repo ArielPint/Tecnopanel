@@ -121,6 +121,7 @@ export interface MargenAutorizacion {
 export interface TipologiaVitPrecio {
   tipologia: string
   venta_actual_uf: number
+  categoria: string | null
 }
 
 export interface OportunidadTipologia {
