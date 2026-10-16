@@ -13,6 +13,7 @@ import { handleSupabaseError } from '@/modules/crm/lib/errors'
 import { formatCLP } from '@/modules/financiero/utils/formatters'
 import MontoInput from '@/components/MontoInput'
 import type { Oportunidad, Profile, PerfilBasico, OportunidadHistorialEtapa, OportunidadDocumento, TareaIngenieria, EstadoTarea, MensajeOportunidad, Cierre, TipologiaVitPrecio, OportunidadTipologia, ZonaTermicaVit, TipoSubsidioVit, MargenAutorizacion, HitosVit } from '@/modules/crm/types/database'
+import OpcionesTipologia from '@/modules/crm/components/OpcionesTipologia'
 import { familiasVisibles, ALCANCES_OPCIONES, REGIONES_COMUNAS, ZONAS_TERMICAS, TIPO_SUBSIDIO_OPCIONES } from '@/modules/crm/components/NuevaOportunidadModal'
 import { notificar, ROLES_GERENCIA, ROLES_GERENCIA_ADMIN } from '@/modules/crm/lib/notificaciones'
 import { HITOS_VIT, hitoVitCumplido } from '@/modules/crm/lib/hitosVit'
@@ -386,7 +387,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   useEffect(() => { setOpp(oportunidad); setTab(initialTab); loadAll() }, [oportunidad.id])
 
   useEffect(() => {
-    supabase.from('tipologia_vit_precios').select('tipologia,venta_actual_uf').order('venta_actual_uf')
+    supabase.from('tipologia_vit_precios').select('tipologia,venta_actual_uf,categoria').order('venta_actual_uf')
       .then(({ data }) => setTipologias((data as TipologiaVitPrecio[]) ?? []))
   }, [])
 
@@ -1828,7 +1829,7 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
                             <select value={l.tipologia} onChange={e => actualizarLinea(idx, { tipologia: e.target.value })}
                               className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-crm-red">
                               <option value="">Sin tipología</option>
-                              {tipologias.map(t => <option key={t.tipologia} value={t.tipologia}>{t.tipologia} ({t.venta_actual_uf} UF)</option>)}
+                              <OpcionesTipologia tipologias={tipologias} />
                             </select>
                           ) : (
                             <input value={l.tipologia} onChange={e => actualizarLinea(idx, { tipologia: e.target.value })}
