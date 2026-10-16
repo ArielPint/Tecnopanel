@@ -6,4 +6,7 @@ export const RUTA = {
   lineas: '/financiero/lineas',
   ventas: '/financiero/ventas',
   prorrateo: '/financiero/prorrateo',
+  balance: '/financiero/balance',
+  ifrs: '/financiero/ifrs',
+  clasificacion: '/financiero/clasificacion-ifrs',
 }

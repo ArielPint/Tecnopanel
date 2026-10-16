@@ -18,6 +18,8 @@ export interface PedidoDetalle {
   monto: number
   /** Parte de la cifra que es administración repartida: no tiene asientos propios */
   prorrateado: number
+  /** Cuentas de balance: movimientos del mes con saldo inicial y final. signo 1 activos, -1 pasivos y patrimonio */
+  balance?: { signo: 1 | -1 }
 }
 
 export default function DetalleAsientos({ pedido, catalogos, onClose }: { pedido: PedidoDetalle | null; catalogos: Catalogos; onClose: () => void }) {
@@ -46,6 +48,9 @@ export default function DetalleAsientos({ pedido, catalogos, onClose }: { pedido
   const totalDebe = lista.reduce((s, a) => s + a.debe, 0)
   const totalHaber = lista.reduce((s, a) => s + a.haber, 0)
   const varias = (pedido?.filtro.cuentas.length ?? 0) > 1
+  const bal = pedido?.balance
+  // saldo al cierre = saldo inicial + movimientos del mes (con el signo de la sección)
+  const movimientoMes = bal ? bal.signo * (totalDebe - totalHaber) : 0
 
   async function exportar() {
     if (!pedido) return
@@ -87,6 +92,22 @@ export default function DetalleAsientos({ pedido, catalogos, onClose }: { pedido
             parte no tiene asientos propios. Abajo van los asientos directos ({pesos(pedido.monto - pedido.prorrateado)}).
           </div>
         )}
+        {bal && pedido && !hayMas && asientos && (
+          <div className="grid grid-cols-3 gap-2 rounded-md border bg-muted/40 p-2 text-center text-xs">
+            <div>
+              <p className="text-muted-foreground">Saldo inicial</p>
+              <p className="font-semibold tabular-nums">{pesos(pedido.monto - movimientoMes)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Movimientos del mes</p>
+              <p className="font-semibold tabular-nums">{pesos(movimientoMes)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Saldo al cierre</p>
+              <p className="font-semibold tabular-nums">{pesos(pedido.monto)}</p>
+            </div>
+          </div>
+        )}
         {hayMas && (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
             Hay más de {MAX_ASIENTOS.toLocaleString('es-CL')} asientos: se muestran los primeros. Acota el periodo o la cuenta para verlos todos.
@@ -103,7 +124,7 @@ export default function DetalleAsientos({ pedido, catalogos, onClose }: { pedido
               ))}
             </div>
           ) : lista.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">Sin asientos directos para esta cifra.</p>
+            <p className="p-4 text-sm text-muted-foreground">{bal ? 'Sin movimientos en el mes: el saldo viene de meses anteriores.' : 'Sin asientos directos para esta cifra.'}</p>
           ) : (
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-card">
@@ -114,7 +135,7 @@ export default function DetalleAsientos({ pedido, catalogos, onClose }: { pedido
                   <TableHead>Glosa</TableHead>
                   {varias && <TableHead>Cuenta</TableHead>}
                   <TableHead>CECO</TableHead>
-                  <TableHead>Tarea WIP</TableHead>
+                  {!bal && <TableHead>Tarea WIP</TableHead>}
                   <TableHead>Proyecto</TableHead>
                   <TableHead className="text-right">Debe</TableHead>
                   <TableHead className="text-right">Haber</TableHead>
@@ -136,7 +157,7 @@ export default function DetalleAsientos({ pedido, catalogos, onClose }: { pedido
                       </TableCell>
                     )}
                     <TableCell className="whitespace-nowrap text-xs" title={cecos.get(a.ceco)?.nombre}>{a.ceco || '—'}</TableCell>
-                    <TableCell className="text-xs" title={dim2.get(a.dim2)}>{a.dim2 || '—'}</TableCell>
+                    {!bal && <TableCell className="text-xs" title={dim2.get(a.dim2)}>{a.dim2 || '—'}</TableCell>}
                     <TableCell className="text-xs">{a.proyecto || '—'}</TableCell>
                     <TableCell className="whitespace-nowrap text-right tabular-nums">{a.debe ? formatCLP(a.debe) : ''}</TableCell>
                     <TableCell className="whitespace-nowrap text-right tabular-nums">{a.haber ? formatCLP(a.haber) : ''}</TableCell>
@@ -145,8 +166,8 @@ export default function DetalleAsientos({ pedido, catalogos, onClose }: { pedido
               </TableBody>
               <TableFooter>
                 <TableRow>
-                  <TableCell colSpan={varias ? 8 : 7} className="font-semibold">
-                    {lista.length.toLocaleString('es-CL')} líneas · haber − debe {pesos(totalHaber - totalDebe)}
+                  <TableCell colSpan={(varias ? 8 : 7) - (bal ? 1 : 0)} className="font-semibold">
+                    {lista.length.toLocaleString('es-CL')} líneas · {bal ? `movimiento ${pesos(movimientoMes)}` : `haber − debe ${pesos(totalHaber - totalDebe)}`}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums">{formatCLP(totalDebe)}</TableCell>
                   <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums">{formatCLP(totalHaber)}</TableCell>

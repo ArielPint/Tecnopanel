@@ -159,12 +159,30 @@ export interface FiltroAsientos {
   /** null = todos los CECO que la base deje ver */
   cecos: string[] | null
   dim2: string | null
+  /** 'balance': movimientos de cuentas de balance (fin_bal_asientos), sin el cierre del mes 'hasta' */
+  tabla?: 'eerr' | 'balance'
 }
 
 export const MAX_ASIENTOS = 2000
 
 /** Asientos que forman una cifra. Devuelve hasta MAX_ASIENTOS + 1 para saber si hay más. */
 export async function cargarAsientos(f: FiltroAsientos): Promise<Asiento[]> {
+  if (f.tabla === 'balance') {
+    const { data, error } = await supabase
+      .from('fin_bal_asientos')
+      .select('trans_id, linea_id, fecha, numero, tipo_trans, referencia, glosa, cuenta, ceco, proyecto, debe, haber')
+      .gte('periodo', `${f.desde}-01`)
+      .lte('periodo', `${f.hasta}-01`)
+      .in('cuenta', f.cuentas)
+      // el cierre del ejercicio del último mes deja la cuenta en cero: no es parte del saldo a esa fecha
+      .or(`clase.neq.cierre,periodo.lt.${f.hasta}-01`)
+      .order('fecha')
+      .order('trans_id')
+      .order('linea_id')
+      .limit(MAX_ASIENTOS + 1)
+    if (error) lanzar(error)
+    return (data ?? []).map((a) => ({ ...a, dim2: '', debe: Number(a.debe), haber: Number(a.haber) })) as Asiento[]
+  }
   let q = supabase
     .from('fin_asientos')
     .select('trans_id, linea_id, fecha, numero, tipo_trans, referencia, glosa, cuenta, ceco, dim2, proyecto, debe, haber')
@@ -193,4 +211,51 @@ export async function cargarEstado(): Promise<EstadoSync | null> {
   const { data, error } = await supabase.from('fin_estado').select('*').maybeSingle()
   if (error) lanzar(error)
   return data as EstadoSync | null
+}
+
+// ---------------------------------------------------------------- balance
+
+/** Fila de fin_balance: saldo debe - haber de una cuenta de balance; cuenta null = resultado del ejercicio. */
+export interface FilaBalance {
+  cuenta: string | null
+  grupo: number
+  saldo: number
+}
+
+export interface RubroIfrs {
+  codigo: string
+  nombre: string
+  seccion: 'activo_corriente' | 'activo_no_corriente' | 'pasivo_corriente' | 'pasivo_no_corriente' | 'patrimonio'
+  orden: number
+}
+
+export interface MapeoIfrs {
+  cuenta: string
+  rubro: string | null
+  rubro_propuesto: string | null
+  /** true = lo fijó una persona; false = propuesta automática */
+  revisado: boolean
+  actualizado_por: string | null
+  actualizado_en: string
+}
+
+/** Saldos al cierre del mes 'YYYY-MM'. */
+export async function cargarBalance(corte: string): Promise<FilaBalance[]> {
+  const { data, error } = await supabase.rpc('fin_balance', { p_corte: `${corte}-01` })
+  if (error) lanzar(error)
+  return ((data ?? []) as FilaBalance[]).map((f) => ({ ...f, saldo: Number(f.saldo) }))
+}
+
+export async function cargarIfrs(): Promise<{ rubros: RubroIfrs[]; mapeo: MapeoIfrs[] }> {
+  const [rubros, mapeo] = await Promise.all([
+    paginado<RubroIfrs>((d, h) => supabase.from('fin_ifrs_rubros').select('*').order('orden').range(d, h)),
+    paginado<MapeoIfrs>((d, h) => supabase.from('fin_ifrs_mapeo').select('*').order('cuenta').range(d, h)),
+  ])
+  return { rubros, mapeo }
+}
+
+/** Fija el rubro de esas cuentas; rubro null = volver a la propuesta automática. */
+export async function guardarIfrs(cambios: { cuenta: string; rubro: string | null }[]) {
+  const { error } = await supabase.rpc('fin_guardar_ifrs', { p: cambios })
+  if (error) lanzar(error)
 }
