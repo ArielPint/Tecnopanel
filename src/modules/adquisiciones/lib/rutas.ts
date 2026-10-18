@@ -7,6 +7,7 @@ export const RUTA = {
   ordenes: '/adquisiciones/ordenes',
   presupuestos: '/adquisiciones/presupuestos',
   reposicion: '/adquisiciones/reposicion',
+  bodega: '/adquisiciones/bodega',
   configuracion: '/adquisiciones/configuracion',
   solicitud: (id: string) => `/adquisiciones/${id}`,
 }

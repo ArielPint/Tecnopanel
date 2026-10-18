@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ArrowLeft, BarChart3, ClipboardList, KeyRound, LogOut, Menu, Moon, PackageSearch, PiggyBank, Plus, Receipt, Settings2, ShoppingCart, Sun } from 'lucide-react'
+import { ArrowLeft, BarChart3, ClipboardList, KeyRound, LogOut, Menu, Moon, PackageSearch, PiggyBank, Plus, Receipt, Settings2, ShoppingCart, Sun, Warehouse } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useOtrosPortales } from '@/hooks/useOtrosPortales'
@@ -25,6 +25,7 @@ function Menu_({ onNavigate }: { onNavigate?: () => void }) {
     ...(puedeSolicitar ? [{ to: RUTA.nueva, label: 'Nueva solicitud', icon: Plus, end: true }] : []),
     ...(esCompras ? [{ to: RUTA.ordenes, label: 'Órdenes de compra SAP', icon: Receipt, end: true }] : []),
     ...(veReposicion ? [{ to: RUTA.reposicion, label: 'Reposición de stock', icon: PackageSearch, end: true }] : []),
+    ...(veReposicion ? [{ to: RUTA.bodega, label: 'Bodega', icon: Warehouse, end: true }] : []),
     ...(tiene('jefe_compras') ? [{ to: RUTA.presupuestos, label: 'Presupuestos por CECO', icon: PiggyBank, end: true }] : []),
     ...(tiene('jefe_compras') ? [{ to: RUTA.configuracion, label: 'Niveles de aprobación', icon: Settings2, end: true }] : []),
   ]
@@ -101,6 +102,7 @@ const TITULOS: Record<string, string> = {
   [RUTA.dashboard]: 'Dashboard',
   [RUTA.ordenes]: 'Órdenes de compra SAP',
   [RUTA.reposicion]: 'Reposición de stock',
+  [RUTA.bodega]: 'Bodega',
   [RUTA.presupuestos]: 'Presupuestos por CECO',
   [RUTA.configuracion]: 'Niveles de aprobación',
 }

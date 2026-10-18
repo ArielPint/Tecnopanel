@@ -144,7 +144,7 @@ export default function Reposicion() {
         <h1 className="text-xl font-extrabold">Reposición de stock</h1>
         <p className="text-sm text-muted-foreground">
           Stock de SAP de las bodegas de Santiago y Puerto Varas contra los mínimos definidos aquí. El disponible descuenta lo comprometido y suma lo pedido en OC y en
-          solicitudes abiertas del portal. El consumo es el promedio mensual de salidas de los últimos 6 meses.
+          solicitudes abiertas del portal. El consumo es el promedio mensual de salidas de los últimos 12 meses.
         </p>
       </div>
 
@@ -282,7 +282,9 @@ export default function Reposicion() {
                   <td className="px-2 py-1.5 text-right font-mono-tabular text-muted-foreground">{num(f.comprometido, 2)}</td>
                   <td className="px-2 py-1.5 text-right font-mono-tabular text-muted-foreground">{num(f.pedido, 2)}</td>
                   <td className={cn('px-2 py-1.5 text-right font-mono-tabular font-semibold', f.bajo_minimo && 'text-destructive')}>{num(f.disponible, 2)}</td>
-                  <td className="px-2 py-1.5 text-right font-mono-tabular">{num(f.consumo_mensual, 1)}</td>
+                  <td className="px-2 py-1.5 text-right font-mono-tabular" title={`Máximo mensual en 12 meses: ${num(f.consumo_max_mes, 1)}`}>
+                    {num(f.consumo_mensual, 1)}
+                  </td>
                   <td className="px-2 py-1.5 text-right tabular-nums">{f.cobertura_dias == null ? '—' : `${f.cobertura_dias} d`}</td>
                   <td className="px-2 py-1.5">
                     <Input

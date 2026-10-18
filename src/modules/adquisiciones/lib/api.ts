@@ -592,6 +592,7 @@ export interface FilaReposicion {
   pedido: number
   en_solicitud: number
   consumo_mensual: number
+  consumo_max_mes: number
   minimo: number | null
   reorden: number | null
   disponible: number
@@ -616,3 +617,100 @@ export const guardarReposicion = (filas: { articulo_codigo: string; bodega_codig
   rpc('adq_guardar_reposicion', { p: filas })
 
 export const BODEGAS: Record<string, string> = { B006: 'Bodega Santiago', B007: 'Bodega Puerto Varas' }
+
+// ---------------------------------------------------------------- Bodega
+
+export type EstadoConteo = 'sin_conteo' | 'vigente' | 'atencion' | 'desactualizado'
+
+export interface FilaBodega {
+  articulo_codigo: string
+  bodega_codigo: 'B006' | 'B007'
+  sucursal: string
+  articulo_nombre: string
+  unidad: string | null
+  grupo: string | null
+  stock_sap: number
+  comprometido_sap: number
+  pedido_sap: number
+  /** Saldo por recibir de líneas de OC abiertas de esta bodega */
+  pendiente_oc: number
+  oc_abiertas: number
+  proxima_entrega: string | null
+  oc_atrasada: boolean
+  consumo_mensual: number
+  ultima_recepcion: string | null
+  stock_fisico: number | null
+  inutilizable: number
+  comprometido_bodega: number | null
+  observacion: string | null
+  contado_at: string | null
+  updated_at: string | null
+  actualizado_por_nombre: string | null
+  antiguedad_dias: number | null
+  estado_conteo: EstadoConteo
+  stock_usado: number
+  utilizable: number
+  disponible_real: number
+  diferencia_sap: number | null
+}
+
+export async function listarBodega(): Promise<FilaBodega[]> {
+  const filas: FilaBodega[] = []
+  for (let desde = 0; ; desde += 1000) {
+    const { data, error: e } = await supabase
+      .from('adq_bodega_v')
+      .select('*')
+      .order('articulo_nombre')
+      .order('bodega_codigo')
+      .range(desde, desde + 999)
+    if (e) error(e)
+    filas.push(...((data ?? []) as FilaBodega[]))
+    if (!data || data.length < 1000) break
+  }
+  return filas
+}
+
+export interface ConteoBodega {
+  articulo_codigo: string
+  bodega_codigo: string
+  stock_fisico: number | null
+  inutilizable: number | null
+  comprometido: number | null
+  observacion: string | null
+}
+
+/** Cada fila es un registro: si trae stock físico cuenta como conteo de hoy. Todo vacío quita el registro. */
+export async function guardarConteo(filas: ConteoBodega[], motivo: string): Promise<void> {
+  await rpc('adq_guardar_conteo', { p: filas, p_motivo: motivo.trim() || null })
+}
+
+export interface MovimientoBodega {
+  id: number
+  articulo_codigo: string
+  articulo_nombre: string
+  bodega_codigo: string
+  accion: 'conteo' | 'reversa'
+  stock_fisico_antes: number | null
+  inutilizable_antes: number | null
+  comprometido_antes: number | null
+  stock_fisico: number | null
+  inutilizable: number | null
+  comprometido: number | null
+  stock_sap: number | null
+  observacion: string | null
+  motivo: string | null
+  revierte_id: number | null
+  revertido: boolean
+  usuario_nombre: string | null
+  created_at: string
+}
+
+export async function listarHistorialBodega(bodega: string, articulo?: string): Promise<MovimientoBodega[]> {
+  let q = supabase.from('adq_bodega_historial_v').select('*').eq('bodega_codigo', bodega).order('id', { ascending: false }).limit(300)
+  if (articulo) q = q.eq('articulo_codigo', articulo)
+  const { data, error: e } = await q
+  if (e) error(e)
+  return (data ?? []) as MovimientoBodega[]
+}
+
+export const revertirConteo = (id: number, motivo: string) => rpc('adq_revertir_conteo', { p_id: id, p_motivo: motivo.trim() })
