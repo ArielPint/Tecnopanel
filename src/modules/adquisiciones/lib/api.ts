@@ -10,6 +10,8 @@ const BUCKET = 'adquisiciones'
 export const ARCHIVOS_ACEPTADOS = '.pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx'
 
 export interface DatosSolicitud {
+  /** Solo al crearla desde un plan de compra */
+  plan_id?: string | null
   sucursal: string
   area: string
   titulo: string
@@ -56,6 +58,16 @@ export interface Solicitud extends DatosSolicitud {
   oc_docnums: string
   recepcion_pct: number | null
   facturado: number | null
+  /** Plan de compra del que nació, si viene de Planificación */
+  plan_id: string | null
+  plan_numero: number | null
+  comprador_id: string | null
+  comprador_nombre: string | null
+  primera_atencion_at: string | null
+  primera_atencion_por_nombre: string | null
+  sla_vence_at: string
+  sla_estado: 'en_plazo' | 'por_vencer' | 'vencido' | 'cumplido' | 'atrasado'
+  sla_horas_transcurridas: number
 }
 
 export interface Item {
@@ -385,6 +397,16 @@ async function rpc(fn: string, args: Record<string, unknown>): Promise<void> {
   if (e) error(e)
 }
 
+export const marcarRevisada = (id: string) => rpc('adq_marcar_revisada', { p_solicitud_id: id })
+export const asignarComprador = (id: string, comprador: string | null) =>
+  rpc('adq_asignar_comprador', { p_solicitud_id: id, p_comprador: comprador })
+
+export async function listarCompradores(sucursal: string): Promise<{ id: string; nombre: string | null }[]> {
+  const { data, error: e } = await supabase.rpc('adq_compradores', { p_sucursal: sucursal })
+  if (e) error(e)
+  return (data ?? []) as { id: string; nombre: string | null }[]
+}
+
 export const enviarAprobacion = (id: string, cotizacionId: string) =>
   rpc('adq_enviar_aprobacion', { p_solicitud_id: id, p_cotizacion_id: cotizacionId })
 export const aprobar = (id: string, comentario: string) => rpc('adq_aprobar', { p_solicitud_id: id, p_comentario: comentario || null })
@@ -592,6 +614,7 @@ export interface FilaReposicion {
   pedido: number
   en_solicitud: number
   consumo_mensual: number
+  consumo_max_mes: number
   minimo: number | null
   reorden: number | null
   disponible: number
@@ -616,3 +639,493 @@ export const guardarReposicion = (filas: { articulo_codigo: string; bodega_codig
   rpc('adq_guardar_reposicion', { p: filas })
 
 export const BODEGAS: Record<string, string> = { B006: 'Bodega Santiago', B007: 'Bodega Puerto Varas' }
+
+// ---------------------------------------------------------------- Bodega
+
+export type EstadoConteo = 'sin_conteo' | 'vigente' | 'atencion' | 'desactualizado'
+
+export interface FilaBodega {
+  articulo_codigo: string
+  bodega_codigo: 'B006' | 'B007'
+  sucursal: string
+  articulo_nombre: string
+  unidad: string | null
+  grupo: string | null
+  stock_sap: number
+  comprometido_sap: number
+  pedido_sap: number
+  /** Saldo por recibir de líneas de OC abiertas de esta bodega */
+  pendiente_oc: number
+  oc_abiertas: number
+  proxima_entrega: string | null
+  oc_atrasada: boolean
+  consumo_mensual: number
+  ultima_recepcion: string | null
+  stock_fisico: number | null
+  inutilizable: number
+  comprometido_bodega: number | null
+  observacion: string | null
+  contado_at: string | null
+  updated_at: string | null
+  actualizado_por_nombre: string | null
+  antiguedad_dias: number | null
+  estado_conteo: EstadoConteo
+  stock_usado: number
+  utilizable: number
+  disponible_real: number
+  diferencia_sap: number | null
+}
+
+export async function listarBodega(): Promise<FilaBodega[]> {
+  const filas: FilaBodega[] = []
+  for (let desde = 0; ; desde += 1000) {
+    const { data, error: e } = await supabase
+      .from('adq_bodega_v')
+      .select('*')
+      .order('articulo_nombre')
+      .order('bodega_codigo')
+      .range(desde, desde + 999)
+    if (e) error(e)
+    filas.push(...((data ?? []) as FilaBodega[]))
+    if (!data || data.length < 1000) break
+  }
+  return filas
+}
+
+export interface ConteoBodega {
+  articulo_codigo: string
+  bodega_codigo: string
+  stock_fisico: number | null
+  inutilizable: number | null
+  comprometido: number | null
+  observacion: string | null
+}
+
+/** Cada fila es un registro: si trae stock físico cuenta como conteo de hoy. Todo vacío quita el registro. */
+export async function guardarConteo(filas: ConteoBodega[], motivo: string): Promise<void> {
+  await rpc('adq_guardar_conteo', { p: filas, p_motivo: motivo.trim() || null })
+}
+
+export interface MovimientoBodega {
+  id: number
+  articulo_codigo: string
+  articulo_nombre: string
+  bodega_codigo: string
+  accion: 'conteo' | 'reversa'
+  stock_fisico_antes: number | null
+  inutilizable_antes: number | null
+  comprometido_antes: number | null
+  stock_fisico: number | null
+  inutilizable: number | null
+  comprometido: number | null
+  stock_sap: number | null
+  observacion: string | null
+  motivo: string | null
+  revierte_id: number | null
+  revertido: boolean
+  usuario_nombre: string | null
+  created_at: string
+}
+
+export async function listarHistorialBodega(bodega: string, articulo?: string): Promise<MovimientoBodega[]> {
+  let q = supabase.from('adq_bodega_historial_v').select('*').eq('bodega_codigo', bodega).order('id', { ascending: false }).limit(300)
+  if (articulo) q = q.eq('articulo_codigo', articulo)
+  const { data, error: e } = await q
+  if (e) error(e)
+  return (data ?? []) as MovimientoBodega[]
+}
+
+export const revertirConteo = (id: number, motivo: string) => rpc('adq_revertir_conteo', { p_id: id, p_motivo: motivo.trim() })
+
+// ---------------------------------------------------------------- Planificación y planes de compra
+
+export interface ObraPlanificable {
+  proyecto_codigo: string
+  proyecto_nombre: string | null
+  ordenes: number
+  desde: string | null
+  lineas_pendientes: number
+  kits_pendientes: number
+}
+
+export async function listarObras(bodega: string, desde: string | null): Promise<ObraPlanificable[]> {
+  const { data, error: e } = await supabase.rpc('adq_obras_planificables', { p_bodega: bodega, p_desde: desde || null })
+  if (e) error(e)
+  return (data ?? []) as ObraPlanificable[]
+}
+
+export type EstadoPlan = 'critico' | 'comprar' | 'en_solicitud' | 'cubierto'
+
+export interface FilaPlan {
+  articulo_codigo: string
+  articulo_nombre: string
+  unidad: string | null
+  grupo: string | null
+  requerimiento: number
+  req_simulacion: number
+  stock_sap: number
+  comprometido_sap: number
+  stock_fisico: number | null
+  inutilizable: number
+  comprometido_bodega: number | null
+  fuente_stock: 'SAP' | 'Físico'
+  estado_conteo: EstadoConteo
+  disponible_real: number
+  oc_pendiente: number
+  oc_atrasada: number
+  oc_en_plazo: number
+  oc_posterior: number
+  oc_sin_fecha: number
+  en_solicitud: number
+  minimo: number
+  compra_sugerida: number
+  saldo_despues: number
+  consumo_mensual: number
+  cobertura_meses: number | null
+  estado: EstadoPlan
+  alerta_oc: string | null
+  ultimo_precio: number | null
+  ultimo_proveedor: string | null
+}
+
+export interface Simulacion {
+  proyecto_codigo: string
+  proyecto_nombre: string | null
+  cantidad: number
+}
+
+/** desde: solo órdenes de fabricación creadas desde esa fecha (SAP tiene órdenes viejas sin cerrar). */
+export async function planificar(
+  bodega: string,
+  obras: string[] | null,
+  simulacion: Simulacion[],
+  fecha: string | null,
+  desde: string | null,
+): Promise<FilaPlan[]> {
+  const { data, error: e } = await supabase.rpc('adq_planificar', {
+    p_bodega: bodega,
+    p_obras: obras,
+    p_simulacion: simulacion.filter((x) => x.cantidad > 0).map((x) => ({ proyecto_codigo: x.proyecto_codigo, cantidad: x.cantidad })),
+    p_fecha: fecha || null,
+    p_desde: desde || null,
+  })
+  if (e) error(e)
+  return (data ?? []) as FilaPlan[]
+}
+
+export interface PlanCompra {
+  id: string
+  numero: number
+  bodega_codigo: 'B006' | 'B007'
+  sucursal: string
+  anio: number
+  mes: number
+  version: number
+  estado: 'abierto' | 'cerrado'
+  fecha_necesidad: string | null
+  ot_desde: string | null
+  obras: string[] | null
+  simulacion: Simulacion[]
+  nota: string | null
+  creado_por_nombre: string | null
+  created_at: string
+  cerrado_por_nombre: string | null
+  cerrado_at: string | null
+  periodo: string
+  lineas: number
+  valor_planificado: number
+  avance_pct: number
+  lineas_con_oc: number
+  oc: number
+  solicitudes: string
+  solicitudes_abiertas: number
+}
+
+export interface LineaPlan {
+  plan_id: string
+  articulo_codigo: string
+  articulo_nombre: string | null
+  unidad: string | null
+  requerimiento: number
+  disponible_real: number
+  oc_pendiente: number
+  en_solicitud: number
+  minimo: number
+  sugerido: number
+  planificado: number
+  precio_ref: number | null
+  proveedor_ref: string | null
+  alerta_oc: string | null
+  en_solicitud_plan: number
+  comprado: number
+  recibido: number
+  por_recibir: number
+  sin_oc: number
+  oc_atrasada: boolean
+  docnums: string | null
+  estado_linea: 'recibido' | 'comprado' | 'parcial' | 'en_solicitud' | 'pendiente'
+}
+
+export async function listarPlanes(): Promise<PlanCompra[]> {
+  const { data, error: e } = await supabase.from('adq_planes_v').select('*').order('created_at', { ascending: false })
+  if (e) error(e)
+  return (data ?? []) as PlanCompra[]
+}
+
+export async function obtenerPlan(id: string): Promise<PlanCompra | null> {
+  const { data, error: e } = await supabase.from('adq_planes_v').select('*').eq('id', id).maybeSingle()
+  if (e) error(e)
+  return data as PlanCompra | null
+}
+
+export async function listarLineasPlan(id: string): Promise<LineaPlan[]> {
+  const { data, error: e } = await supabase.from('adq_plan_seguimiento_v').select('*').eq('plan_id', id).order('articulo_nombre')
+  if (e) error(e)
+  return (data ?? []) as LineaPlan[]
+}
+
+export interface DatosPlan {
+  bodega_codigo: string
+  anio: number
+  mes: number
+  fecha_necesidad: string | null
+  ot_desde: string | null
+  obras: string[] | null
+  simulacion: Simulacion[]
+  nota: string | null
+  lineas: {
+    articulo_codigo: string
+    articulo_nombre: string
+    unidad: string | null
+    requerimiento: number
+    disponible_real: number
+    oc_pendiente: number
+    en_solicitud: number
+    minimo: number
+    sugerido: number
+    planificado: number
+    precio_ref: number | null
+    proveedor_ref: string | null
+    alerta_oc: string | null
+  }[]
+}
+
+export async function guardarPlan(p: DatosPlan): Promise<string> {
+  const { data, error: e } = await supabase.rpc('adq_guardar_plan', { p })
+  if (e) error(e)
+  return data as string
+}
+
+export const cambiarEstadoPlan = (id: string, estado: 'abierto' | 'cerrado') => rpc('adq_plan_estado', { p_plan_id: id, p_estado: estado })
+export const vincularOcPlan = (id: string, docnums: number[]) => rpc('adq_plan_vincular_oc', { p_plan_id: id, p_docnums: docnums })
+export const desvincularOcPlan = (id: string, docnum: number) => rpc('adq_plan_desvincular_oc', { p_plan_id: id, p_docnum: docnum })
+
+export interface OcCandidata {
+  docnum: number
+  proveedor_nombre: string | null
+  fecha: string
+  fecha_entrega: string | null
+  abierta: boolean
+  articulos: number
+  cantidad: number
+}
+
+export async function listarOcCandidatas(id: string): Promise<OcCandidata[]> {
+  const { data, error: e } = await supabase.rpc('adq_plan_oc_candidatas', { p_plan_id: id })
+  if (e) error(e)
+  return (data ?? []) as OcCandidata[]
+}
+
+export async function listarOcPlan(id: string): Promise<{ docnum: number; created_at: string }[]> {
+  const { data, error: e } = await supabase.from('adq_plan_oc').select('docnum, created_at').eq('plan_id', id).order('docnum')
+  if (e) error(e)
+  return (data ?? []) as { docnum: number; created_at: string }[]
+}
+
+export async function listarSolicitudesPlan(id: string): Promise<Solicitud[]> {
+  const { data, error: e } = await supabase.from('adq_solicitudes_v').select('*').eq('plan_id', id).order('numero')
+  if (e) error(e)
+  return (data ?? []) as Solicitud[]
+}
+
+// ---------------------------------------------------------------- Proveedores, evaluaciones y NC
+
+export interface ProveedorFicha {
+  codigo: string
+  nombre: string
+  rut: string | null
+  email: string | null
+  telefono: string | null
+  activo: boolean
+  oc_12m: number
+  comprado_12m: number
+  oc_abiertas: number
+  ultima_oc: string | null
+  pendiente_neto: number
+  lineas_pendientes: number
+  lineas_atrasadas: number
+  recepcion_pct: number | null
+  ultima_puntaje: number | null
+  ultima_clase: 'A' | 'B' | 'C' | 'D' | null
+  ultima_evaluacion: string | null
+  proxima_revision: string | null
+  revision_vencida: boolean
+  nc_abiertas: number
+  nc_12m: number
+}
+
+export async function listarProveedores(): Promise<ProveedorFicha[]> {
+  const filas: ProveedorFicha[] = []
+  for (let desde = 0; ; desde += 1000) {
+    const { data, error: e } = await supabase
+      .from('adq_proveedores_v')
+      .select('*')
+      .order('comprado_12m', { ascending: false })
+      .order('codigo')
+      .range(desde, desde + 999)
+    if (e) error(e)
+    filas.push(...((data ?? []) as ProveedorFicha[]))
+    if (!data || data.length < 1000) break
+  }
+  return filas
+}
+
+export async function obtenerProveedor(codigo: string): Promise<ProveedorFicha | null> {
+  const { data, error: e } = await supabase.from('adq_proveedores_v').select('*').eq('codigo', codigo).maybeSingle()
+  if (e) error(e)
+  return data as ProveedorFicha | null
+}
+
+export async function listarOcProveedor(codigo: string): Promise<OcSap[]> {
+  const { data, error: e } = await supabase
+    .from('adq_sap_oc_v')
+    .select('*')
+    .eq('proveedor_codigo', codigo)
+    .order('fecha', { ascending: false })
+    .limit(200)
+  if (e) error(e)
+  return (data ?? []) as OcSap[]
+}
+
+export const CRITERIOS = [
+  { campo: 'calidad', label: 'Calidad', peso: 20, mejora: 'Reforzar el control de calidad para reducir no conformidades, rechazos y reincidencias.' },
+  { campo: 'entrega', label: 'Entrega / OTIF', peso: 20, mejora: 'Mejorar el cumplimiento de fechas y cantidades comprometidas, informando desvíos con anticipación.' },
+  { campo: 'precio', label: 'Precio / Costo', peso: 15, mejora: 'Revisar competitividad de precios y oportunidades de optimización de costos.' },
+  { campo: 'capacidad', label: 'Capacidad de suministro', peso: 10, mejora: 'Fortalecer capacidad y disponibilidad para asegurar continuidad ante aumentos de demanda.' },
+  { campo: 'pago', label: 'Condiciones de pago', peso: 10, mejora: 'Revisar condiciones comerciales y alternativas de pago que mejoren la relación de largo plazo.' },
+  { campo: 'servicio', label: 'Respuesta / Servicio', peso: 10, mejora: 'Reducir tiempos de respuesta y mejorar seguimiento, comunicación y resolución de incidencias.' },
+  { campo: 'riesgo', label: 'Riesgo / continuidad', peso: 5, mejora: 'Fortalecer medidas de continuidad de suministro y planes de contingencia.' },
+  { campo: 'certificaciones', label: 'Certificaciones / Cumplimiento', peso: 5, mejora: 'Mantener actualizados respaldos, certificaciones y requisitos técnicos o documentales aplicables.' },
+  { campo: 'relacion', label: 'Relación estratégica', peso: 5, mejora: 'Fortalecer coordinación, planificación conjunta y compromiso con las necesidades de Tecnopanel.' },
+] as const
+
+export type CampoCriterio = (typeof CRITERIOS)[number]['campo']
+export type Clase = 'A' | 'B' | 'C' | 'D'
+
+/** Igual que adq_eval_puntaje: suma(nota / 5 × peso), sobre 100. */
+export const puntajeEvaluacion = (notas: Partial<Record<CampoCriterio, number>>) =>
+  Math.round(CRITERIOS.reduce((t, c) => t + ((notas[c.campo] ?? 0) / 5) * c.peso, 0) * 10) / 10
+export const claseEvaluacion = (p: number): Clase => (p >= 90 ? 'A' : p >= 75 ? 'B' : p >= 60 ? 'C' : 'D')
+export const CLASE: Record<Clase, { label: string; variant: 'success' | 'default' | 'warning' | 'destructive' }> = {
+  A: { label: 'A · Preferente', variant: 'success' },
+  B: { label: 'B · Aprobado', variant: 'default' },
+  C: { label: 'C · Aprobado con observaciones', variant: 'warning' },
+  D: { label: 'D · Crítico', variant: 'destructive' },
+}
+
+export type Evaluacion = Record<CampoCriterio, number> & {
+  id: number
+  proveedor_codigo: string | null
+  proveedor_nombre: string
+  periodo_desde: string
+  periodo_hasta: string
+  puntaje: number
+  clase: Clase
+  observaciones: string | null
+  plan_accion: string | null
+  proxima_revision: string | null
+  anulada: boolean
+  anulada_at: string | null
+  motivo_anulacion: string | null
+  anulada_por_nombre: string | null
+  creado_por_nombre: string | null
+  created_at: string
+}
+
+export async function listarEvaluaciones(codigo?: string): Promise<Evaluacion[]> {
+  let q = supabase.from('adq_evaluaciones_v').select('*').order('created_at', { ascending: false })
+  if (codigo) q = q.eq('proveedor_codigo', codigo)
+  const { data, error: e } = await q
+  if (e) error(e)
+  return (data ?? []) as Evaluacion[]
+}
+
+export type DatosEvaluacion = Record<CampoCriterio, number> & {
+  proveedor_codigo: string | null
+  proveedor_nombre: string
+  periodo_desde: string
+  periodo_hasta: string
+  observaciones: string | null
+  plan_accion: string | null
+  proxima_revision: string | null
+}
+
+export async function guardarEvaluacion(p: DatosEvaluacion): Promise<number> {
+  const { data, error: e } = await supabase.rpc('adq_guardar_evaluacion', { p })
+  if (e) error(e)
+  return data as number
+}
+
+export const anularEvaluacion = (id: number, motivo: string) => rpc('adq_anular_evaluacion', { p_id: id, p_motivo: motivo })
+
+export const TIPOS_NC = { calidad: 'Calidad', entrega: 'Entrega', embalaje: 'Embalaje', documentacion: 'Documentación', cantidad: 'Cantidad', otro: 'Otro' } as const
+export const IMPACTOS_NC = { bajo: 'Bajo', medio: 'Medio', alto: 'Alto', critico: 'Crítico' } as const
+export const ESTADOS_NC = { abierta: 'Abierta', en_analisis: 'En análisis', accion_proveedor: 'Acción del proveedor', cerrada: 'Cerrada' } as const
+
+export interface DatosNc {
+  id?: number
+  sucursal: string
+  proveedor_codigo: string | null
+  proveedor_nombre: string
+  articulo_codigo: string | null
+  articulo_nombre: string | null
+  oc_docnum: number | null
+  fecha_evento: string
+  tipo: keyof typeof TIPOS_NC
+  impacto: keyof typeof IMPACTOS_NC
+  estado: Exclude<keyof typeof ESTADOS_NC, 'cerrada'>
+  fecha_compromiso: string | null
+  reincidencia: boolean
+  problema: string
+  accion_acordada: string | null
+  responsable_interno: string | null
+  responsable_proveedor: string | null
+  costo: number | null
+}
+
+export interface Nc extends Omit<DatosNc, 'estado' | 'id'> {
+  id: number
+  estado: keyof typeof ESTADOS_NC
+  cierre: string | null
+  cerrado_at: string | null
+  cerrado_por_nombre: string | null
+  creado_por_nombre: string | null
+  created_at: string
+  vencida: boolean
+}
+
+export async function listarNc(codigo?: string): Promise<Nc[]> {
+  let q = supabase.from('adq_nc_v').select('*').order('fecha_evento', { ascending: false }).order('id', { ascending: false })
+  if (codigo) q = q.eq('proveedor_codigo', codigo)
+  const { data, error: e } = await q
+  if (e) error(e)
+  return (data ?? []) as Nc[]
+}
+
+export async function guardarNc(p: DatosNc): Promise<number> {
+  const { data, error: e } = await supabase.rpc('adq_guardar_nc', { p })
+  if (e) error(e)
+  return data as number
+}
+
+export const cerrarNc = (id: number, cierre: string) => rpc('adq_cerrar_nc', { p_id: id, p_cierre: cierre })
