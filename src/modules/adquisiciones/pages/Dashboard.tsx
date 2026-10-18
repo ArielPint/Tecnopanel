@@ -133,6 +133,10 @@ export default function Dashboard() {
   const hoy = hoyChile()
   const atrasadas = sAbiertas.filter((s) => s.fecha_requerida && s.fecha_requerida < hoy)
   const enAprobacionLarga = sAbiertas.filter((s) => s.estado === 'en_aprobacion' && (dias(s.enviada_at, new Date().toISOString()) ?? 0) > 3)
+  // SLA de primera atención (24 h): solicitudes del año ya atendidas, y las abiertas que pasaron el plazo sin atención
+  const slaAtendidas = sAnio.filter((s) => s.primera_atencion_at)
+  const slaCumplido = slaAtendidas.length ? Math.round((100 * slaAtendidas.filter((s) => s.sla_estado === 'cumplido').length) / slaAtendidas.length) : null
+  const slaVencidas = sAbiertas.filter((s) => s.sla_estado === 'vencido')
 
   const mensual = MESES.map((m, i) => ({ mes: m, neto: g.filter((x) => x.mes === i + 1).reduce((a, x) => a + x.neto, 0) }))
 
@@ -196,6 +200,7 @@ export default function Dashboard() {
   }, [g])
 
   const tiempos = [
+    { etapa: 'Solicitud → primera atención de Compras', d: promedio(sAnio.map((s) => dias(s.created_at, s.primera_atencion_at))) },
     { etapa: 'Solicitud → envío a aprobación', d: promedio(sAnio.map((s) => dias(s.created_at, s.enviada_at))) },
     { etapa: 'Envío → aprobada', d: promedio(sAnio.map((s) => dias(s.enviada_at, s.aprobada_at))) },
     { etapa: 'Aprobada → OC en SAP', d: promedio(sAnio.map((s) => dias(s.aprobada_at, s.oc_at))) },
@@ -286,7 +291,7 @@ export default function Dashboard() {
               titulo="Solicitudes abiertas"
               valor={String(sAbiertas.length)}
               alerta={atrasadas.length > 0}
-              detalle={`${atrasadas.length} atrasadas · ${enAprobacionLarga.length} en aprobación hace más de 3 días`}
+              detalle={`${atrasadas.length} atrasadas · ${enAprobacionLarga.length} en aprobación hace más de 3 días${slaVencidas.length ? ` · ${slaVencidas.length} sin atender fuera de plazo` : ''}`}
             />
           </div>
 
@@ -426,6 +431,13 @@ export default function Dashboard() {
                     </div>
                   ))}
                 </dl>
+                <p className="text-sm">
+                  Primera atención dentro de 24 h:{' '}
+                  <span className={cn('font-mono-tabular font-bold', slaCumplido != null && slaCumplido < 80 && 'text-destructive')}>
+                    {slaCumplido == null ? '—' : `${slaCumplido}%`}
+                  </span>
+                  <span className="text-muted-foreground"> de {slaAtendidas.length} atendidas</span>
+                </p>
                 <p className="text-xs text-muted-foreground">Solicitudes del portal creadas en {anio}.</p>
               </CardContent>
             </Card>

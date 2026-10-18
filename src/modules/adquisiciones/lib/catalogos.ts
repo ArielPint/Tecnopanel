@@ -10,12 +10,14 @@ export const ROLES_ADQ: { key: RolAdq; label: string; detalle: string }[] = [
   {
     key: 'bodega',
     label: 'Bodega',
-    detalle: 'Ve la reposición de stock de la bodega de la sucursal (SAP B006 Santiago, B007 Puerto Varas), define los mínimos y crea las solicitudes de reposición.',
+    detalle:
+      'Ve la reposición de stock de la bodega de la sucursal (SAP B006 Santiago, B007 Puerto Varas), define los mínimos, registra el conteo físico, el stock inutilizable y lo comprometido en Bodega, ve la planificación y crea las solicitudes de reposición.',
   },
   {
     key: 'comprador',
     label: 'Comprador',
-    detalle: 'Cotiza, envía a aprobación y vincula la OC de SAP de las solicitudes de la sucursal. Ve sus OC de SAP, el dashboard y la reposición.',
+    detalle:
+      'Cotiza, envía a aprobación y vincula la OC de SAP de las solicitudes de la sucursal, con SLA de primera atención de 24 h. Ve sus OC de SAP, el dashboard, la reposición y Bodega; planifica y guarda planes de compra; evalúa proveedores y registra no conformidades.',
   },
   { key: 'aprobador_1', label: 'Aprobador nivel 1', detalle: 'Aprueba el primer nivel (todas las compras pasan por aquí). Ve el dashboard de la sucursal.' },
   { key: 'aprobador_2', label: 'Aprobador nivel 2', detalle: 'Aprueba hasta el nivel 2, incluido el 1 si está pendiente.' },

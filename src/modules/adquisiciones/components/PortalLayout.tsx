@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ArrowLeft, BarChart3, ClipboardList, KeyRound, LogOut, Menu, Moon, PackageSearch, PiggyBank, Plus, Receipt, Settings2, ShoppingCart, Sun, Warehouse } from 'lucide-react'
+import { AlertOctagon, ArrowLeft, BarChart3, Building2, CalendarRange, ClipboardList, Factory, KeyRound, LogOut, Menu, Moon, PackageSearch, PiggyBank, Plus, Receipt, Settings2, ShoppingCart, Sun, Warehouse } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useOtrosPortales } from '@/hooks/useOtrosPortales'
@@ -26,6 +26,10 @@ function Menu_({ onNavigate }: { onNavigate?: () => void }) {
     ...(esCompras ? [{ to: RUTA.ordenes, label: 'Órdenes de compra SAP', icon: Receipt, end: true }] : []),
     ...(veReposicion ? [{ to: RUTA.reposicion, label: 'Reposición de stock', icon: PackageSearch, end: true }] : []),
     ...(veReposicion ? [{ to: RUTA.bodega, label: 'Bodega', icon: Warehouse, end: true }] : []),
+    ...(veReposicion || veControl ? [{ to: RUTA.planificacion, label: 'Planificación', icon: Factory, end: true }] : []),
+    ...(veReposicion || veControl ? [{ to: RUTA.planes, label: 'Planes de compra', icon: CalendarRange, end: false }] : []),
+    ...(esCompras ? [{ to: RUTA.proveedores, label: 'Proveedores', icon: Building2, end: false }] : []),
+    ...(esCompras ? [{ to: RUTA.nc, label: 'No conformidades', icon: AlertOctagon, end: true }] : []),
     ...(tiene('jefe_compras') ? [{ to: RUTA.presupuestos, label: 'Presupuestos por CECO', icon: PiggyBank, end: true }] : []),
     ...(tiene('jefe_compras') ? [{ to: RUTA.configuracion, label: 'Niveles de aprobación', icon: Settings2, end: true }] : []),
   ]
@@ -103,6 +107,10 @@ const TITULOS: Record<string, string> = {
   [RUTA.ordenes]: 'Órdenes de compra SAP',
   [RUTA.reposicion]: 'Reposición de stock',
   [RUTA.bodega]: 'Bodega',
+  [RUTA.planificacion]: 'Planificación',
+  [RUTA.planes]: 'Planes de compra',
+  [RUTA.proveedores]: 'Proveedores',
+  [RUTA.nc]: 'No conformidades',
   [RUTA.presupuestos]: 'Presupuestos por CECO',
   [RUTA.configuracion]: 'Niveles de aprobación',
 }

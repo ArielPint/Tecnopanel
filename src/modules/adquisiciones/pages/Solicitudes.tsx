@@ -11,7 +11,7 @@ import { ABIERTOS, ESTADO, type EstadoSolicitud } from '../lib/catalogos'
 import { etiquetaCeco, fmtPesos, listarSolicitudes, type Solicitud } from '../lib/api'
 import { RUTA } from '../lib/rutas'
 
-type Filtro = 'pendientes' | 'abiertas' | EstadoSolicitud | 'todas'
+type Filtro = 'pendientes' | 'sin_atender' | 'abiertas' | EstadoSolicitud | 'todas'
 
 /** Lo que está esperando a la persona que mira: aprobar, cotizar o vincular la OC. */
 function meToca(s: Solicitud, comprasEn: (sucursal: string) => boolean) {
@@ -21,8 +21,20 @@ function meToca(s: Solicitud, comprasEn: (sucursal: string) => boolean) {
 function cumple(s: Solicitud, f: Filtro, comprasEn: (sucursal: string) => boolean) {
   if (f === 'todas') return true
   if (f === 'pendientes') return meToca(s, comprasEn)
+  if (f === 'sin_atender') return !s.primera_atencion_at && ABIERTOS.includes(s.estado)
   if (f === 'abiertas') return ABIERTOS.includes(s.estado)
   return s.estado === f
+}
+
+/** Primera atención de Compras: plazo de 24 horas desde que se crea la solicitud. */
+export function SlaBadge({ s, siempre }: { s: Solicitud; siempre?: boolean }) {
+  const horas = `${new Intl.NumberFormat('es-CL', { maximumFractionDigits: 1 }).format(s.sla_horas_transcurridas)} h`
+  if (s.sla_estado === 'vencido') return <Badge variant="destructive">SLA vencido · {horas}</Badge>
+  if (s.sla_estado === 'por_vencer') return <Badge variant="warning">SLA por vencer · {horas}</Badge>
+  if (!siempre) return null
+  if (s.sla_estado === 'en_plazo') return <Badge variant="secondary">Sin atender · {horas}</Badge>
+  if (s.sla_estado === 'atrasado') return <Badge variant="warning">Atendida fuera de plazo · {horas}</Badge>
+  return <Badge variant="success">Atendida en {horas}</Badge>
 }
 
 export function Etapa({ s }: { s: Solicitud }) {
@@ -77,6 +89,7 @@ export default function Solicitudes() {
 
   const FILTROS: { key: Filtro; label: string }[] = [
     ...(esCompras || nivel > 0 ? [{ key: 'pendientes' as Filtro, label: 'Me toca' }] : []),
+    ...(esCompras ? [{ key: 'sin_atender' as Filtro, label: 'Sin atender' }] : []),
     { key: 'abiertas', label: 'Abiertas' },
     { key: 'cotizando', label: ESTADO.cotizando.label },
     { key: 'en_aprobacion', label: ESTADO.en_aprobacion.label },
@@ -195,6 +208,8 @@ export default function Solicitudes() {
                     <p className="text-xs text-muted-foreground">
                       {s.items} {s.items === 1 ? 'ítem' : 'ítems'} · {s.creado_por_nombre ?? '—'}
                       {s.proyecto_nombre && ` · ${s.proyecto_nombre}`}
+                      {s.comprador_nombre && ` · compra ${s.comprador_nombre}`}
+                      {s.plan_numero != null && ` · plan ${s.plan_numero}`}
                     </p>
                   </td>
                   <td className="px-3 py-2.5">
@@ -213,6 +228,7 @@ export default function Solicitudes() {
                     <div className="flex flex-col items-start gap-1">
                       <Badge variant={ESTADO[s.estado].variant}>{ESTADO[s.estado].label}</Badge>
                       <Etapa s={s} />
+                      {comprasEn(s.sucursal) && <SlaBadge s={s} />}
                       {meToca(s, comprasEn) && <span className="text-[11px] font-semibold text-brand">Te toca</span>}
                     </div>
                   </td>

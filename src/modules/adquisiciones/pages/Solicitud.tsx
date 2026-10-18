@@ -16,6 +16,7 @@ import CamposSolicitud, { Seccion, limpiarSolicitud, validarSolicitud } from '..
 import EditorItems from '../components/EditorItems'
 import { usePermisosAdq } from '../hooks/usePermisosAdq'
 import { ESTADO } from '../lib/catalogos'
+import { SlaBadge } from './Solicitudes'
 import {
   ARCHIVOS_ACEPTADOS,
   abrirArchivo,
@@ -23,6 +24,7 @@ import {
   actualizarSolicitud,
   anular,
   aprobar,
+  asignarComprador,
   buscarProveedores,
   comentar,
   crearCotizacion,
@@ -36,6 +38,7 @@ import {
   listarAprobaciones,
   listarArchivos,
   listarBitacora,
+  listarCompradores,
   listarCotizaciones,
   listarFacturasOc,
   listarItems,
@@ -43,6 +46,7 @@ import {
   listarNiveles,
   listarOcVinculadas,
   marcarRecibida,
+  marcarRevisada,
   nivelPara,
   obtenerSolicitud,
   presupuestoSolicitud,
@@ -376,6 +380,24 @@ export default function Solicitud() {
           Aprobada. Emite la OC en SAP y escribe <b className="font-mono-tabular">SC-{s.numero}</b> en sus comentarios: se vincula sola en la próxima sincronización
           (cada hora). También puedes vincularla ahora con su N°.
         </p>
+      )}
+
+      {s.plan_id && (
+        <p className="text-sm text-muted-foreground">
+          Nace del{' '}
+          <Link to={RUTA.plan(s.plan_id)} className="font-semibold text-brand hover:underline">
+            plan de compra N° {s.plan_numero}
+          </Link>
+          .
+        </p>
+      )}
+      {esCompras && !cerrada && (
+        <AtencionCompras
+          s={s}
+          ocupado={ocupado}
+          onRevisar={() => hacer(() => marcarRevisada(s.id), 'Marcada como revisada')}
+          onAsignar={(c) => hacer(() => asignarComprador(s.id, c), c ? 'Comprador asignado' : 'Comprador quitado')}
+        />
       )}
 
       <Card>
@@ -862,6 +884,64 @@ export default function Solicitud() {
         onCerrar={() => setDialogo(null)}
         onAceptar={(t) => cerrarCon(() => vincularOc(s.id, Number(t)), `OC ${t} vinculada`)}
       />
+    </div>
+  )
+}
+
+/** SLA de primera atención (24 h desde que se crea) y comprador a cargo. Solo para Compras de la sucursal. */
+function AtencionCompras({
+  s,
+  ocupado,
+  onRevisar,
+  onAsignar,
+}: {
+  s: SolicitudT
+  ocupado: boolean
+  onRevisar: () => void
+  onAsignar: (comprador: string | null) => void
+}) {
+  const [compradores, setCompradores] = useState<{ id: string; nombre: string | null }[]>([])
+  useEffect(() => {
+    listarCompradores(s.sucursal)
+      .then(setCompradores)
+      .catch(() => setCompradores([]))
+  }, [s.sucursal])
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border bg-card px-3 py-2 text-sm">
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground">Atención de Compras</span>
+        <SlaBadge s={s} siempre />
+        {s.primera_atencion_at ? (
+          <span className="text-xs text-muted-foreground">
+            {fmtFechaHora(s.primera_atencion_at)}
+            {s.primera_atencion_por_nombre && ` · ${s.primera_atencion_por_nombre}`}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">plazo hasta {fmtFechaHora(s.sla_vence_at)}</span>
+        )}
+      </div>
+      <label className="flex items-center gap-2">
+        <span className="text-muted-foreground">Comprador</span>
+        <select
+          value={s.comprador_id ?? ''}
+          disabled={ocupado}
+          onChange={(e) => onAsignar(e.target.value || null)}
+          className="h-8 max-w-[220px] rounded-md border border-input bg-background px-2 text-sm"
+        >
+          <option value="">Sin asignar</option>
+          {s.comprador_id && !compradores.some((c) => c.id === s.comprador_id) && <option value={s.comprador_id}>{s.comprador_nombre ?? 'Asignado'}</option>}
+          {compradores.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre ?? c.id}
+            </option>
+          ))}
+        </select>
+      </label>
+      {!s.primera_atencion_at && (
+        <Button size="sm" variant="outline" className="ml-auto" disabled={ocupado} onClick={onRevisar}>
+          <CheckCircle2 className="mr-1 h-4 w-4" /> Marcar como revisada
+        </Button>
+      )}
     </div>
   )
 }

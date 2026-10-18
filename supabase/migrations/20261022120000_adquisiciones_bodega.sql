@@ -52,6 +52,8 @@ create table if not exists public.sap_recetas (
   primary key (padre_codigo, linea)
 );
 create index if not exists sap_recetas_componente_idx on public.sap_recetas (componente_codigo);
+-- false = no es de inventario (maquilas, fletes, gastos: su "cantidad" es un monto); no se planifica
+alter table public.sap_recetas add column if not exists inventariable boolean not null default true;
 
 create table if not exists public.sap_ot (
   doc_entry       int primary key,     -- OWOR.DocEntry
@@ -79,6 +81,7 @@ create table if not exists public.sap_ot_lineas (
   primary key (doc_entry, linea)
 );
 create index if not exists sap_ot_lineas_articulo_idx on public.sap_ot_lineas (articulo_codigo, bodega_codigo);
+alter table public.sap_ot_lineas add column if not exists inventariable boolean not null default true;
 
 create table if not exists public.sap_planificacion_estado (
   id              boolean primary key default true check (id),
@@ -226,10 +229,10 @@ end $$;
 -- Igual que en 20261018120000, mas (todo opcional; lo que no viene no se toca):
 --   consumo:    [{articulo_codigo, bodega_codigo, salidas_6m, salidas_12m, max_mes_12m, meses_12m}]
 --   recepciones [{articulo_codigo, bodega_codigo, fecha, docnum, proveedor_nombre}]
---   recetas     [{padre_codigo, padre_nombre, linea, componente_codigo, componente_nombre, cantidad, unidad, bodega_codigo}]
+--   recetas     [{padre_codigo, padre_nombre, linea, componente_codigo, componente_nombre, cantidad, unidad, bodega_codigo, inventariable}]
 --   ot          [{doc_entry, docnum, articulo_codigo, articulo_nombre, proyecto_codigo, proyecto_nombre, estado,
 --                 cantidad, completada, fecha, fecha_fin, bodega_codigo}]
---   ot_lineas   [{doc_entry, linea, articulo_codigo, planificado, emitido, bodega_codigo}]
+--   ot_lineas   [{doc_entry, linea, articulo_codigo, planificado, emitido, bodega_codigo, inventariable}]
 create or replace function public.sap_compras_sincronizar(p jsonb)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
@@ -323,10 +326,10 @@ begin
   -- recetas y OT: solo si vienen con filas (una lectura vacia de SAP no borra las recetas)
   if jsonb_array_length(coalesce(p -> 'recetas', '[]')) > 0 then
     delete from sap_recetas where true;
-    insert into sap_recetas (padre_codigo, padre_nombre, linea, componente_codigo, componente_nombre, cantidad, unidad, bodega_codigo)
+    insert into sap_recetas (padre_codigo, padre_nombre, linea, componente_codigo, componente_nombre, cantidad, unidad, bodega_codigo, inventariable)
     select f ->> 'padre_codigo', nullif(f ->> 'padre_nombre', ''), (f ->> 'linea')::int, f ->> 'componente_codigo',
            nullif(f ->> 'componente_nombre', ''), coalesce((f ->> 'cantidad')::numeric, 0), nullif(f ->> 'unidad', ''),
-           nullif(f ->> 'bodega_codigo', '')
+           nullif(f ->> 'bodega_codigo', ''), coalesce((f ->> 'inventariable')::boolean, true)
     from jsonb_array_elements(p -> 'recetas') f
     on conflict do nothing;
   end if;
@@ -342,9 +345,9 @@ begin
     from jsonb_array_elements(p -> 'ot') f
     where f ->> 'estado' in ('P', 'R')
     on conflict do nothing;
-    insert into sap_ot_lineas (doc_entry, linea, articulo_codigo, planificado, emitido, bodega_codigo)
+    insert into sap_ot_lineas (doc_entry, linea, articulo_codigo, planificado, emitido, bodega_codigo, inventariable)
     select (f ->> 'doc_entry')::int, (f ->> 'linea')::int, f ->> 'articulo_codigo', coalesce((f ->> 'planificado')::numeric, 0),
-           coalesce((f ->> 'emitido')::numeric, 0), nullif(f ->> 'bodega_codigo', '')
+           coalesce((f ->> 'emitido')::numeric, 0), nullif(f ->> 'bodega_codigo', ''), coalesce((f ->> 'inventariable')::boolean, true)
     from jsonb_array_elements(coalesce(p -> 'ot_lineas', '[]')) f
     where exists (select 1 from sap_ot o where o.doc_entry = (f ->> 'doc_entry')::int)
     on conflict do nothing;
