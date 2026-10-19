@@ -99,3 +99,6 @@ end $$;
 
 revoke execute on function public.pnl_sap_recetas_of(jsonb) from public, anon, authenticated;
 grant  execute on function public.pnl_sap_recetas_of(jsonb) to service_role;
+
+-- PostgREST no ve la RPC nueva hasta recargar su cache de esquema
+notify pgrst, 'reload schema';
