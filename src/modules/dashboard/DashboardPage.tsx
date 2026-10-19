@@ -147,7 +147,7 @@ export default function DashboardPage() {
             to="/produccion"
             className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
           >
-            Producción Paneles SIP
+            Producción
             <ArrowRight className="h-4 w-4" />
           </Link>
         )}

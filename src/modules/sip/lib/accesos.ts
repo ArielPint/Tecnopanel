@@ -1,15 +1,15 @@
-// Portal Producción de Paneles SIP: un permiso por módulo, igual que el CRM y Prevención.
+// Portal Producción: un permiso por módulo, igual que el CRM y Prevención.
 // En la base: permisos.modulo_key = 'pnl:<key>' sobre el ancla SIP_ANCLA_ID, accion ∈ acciones.
-// Este catálogo lo usan el menú del portal y la pestaña "Producción SIP" de Usuarios.
+// Este catálogo lo usan el menú del portal y la pestaña "Producción" de Usuarios.
 
 export type AccionSip = 'ver' | 'crear' | 'editar' | 'eliminar' | 'exportar'
 
-export type ModuloSip = 'produccion' | 'cortes' | 'plan' | 'stock' | 'consumo' | 'recetas'
+export type ModuloSip = 'produccion' | 'cortes' | 'plan' | 'stock' | 'consumo' | 'recetas' | 'proyeccion'
 
 export interface DefModulo {
   key: ModuloSip
   label: string
-  grupo: 'Principal' | 'Configuración'
+  grupo: 'Paneles SIP' | 'Proyección' | 'Configuración'
   ruta: string
   acciones: { key: AccionSip; label: string }[]
 }
@@ -18,7 +18,7 @@ export const SIP_MODULOS: DefModulo[] = [
   {
     key: 'produccion',
     label: 'Registro de producción',
-    grupo: 'Principal',
+    grupo: 'Paneles SIP',
     ruta: '/produccion/registro',
     acciones: [
       { key: 'ver', label: 'Ver' },
@@ -31,7 +31,7 @@ export const SIP_MODULOS: DefModulo[] = [
   {
     key: 'cortes',
     label: 'Cortes de paneles',
-    grupo: 'Principal',
+    grupo: 'Paneles SIP',
     ruta: '/produccion/cortes',
     acciones: [
       { key: 'ver', label: 'Ver cortes y avance de los proyectos de SAP' },
@@ -44,7 +44,7 @@ export const SIP_MODULOS: DefModulo[] = [
   {
     key: 'plan',
     label: 'Plan semanal',
-    grupo: 'Principal',
+    grupo: 'Paneles SIP',
     ruta: '/produccion/plan',
     acciones: [
       { key: 'ver', label: 'Ver plan vs real y los montos de las órdenes de venta de SAP' },
@@ -54,7 +54,7 @@ export const SIP_MODULOS: DefModulo[] = [
   {
     key: 'stock',
     label: 'Stock de paneles',
-    grupo: 'Principal',
+    grupo: 'Paneles SIP',
     ruta: '/produccion/stock',
     acciones: [
       { key: 'ver', label: 'Ver' },
@@ -64,10 +64,22 @@ export const SIP_MODULOS: DefModulo[] = [
   {
     key: 'consumo',
     label: 'Consumo de materiales',
-    grupo: 'Principal',
+    grupo: 'Paneles SIP',
     ruta: '/produccion/consumo',
     acciones: [
       { key: 'ver', label: 'Ver consumo por período y calculadora' },
+      { key: 'exportar', label: 'Exportar a Excel' },
+    ],
+  },
+  {
+    key: 'proyeccion',
+    label: 'Proyección mensual',
+    grupo: 'Proyección',
+    ruta: '/produccion/proyeccion',
+    acciones: [
+      { key: 'ver', label: 'Ver el resumen por línea de negocio (proyectado, producido y facturado)' },
+      { key: 'crear', label: 'Registrar lo producido cada semana (y corregir sus propios registros)' },
+      { key: 'editar', label: 'Cargar la proyección del mes, los días hábiles y las medidas; corregir cualquier registro' },
       { key: 'exportar', label: 'Exportar a Excel' },
     ],
   },
@@ -83,7 +95,7 @@ export const SIP_MODULOS: DefModulo[] = [
   },
 ]
 
-export const GRUPOS_MENU = ['Principal', 'Configuración'] as const
+export const GRUPOS_MENU = ['Paneles SIP', 'Proyección', 'Configuración'] as const
 
 /** Clave del formulario de accesos: '<modulo>:<accion>' (en la base va con prefijo 'pnl:'). */
 export const claveAcceso = (modulo: ModuloSip, accion: AccionSip) => `${modulo}:${accion}`

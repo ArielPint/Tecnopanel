@@ -53,7 +53,7 @@ export default function Login() {
           <TecnopanelMark size={40} />
           <Factory className="h-9 w-9 text-sky-500" />
         </div>
-        <h1 className="text-center text-xl font-bold">Producción Paneles SIP</h1>
+        <h1 className="text-center text-xl font-bold">Producción</h1>
         <p className="mb-6 text-center text-sm text-muted-foreground">Registro de producción y consumo · Tecnopanel</p>
 
         <form onSubmit={onSubmit} className="space-y-4">

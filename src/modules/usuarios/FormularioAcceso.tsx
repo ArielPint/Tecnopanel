@@ -171,7 +171,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                 ['cuenta', 'Cuenta'],
                 ['proyecto', 'Proyecto'],
                 ['crm', 'CRM'],
-                ['sip', 'Producción SIP'],
+                ['sip', 'Producción'],
                 ['prevencion', 'Prevención'],
                 ['personal', 'Ingreso de personal'],
                 ['adquisiciones', 'Adquisiciones'],
@@ -234,7 +234,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                   ))}
                 </select>
                 <p className="text-[11px] text-muted-foreground">
-                  Limita lo que ve a esa sucursal en proyectos, oportunidades, ventas, Producción SIP e Ingreso de Personal.
+                  Limita lo que ve a esa sucursal en proyectos, oportunidades, ventas, Producción e Ingreso de Personal.
                 </p>
               </div>
               <label className="flex items-start gap-2 text-sm [&>button]:mt-0.5">
@@ -521,7 +521,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
 
             <TabsContent value="sip" className="flex data-[state=inactive]:hidden min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
               <p className="text-[11px] text-muted-foreground">
-                Portal Producción de Paneles SIP (/produccion): transversal a la empresa, no depende de proyectos. Un acceso
+                Portal Producción (/produccion: paneles SIP y proyección mensual): transversal a la empresa, no depende de proyectos. Un acceso
                 por módulo; con cualquiera de ellos la persona entra al portal y ve el Dashboard. Los admin ya tienen todo.
               </p>
               <div className="flex flex-col gap-2">
