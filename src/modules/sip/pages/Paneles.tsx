@@ -130,7 +130,18 @@ export default function Paneles() {
                         </TableCell>
                         <TableCell className="hidden font-mono-tabular text-sm sm:table-cell">{medidas(p)}</TableCell>
                         <TableCell className="text-right">
-                          {n > 0 ? <span className="font-mono-tabular">{n}</span> : <Badge variant="warning">Sin receta</Badge>}
+                          {n > 0 ? (
+                            <>
+                              {p.receta_of_numero && (
+                                <Badge variant="secondary" className="mr-2" title={`Receta de la orden de fabricación SAP N° ${p.receta_of_numero}`}>
+                                  OF {p.receta_of_numero}
+                                </Badge>
+                              )}
+                              <span className="font-mono-tabular">{n}</span>
+                            </>
+                          ) : (
+                            <Badge variant="warning">Sin receta</Badge>
+                          )}
                         </TableCell>
                       </TableRow>
                     )

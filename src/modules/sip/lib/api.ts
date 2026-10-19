@@ -23,6 +23,9 @@ export interface Panel {
   largo_mm: number | null
   espesor_mm: number | null
   activo: boolean
+  /** La receta se tomó de esta orden de fabricación de SAP (migración 20261024120000); null = receta propia */
+  receta_of_numero: number | null
+  receta_of_fecha: string | null
 }
 
 export interface RecetaFila {
@@ -182,7 +185,7 @@ export async function listarRecetas(): Promise<RecetaFila[]> {
   return filas.map((f) => num(f, ['cantidad']))
 }
 
-export async function guardarPanel(p: Omit<Panel, 'id'> & { id?: string }): Promise<string> {
+export async function guardarPanel(p: Omit<Panel, 'id' | 'receta_of_numero' | 'receta_of_fecha'> & { id?: string }): Promise<string> {
   const fila = { codigo: p.codigo.trim(), descripcion: p.descripcion.trim(), ancho_mm: p.ancho_mm, largo_mm: p.largo_mm, espesor_mm: p.espesor_mm, activo: p.activo }
   if (p.id) {
     revisar(await supabase.from('pnl_paneles').update(fila).eq('id', p.id))

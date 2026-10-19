@@ -10,7 +10,7 @@ import { Checkbox } from '@/modules/financiero/components/ui/checkbox'
 import { Cargando, selectClase } from '../components/comunes'
 import { eliminarPanel, guardarPanel, guardarReceta } from '../lib/api'
 import { m2Panel } from '../lib/calculo'
-import { fmtNum } from '../lib/formato'
+import { fmtFecha, fmtNum } from '../lib/formato'
 import { RUTA } from '../lib/rutas'
 import { usePermisosSip } from '../hooks/usePermisosSip'
 import { useCatalogo } from '../hooks/useCatalogo'
@@ -67,6 +67,8 @@ export default function Panel() {
   }, [id, loading, listo, paneles, recetas, materialPorId, navigate])
 
   if (loading || !listo) return <Cargando />
+
+  const panel = id ? paneles.find((x) => x.id === id) : undefined
 
   const cambiar = (key: string, c: Partial<FilaReceta>) => setFilas((fs) => fs.map((f) => (f.key === key ? { ...f, ...c } : f)))
   const m2 = m2Panel({ ancho_mm: entOpcional(ancho), largo_mm: entOpcional(largo) })
@@ -172,6 +174,13 @@ export default function Panel() {
             <p className="text-xs text-muted-foreground">
               Cantidad base de cada material. Cambiarla afecta solo la producción que se registre desde ahora.
             </p>
+            {panel?.receta_of_numero && (
+              <p className="text-xs text-muted-foreground">
+                Tomada de la orden de fabricación SAP N° <b>{panel.receta_of_numero}</b>
+                {panel.receta_of_fecha ? ` del ${fmtFecha(panel.receta_of_fecha)}` : ''}. Se actualiza sola con la orden más reciente del panel; si la
+                edita aquí, queda como receta propia y SAP ya no la cambia.
+              </p>
+            )}
           </CardHeader>
           <CardContent className="space-y-2">
             {filas.map((f, i) => (
