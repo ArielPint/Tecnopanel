@@ -467,17 +467,24 @@ export async function buscarArticulos(q: string): Promise<ArticuloSap[]> {
   return (data ?? []) as ArticuloSap[]
 }
 
-export async function listarOcSap(desde: string): Promise<OcSap[]> {
-  const { data, error: e } = await supabase
-    .from('adq_sap_oc_v')
-    .select(
-      'doc_entry, docnum, proveedor_codigo, proveedor_nombre, fecha, fecha_entrega, abierta, cancelada, total, moneda, comentarios, neto, facturado, recepcion_pct, facturado_pct, cecos, solicitudes',
-    )
-    .gte('fecha', desde)
-    .order('docnum', { ascending: false })
-    .limit(2000)
-  if (e) error(e)
-  return (data ?? []) as OcSap[]
+/** OC de SAP desde una fecha (null = todo el historial), de a 1000 por página. */
+export async function listarOcSap(desde: string | null): Promise<OcSap[]> {
+  const filas: OcSap[] = []
+  for (let i = 0; ; i += 1000) {
+    let q = supabase
+      .from('adq_sap_oc_v')
+      .select(
+        'doc_entry, docnum, proveedor_codigo, proveedor_nombre, fecha, fecha_entrega, abierta, cancelada, total, moneda, comentarios, neto, facturado, recepcion_pct, facturado_pct, cecos, solicitudes',
+      )
+      .order('docnum', { ascending: false })
+      .range(i, i + 999)
+    if (desde) q = q.gte('fecha', desde)
+    const { data, error: e } = await q
+    if (e) error(e)
+    filas.push(...((data ?? []) as OcSap[]))
+    if (!data || data.length < 1000) break
+  }
+  return filas
 }
 
 /** Cuándo se trajo SAP por última vez; null si la base no tiene la sincronización. */
@@ -1229,16 +1236,13 @@ export interface LineaOcSap {
   solicitudes: string | null
 }
 
-export async function listarLineasOcSap(desde: string): Promise<LineaOcSap[]> {
+/** Líneas de OC de SAP desde una fecha (null = todo el historial), de a 1000 por página. */
+export async function listarLineasOcSap(desde: string | null): Promise<LineaOcSap[]> {
   const filas: LineaOcSap[] = []
   for (let i = 0; ; i += 1000) {
-    const { data, error: e } = await supabase
-      .from('adq_sap_oc_lineas_v')
-      .select('*')
-      .gte('fecha', desde)
-      .order('docnum', { ascending: false })
-      .order('linea')
-      .range(i, i + 999)
+    let q = supabase.from('adq_sap_oc_lineas_v').select('*').order('docnum', { ascending: false }).order('linea').range(i, i + 999)
+    if (desde) q = q.gte('fecha', desde)
+    const { data, error: e } = await q
     if (e) error(e)
     filas.push(...((data ?? []) as LineaOcSap[]))
     if (!data || data.length < 1000) break
