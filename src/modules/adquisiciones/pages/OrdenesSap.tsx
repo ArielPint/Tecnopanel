@@ -12,13 +12,15 @@ import { estadoSincronizacion, fmtPesos, listarLineasOcSap, listarOcSap, type Li
 type Filtro = 'abiertas' | 'sin_facturar' | 'sin_sc' | 'todas'
 type FiltroLinea = 'por_recibir' | 'atrasadas' | 'todas'
 
-// dias 0 = todo el historial de SAP (desde 2021)
+// dias 0 = todo el historial de SAP (desde 2021); -1 = rango de fechas elegido
+const RANGO = -1
 const PERIODOS = [
   { dias: 30, label: 'Últimos 30 días' },
   { dias: 90, label: 'Últimos 3 meses' },
   { dias: 365, label: 'Último año' },
   { dias: 730, label: 'Últimos 2 años' },
   { dias: 0, label: 'Todo el historial' },
+  { dias: RANGO, label: 'Rango de fechas…' },
 ]
 
 const num = (n: number | null | undefined, dec = 2) =>
@@ -33,6 +35,10 @@ export default function OrdenesSap() {
   const [sincronizado, setSincronizado] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [dias, setDias] = useState(0)
+  // rango de fechas de la OC (solo con «Rango de fechas…»)
+  const [rangoDesde, setRangoDesde] = useState(sumarDias(hoyChile(), -30))
+  const [rangoHasta, setRangoHasta] = useState(hoyChile())
+  const rangoValido = !!rangoDesde && !!rangoHasta && rangoDesde <= rangoHasta
   const [vista, setVista] = useState<'oc' | 'lineas'>('oc')
   const [filtro, setFiltro] = useState<Filtro>('abiertas')
   const [filtroLinea, setFiltroLinea] = useState<FiltroLinea>('por_recibir')
@@ -43,9 +49,11 @@ export default function OrdenesSap() {
   const [abiertas, setAbiertas] = useState<Set<number>>(new Set())
 
   useEffect(() => {
+    if (dias === RANGO && !rangoValido) return
     setLoading(true)
-    const desde = dias ? sumarDias(hoyChile(), -dias) : null
-    Promise.all([listarOcSap(desde), listarLineasOcSap(desde), estadoSincronizacion()])
+    const desde = dias === RANGO ? rangoDesde : dias ? sumarDias(hoyChile(), -dias) : null
+    const hasta = dias === RANGO ? rangoHasta : null
+    Promise.all([listarOcSap(desde, hasta), listarLineasOcSap(desde, hasta), estadoSincronizacion()])
       .then(([o, l, e]) => {
         setOcs(o)
         setLineas(l)
@@ -53,7 +61,7 @@ export default function OrdenesSap() {
       })
       .catch((err) => toast.error(err instanceof Error ? err.message : 'Error al cargar'))
       .finally(() => setLoading(false))
-  }, [dias])
+  }, [dias, rangoDesde, rangoHasta]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const lineasPorOc = useMemo(() => {
     const m = new Map<number, LineaOcSap[]>()
@@ -143,7 +151,7 @@ export default function OrdenesSap() {
       ),
       'Detalle OC',
     )
-    XLSX.writeFile(libro, `OC_SAP_${hoyChile()}.xlsx`)
+    XLSX.writeFile(libro, dias === RANGO ? `OC_SAP_${rangoDesde}_al_${rangoHasta}.xlsx` : `OC_SAP_${hoyChile()}.xlsx`)
   }
 
   const chip = (activo: boolean) =>
@@ -230,6 +238,19 @@ export default function OrdenesSap() {
             </option>
           ))}
         </select>
+        {dias === RANGO && (
+          <>
+            <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              Desde
+              <Input type="date" value={rangoDesde} max={rangoHasta || undefined} onChange={(e) => setRangoDesde(e.target.value)} className="h-9 w-40" />
+            </label>
+            <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              Hasta
+              <Input type="date" value={rangoHasta} min={rangoDesde || undefined} onChange={(e) => setRangoHasta(e.target.value)} className="h-9 w-40" />
+            </label>
+            {!rangoValido && <span className="text-xs text-destructive">La fecha «desde» debe ser anterior o igual a «hasta»</span>}
+          </>
+        )}
         <Button size="sm" variant="outline" className="ml-auto" disabled={loading} onClick={exportar}>
           <Download className="mr-1 h-4 w-4" /> Excel
         </Button>
