@@ -23,6 +23,11 @@ export const ADQ_ANCLA_ID = 'a7c4e1d2-3b5f-4e8a-9c61-2f0d8b4e7a35'
  *  Id fijo, creado por la migración 20261019120000_financiero_sap.sql. */
 export const FIN_ANCLA_ID = '5e0b9c3a-6f21-4d7e-8a94-c1f3e2d7b680'
 
+/** Pseudo-proyecto ancla de las preferencias de correo de las notificaciones (slug 'notificaciones', tipo
+ *  'sistema'). Id fijo, creado por la migración 20261023120000_notificaciones_correo.sql. No da acceso a
+ *  ningún portal: sus filas solo dicen qué avisos NO van por correo. */
+export const NOTIF_ANCLA_ID = 'c3e9a6f1-2d84-4b7a-9e15-7f0b4d2a8c61'
+
 const cache = new Map<string, Promise<string>>()
 
 export function getProyectoId(slug: string): Promise<string> {

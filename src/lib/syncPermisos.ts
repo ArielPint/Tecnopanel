@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient'
-import { ADQ_ANCLA_ID, FIN_ANCLA_ID, getProyectoId, ING_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from './proyectoIds'
+import { ADQ_ANCLA_ID, FIN_ANCLA_ID, getProyectoId, ING_ANCLA_ID, NOTIF_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from './proyectoIds'
 
 async function reemplazarPermisos(userId: string, proyectoId: string, filas: { modulo_key: string; accion: string }[]) {
   const { error: delErr } = await supabase.from('permisos').delete().eq('user_id', userId).eq('proyecto_id', proyectoId)
@@ -132,6 +132,15 @@ export async function syncPermisosAdquisiciones(userId: string, roles: string[])
 /** permisos: '<informe>:<sucursal>' o 'configurar', p. ej. 'eerr:Santiago'. */
 export async function syncPermisosFinanciero(userId: string, permisos: string[]) {
   await reemplazarPermisos(userId, FIN_ANCLA_ID, permisos.map((p) => ({ modulo_key: `fin:${p}`, accion: 'ver' })))
+}
+
+/**
+ * Correo de las notificaciones: sobre su propio ancla (NOTIF_ANCLA_ID), una fila por aviso que este usuario
+ * NO quiere por correo — modulo_key 'sin_correo:<origen>:<grupo>' con accion 'ver' (claves en
+ * NOTIF_CORREO_GRUPOS). Sin filas recibe todo, como antes de existir la opción.
+ */
+export async function syncNotifSinCorreo(userId: string, claves: string[]) {
+  await reemplazarPermisos(userId, NOTIF_ANCLA_ID, claves.map((c) => ({ modulo_key: `sin_correo:${c}`, accion: 'ver' })))
 }
 
 /** Rol de negocio por proyecto (catálogo abierto, ver Fase E1) — reemplaza el 'full_access' decorativo. */
