@@ -22,7 +22,7 @@ export function useOtrosPortales(actual: PortalActual): { conHub: boolean; porta
     .filter((p) => !(actual.tipo === 'proyecto' && p.slug === actual.slug))
     // /proyectos/<slug> lleva al primer módulo con acceso (ver AterrizajeProyecto)
     .map((p) => ({ to: `/proyectos/${p.slug}`, label: p.nombre, icon: Building2 }))
-  if (acceso.tieneSip && actual.tipo !== 'sip') portales.push({ to: '/produccion', label: 'Producción Paneles SIP', icon: Factory })
+  if (acceso.tieneSip && actual.tipo !== 'sip') portales.push({ to: '/produccion', label: 'Producción', icon: Factory })
   if (acceso.tieneSso && actual.tipo !== 'sso') portales.push({ to: '/prevencion', label: 'Prevención de Riesgos', icon: HardHat })
   if (acceso.tieneIngreso && actual.tipo !== 'personal') portales.push({ to: '/personal', label: 'Ingreso de Personal', icon: UserPlus })
   if (acceso.tieneAdquisiciones && actual.tipo !== 'adquisiciones') portales.push({ to: '/adquisiciones', label: 'Adquisiciones', icon: ShoppingCart })

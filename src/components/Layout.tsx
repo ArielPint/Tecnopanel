@@ -52,7 +52,7 @@ const navSections = [
     items: [
       { to: '/crm', label: 'CRM', end: false, icon: Briefcase, requiere: 'crm' },
       // Portal propio como el CRM (/produccion), transversal: accesos por módulo sobre el ancla SIP_ANCLA_ID.
-      { to: '/produccion', label: 'Producción Paneles SIP', end: false, icon: Factory, requiere: 'sip' },
+      { to: '/produccion', label: 'Producción', end: false, icon: Factory, requiere: 'sip' },
       // Portal propio como el CRM (/prevencion), transversal: accesos por módulo sobre el ancla SSO_ANCLA_ID.
       { to: '/prevencion', label: 'Prevención de Riesgos', end: false, icon: HardHat, requiere: 'sso' },
       // Portal propio (/personal), transversal: un rol por fila de permisos sobre el ancla ING_ANCLA_ID.

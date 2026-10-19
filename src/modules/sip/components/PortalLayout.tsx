@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ArrowLeft, Boxes, CalendarRange, ClipboardList, Factory, KeyRound, Layers, LayoutDashboard, LogOut, MapPin, Menu, Moon, Package, Plus, Scissors, Sun } from 'lucide-react'
+import { ArrowLeft, Boxes, CalendarRange, ClipboardList, Factory, KeyRound, Layers, LayoutDashboard, LogOut, MapPin, Menu, Moon, Package, Plus, Scissors, Sun, TrendingUp } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useOtrosPortales } from '@/hooks/useOtrosPortales'
@@ -18,7 +18,7 @@ import { usePermisosSip } from '../hooks/usePermisosSip'
 import { useSucursalSip } from '../hooks/useSucursalSip'
 import { selectClase } from './comunes'
 
-// Contenedor del portal Producción de Paneles SIP: mismo esquema que el CRM y Prevención (menú propio
+// Contenedor del portal Producción (paneles SIP y proyección mensual): mismo esquema que el CRM y Prevención (menú propio
 // por grupos, un permiso por módulo), con los tokens del hub para que el modo claro y el oscuro funcionen igual.
 
 const ICONO: Record<ModuloSip, typeof LayoutDashboard> = {
@@ -28,6 +28,7 @@ const ICONO: Record<ModuloSip, typeof LayoutDashboard> = {
   stock: Package,
   consumo: Boxes,
   recetas: Layers,
+  proyeccion: TrendingUp,
 }
 
 function useMenu() {
@@ -36,8 +37,9 @@ function useMenu() {
     label: g,
     items: SIP_MODULOS.filter((m) => m.grupo === g && puedeEn(m.key, 'ver')).map((m) => ({ to: m.ruta, label: m.label, icon: ICONO[m.key], end: false })),
   }))
-  // El Dashboard lo ve cualquiera con acceso al portal
-  grupos[0].items.unshift({ to: RUTA.inicio, label: 'Dashboard', icon: LayoutDashboard, end: true })
+  // El Dashboard (de paneles SIP) va arriba para quien ve algo de SIP; quien solo tiene la proyección
+  // entra directo a ella
+  if (SIP_MODULOS.some((m) => m.key !== 'proyeccion' && puedeEn(m.key, 'ver'))) grupos[0].items.unshift({ to: RUTA.inicio, label: 'Dashboard', icon: LayoutDashboard, end: true })
   return grupos.filter((g) => g.items.length > 0)
 }
 
@@ -110,8 +112,8 @@ function Marca() {
     <div className="flex h-[60px] shrink-0 items-center gap-2.5 border-b border-border px-4">
       <TecnopanelMark size={28} className="shrink-0" />
       <div className="leading-tight">
-        <p className="text-sm font-extrabold">Producción Paneles SIP</p>
-        <p className="text-[11px] text-muted-foreground">Fabricación, cortes y stock</p>
+        <p className="text-sm font-extrabold">Producción</p>
+        <p className="text-[11px] text-muted-foreground">Paneles SIP y proyección mensual</p>
       </div>
     </div>
   )
@@ -187,7 +189,7 @@ export default function PortalLayout() {
               <Menu className="h-[18px] w-[18px]" />
             </button>
             <span className="truncate text-[13px] font-medium text-muted-foreground">
-              <Factory className="mr-1 inline h-4 w-4 align-[-3px]" /> <span className="hidden sm:inline">Producción SIP</span>
+              <Factory className="mr-1 inline h-4 w-4 align-[-3px]" /> <span className="hidden sm:inline">Producción</span>
               <span className="mx-1 hidden text-border sm:inline">/</span>
               <span className="font-bold text-foreground">{titulo}</span>
             </span>

@@ -114,7 +114,7 @@ export default function UsuariosPage() {
                         ) : null
                       })}
                       {a.crmModulos.length > 0 && <Badge variant="outline">CRM ({a.crmModulos.length})</Badge>}
-                      {nSip(a) > 0 && <Badge variant="outline">Producción SIP ({nSip(a)})</Badge>}
+                      {nSip(a) > 0 && <Badge variant="outline">Producción ({nSip(a)})</Badge>}
                       {nSso > 0 && <Badge variant="outline">Prevención ({nSso})</Badge>}
                       {a.ingresoRoles.length > 0 && <Badge variant="outline">Ingreso personal ({a.ingresoRoles.length})</Badge>}
                       {a.adquisicionesRoles.length > 0 && <Badge variant="outline">Adquisiciones ({a.adquisicionesRoles.length})</Badge>}

@@ -23,8 +23,12 @@ import ProyectoSap from './pages/ProyectoSap'
 import Stock from './pages/Stock'
 import Plan from './pages/Plan'
 import CargarPlan from './pages/CargarPlan'
+import ResumenProyeccion from './pages/proyeccion/Resumen'
+import RegistroSemana from './pages/proyeccion/RegistroSemana'
+import ProyeccionMes from './pages/proyeccion/ProyeccionMes'
+import Medidas from './pages/proyeccion/Medidas'
 
-// Portal Producción de Paneles SIP: web propia como el CRM y Prevención, en /produccion.
+// Portal Producción (paneles SIP y proyección mensual): web propia como el CRM y Prevención, en /produccion.
 // Transversal a la empresa, con un permiso por módulo sobre el ancla SIP_ANCLA_ID. La sesión y el
 // acceso al portal los controla ProtectedRoute en App.tsx.
 
@@ -99,6 +103,27 @@ function ModuloPlan() {
   )
 }
 
+function ModuloProyeccion() {
+  const { puedeEn } = usePermisosSip()
+  return (
+    <div className="space-y-4">
+      <Encabezado
+        titulo="Proyección mensual"
+        descripcion="Venta proyectada del mes por línea de negocio contra lo producido cada semana (a precio de las órdenes de venta de SAP) y lo facturado."
+      />
+      <nav className="flex gap-1 overflow-x-auto border-b">
+        <Pestana to={RUTA.proyeccion} end>
+          Resumen
+        </Pestana>
+        {(puedeEn('proyeccion', 'crear') || puedeEn('proyeccion', 'editar')) && <Pestana to={RUTA.proyeccionRegistro}>Registro semanal</Pestana>}
+        <Pestana to={RUTA.proyeccionMes}>Proyección del mes</Pestana>
+        <Pestana to={RUTA.proyeccionMedidas}>Medidas</Pestana>
+      </nav>
+      <Outlet />
+    </div>
+  )
+}
+
 function ModuloRecetas() {
   return (
     <div className="space-y-4">
@@ -136,6 +161,12 @@ export default function SipApp() {
         <Route path="plan" element={<ConModulo modulo="plan"><ModuloPlan /></ConModulo>}>
           <Route index element={<Plan />} />
           <Route path="cargar" element={<CargarPlan />} />
+        </Route>
+        <Route path="proyeccion" element={<ConModulo modulo="proyeccion"><ModuloProyeccion /></ConModulo>}>
+          <Route index element={<ResumenProyeccion />} />
+          <Route path="registro" element={<RegistroSemana />} />
+          <Route path="mes" element={<ProyeccionMes />} />
+          <Route path="medidas" element={<Medidas />} />
         </Route>
         <Route path="stock" element={<ConModulo modulo="stock"><Stock /></ConModulo>} />
         <Route path="consumo" element={<ConModulo modulo="consumo"><ModuloConsumo /></ConModulo>}>

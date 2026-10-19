@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/modules/financiero/components/ui/card'
@@ -89,9 +89,11 @@ export default function Dashboard() {
   if (permisosLoading || sucursalLoading || loading) return <Cargando />
 
   if (!veProduccion) {
+    // quien solo tiene la proyección mensual entra directo a ella
+    if (puedeEn('proyeccion')) return <Navigate to={RUTA.proyeccion} replace />
     return (
       <div className="space-y-2">
-        <h1 className="text-xl font-extrabold">Producción Paneles SIP</h1>
+        <h1 className="text-xl font-extrabold">Producción</h1>
         <p className="text-sm text-muted-foreground">
           Su acceso es a <Link to={RUTA.recetas} className="font-semibold underline">Paneles y recetas</Link>. Para ver la producción
           pida acceso a Registro de producción o a Consumo de materiales.

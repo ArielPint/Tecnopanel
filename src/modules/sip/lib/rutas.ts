@@ -1,4 +1,4 @@
-// Rutas del portal Producción de Paneles SIP, en un solo lugar.
+// Rutas del portal Producción, en un solo lugar.
 export const RUTA = {
   inicio: '/produccion',
   login: '/produccion/login',
@@ -17,6 +17,10 @@ export const RUTA = {
   stock: '/produccion/stock',
   consumo: '/produccion/consumo',
   calculadora: '/produccion/consumo/calculadora',
+  proyeccion: '/produccion/proyeccion',
+  proyeccionRegistro: '/produccion/proyeccion/registro',
+  proyeccionMes: '/produccion/proyeccion/mes',
+  proyeccionMedidas: '/produccion/proyeccion/medidas',
   recetas: '/produccion/recetas',
   materiales: '/produccion/recetas/materiales',
   proyectos: '/produccion/recetas/proyectos',
