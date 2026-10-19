@@ -1,3 +1,4 @@
+import logoTecnopanel from '@/assets/tecnopanel-logo-color.png'
 import { cargarJsPDF } from '@/lib/cargarLibrerias'
 import { CLASE, CRITERIOS, type Clase, type Evaluacion } from './api'
 
@@ -48,8 +49,23 @@ export function mejoras(e: Evaluacion) {
   return lista.map((c) => `${c.label} (${e[c.campo]}/5): ${c.mejora}`)
 }
 
+/** El logo como data URL (jsPDF no descarga imágenes por su cuenta). */
+async function logoDataUrl(): Promise<string | null> {
+  try {
+    const blob = await (await fetch(logoTecnopanel)).blob()
+    return await new Promise((ok, mal) => {
+      const r = new FileReader()
+      r.onload = () => ok(String(r.result))
+      r.onerror = mal
+      r.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
+}
+
 export async function descargarCarta(e: Evaluacion) {
-  const JsPDF = await cargarJsPDF()
+  const [JsPDF, logo] = await Promise.all([cargarJsPDF(), logoDataUrl()])
   const doc = new JsPDF({ unit: 'mm', format: 'letter' })
   const ancho = doc.internal.pageSize.getWidth() - 40
   const alto = doc.internal.pageSize.getHeight()
@@ -72,7 +88,15 @@ export async function descargarCarta(e: Evaluacion) {
 
   doc.setFillColor(212, 42, 54)
   doc.rect(0, 0, doc.internal.pageSize.getWidth(), 6, 'F')
-  linea('TECNOPANEL · Área de Abastecimiento', { negrita: true, tam: 11 })
+  // logo 491×351 px: 34 × 24,3 mm arriba a la izquierda; el membrete a su derecha
+  if (logo) doc.addImage(logo, 'PNG', 20, 11, 34, 24.3)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.text('Área de Abastecimiento', doc.internal.pageSize.getWidth() - 20, 20, { align: 'right' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.text('Evaluación de desempeño de proveedores', doc.internal.pageSize.getWidth() - 20, 25, { align: 'right' })
+  y = logo ? 44 : 26
   linea(`Santiago, ${f(e.created_at)}`, { antes: 4 })
   linea(`Señores ${e.proveedor_nombre}`, { negrita: true, antes: 6 })
   linea('Presente', {})
