@@ -16,6 +16,7 @@ import { SSO_MODULOS, claveAcceso, normalizarAccionesSso } from '@/modules/sso/l
 import { ROLES_INGRESO } from '@/modules/personal/lib/catalogos'
 import { ROLES_ADQ } from '@/modules/adquisiciones/lib/catalogos'
 import { INFORMES_FIN, PERMISO_CONFIGURAR } from '@/modules/financiero_sap/lib/catalogos'
+import { NOTIF_CORREO_GRUPOS } from './notificaciones'
 import { proyectoAccesoVacio, type Acceso, type AccesoInput, type ProyectoAcceso, type ProyectoObra } from './useAccesos'
 
 const OBRA_MODULOS = Object.keys(PAGE_MAP)
@@ -51,6 +52,7 @@ function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: Proye
     ingresoRoles: acceso?.ingresoRoles ?? [],
     adquisicionesRoles: acceso?.adquisicionesRoles ?? [],
     financieroPermisos: acceso?.financieroPermisos ?? [],
+    notifSinCorreo: acceso?.notifSinCorreo ?? [],
     grupoId: acceso?.grupoId ?? null,
     subcontratistaId: acceso?.subcontratistaId ?? null,
     sucursal: acceso?.sucursal ?? null,
@@ -174,6 +176,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                 ['personal', 'Ingreso de personal'],
                 ['adquisiciones', 'Adquisiciones'],
                 ['financiero', 'Financiero'],
+                ['notificaciones', 'Notificaciones'],
               ].map(([valor, nombre]) => (
                 <TabsTrigger key={valor} value={valor} className="h-8 flex-none px-2.5">
                   {nombre}
@@ -769,6 +772,54 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                   </span>
                 </span>
               </label>
+            </TabsContent>
+
+            <TabsContent value="notificaciones" className="flex data-[state=inactive]:hidden min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
+              <p className="text-[11px] text-muted-foreground">
+                Qué avisos le llegan también por correo. Solo recibe los de los portales y proyectos donde participa; la campana del
+                portal los sigue mostrando todos, marcados o no.
+              </p>
+              {NOTIF_CORREO_GRUPOS.map((g) => {
+                const todasActivas = g.opciones.every((o) => !form.notifSinCorreo.includes(o.clave))
+                return (
+                  <div key={g.portal} className="flex flex-col gap-1.5 rounded-md border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>{g.portal}</Label>
+                      {g.opciones.length > 1 && (
+                        <button
+                          type="button"
+                          className="text-xs text-primary hover:underline"
+                          onClick={() =>
+                            setForm((f) => {
+                              const claves = g.opciones.map((o) => o.clave)
+                              const sinGrupo = f.notifSinCorreo.filter((c) => !claves.includes(c))
+                              return { ...f, notifSinCorreo: todasActivas ? [...sinGrupo, ...claves] : sinGrupo }
+                            })
+                          }
+                        >
+                          {todasActivas ? 'Quitar todas' : 'Marcar todas'}
+                        </button>
+                      )}
+                    </div>
+                    {g.opciones.map((o) => (
+                      <label key={o.clave} className="flex items-start gap-2 text-sm [&>button]:mt-0.5">
+                        <Checkbox
+                          checked={!form.notifSinCorreo.includes(o.clave)}
+                          onCheckedChange={(v) =>
+                            setForm((f) => ({
+                              ...f,
+                              notifSinCorreo: v
+                                ? f.notifSinCorreo.filter((c) => c !== o.clave)
+                                : [...f.notifSinCorreo.filter((c) => c !== o.clave), o.clave],
+                            }))
+                          }
+                        />
+                        {o.label}
+                      </label>
+                    ))}
+                  </div>
+                )
+              })}
             </TabsContent>
           </Tabs>
 
