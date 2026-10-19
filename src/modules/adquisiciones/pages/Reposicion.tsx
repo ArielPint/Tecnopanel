@@ -26,12 +26,14 @@ export default function Reposicion() {
   const [filas, setFilas] = useState<FilaReposicion[]>([])
   const [loading, setLoading] = useState(true)
   // Solo las bodegas de las sucursales donde es Compras o Bodega
-  const { sucursales } = usePermisosAdq()
+  const { sucursales, comprasEn } = usePermisosAdq()
   const bodegas = (['B006', 'B007'] as const).filter((b) => sucursales.reposicion.includes(b === 'B006' ? 'Santiago' : 'Puerto Varas'))
   const [bodega, setBodega] = useState<'B006' | 'B007'>('B006')
   useEffect(() => {
     if (bodegas.length && !bodegas.includes(bodega)) setBodega(bodegas[0])
   }, [bodegas.join(), bodega]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Los mínimos los define Compras de la sucursal (adq_guardar_reposicion); Bodega solo los ve
+  const puedeMinimos = comprasEn(bodega === 'B006' ? 'Santiago' : 'Puerto Varas')
   const [filtro, setFiltro] = useState<Filtro>('bajo')
   const [texto, setTexto] = useState('')
   // ediciones de mínimo / reorden aún sin guardar
@@ -190,7 +192,7 @@ export default function Reposicion() {
 
       <div className="flex flex-wrap items-center gap-2">
         <Input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Buscar artículo o código" className="h-9 w-full sm:w-72" />
-        {filtro === 'sin_minimo' && (
+        {filtro === 'sin_minimo' && puedeMinimos && (
           <>
             <Button size="sm" variant="outline" onClick={() => sugerirMinimos(1)}>
               Sugerir mínimo = 1 mes de consumo
@@ -201,7 +203,7 @@ export default function Reposicion() {
           </>
         )}
         <div className="ml-auto flex gap-2">
-          {cambios.length > 0 && (
+          {cambios.length > 0 && puedeMinimos && (
             <Button size="sm" variant="outline" disabled={guardando} onClick={guardar}>
               {guardando ? 'Guardando…' : `Guardar ${cambios.length} mínimos`}
             </Button>
@@ -219,7 +221,9 @@ export default function Reposicion() {
           {filtro === 'bajo'
             ? deBodega.some((f) => f.minimo != null)
               ? 'Ningún artículo está bajo su mínimo.'
-              : 'Todavía no hay mínimos definidos en esta bodega. Empieza por «Con consumo y sin mínimo».'
+              : puedeMinimos
+                ? 'Todavía no hay mínimos definidos en esta bodega. Empieza por «Con consumo y sin mínimo».'
+                : 'Todavía no hay mínimos definidos en esta bodega. Los define Compras.'
             : 'No hay artículos con estos filtros.'}
         </p>
       ) : (
@@ -287,6 +291,9 @@ export default function Reposicion() {
                   </td>
                   <td className="px-2 py-1.5 text-right tabular-nums">{f.cobertura_dias == null ? '—' : `${f.cobertura_dias} d`}</td>
                   <td className="px-2 py-1.5">
+                    {!puedeMinimos ? (
+                      <p className="text-right font-mono-tabular">{f.minimo == null ? '—' : num(f.minimo, 2)}</p>
+                    ) : (
                     <Input
                       inputMode="decimal"
                       value={valor(f, 'minimo')}
@@ -295,8 +302,12 @@ export default function Reposicion() {
                       className={cn('h-8 text-right font-mono-tabular', edit[clave(f)] && 'border-brand')}
                       aria-label={`Mínimo de ${f.articulo_nombre}`}
                     />
+                    )}
                   </td>
                   <td className="px-2 py-1.5">
+                    {!puedeMinimos ? (
+                      <p className="text-right font-mono-tabular text-muted-foreground">{f.reorden == null ? 'auto' : num(f.reorden, 2)}</p>
+                    ) : (
                     <Input
                       inputMode="decimal"
                       value={valor(f, 'reorden')}
@@ -306,6 +317,7 @@ export default function Reposicion() {
                       className={cn('h-8 text-right font-mono-tabular', edit[clave(f)] && 'border-brand')}
                       aria-label={`Cantidad a pedir de ${f.articulo_nombre}`}
                     />
+                    )}
                   </td>
                   <td className="px-2 py-1.5 text-right">
                     {f.sugerido != null ? <Badge variant="destructive">{num(f.sugerido)}</Badge> : <span className="text-muted-foreground">—</span>}
