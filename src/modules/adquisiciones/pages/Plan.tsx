@@ -188,9 +188,13 @@ export default function Plan() {
             {plan.fecha_necesidad && ` · se necesita el ${fecha(plan.fecha_necesidad)}`}
           </p>
           <p className="text-xs text-muted-foreground">
-            {plan.obras == null ? 'Todas las obras abiertas' : `${plan.obras.length} obras`}
-            {plan.ot_desde && ` · órdenes desde ${fecha(plan.ot_desde)}`}
-            {plan.simulacion.length > 0 && ` · simulación: ${plan.simulacion.map((s) => `${s.cantidad} × ${s.proyecto_nombre ?? s.proyecto_codigo}`).join(', ')}`}
+            {plan.programa.length > 0
+              ? `Programa: ${plan.programa.map((x) => `${x.cantidad} × ${x.nombre}`).join(', ')}`
+              : plan.simulacion.length > 0
+                ? `Simulación: ${plan.simulacion.map((x) => `${x.cantidad} × ${x.proyecto_nombre ?? x.proyecto_codigo}`).join(', ')}`
+                : 'Sin programa de viviendas'}
+            {(plan.incluir_ot || plan.programa.length === 0) &&
+              ` · ${plan.obras == null ? 'todas las órdenes de obra abiertas' : `${plan.obras.length} órdenes de obra`}${plan.ot_desde ? ` desde ${fecha(plan.ot_desde)}` : ''}`}
             {plan.nota && ` · ${plan.nota}`}
           </p>
         </div>

@@ -761,8 +761,10 @@ export interface FilaPlan {
   articulo_nombre: string
   unidad: string | null
   grupo: string | null
+  familia: string | null
   requerimiento: number
-  req_simulacion: number
+  /** Parte del requerimiento que sale del programa de viviendas */
+  req_programa: number
   stock_sap: number
   comprometido_sap: number
   stock_fisico: number | null
@@ -794,18 +796,27 @@ export interface Simulacion {
   cantidad: number
 }
 
-/** desde: solo órdenes de fabricación creadas desde esa fecha (SAP tiene órdenes viejas sin cerrar). */
+export interface ProgramaVivienda {
+  tipo_id: number
+  nombre: string
+  cantidad: number
+}
+
+/** programa: viviendas a fabricar por tipo, explotadas por las recetas de SAP. incluirOt: sumar lo pendiente
+ *  de las órdenes de fabricación abiertas (de las obras elegidas, o todas; creadas desde «desde»). */
 export async function planificar(
   bodega: string,
+  programa: ProgramaVivienda[],
+  incluirOt: boolean,
   obras: string[] | null,
-  simulacion: Simulacion[],
   fecha: string | null,
   desde: string | null,
 ): Promise<FilaPlan[]> {
   const { data, error: e } = await supabase.rpc('adq_planificar', {
     p_bodega: bodega,
+    p_programa: programa.filter((x) => x.cantidad > 0).map((x) => ({ tipo_id: x.tipo_id, cantidad: x.cantidad })),
+    p_incluir_ot: incluirOt,
     p_obras: obras,
-    p_simulacion: simulacion.filter((x) => x.cantidad > 0).map((x) => ({ proyecto_codigo: x.proyecto_codigo, cantidad: x.cantidad })),
     p_fecha: fecha || null,
     p_desde: desde || null,
   })
@@ -825,7 +836,10 @@ export interface PlanCompra {
   fecha_necesidad: string | null
   ot_desde: string | null
   obras: string[] | null
+  /** Planes anteriores al programa de viviendas */
   simulacion: Simulacion[]
+  programa: ProgramaVivienda[]
+  incluir_ot: boolean
   nota: string | null
   creado_por_nombre: string | null
   created_at: string
@@ -891,7 +905,8 @@ export interface DatosPlan {
   fecha_necesidad: string | null
   ot_desde: string | null
   obras: string[] | null
-  simulacion: Simulacion[]
+  programa: ProgramaVivienda[]
+  incluir_ot: boolean
   nota: string | null
   lineas: {
     articulo_codigo: string
@@ -1129,3 +1144,104 @@ export async function guardarNc(p: DatosNc): Promise<number> {
 }
 
 export const cerrarNc = (id: number, cierre: string) => rpc('adq_cerrar_nc', { p_id: id, p_cierre: cierre })
+
+
+// ---------------------------------------------------------------- Tipos de vivienda
+
+export interface KitTipo {
+  kit_codigo: string
+  cantidad: number
+  kit_nombre: string | null
+  /** Componentes de su receta en SAP; 0 = el kit no tiene receta */
+  componentes: number
+}
+
+export interface TipoVivienda {
+  id: number
+  nombre: string
+  descripcion: string | null
+  activo: boolean
+  orden: number
+  updated_at: string
+  actualizado_por_nombre: string | null
+  kits: KitTipo[]
+}
+
+export async function listarTiposVivienda(): Promise<TipoVivienda[]> {
+  const { data, error: e } = await supabase.from('adq_tipos_vivienda_v').select('*').order('orden').order('nombre')
+  if (e) error(e)
+  return (data ?? []) as TipoVivienda[]
+}
+
+export async function guardarTipoVivienda(p: {
+  id?: number
+  nombre: string
+  descripcion: string | null
+  activo: boolean
+  kits: { kit_codigo: string; cantidad: number }[]
+}): Promise<number> {
+  const { data, error: e } = await supabase.rpc('adq_guardar_tipo_vivienda', { p })
+  if (e) error(e)
+  return data as number
+}
+
+/** Kits y otros artículos con receta de producción en SAP, para armar los tipos de vivienda. */
+export async function listarArticulosConReceta(): Promise<{ codigo: string; nombre: string | null }[]> {
+  const m = new Map<string, string | null>()
+  for (let desde = 0; ; desde += 1000) {
+    const { data, error: e } = await supabase.from('sap_recetas').select('padre_codigo, padre_nombre').order('padre_codigo').range(desde, desde + 999)
+    if (e) error(e)
+    for (const r of (data ?? []) as { padre_codigo: string; padre_nombre: string | null }[]) m.set(r.padre_codigo, r.padre_nombre)
+    if (!data || data.length < 1000) break
+  }
+  return [...m.entries()].map(([codigo, nombre]) => ({ codigo, nombre })).sort((a, b) => (a.nombre ?? a.codigo).localeCompare(b.nombre ?? b.codigo))
+}
+
+// ---------------------------------------------------------------- OC de SAP por línea
+
+export interface LineaOcSap {
+  doc_entry: number
+  linea: number
+  docnum: number
+  fecha: string
+  fecha_entrega: string | null
+  proveedor_codigo: string | null
+  proveedor_nombre: string | null
+  moneda: string | null
+  oc_abierta: boolean
+  cancelada: boolean
+  articulo_codigo: string | null
+  descripcion: string | null
+  unidad: string | null
+  bodega: string | null
+  ceco: string | null
+  grupo: string | null
+  familia: string | null
+  subfamilia: string | null
+  cantidad: number
+  recibido: number
+  pendiente: number
+  precio: number
+  total: number
+  pendiente_neto: number
+  por_recibir: boolean
+  atrasada: boolean
+  solicitudes: string | null
+}
+
+export async function listarLineasOcSap(desde: string): Promise<LineaOcSap[]> {
+  const filas: LineaOcSap[] = []
+  for (let i = 0; ; i += 1000) {
+    const { data, error: e } = await supabase
+      .from('adq_sap_oc_lineas_v')
+      .select('*')
+      .gte('fecha', desde)
+      .order('docnum', { ascending: false })
+      .order('linea')
+      .range(i, i + 999)
+    if (e) error(e)
+    filas.push(...((data ?? []) as LineaOcSap[]))
+    if (!data || data.length < 1000) break
+  }
+  return filas
+}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calculator, Download, Plus, Save, Trash2 } from 'lucide-react'
+import { Calculator, Download, Save, Settings2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/modules/financiero/components/ui/badge'
 import { Button } from '@/modules/financiero/components/ui/button'
@@ -9,16 +9,26 @@ import { Textarea } from '@/modules/financiero/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/modules/financiero/components/ui/dialog'
 import { cargarXLSX } from '@/lib/cargarLibrerias'
 import { cn } from '@/lib/utils'
-import { BODEGAS, guardarPlan, listarObras, planificar, type EstadoPlan, type FilaPlan, type ObraPlanificable, type Simulacion } from '../lib/api'
+import {
+  BODEGAS,
+  guardarPlan,
+  listarObras,
+  listarTiposVivienda,
+  planificar,
+  type EstadoPlan,
+  type FilaPlan,
+  type ObraPlanificable,
+  type TipoVivienda,
+} from '../lib/api'
+import DialogoTiposVivienda from '../components/DialogoTiposVivienda'
 import { RUTA } from '../lib/rutas'
 import { usePermisosAdq } from '../hooks/usePermisosAdq'
 
-// Planificación de materiales por bodega. El requerimiento sale de las órdenes de fabricación abiertas de
-// SAP: las de obra (una por proyecto, artículo 99999999) que se elijan y las de kits y paneles ya
-// liberadas; lo que se fabrica se cubre con su stock y sus órdenes, y lo que falta se explota por la
-// receta. Se puede simular N viviendas como la orden de una obra. La compra sugerida descuenta el
-// disponible real (con el conteo de Bodega), todas las OC pendientes aunque estén atrasadas y lo que
-// ya está pedido en solicitudes abiertas. La fecha de la OC solo genera alerta.
+// Planificación de materiales por bodega. El requerimiento sale del programa de viviendas del mes (tipo ×
+// cantidad), explotado por las recetas de SAP: kit -> panel -> materia prima. Opcional: sumar lo que falta
+// emitir de las órdenes de fabricación abiertas, que sí se cubre con lo ya fabricado. La compra sugerida
+// descuenta el disponible real (con el conteo de Bodega), todas las OC pendientes aunque estén atrasadas y
+// lo que ya está pedido en solicitudes abiertas. La fecha de la OC solo genera alerta.
 
 const num = (n: number | null | undefined, dec = 2) =>
   n == null ? '—' : new Intl.NumberFormat('es-CL', { maximumFractionDigits: dec }).format(n)
@@ -27,6 +37,11 @@ const haceMeses = (n: number) => {
   const d = new Date()
   d.setMonth(d.getMonth() - n)
   return d.toISOString().slice(0, 10)
+}
+// el programa es del mes siguiente: los materiales se necesitan al empezarlo
+const inicioMesSiguiente = () => {
+  const d = new Date()
+  return new Date(d.getFullYear(), d.getMonth() + 1, 1, 12).toISOString().slice(0, 10)
 }
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 
@@ -39,7 +54,7 @@ export const ESTADO_PLAN: Record<EstadoPlan, { label: string; variant: 'destruct
 
 export default function Planificacion() {
   const navigate = useNavigate()
-  const { sucursales, comprasEn } = usePermisosAdq()
+  const { sucursales, comprasEn, tiene } = usePermisosAdq()
   const bodegas = (['B006', 'B007'] as const).filter((b) => {
     const s = b === 'B006' ? 'Santiago' : 'Puerto Varas'
     return sucursales.reposicion.includes(s) || sucursales.control.includes(s)
@@ -54,8 +69,11 @@ export default function Planificacion() {
   const [obras, setObras] = useState<ObraPlanificable[]>([])
   const [elegidas, setElegidas] = useState<Set<string> | null>(null) // null = todas
   const [buscarObra, setBuscarObra] = useState('')
-  const [simulacion, setSimulacion] = useState<Simulacion[]>([])
-  const [fechaNecesidad, setFechaNecesidad] = useState('')
+  const [tipos, setTipos] = useState<TipoVivienda[]>([])
+  const [programa, setPrograma] = useState<Record<number, string>>({})
+  const [editarTipos, setEditarTipos] = useState(false)
+  const [incluirOt, setIncluirOt] = useState(false)
+  const [fechaNecesidad, setFechaNecesidad] = useState(inicioMesSiguiente())
   // SAP tiene órdenes de fabricación de años anteriores que nunca se cerraron: por defecto, las de 6 meses
   const [desde, setDesde] = useState(haceMeses(6))
   const [filas, setFilas] = useState<FilaPlan[] | null>(null)
@@ -66,10 +84,21 @@ export default function Planificacion() {
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
   const [guardar, setGuardar] = useState(false)
 
+  const cargarTipos = () =>
+    listarTiposVivienda()
+      .then(setTipos)
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'No se pudieron cargar los tipos de vivienda'))
+  useEffect(() => {
+    cargarTipos()
+  }, [])
+  const programaLista = tipos
+    .filter((t) => t.activo && Number(programa[t.id]) > 0)
+    .map((t) => ({ tipo_id: t.id, nombre: t.nombre, cantidad: Number(programa[t.id]) }))
+  const totalViviendas = programaLista.reduce((a, x) => a + x.cantidad, 0)
+
   useEffect(() => {
     setFilas(null)
     setElegidas(null)
-    setSimulacion([])
     listarObras(bodega, desde)
       .then(setObras)
       .catch((err) => toast.error(err instanceof Error ? err.message : 'No se pudieron cargar las obras'))
@@ -85,7 +114,7 @@ export default function Planificacion() {
   async function calcular() {
     setCalculando(true)
     try {
-      const r = await planificar(bodega, elegidas == null ? null : [...elegidas], simulacion, fechaNecesidad || null, desde || null)
+      const r = await planificar(bodega, programaLista, incluirOt, elegidas == null ? null : [...elegidas], fechaNecesidad || null, desde || null)
       setFilas(r)
       setPlanificado({})
       setSeleccion(new Set(r.filter((f) => f.compra_sugerida > 0).map((f) => f.articulo_codigo)))
@@ -103,7 +132,14 @@ export default function Planificacion() {
     const q = texto.trim().toLowerCase()
     return (filas ?? [])
       .filter((f) => cumple(f, filtro))
-      .filter((f) => !q || f.articulo_nombre.toLowerCase().includes(q) || f.articulo_codigo.toLowerCase().includes(q) || (f.grupo ?? '').toLowerCase().includes(q))
+      .filter(
+        (f) =>
+          !q ||
+          f.articulo_nombre.toLowerCase().includes(q) ||
+          f.articulo_codigo.toLowerCase().includes(q) ||
+          (f.grupo ?? '').toLowerCase().includes(q) ||
+          (f.familia ?? '').toLowerCase().includes(q),
+      )
   }, [filas, filtro, texto]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const cantidad = (f: FilaPlan) => {
@@ -126,7 +162,8 @@ export default function Planificacion() {
           Unidad: f.unidad ?? '',
           Grupo: f.grupo ?? '',
           Requerimiento: f.requerimiento,
-          'De simulación': f.req_simulacion,
+          'Del programa': f.req_programa,
+          Familia: f.familia ?? '',
           'Stock SAP': f.stock_sap,
           'Stock físico': f.stock_fisico ?? '',
           Inutilizable: f.inutilizable,
@@ -152,8 +189,10 @@ export default function Planificacion() {
     XLSX.utils.book_append_sheet(
       libro,
       XLSX.utils.json_to_sheet([
-        ...obras.filter((o) => estaElegida(o.proyecto_codigo)).map((o) => ({ Tipo: 'Obra', Proyecto: o.proyecto_codigo, Nombre: o.proyecto_nombre ?? '', Viviendas: '' })),
-        ...simulacion.map((s) => ({ Tipo: 'Simulación', Proyecto: s.proyecto_codigo, Nombre: s.proyecto_nombre ?? '', Viviendas: s.cantidad })),
+        ...programaLista.map((x) => ({ Origen: 'Programa de viviendas', Detalle: x.nombre, Viviendas: x.cantidad })),
+        ...(incluirOt
+          ? obras.filter((o) => estaElegida(o.proyecto_codigo)).map((o) => ({ Origen: 'Orden de obra abierta', Detalle: `${o.proyecto_codigo} · ${o.proyecto_nombre ?? ''}`, Viviendas: '' }))
+          : []),
       ]),
       'Alcance',
     )
@@ -174,9 +213,9 @@ export default function Planificacion() {
       <div>
         <h1 className="text-xl font-extrabold">Planificación de materiales</h1>
         <p className="max-w-4xl text-sm text-muted-foreground">
-          El requerimiento sale de las órdenes de fabricación abiertas en SAP: las de cada obra y las de kits y paneles ya liberadas. Lo que se fabrica se cubre con
-          su stock y sus órdenes, y el resto se calcula por la receta. Compra sugerida = requerimiento + mínimo − disponible real − OC pendientes − lo ya pedido en
-          solicitudes. Una OC atrasada sigue cubriendo la necesidad: solo genera alerta. Crítico: hay que comprar y no queda disponible en bodega.
+          Indica cuántas viviendas de cada tipo se fabricarán y el requerimiento sale de las recetas de SAP (kits, paneles y materia prima). Compra sugerida =
+          requerimiento + mínimo − disponible real − OC pendientes − lo ya pedido en solicitudes. Una OC atrasada sigue cubriendo la necesidad: solo genera alerta.
+          Crítico: hay que comprar y no queda disponible en bodega.
         </p>
       </div>
 
@@ -196,7 +235,74 @@ export default function Planificacion() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <div className="min-w-0 space-y-3 rounded-md border bg-card p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-bold">Programa de viviendas</p>
+            {tiene('jefe_compras') && (
+              <Button size="sm" variant="ghost" onClick={() => setEditarTipos(true)}>
+                <Settings2 className="mr-1 h-4 w-4" /> Tipos de vivienda
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Cuántas viviendas de cada tipo se van a fabricar. Cada tipo es un conjunto de kits de SAP y sus recetas dan la materia prima y los materiales.
+          </p>
+          {tipos.filter((t) => t.activo).length === 0 ? (
+            <p className="rounded border border-dashed p-3 text-sm text-muted-foreground">No hay tipos de vivienda activos.</p>
+          ) : (
+            <div className="divide-y rounded border">
+              {tipos
+                .filter((t) => t.activo)
+                .map((t) => (
+                  <div key={t.id} className="flex items-center gap-2 px-2 py-1.5">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{t.nombre}</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {t.kits.length} kits
+                        {t.kits.some((k) => k.componentes === 0) && <span className="text-warning"> · hay kits sin receta en SAP</span>}
+                      </span>
+                    </span>
+                    <Input
+                      inputMode="numeric"
+                      value={programa[t.id] ?? ''}
+                      onChange={(e) => setPrograma((p) => ({ ...p, [t.id]: e.target.value.replace(/\D/g, '') }))}
+                      className="h-8 w-20 text-right font-mono-tabular"
+                      placeholder="0"
+                      aria-label={`Viviendas ${t.nombre}`}
+                    />
+                    <span className="text-xs text-muted-foreground">viv.</span>
+                  </div>
+                ))}
+            </div>
+          )}
+          <p className="text-right text-xs text-muted-foreground">
+            Total: <span className="font-mono-tabular font-semibold text-foreground">{totalViviendas}</span> viviendas
+          </p>
+          <label className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Materiales necesarios para el</span>
+            <Input type="date" value={fechaNecesidad} onChange={(e) => setFechaNecesidad(e.target.value)} className="h-8 w-40" />
+          </label>
+          <p className="text-[11px] text-muted-foreground">Maquilas, fletes y gastos no se planifican: no son de inventario.</p>
+          <div className="flex justify-end">
+            <Button onClick={calcular} disabled={calculando || (totalViviendas === 0 && !(incluirOt && nElegidas > 0))}>
+              <Calculator className="mr-1 h-4 w-4" /> {calculando ? 'Calculando…' : 'Calcular'}
+            </Button>
+          </div>
+        </div>
+
         <div className="min-w-0 space-y-2 rounded-md border bg-card p-3">
+          <label className="flex cursor-pointer items-start gap-2 text-sm">
+            <input type="checkbox" className="mt-1 accent-[hsl(var(--brand))]" checked={incluirOt} onChange={(e) => setIncluirOt(e.target.checked)} />
+            <span>
+              <span className="font-bold">Sumar lo pendiente de las órdenes de fabricación abiertas</span>
+              <span className="block text-xs text-muted-foreground">
+                Lo que falta emitir de las órdenes de obras, kits y paneles ya liberadas en SAP, para no usar dos veces el mismo stock. Lo programado no se cubre con
+                kits o paneles ya fabricados: esos son de las obras en curso.
+              </span>
+            </span>
+          </label>
+          {incluirOt && (
+            <>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-bold">
               Obras con orden abierta <span className="font-normal text-muted-foreground">· {nElegidas} de {obras.length}</span>
@@ -248,64 +354,12 @@ export default function Planificacion() {
             <Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="h-8 w-40" />
           </label>
           <p className="text-[11px] text-muted-foreground">
-            Las órdenes de kits y paneles liberadas desde esa fecha se consideran siempre: SAP no las asocia a una obra. Maquilas, fletes y gastos no se planifican
-            (no son de inventario).
+            Las órdenes de kits y paneles liberadas desde esa fecha se consideran siempre: SAP no las asocia a una obra.
           </p>
+            </>
+          )}
         </div>
 
-        <div className="min-w-0 space-y-3 rounded-md border bg-card p-3">
-          <p className="text-sm font-bold">Simulación de viviendas</p>
-          <p className="text-xs text-muted-foreground">Agrega viviendas que aún no tienen orden en SAP, tomando como modelo la orden de una obra parecida.</p>
-          {simulacion.map((s, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <select
-                value={s.proyecto_codigo}
-                onChange={(e) =>
-                  setSimulacion((v) =>
-                    v.map((x, j) => (j === i ? { ...x, proyecto_codigo: e.target.value, proyecto_nombre: obras.find((o) => o.proyecto_codigo === e.target.value)?.proyecto_nombre ?? null } : x)),
-                  )
-                }
-                className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm"
-                aria-label="Obra modelo"
-              >
-                {obras.map((o) => (
-                  <option key={o.proyecto_codigo} value={o.proyecto_codigo}>
-                    {o.proyecto_nombre ?? o.proyecto_codigo}
-                  </option>
-                ))}
-              </select>
-              <Input
-                inputMode="numeric"
-                value={String(s.cantidad || '')}
-                onChange={(e) => setSimulacion((v) => v.map((x, j) => (j === i ? { ...x, cantidad: Number(e.target.value.replace(/\D/g, '')) || 0 } : x)))}
-                className="h-8 w-20 text-right font-mono-tabular"
-                placeholder="0"
-                aria-label="Cantidad de viviendas"
-              />
-              <span className="text-xs text-muted-foreground">viv.</span>
-              <button onClick={() => setSimulacion((v) => v.filter((_, j) => j !== i))} className="rounded p-1 text-muted-foreground hover:text-destructive" aria-label="Quitar">
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={obras.length === 0}
-            onClick={() => setSimulacion((v) => [...v, { proyecto_codigo: obras[0].proyecto_codigo, proyecto_nombre: obras[0].proyecto_nombre, cantidad: 1 }])}
-          >
-            <Plus className="mr-1 h-4 w-4" /> Agregar simulación
-          </Button>
-          <label className="flex flex-wrap items-center gap-2 pt-2 text-sm">
-            <span className="text-muted-foreground">Materiales necesarios para el</span>
-            <Input type="date" value={fechaNecesidad} onChange={(e) => setFechaNecesidad(e.target.value)} className="h-8 w-40" />
-          </label>
-          <div className="flex justify-end">
-            <Button onClick={calcular} disabled={calculando || (nElegidas === 0 && !simulacion.some((s) => s.cantidad > 0))}>
-              <Calculator className="mr-1 h-4 w-4" /> {calculando ? 'Calculando…' : 'Calcular'}
-            </Button>
-          </div>
-        </div>
       </div>
 
       {filas && (
@@ -325,7 +379,7 @@ export default function Planificacion() {
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Buscar material, código o grupo" className="h-9 w-full sm:w-72" />
+            <Input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Buscar material, código, familia o grupo" className="h-9 w-full sm:w-72" />
             <Button size="sm" variant="outline" onClick={exportar}>
               <Download className="mr-1 h-4 w-4" /> Excel
             </Button>
@@ -338,7 +392,7 @@ export default function Planificacion() {
 
           {lista.length === 0 ? (
             <p className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-              {filas.length === 0 ? 'Con este alcance no hay materiales por comprar ni por emitir.' : 'No hay materiales con estos filtros.'}
+              {filas.length === 0 ? 'Con este programa no hay materiales que planificar.' : 'No hay materiales con estos filtros.'}
             </p>
           ) : (
             <div className="overflow-x-auto rounded-md border bg-card">
@@ -385,12 +439,15 @@ export default function Planificacion() {
                         </p>
                         <p className="font-mono-tabular text-[11px] text-muted-foreground">
                           {f.articulo_codigo} · {f.unidad ?? '—'}
+                          {f.familia && ` · ${f.familia}`}
                           {f.ultimo_proveedor && ` · ${f.ultimo_proveedor}`}
                         </p>
                       </td>
                       <td className="px-2 py-1.5 text-right font-mono-tabular">
                         {num(f.requerimiento)}
-                        {f.req_simulacion > 0 && <p className="text-[11px] text-muted-foreground">{num(f.req_simulacion)} simul.</p>}
+                        {f.req_programa > 0 && f.req_programa < f.requerimiento && (
+                          <p className="text-[11px] text-muted-foreground">{num(f.req_programa)} del programa</p>
+                        )}
                       </td>
                       <td
                         className="px-2 py-1.5 text-right font-mono-tabular"
@@ -439,6 +496,8 @@ export default function Planificacion() {
         </>
       )}
 
+      <DialogoTiposVivienda abierto={editarTipos} tipos={tipos} onCerrar={() => setEditarTipos(false)} onGuardado={cargarTipos} />
+
       <DialogoGuardarPlan
         abierto={guardar}
         onCerrar={() => setGuardar(false)}
@@ -449,9 +508,10 @@ export default function Planificacion() {
             anio,
             mes,
             fecha_necesidad: fechaNecesidad || null,
-            ot_desde: desde || null,
-            obras: elegidas == null ? null : [...elegidas],
-            simulacion: simulacion.filter((s) => s.cantidad > 0),
+            ot_desde: incluirOt ? desde || null : null,
+            obras: incluirOt && elegidas != null ? [...elegidas] : null,
+            programa: programaLista,
+            incluir_ot: incluirOt,
             nota,
             lineas: elegidasPlan.map((f) => ({
               articulo_codigo: f.articulo_codigo,
@@ -488,9 +548,9 @@ function DialogoGuardarPlan({
   resumen: string
   onGuardar: (anio: number, mes: number, nota: string | null) => Promise<void>
 }) {
-  const hoy = new Date()
-  const [anio, setAnio] = useState(hoy.getFullYear())
-  const [mes, setMes] = useState(hoy.getMonth() + 1)
+  const siguiente = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
+  const [anio, setAnio] = useState(siguiente.getFullYear())
+  const [mes, setMes] = useState(siguiente.getMonth() + 1)
   const [nota, setNota] = useState('')
   const [enviando, setEnviando] = useState(false)
   return (
