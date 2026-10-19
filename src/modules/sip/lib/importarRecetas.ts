@@ -53,6 +53,12 @@ function aNumero(v: unknown): number {
   return Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s)
 }
 
+/** Los códigos de artículo SAP son de 7 dígitos: Excel se come los ceros iniciales (0101010 -> 101010) */
+function codigoSap(v: unknown): string {
+  const s = String(v ?? '').trim()
+  return /^\d{1,6}$/.test(s) ? s.padStart(7, '0') : s
+}
+
 export interface ResultadoLectura {
   filas: FilaImportacion[]
   paneles: number
@@ -89,8 +95,8 @@ export async function leerExcelRecetas(archivo: File): Promise<ResultadoLectura>
   for (let i = filaEnc + 1; i < matriz.length; i++) {
     const r = matriz[i] ?? []
     const v = (c: keyof FilaImportacion) => (columnas[c] === undefined ? '' : r[columnas[c]!])
-    const panel = String(v('panel_codigo') ?? '').trim()
-    const material = String(v('material_codigo') ?? '').trim()
+    const panel = codigoSap(v('panel_codigo'))
+    const material = codigoSap(v('material_codigo'))
     if (!panel && !material) continue
     const fila = i + 1 // número de fila en Excel
     const cantidad = aNumero(v('cantidad'))
