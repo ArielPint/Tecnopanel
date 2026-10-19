@@ -12,10 +12,13 @@ import { estadoSincronizacion, fmtPesos, listarLineasOcSap, listarOcSap, type Li
 type Filtro = 'abiertas' | 'sin_facturar' | 'sin_sc' | 'todas'
 type FiltroLinea = 'por_recibir' | 'atrasadas' | 'todas'
 
+// dias 0 = todo el historial de SAP (desde 2021)
 const PERIODOS = [
   { dias: 30, label: 'Últimos 30 días' },
   { dias: 90, label: 'Últimos 3 meses' },
   { dias: 365, label: 'Último año' },
+  { dias: 730, label: 'Últimos 2 años' },
+  { dias: 0, label: 'Todo el historial' },
 ]
 
 const num = (n: number | null | undefined, dec = 2) =>
@@ -29,7 +32,7 @@ export default function OrdenesSap() {
   const [lineas, setLineas] = useState<LineaOcSap[]>([])
   const [sincronizado, setSincronizado] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [dias, setDias] = useState(90)
+  const [dias, setDias] = useState(0)
   const [vista, setVista] = useState<'oc' | 'lineas'>('oc')
   const [filtro, setFiltro] = useState<Filtro>('abiertas')
   const [filtroLinea, setFiltroLinea] = useState<FiltroLinea>('por_recibir')
@@ -41,7 +44,7 @@ export default function OrdenesSap() {
 
   useEffect(() => {
     setLoading(true)
-    const desde = sumarDias(hoyChile(), -dias)
+    const desde = dias ? sumarDias(hoyChile(), -dias) : null
     Promise.all([listarOcSap(desde), listarLineasOcSap(desde), estadoSincronizacion()])
       .then(([o, l, e]) => {
         setOcs(o)
