@@ -17,10 +17,11 @@ export const RUTA = {
   plantillas: '/prevencion/inspecciones/plantillas',
   plantilla: (id: string) => `/prevencion/inspecciones/plantillas/${id}`,
   nuevaPlantilla: '/prevencion/inspecciones/plantillas/nueva',
-  nuevaInspeccion: (checklistId?: string, areaId?: string | null) => {
+  nuevaInspeccion: (checklistId?: string, areaId?: string | null, sucursal?: string) => {
     const q = new URLSearchParams()
     if (checklistId) q.set('plantilla', checklistId)
     if (areaId) q.set('area', areaId)
+    else if (sucursal) q.set('sucursal', sucursal)
     const s = q.toString()
     return `/prevencion/inspecciones/nueva${s ? `?${s}` : ''}`
   },

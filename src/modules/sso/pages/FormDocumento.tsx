@@ -13,6 +13,8 @@ import { hoyChile } from '../lib/estados'
 import { RUTA } from '../lib/rutas'
 import { usePermisosSso } from '../hooks/usePermisosSso'
 import { useDatosSso } from '../hooks/useDatosSso'
+import { useSucursalSso } from '../hooks/useSucursalSso'
+import CampoSucursal from '../components/CampoSucursal'
 
 const selectClase =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring'
@@ -23,8 +25,9 @@ export default function FormDocumento() {
   const navigate = useNavigate()
   const { puede, userId, loading: permisosLoading } = usePermisosSso('documentos')
   const { areas, usuarios } = useDatosSso()
+  const { porDefecto } = useSucursalSso()
   const [original, setOriginal] = useState<DocumentoV | null>(null)
-  const [f, setF] = useState<FichaDocumento>({ codigo: '', titulo: '', tipo: 'procedimiento', area_id: null, responsable_user_id: null, revision_meses: 24, descripcion: null, activo: true })
+  const [f, setF] = useState<FichaDocumento>({ codigo: '', titulo: '', tipo: 'procedimiento', area_id: null, sucursal: porDefecto, responsable_user_id: null, revision_meses: 24, descripcion: null, activo: true })
   const [archivo, setArchivo] = useState<File | null>(null)
   const [version, setVersion] = useState('1')
   const [emision, setEmision] = useState(hoyChile())
@@ -38,7 +41,7 @@ export default function FormDocumento() {
       .then((d) => {
         if (!d) return
         setOriginal(d)
-        setF({ codigo: d.codigo, titulo: d.titulo, tipo: d.tipo, area_id: d.area_id, responsable_user_id: d.responsable_user_id, revision_meses: d.revision_meses, descripcion: d.descripcion, activo: d.activo })
+        setF({ codigo: d.codigo, titulo: d.titulo, tipo: d.tipo, area_id: d.area_id, sucursal: d.sucursal, responsable_user_id: d.responsable_user_id, revision_meses: d.revision_meses, descripcion: d.descripcion, activo: d.activo })
       })
       .finally(() => setCargando(false))
   }, [id])
@@ -47,6 +50,9 @@ export default function FormDocumento() {
   if (!permisosLoading && !cargando && !puedeGuardar) return <Navigate to={id ? RUTA.documento(id) : RUTA.documentos} replace />
 
   const set = <K extends keyof FichaDocumento>(k: K, v: FichaDocumento[K]) => setF((x) => ({ ...x, [k]: v }))
+  // con área, la sucursal es la del área
+  const elegirArea = (areaId: string | null) =>
+    setF((x) => ({ ...x, area_id: areaId, sucursal: areas.find((a) => a.id === areaId)?.sucursal ?? x.sucursal }))
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -103,7 +109,7 @@ export default function FormDocumento() {
                 <Input id="d-tit" value={f.titulo} onChange={(e) => set('titulo', e.target.value)} required />
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="d-tipo">Tipo</Label>
                 <select id="d-tipo" value={f.tipo} onChange={(e) => set('tipo', e.target.value as TipoDocumento)} className={selectClase}>
@@ -116,15 +122,18 @@ export default function FormDocumento() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="d-area">Área</Label>
-                <select id="d-area" value={f.area_id ?? ''} onChange={(e) => set('area_id', e.target.value || null)} className={selectClase}>
+                <select id="d-area" value={f.area_id ?? ''} onChange={(e) => elegirArea(e.target.value || null)} className={selectClase}>
                   <option value="">Toda la empresa</option>
-                  {areas.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.nombre}
-                    </option>
-                  ))}
+                  {areas
+                    .filter((a) => a.id === f.area_id || !f.sucursal || a.sucursal === f.sucursal)
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.nombre}
+                      </option>
+                    ))}
                 </select>
               </div>
+              <CampoSucursal id="d-suc" value={f.sucursal} onChange={(s) => set('sucursal', s)} areaId={f.area_id} areas={areas} permitirAmbas />
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="d-resp">Responsable</Label>
                 <select id="d-resp" value={f.responsable_user_id ?? ''} onChange={(e) => set('responsable_user_id', e.target.value || null)} className={selectClase}>

@@ -1,3 +1,5 @@
+import type { Sucursal } from '@/lib/lineasNegocio'
+
 export type EstadoSso = 'abierto' | 'en_proceso' | 'pend_verificacion' | 'cerrado'
 
 export type TipoEvidencia = 'deteccion' | 'cierre'
@@ -24,6 +26,8 @@ export interface Hallazgo {
   cerrado_en_plazo: boolean | null
   /** si lo generó una inspección (fase 5) */
   origen_inspeccion_id: string | null
+  /** la de su área; sin área, la del evento o inspección de origen */
+  sucursal: Sucursal
 }
 
 export interface Area {
@@ -31,6 +35,7 @@ export interface Area {
   nombre: string
   encargado_user_id: string | null
   activa: boolean
+  sucursal: Sucursal
 }
 
 export interface Evidencia {

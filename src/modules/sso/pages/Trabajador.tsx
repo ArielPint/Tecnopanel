@@ -193,6 +193,7 @@ export default function Trabajador() {
           </Dato>
           <Dato label="Cargo">{tr.cargo}</Dato>
           <Dato label="Área">{tr.area_id ? nombreArea(tr.area_id) : 'Sin área'}</Dato>
+          <Dato label="Sucursal">{tr.sucursal}</Dato>
           <Dato label="Fecha de ingreso">{tr.fecha_ingreso && fmtFecha(tr.fecha_ingreso)}</Dato>
           <Dato label="Teléfono">{tr.telefono}</Dato>
           <Dato label="Email">{tr.email}</Dato>

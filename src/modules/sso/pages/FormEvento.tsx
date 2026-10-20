@@ -14,6 +14,8 @@ import type { TrabajadorV } from '../lib/tiposTrabajadores'
 import { usePermisosSso } from '../hooks/usePermisosSso'
 import { useDatosSso } from '../hooks/useDatosSso'
 import { useCatalogosTrabajadores } from '../hooks/useCatalogosTrabajadores'
+import { useSucursalSso } from '../hooks/useSucursalSso'
+import CampoSucursal from '../components/CampoSucursal'
 
 const selectClase =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring'
@@ -39,10 +41,11 @@ export default function FormEvento() {
   const navigate = useNavigate()
   const { puede, userId, loading: permisosLoading } = usePermisosSso('accidentes')
   const { areas } = useDatosSso()
+  const { porDefecto } = useSucursalSso()
   const { empresas } = useCatalogosTrabajadores()
   const [trabajadores, setTrabajadores] = useState<TrabajadorV[]>([])
   const [original, setOriginal] = useState<EventoV | null>(null)
-  const [f, setF] = useState<FichaEvento>({ tipo: 'accidente_ctp', gravedad: 'leve', dias_perdidos: 0 })
+  const [f, setF] = useState<FichaEvento>({ tipo: 'accidente_ctp', gravedad: 'leve', dias_perdidos: 0, sucursal: porDefecto ?? undefined })
   const [cuando, setCuando] = useState(ahoraLocal())
   const [buscar, setBuscar] = useState('')
   const [archivos, setArchivos] = useState<File[]>([])
@@ -79,6 +82,11 @@ export default function FormEvento() {
   if (!permisosLoading && !cargando && !puedeGuardar) return <Navigate to={id ? RUTA.evento(id) : RUTA.accidentes} replace />
 
   const set = <K extends keyof FichaEvento>(k: K, v: FichaEvento[K]) => setF((x) => ({ ...x, [k]: v }))
+  // la sucursal es la del área; sin área, la del afectado
+  const elegirArea = (areaId: string | null) =>
+    setF((x) => ({ ...x, area_id: areaId, sucursal: areas.find((a) => a.id === areaId)?.sucursal ?? x.sucursal }))
+  const elegirTrabajador = (t: TrabajadorV) =>
+    setF((x) => ({ ...x, trabajador_id: t.id, sucursal: x.area_id ? x.sucursal : t.sucursal }))
   const tipo = (f.tipo ?? 'accidente_ctp') as TipoEvento
   const conLesion = CON_LESION.includes(tipo)
   const afectado = trabajadores.find((t) => t.id === f.trabajador_id)
@@ -92,6 +100,10 @@ export default function FormEvento() {
     }
     if (conLesion && !f.trabajador_id) {
       toast.error('Indica el trabajador afectado')
+      return
+    }
+    if (!f.area_id && !f.sucursal) {
+      toast.error('Elige la sucursal (o un área)')
       return
     }
     setEnviando(true)
@@ -173,18 +185,21 @@ export default function FormEvento() {
               </div>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-3">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="ev-area">Área</Label>
-                <select id="ev-area" value={f.area_id ?? ''} onChange={(e) => set('area_id', e.target.value || null)} className={selectClase}>
+                <select id="ev-area" value={f.area_id ?? ''} onChange={(e) => elegirArea(e.target.value || null)} className={selectClase}>
                   <option value="">Sin área</option>
-                  {areas.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.nombre}
-                    </option>
-                  ))}
+                  {areas
+                    .filter((a) => a.id === f.area_id || !f.sucursal || a.sucursal === f.sucursal)
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.nombre}
+                      </option>
+                    ))}
                 </select>
               </div>
+              <CampoSucursal id="ev-suc" value={f.sucursal ?? null} onChange={(s) => set('sucursal', s ?? undefined)} areaId={f.area_id} areas={areas} />
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="ev-lugar">Lugar exacto</Label>
                 <Input id="ev-lugar" value={f.lugar ?? ''} onChange={(e) => set('lugar', e.target.value || null)} placeholder={tipo === 'trayecto' ? 'Ej: Av. Matta con San Diego' : 'Ej: nave 2, puesto 4'} />
@@ -219,7 +234,7 @@ export default function FormEvento() {
                             type="button"
                             className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
                             onClick={() => {
-                              set('trabajador_id', t.id)
+                              elegirTrabajador(t)
                               setBuscar('')
                             }}
                           >

@@ -11,6 +11,7 @@ import { Checkbox } from '@/modules/financiero/components/ui/checkbox'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/modules/financiero/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
 import { cn } from '@/lib/utils'
+import type { Sucursal } from '@/lib/lineasNegocio'
 import {
   ESTADO_ACUERDO,
   abierto,
@@ -42,6 +43,8 @@ import { RUTA } from '../lib/rutas'
 import { usePermisosSso } from '../hooks/usePermisosSso'
 import { useDatosSso } from '../hooks/useDatosSso'
 import { DialogAcuerdo } from '../components/DialogAcuerdo'
+import { useSucursalSso } from '../hooks/useSucursalSso'
+import CampoSucursal from '../components/CampoSucursal'
 
 const selectClase =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring'
@@ -218,7 +221,8 @@ export function ModuloComite() {
 }
 
 function DialogComite({ open, onOpenChange, comite, onGuardado }: { open: boolean; onOpenChange: (v: boolean) => void; comite: ComiteV | null; onGuardado: (id: string) => void }) {
-  const [f, setF] = useState<FichaComite>({ nombre: '', faena: null, periodo_desde: hoyChile(), periodo_hasta: sumarAnios(hoyChile(), 2), activo: true, observaciones: null })
+  const { porDefecto } = useSucursalSso()
+  const [f, setF] = useState<FichaComite>({ nombre: '', faena: null, sucursal: porDefecto, periodo_desde: hoyChile(), periodo_hasta: sumarAnios(hoyChile(), 2), activo: true, observaciones: null })
   const [enviando, setEnviando] = useState(false)
 
   useEffect(() => {
@@ -226,14 +230,18 @@ function DialogComite({ open, onOpenChange, comite, onGuardado }: { open: boolea
     const hoy = hoyChile()
     setF(
       comite
-        ? { nombre: comite.nombre, faena: comite.faena, periodo_desde: comite.periodo_desde, periodo_hasta: comite.periodo_hasta, activo: comite.activo, observaciones: comite.observaciones }
-        : { nombre: '', faena: null, periodo_desde: hoy, periodo_hasta: sumarAnios(hoy, 2), activo: true, observaciones: null },
+        ? { nombre: comite.nombre, faena: comite.faena, sucursal: comite.sucursal, periodo_desde: comite.periodo_desde, periodo_hasta: comite.periodo_hasta, activo: comite.activo, observaciones: comite.observaciones }
+        : { nombre: '', faena: null, sucursal: porDefecto, periodo_desde: hoy, periodo_hasta: sumarAnios(hoy, 2), activo: true, observaciones: null },
     )
-  }, [open, comite])
+  }, [open, comite, porDefecto])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     if (!f.nombre.trim()) return
+    if (!f.sucursal) {
+      toast.error('Elige la sucursal del comité')
+      return
+    }
     setEnviando(true)
     try {
       const id = await guardarComite(comite?.id ?? null, { ...f, nombre: f.nombre.trim(), faena: f.faena?.trim() || null, observaciones: f.observaciones?.trim() || null })
@@ -259,9 +267,12 @@ function DialogComite({ open, onOpenChange, comite, onGuardado }: { open: boolea
             <Label htmlFor="co-nombre">Nombre *</Label>
             <Input id="co-nombre" value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} placeholder="CPHS Planta Santiago" required />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="co-faena">Faena / sucursal</Label>
-            <Input id="co-faena" value={f.faena ?? ''} onChange={(e) => setF({ ...f, faena: e.target.value })} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <CampoSucursal id="co-suc" value={f.sucursal} onChange={(s) => setF({ ...f, sucursal: s })} />
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="co-faena">Faena</Label>
+              <Input id="co-faena" value={f.faena ?? ''} onChange={(e) => setF({ ...f, faena: e.target.value })} />
+            </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -677,6 +688,7 @@ export function IntegrantesComite() {
         open={dialogo !== null}
         onOpenChange={(v) => !v && setDialogo(null)}
         comiteId={comite.id}
+        sucursal={comite.sucursal}
         miembro={dialogo?.miembro ?? null}
         excluir={miembros.filter((m) => m.vigente && !m.hasta).map((m) => m.trabajador_id)}
         onGuardado={cambio}
@@ -702,6 +714,7 @@ function DialogMiembro({
   open,
   onOpenChange,
   comiteId,
+  sucursal,
   miembro,
   excluir,
   onGuardado,
@@ -709,6 +722,7 @@ function DialogMiembro({
   open: boolean
   onOpenChange: (v: boolean) => void
   comiteId: string
+  sucursal: Sucursal
   miembro: MiembroV | null
   excluir: string[]
   onGuardado: () => void
@@ -740,10 +754,10 @@ function DialogMiembro({
   const opciones = useMemo(() => {
     const q = busca.trim().toLowerCase()
     return trabajadores
-      .filter((t) => t.activo && t.empresa_propia && (!excluir.includes(t.id) || t.id === miembro?.trabajador_id))
+      .filter((t) => t.activo && t.empresa_propia && (t.sucursal === sucursal || t.id === miembro?.trabajador_id) && (!excluir.includes(t.id) || t.id === miembro?.trabajador_id))
       .filter((t) => !q || `${t.nombres} ${t.apellidos} ${t.rut}`.toLowerCase().includes(q))
       .sort((a, b) => `${a.apellidos} ${a.nombres}`.localeCompare(`${b.apellidos} ${b.nombres}`))
-  }, [trabajadores, busca, excluir, miembro])
+  }, [trabajadores, busca, excluir, miembro, sucursal])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()

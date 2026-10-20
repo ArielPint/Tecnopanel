@@ -13,6 +13,8 @@ import { usePermisosSso } from '../hooks/usePermisosSso'
 import { RUTA } from '../lib/rutas'
 import { useDatosSso } from '../hooks/useDatosSso'
 import { SelectorFotos } from '../components/SelectorFotos'
+import { useSucursalSso } from '../hooks/useSucursalSso'
+import CampoSucursal from '../components/CampoSucursal'
 
 const selectClase =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring'
@@ -21,9 +23,11 @@ export default function NuevoHallazgo() {
   const navigate = useNavigate()
   const { puede, userId, loading: permisosLoading } = usePermisosSso('hallazgos')
   const { areas, responsables } = useDatosSso()
+  const { porDefecto } = useSucursalSso()
   const hoy = hoyChile()
 
   const [areaId, setAreaId] = useState('')
+  const [sucursal, setSucursal] = useState(porDefecto)
   const [ubicacion, setUbicacion] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [fechaDeteccion, setFechaDeteccion] = useState(hoy)
@@ -36,10 +40,12 @@ export default function NuevoHallazgo() {
 
   if (!permisosLoading && !puede('crear')) return <Navigate to={RUTA.hallazgos} replace />
 
-  const areasActivas = areas.filter((a) => a.activa)
+  const areasActivas = areas.filter((a) => a.activa && (!sucursal || a.sucursal === sucursal))
 
   function elegirArea(id: string) {
     setAreaId(id)
+    const area = areas.find((a) => a.id === id)
+    if (area) setSucursal(area.sucursal)
     if (!responsableManual) setResponsableId(areas.find((a) => a.id === id)?.encargado_user_id ?? '')
   }
 
@@ -47,6 +53,10 @@ export default function NuevoHallazgo() {
     e.preventDefault()
     if (!ubicacion.trim() || !descripcion.trim()) {
       toast.error('Ubicación y descripción son obligatorias')
+      return
+    }
+    if (!areaId && !sucursal) {
+      toast.error('Elige la sucursal (o un área)')
       return
     }
     if (!responsableId) {
@@ -61,6 +71,7 @@ export default function NuevoHallazgo() {
     try {
       const { id, numero } = await crearHallazgo({
         area_id: areaId || null,
+        sucursal,
         ubicacion: ubicacion.trim(),
         descripcion: descripcion.trim(),
         fecha_deteccion: fechaDeteccion,
@@ -93,7 +104,7 @@ export default function NuevoHallazgo() {
         <CardContent className="pt-5">
           <h2 className="mb-4 text-base font-bold">Reportar no conformidad</h2>
           <form onSubmit={onSubmit} className="flex flex-col gap-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="n-area">Área</Label>
                 <select id="n-area" value={areaId} onChange={(e) => elegirArea(e.target.value)} className={selectClase}>
@@ -105,6 +116,7 @@ export default function NuevoHallazgo() {
                   ))}
                 </select>
               </div>
+              <CampoSucursal id="n-suc" value={sucursal} onChange={setSucursal} areaId={areaId} areas={areas} />
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="n-ubicacion">Ubicación *</Label>
                 <Input id="n-ubicacion" value={ubicacion} onChange={(e) => setUbicacion(e.target.value)} placeholder="Ej: nave 2, junto a la sierra" required />

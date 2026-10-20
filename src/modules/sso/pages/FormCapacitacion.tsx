@@ -18,6 +18,8 @@ import {
   type TipoCapacitacion,
 } from '../lib/apiCapacitaciones'
 import { listarTrabajadores } from '../lib/apiTrabajadores'
+import { useSucursalSso } from '../hooks/useSucursalSso'
+import CampoSucursal from '../components/CampoSucursal'
 import { hoyChile } from '../lib/estados'
 import { RUTA } from '../lib/rutas'
 import type { TrabajadorV } from '../lib/tiposTrabajadores'
@@ -37,13 +39,14 @@ export default function FormCapacitacion() {
   const navigate = useNavigate()
   const { puede, userId, loading: permisosLoading } = usePermisosSso('capacitaciones')
   const { areas } = useDatosSso()
+  const { porDefecto } = useSucursalSso()
   const { empresas } = useCatalogosTrabajadores()
 
   const [tipos, setTipos] = useState<TipoCapacitacion[]>([])
   const [trabajadores, setTrabajadores] = useState<TrabajadorV[]>([])
   const [original, setOriginal] = useState<CapacitacionV | null>(null)
   const [ficha, setFicha] = useState<FichaCapacitacion>({
-    tipo_id: '', tema: '', fecha: hoyChile(), duracion_min: 30, relator: '', area_id: null, lugar: null, contenido: null,
+    tipo_id: '', tema: '', fecha: hoyChile(), duracion_min: 30, relator: '', area_id: null, sucursal: porDefecto, lugar: null, contenido: null,
   })
   const [asistentes, setAsistentes] = useState<Seleccion[]>([])
   const [evidencia, setEvidencia] = useState<File | null>(null)
@@ -59,7 +62,7 @@ export default function FormCapacitacion() {
           setOriginal(cap)
           setFicha({
             tipo_id: cap.tipo_id, tema: cap.tema, fecha: cap.fecha, duracion_min: cap.duracion_min, relator: cap.relator,
-            area_id: cap.area_id, lugar: cap.lugar, contenido: cap.contenido,
+            area_id: cap.area_id, sucursal: cap.sucursal, lugar: cap.lugar, contenido: cap.contenido,
           })
           setAsistentes(asis.map((a) => ({ trabajador_id: a.trabajador_id, asistio: a.asistio })))
         } else {
@@ -75,11 +78,22 @@ export default function FormCapacitacion() {
   if (!permisosLoading && !cargando && !puedeGuardar) return <Navigate to={id ? RUTA.capacitacion(id) : RUTA.capacitaciones} replace />
 
   const set = <K extends keyof FichaCapacitacion>(k: K, v: FichaCapacitacion[K]) => setFicha((f) => ({ ...f, [k]: v }))
+  // con área, la sucursal es la del área
+  const elegirArea = (areaId: string | null) =>
+    setFicha((f) => ({ ...f, area_id: areaId, sucursal: areas.find((a) => a.id === areaId)?.sucursal ?? f.sucursal }))
+  // se cita a trabajadores de la sucursal de la capacitación (y se conservan los ya citados)
+  const citables = trabajadores.filter(
+    (t) => !ficha.sucursal || t.sucursal === ficha.sucursal || asistentes.some((a) => a.trabajador_id === t.id),
+  )
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     if (!ficha.tipo_id || !ficha.tema.trim() || !ficha.relator.trim()) {
       toast.error('Tipo, tema y relator son obligatorios')
+      return
+    }
+    if (!ficha.area_id && !ficha.sucursal) {
+      toast.error('Elige la sucursal (o un área)')
       return
     }
     if (asistentes.length === 0 && !window.confirm('No agregaste asistentes. ¿Guardar igual?')) return
@@ -153,13 +167,13 @@ export default function FormCapacitacion() {
                 <Input id="c-rel" value={ficha.relator} onChange={(e) => set('relator', e.target.value)} placeholder="Persona u organismo (mutual, OTEC)" required />
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-3">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="c-area">Área</Label>
-                <select id="c-area" value={ficha.area_id ?? ''} onChange={(e) => set('area_id', e.target.value || null)} className={selectClase}>
+                <select id="c-area" value={ficha.area_id ?? ''} onChange={(e) => elegirArea(e.target.value || null)} className={selectClase}>
                   <option value="">Toda la empresa / sin área</option>
                   {areas
-                    .filter((a) => a.activa || a.id === ficha.area_id)
+                    .filter((a) => a.id === ficha.area_id || (a.activa && (!ficha.sucursal || a.sucursal === ficha.sucursal)))
                     .map((a) => (
                       <option key={a.id} value={a.id}>
                         {a.nombre}
@@ -167,6 +181,7 @@ export default function FormCapacitacion() {
                     ))}
                 </select>
               </div>
+              <CampoSucursal id="c-suc" value={ficha.sucursal} onChange={(s) => set('sucursal', s)} areaId={ficha.area_id} areas={areas} />
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="c-lugar">Lugar</Label>
                 <Input id="c-lugar" value={ficha.lugar ?? ''} onChange={(e) => set('lugar', e.target.value || null)} />
@@ -189,7 +204,7 @@ export default function FormCapacitacion() {
         <Card>
           <CardContent className="space-y-3 pt-5">
             <p className="text-sm font-bold">Asistentes</p>
-            <SelectorAsistentes trabajadores={trabajadores} empresas={empresas} areas={areas} seleccion={asistentes} onChange={setAsistentes} />
+            <SelectorAsistentes trabajadores={citables} empresas={empresas} areas={areas} seleccion={asistentes} onChange={setAsistentes} />
           </CardContent>
         </Card>
 

@@ -1,4 +1,5 @@
 import { cargarXLSX } from '@/lib/cargarLibrerias'
+import { SUCURSALES, type Sucursal } from '@/lib/lineasNegocio'
 import { normalizarRut, rutValido } from './rut'
 import type { Area } from './tipos'
 import type { Empresa, FichaTrabajador, Trabajador, TrabajadorV } from './tiposTrabajadores'
@@ -10,7 +11,7 @@ import type { Empresa, FichaTrabajador, Trabajador, TrabajadorV } from './tiposT
 
 type Campo =
   | 'rut' | 'nombres' | 'apellidos' | 'paterno' | 'materno' | 'nombreCompleto' | 'empresa' | 'cargo'
-  | 'area' | 'fechaIngreso' | 'telefono' | 'email' | 'contacto' | 'observaciones'
+  | 'area' | 'sucursal' | 'fechaIngreso' | 'telefono' | 'email' | 'contacto' | 'observaciones'
 
 const ALIAS: Record<Campo, string[]> = {
   rut: ['rut', 'run', 'ruttrabajador', 'rutdeltrabajador', 'cedula', 'rutrun'],
@@ -22,6 +23,7 @@ const ALIAS: Record<Campo, string[]> = {
   empresa: ['empresa', 'contratista', 'razonsocial', 'empleador', 'subcontrato'],
   cargo: ['cargo', 'puesto', 'funcion', 'oficio'],
   area: ['area', 'seccion', 'departamento', 'sector'],
+  sucursal: ['sucursal', 'planta', 'sede'],
   fechaIngreso: ['fechaingreso', 'fechadeingreso', 'ingreso', 'fechacontrato', 'fechadecontrato'],
   telefono: ['telefono', 'celular', 'fono', 'movil', 'telefonomovil'],
   email: ['email', 'correo', 'correoelectronico', 'mail', 'email'],
@@ -30,7 +32,7 @@ const ALIAS: Record<Campo, string[]> = {
 }
 
 export const COLUMNAS_PLANTILLA = [
-  'RUT', 'Nombres', 'Apellidos', 'Empresa', 'Cargo', 'Área', 'Fecha ingreso', 'Teléfono', 'Email', 'Contacto emergencia', 'Observaciones',
+  'RUT', 'Nombres', 'Apellidos', 'Empresa', 'Cargo', 'Área', 'Sucursal', 'Fecha ingreso', 'Teléfono', 'Email', 'Contacto emergencia', 'Observaciones',
 ]
 
 const clave = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -76,6 +78,10 @@ interface Contexto {
   existentes: (Trabajador | TrabajadorV)[]
   /** con Configuración se crean las empresas que falten; sin ella, esas filas quedan con error */
   puedeCrearEmpresas: boolean
+  /** para las filas sin área ni columna Sucursal: la que se está mirando (null: las dos) */
+  sucursal: Sucursal | null
+  /** quien tiene sucursal propia solo carga trabajadores de esa */
+  soloSucursal: Sucursal | null
 }
 
 export async function leerExcelTrabajadores(archivo: File, ctx: Contexto): Promise<ResultadoLectura> {
@@ -155,6 +161,17 @@ export async function leerExcelTrabajadores(archivo: File, ctx: Contexto): Promi
       else avisos.push(`El área "${v('area')}" no existe: queda sin cambio`)
     }
 
+    // con área, la del área; si no, la de la columna, la que ya tenía o la que se está mirando
+    let sucursal: Sucursal | null = existente?.sucursal ?? ctx.sucursal
+    if (v('sucursal')) {
+      const s = SUCURSALES.find((x) => clave(x) === clave(v('sucursal')))
+      if (s) sucursal = s
+      else errores.push(`Sucursal desconocida: "${v('sucursal')}" (${SUCURSALES.join(' o ')})`)
+    }
+    sucursal = ctx.areas.find((a) => a.id === area_id)?.sucursal ?? sucursal
+    if (!sucursal) errores.push('Falta la sucursal: agrega la columna Sucursal, un área, o elige una sucursal arriba en el portal')
+    else if (ctx.soloSucursal && sucursal !== ctx.soloSucursal) errores.push(`Es de ${sucursal}: solo puedes cargar trabajadores de ${ctx.soloSucursal}`)
+
     let fecha_ingreso = existente?.fecha_ingreso ?? null
     const f = fechaCelda(columna.fechaIngreso === undefined ? null : celdas[columna.fechaIngreso])
     if (f === 'invalida') avisos.push(`Fecha de ingreso no reconocida: "${v('fechaIngreso')}"`)
@@ -171,6 +188,7 @@ export async function leerExcelTrabajadores(archivo: File, ctx: Contexto): Promi
           empresa_id,
           cargo: o('cargo', existente?.cargo),
           area_id,
+          sucursal,
           fecha_ingreso,
           telefono: o('telefono', existente?.telefono),
           email: o('email', existente?.email),
@@ -208,13 +226,14 @@ export async function descargarPlantilla(empresas: Empresa[], areas: Area[]) {
     ['Empresa', 'No', 'Vacía = Tecnopanel. Debe ser una de las empresas de abajo (o se crea si quien importa tiene Configuración).'],
     ['Cargo', 'No', 'Texto libre.'],
     ['Área', 'No', 'Una de las áreas de abajo.'],
+    ['Sucursal', 'Sí (si no hay área)', `${SUCURSALES.join(' o ')}. Con área, es la del área. Vacía = la que se está mirando en el portal.`],
     ['Fecha ingreso', 'No', 'Fecha de Excel o dd-mm-aaaa.'],
     ['Teléfono / Email / Contacto emergencia / Observaciones', 'No', 'Texto libre.'],
     [],
     ['Una celda vacía no borra lo que la ficha ya tenía.'],
     [],
     ['Empresas válidas', ...empresas.map((e) => e.nombre)],
-    ['Áreas válidas', ...areas.filter((a) => a.activa).map((a) => a.nombre)],
+    ['Áreas válidas', ...areas.filter((a) => a.activa).map((a) => `${a.nombre} (${a.sucursal})`)],
   ]
   const hojaI = XLSX.utils.aoa_to_sheet(instrucciones)
   hojaI['!cols'] = [{ wch: 48 }, { wch: 16 }, { wch: 90 }]
@@ -237,6 +256,7 @@ export async function exportarTrabajadoresExcel(lista: TrabajadorV[], nombreArea
     Empresa: t.empresa,
     Cargo: t.cargo ?? '',
     Área: t.area_id ? nombreArea(t.area_id) : '',
+    Sucursal: t.sucursal,
     'Fecha ingreso': serialExcel(t.fecha_ingreso),
     Teléfono: t.telefono ?? '',
     Email: t.email ?? '',
@@ -249,10 +269,10 @@ export async function exportarTrabajadoresExcel(lista: TrabajadorV[], nombreArea
   }))
   const hoja = XLSX.utils.json_to_sheet(filas)
   for (let r = 1; r <= filas.length; r++) {
-    const c = hoja[XLSX.utils.encode_cell({ r, c: 6 })]
+    const c = hoja[XLSX.utils.encode_cell({ r, c: 7 })]
     if (c && typeof c.v === 'number') c.z = 'dd-mm-yyyy'
   }
-  hoja['!cols'] = [12, 22, 22, 20, 20, 24, 12, 14, 26, 26, 30, 20, 10, 10, 10].map((wch) => ({ wch }))
+  hoja['!cols'] = [12, 22, 22, 20, 20, 24, 14, 12, 14, 26, 26, 30, 20, 10, 10, 10].map((wch) => ({ wch }))
   const libro = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(libro, hoja, 'Trabajadores')
   const sello = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date())

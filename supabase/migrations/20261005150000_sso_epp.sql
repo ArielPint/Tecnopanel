@@ -81,14 +81,18 @@ drop trigger if exists sso_epp_entrega_antes on public.sso_epp_entregas;
 create trigger sso_epp_entrega_antes before insert or update on public.sso_epp_entregas
   for each row execute function public.sso_epp_entrega_antes();
 
-create or replace view public.sso_epp_entregas_v with (security_invoker = true) as
+-- drop + create: 20261028120000_sso_sucursal la recrea con la columna sucursal ("or replace" fallaria al re-correr)
+drop view if exists public.sso_epp_entregas_v;
+create view public.sso_epp_entregas_v with (security_invoker = true) as
 select e.*,
   (select count(*) from public.sso_epp_entrega_items i where i.entrega_id = e.id) as elementos,
   (select coalesce(sum(i.cantidad), 0) from public.sso_epp_entrega_items i where i.entrega_id = e.id) as unidades
 from public.sso_epp_entregas e;
 
 -- Lo ultimo entregado de cada elemento a cada trabajador, y cuando corresponde reponerlo.
-create or replace view public.sso_epp_vigentes with (security_invoker = true) as
+-- drop + create: 20261028120000_sso_sucursal la recrea con la columna sucursal ("or replace" fallaria al re-correr)
+drop view if exists public.sso_epp_vigentes;
+create view public.sso_epp_vigentes with (security_invoker = true) as
 select distinct on (e.trabajador_id, i.epp_id)
   e.trabajador_id, i.epp_id, e.id as entrega_id, e.fecha, i.cantidad, i.talla,
   case when c.vida_util_meses is not null then (e.fecha + make_interval(months => c.vida_util_meses))::date end as reposicion,

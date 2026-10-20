@@ -1,6 +1,8 @@
 import { cargarXLSX } from '@/lib/cargarLibrerias'
 import { supabase, unwrap } from '@/lib/supabaseClient'
 import { nombreParaStorage } from '@/lib/storageKey'
+import type { Sucursal } from '@/lib/lineasNegocio'
+import { enSucursal } from '../hooks/useSucursalSso'
 import { comprimirImagen } from './imagen'
 
 // Inspecciones programadas (fase 5). Fotos de los ítems en el bucket 'sso', carpeta
@@ -31,6 +33,7 @@ export interface Inspeccion {
   id: string
   checklist_id: string
   area_id: string | null
+  sucursal: Sucursal
   fecha: string
   ubicacion: string | null
   observaciones: string | null
@@ -68,6 +71,8 @@ export interface Programa {
   proxima: string
   situacion: SituacionPrograma
   dias_atraso: number | null
+  /** la del area; plantilla sin areas: una fila por sucursal */
+  sucursal: Sucursal
 }
 
 /** % de cumplimiento: cumple / (cumple + no cumple); los "no aplica" no cuentan. */
@@ -115,11 +120,11 @@ export async function guardarPlantilla(
 // ---------------------------------------------------------------- programa e inspecciones
 
 export async function listarPrograma(): Promise<Programa[]> {
-  return (await unwrap(supabase.from('sso_programa_inspecciones').select('*').order('proxima'))) as Programa[]
+  return (await unwrap(enSucursal(supabase.from('sso_programa_inspecciones').select('*')).order('proxima'))) as Programa[]
 }
 
 export async function listarInspecciones(): Promise<InspeccionV[]> {
-  return (await unwrap(supabase.from('sso_inspecciones_v').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }))) as InspeccionV[]
+  return (await unwrap(enSucursal(supabase.from('sso_inspecciones_v').select('*')).order('fecha', { ascending: false }).order('created_at', { ascending: false }))) as InspeccionV[]
 }
 
 export async function obtenerInspeccion(id: string): Promise<InspeccionV | null> {
@@ -143,7 +148,7 @@ export interface RespuestaNueva {
 /** Registra la inspección con sus respuestas y fotos, y genera los hallazgos. Devuelve id y cuántos hallazgos.
  *  Si fallan las fotos o los hallazgos, la inspección ya quedó guardada: se informa y se puede reintentar. */
 export async function registrarInspeccion(
-  ficha: Pick<Inspeccion, 'checklist_id' | 'area_id' | 'fecha' | 'ubicacion' | 'observaciones'>,
+  ficha: Pick<Inspeccion, 'checklist_id' | 'area_id' | 'fecha' | 'ubicacion' | 'observaciones'> & { sucursal: Sucursal | null },
   respuestas: RespuestaNueva[],
 ): Promise<{ id: string; hallazgos: number; avisos: string[] }> {
   const { id } = (await unwrap(supabase.from('sso_inspecciones').insert(ficha).select('id').single())) as { id: string }

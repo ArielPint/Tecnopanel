@@ -203,6 +203,7 @@ export default function Detalle() {
           <Card>
             <CardContent className="grid gap-4 pt-5 sm:grid-cols-2">
               <Dato label="Área">{nombreArea(h.area_id)}</Dato>
+              <Dato label="Sucursal">{h.sucursal}</Dato>
               <Dato label="Ubicación">{h.ubicacion}</Dato>
               <div className="sm:col-span-2">
                 <Dato label="Descripción">

@@ -5,17 +5,20 @@ import { Input } from '@/modules/financiero/components/ui/input'
 import { Label } from '@/modules/financiero/components/ui/label'
 import { Textarea } from '@/modules/financiero/components/ui/textarea'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/modules/financiero/components/ui/dialog'
+import type { Sucursal } from '@/lib/lineasNegocio'
 import { actualizarTrabajador, crearTrabajador } from '../lib/apiTrabajadores'
 import { formatearRut, normalizarRut, rutValido } from '../lib/rut'
 import type { Area } from '../lib/tipos'
 import type { Empresa, FichaTrabajador, Trabajador } from '../lib/tiposTrabajadores'
+import { useSucursalSso } from '../hooks/useSucursalSso'
+import CampoSucursal from './CampoSucursal'
 
 const selectClase =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring'
 
-function fichaVacia(empresaPropia: string): FichaTrabajador {
+function fichaVacia(empresaPropia: string, sucursal: Sucursal | null): FichaTrabajador {
   return {
-    rut: '', nombres: '', apellidos: '', empresa_id: empresaPropia, cargo: null, area_id: null,
+    rut: '', nombres: '', apellidos: '', empresa_id: empresaPropia, cargo: null, area_id: null, sucursal,
     fecha_ingreso: null, telefono: null, email: null, contacto_emergencia: null, observaciones: null,
   }
 }
@@ -33,25 +36,29 @@ interface Props {
 
 export function FormTrabajador({ open, onOpenChange, trabajador, empresas, areas, cargos, onGuardado }: Props) {
   const propia = empresas.find((e) => e.propia)?.id ?? empresas[0]?.id ?? ''
-  const [f, setF] = useState<FichaTrabajador>(fichaVacia(propia))
+  const { porDefecto } = useSucursalSso()
+  const [f, setF] = useState<FichaTrabajador>(fichaVacia(propia, porDefecto))
   const [enviando, setEnviando] = useState(false)
 
   useEffect(() => {
     if (!open) return
     if (!trabajador) {
-      setF(fichaVacia(propia))
+      setF(fichaVacia(propia, porDefecto))
       return
     }
     // solo los campos editables: lo que viene de sso_trabajadores_v trae además columnas calculadas
     const t = trabajador
     setF({
       rut: formatearRut(t.rut), nombres: t.nombres, apellidos: t.apellidos, empresa_id: t.empresa_id, cargo: t.cargo,
-      area_id: t.area_id, fecha_ingreso: t.fecha_ingreso, telefono: t.telefono, email: t.email,
+      area_id: t.area_id, sucursal: t.sucursal, fecha_ingreso: t.fecha_ingreso, telefono: t.telefono, email: t.email,
       contacto_emergencia: t.contacto_emergencia, observaciones: t.observaciones,
     })
-  }, [open, trabajador, propia])
+  }, [open, trabajador, propia, porDefecto])
 
   const set = <K extends keyof FichaTrabajador>(k: K, v: FichaTrabajador[K]) => setF((x) => ({ ...x, [k]: v }))
+  // con área, la sucursal es la del área
+  const elegirArea = (id: string | null) =>
+    setF((x) => ({ ...x, area_id: id, sucursal: areas.find((a) => a.id === id)?.sucursal ?? x.sucursal }))
   const nul = (s: string) => s.trim() || null
   const rutOk = rutValido(f.rut)
 
@@ -63,6 +70,10 @@ export function FormTrabajador({ open, onOpenChange, trabajador, empresas, areas
     }
     if (!f.nombres.trim() || !f.apellidos.trim()) {
       toast.error('Nombres y apellidos son obligatorios')
+      return
+    }
+    if (!f.area_id && !f.sucursal) {
+      toast.error('Elige la sucursal del trabajador')
       return
     }
     setEnviando(true)
@@ -116,7 +127,7 @@ export function FormTrabajador({ open, onOpenChange, trabajador, empresas, areas
               <Input id="t-ape" value={f.apellidos} onChange={(e) => set('apellidos', e.target.value)} required />
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="t-emp">Empresa</Label>
               <select id="t-emp" value={f.empresa_id} onChange={(e) => set('empresa_id', e.target.value)} className={selectClase}>
@@ -141,10 +152,10 @@ export function FormTrabajador({ open, onOpenChange, trabajador, empresas, areas
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="t-area">Área</Label>
-              <select id="t-area" value={f.area_id ?? ''} onChange={(e) => set('area_id', e.target.value || null)} className={selectClase}>
+              <select id="t-area" value={f.area_id ?? ''} onChange={(e) => elegirArea(e.target.value || null)} className={selectClase}>
                 <option value="">Sin área</option>
                 {areas
-                  .filter((a) => a.activa || a.id === f.area_id)
+                  .filter((a) => a.id === f.area_id || (a.activa && (!f.sucursal || a.sucursal === f.sucursal)))
                   .map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.nombre}
@@ -152,6 +163,7 @@ export function FormTrabajador({ open, onOpenChange, trabajador, empresas, areas
                   ))}
               </select>
             </div>
+            <CampoSucursal id="t-suc" value={f.sucursal} onChange={(s) => set('sucursal', s)} areaId={f.area_id} areas={areas} />
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="flex flex-col gap-1.5">

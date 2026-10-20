@@ -24,7 +24,7 @@ const selectClase =
 export default function Hallazgos() {
   const navigate = useNavigate()
   const { puede, userId } = usePermisosSso('hallazgos')
-  const { areas, usuarios, nombreUsuario, nombreArea } = useDatosSso()
+  const { areas, usuarios, nombreUsuario, nombreArea, marcaSucursal } = useDatosSso()
   const [hallazgos, setHallazgos] = useState<Hallazgo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -174,7 +174,10 @@ export default function Hallazgos() {
                     <TableCell className="font-mono-tabular font-semibold">{h.numero}</TableCell>
                     <TableCell className="whitespace-nowrap">{fmtFecha(h.fecha_deteccion)}</TableCell>
                     <TableCell>
-                      <p className="font-medium">{nombreArea(h.area_id)}</p>
+                      <p className="font-medium">
+                        {nombreArea(h.area_id)}
+                        {marcaSucursal(h.sucursal)}
+                      </p>
                       <p className="text-xs text-muted-foreground">{h.ubicacion}</p>
                     </TableCell>
                     <TableCell className="max-w-xs">

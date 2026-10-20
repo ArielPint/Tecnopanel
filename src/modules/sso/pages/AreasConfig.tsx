@@ -6,11 +6,13 @@ import { Button } from '@/modules/financiero/components/ui/button'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Checkbox } from '@/modules/financiero/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
+import { SUCURSALES, type Sucursal } from '@/lib/lineasNegocio'
 import { guardarArea } from '../lib/api'
 import type { Area } from '../lib/tipos'
 import { usePermisosSso } from '../hooks/usePermisosSso'
 import { RUTA } from '../lib/rutas'
 import { useDatosSso } from '../hooks/useDatosSso'
+import { useSucursalSso } from '../hooks/useSucursalSso'
 
 const selectClase =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring'
@@ -20,6 +22,8 @@ export default function AreasConfig() {
   const { areas, responsables, recargar, loading } = useDatosSso()
   const [nombre, setNombre] = useState('')
   const [encargado, setEncargado] = useState('')
+  const { porDefecto, fija } = useSucursalSso()
+  const [sucursal, setSucursal] = useState<Sucursal | ''>(porDefecto ?? '')
   const [guardando, setGuardando] = useState(false)
 
   if (!permisosLoading && !puede('ver')) return <Navigate to={RUTA.inicio} replace />
@@ -45,10 +49,20 @@ export default function AreasConfig() {
   async function onCrear(e: FormEvent) {
     e.preventDefault()
     if (!nombre.trim()) return
-    if (await guardar({ nombre: nombre.trim(), encargado_user_id: encargado || null }, 'Área creada')) {
+    if (!sucursal) {
+      toast.error('Elige la sucursal del área')
+      return
+    }
+    if (await guardar({ nombre: nombre.trim(), encargado_user_id: encargado || null, sucursal }, 'Área creada')) {
       setNombre('')
       setEncargado('')
     }
+  }
+
+  // mover un área de sucursal mueve con ella lo registrado en el área (lo hace la base)
+  function cambiarSucursal(a: Area, s: Sucursal) {
+    const aviso = `¿Pasar "${a.nombre}" a ${s}? Sus trabajadores, hallazgos, accidentes, capacitaciones, inspecciones y documentos pasan también a ${s}.`
+    if (window.confirm(aviso)) actualizar(a, { sucursal: s })
   }
 
   const actualizar = (a: Area, cambios: Partial<Area>) =>
@@ -63,8 +77,16 @@ export default function AreasConfig() {
       {editable && (
       <Card>
         <CardContent className="pt-5">
-          <form onSubmit={onCrear} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+          <form onSubmit={onCrear} className="grid gap-2 sm:grid-cols-[1fr_180px_1fr_auto]">
             <Input placeholder="Nombre del área (ej: Planta Santiago - Corte)" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+            <select value={fija ?? sucursal} onChange={(e) => setSucursal(e.target.value as Sucursal | '')} className={selectClase} disabled={!!fija} aria-label="Sucursal">
+              <option value="">Sucursal…</option>
+              {SUCURSALES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
             <select value={encargado} onChange={(e) => setEncargado(e.target.value)} className={selectClase}>
               <option value="">Sin encargado</option>
               {responsables.map((u) => (
@@ -91,6 +113,7 @@ export default function AreasConfig() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Área</TableHead>
+                  <TableHead className="w-44">Sucursal</TableHead>
                   <TableHead>Encargado</TableHead>
                   <TableHead className="w-24">Activa</TableHead>
                 </TableRow>
@@ -99,6 +122,21 @@ export default function AreasConfig() {
                 {areas.map((a) => (
                   <TableRow key={a.id} className={a.activa ? '' : 'opacity-60'}>
                     <TableCell className="font-medium">{a.nombre}</TableCell>
+                    <TableCell>
+                      <select
+                        value={a.sucursal}
+                        onChange={(e) => cambiarSucursal(a, e.target.value as Sucursal)}
+                        className={selectClase}
+                        disabled={guardando || !editable || !!fija}
+                        aria-label="Sucursal"
+                      >
+                        {SUCURSALES.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    </TableCell>
                     <TableCell>
                       <select
                         value={a.encargado_user_id ?? ''}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { listarAreas, listarUsuariosSso } from '../lib/api'
 import type { Area, UsuarioSso } from '../lib/tipos'
+import { useSucursalSso } from './useSucursalSso'
 
 /** Áreas y personas del módulo: se usan en casi todas las pantallas (filtros, formularios, nombres). */
 export function useDatosSso() {
@@ -34,10 +35,14 @@ export function useDatosSso() {
     return (id: string | null | undefined) => (id ? mapa.get(id) ?? 'Usuario sin acceso' : '—')
   }, [usuarios])
 
+  // mirando las dos sucursales, los listados muestran de cuál es cada registro
+  const { sucursal } = useSucursalSso()
+  const marcaSucursal = useCallback((s: string | null | undefined) => (sucursal === 'todas' && s ? ` · ${s}` : ''), [sucursal])
+
   const nombreArea = useMemo(() => {
     const mapa = new Map(areas.map((a) => [a.id, a.nombre]))
     return (id: string | null | undefined) => (id ? mapa.get(id) ?? '—' : 'Sin área')
   }, [areas])
 
-  return { areas, usuarios, responsables, nombreUsuario, nombreArea, error, loading, recargar }
+  return { areas, usuarios, responsables, nombreUsuario, nombreArea, marcaSucursal, error, loading, recargar }
 }

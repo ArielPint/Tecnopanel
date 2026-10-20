@@ -8,6 +8,7 @@ import { Input } from '@/modules/financiero/components/ui/input'
 import { Label } from '@/modules/financiero/components/ui/label'
 import { Textarea } from '@/modules/financiero/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import type { Sucursal } from '@/lib/lineasNegocio'
 import {
   listarAreasPlantilla,
   listarItemsPlantilla,
@@ -21,6 +22,8 @@ import { hoyChile } from '../lib/estados'
 import { RUTA } from '../lib/rutas'
 import { usePermisosSso } from '../hooks/usePermisosSso'
 import { useDatosSso } from '../hooks/useDatosSso'
+import { useSucursalSso } from '../hooks/useSucursalSso'
+import CampoSucursal from '../components/CampoSucursal'
 
 const selectClase =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring'
@@ -44,12 +47,14 @@ export default function FormInspeccion() {
   const navigate = useNavigate()
   const { puede, loading: permisosLoading } = usePermisosSso('inspecciones')
   const { areas, nombreArea } = useDatosSso()
+  const { porDefecto } = useSucursalSso()
 
   const [plantillas, setPlantillas] = useState<Plantilla[]>([])
   const [asignaciones, setAsignaciones] = useState<{ checklist_id: string; area_id: string }[]>([])
   const [items, setItems] = useState<ItemPlantilla[]>([])
   const [checklistId, setChecklistId] = useState(params.get('plantilla') ?? '')
   const [areaId, setAreaId] = useState(params.get('area') ?? '')
+  const [sucursal, setSucursal] = useState((params.get('sucursal') as Sucursal | null) ?? porDefecto)
   const [fecha, setFecha] = useState(hoyChile())
   const [ubicacion, setUbicacion] = useState('')
   const [observaciones, setObservaciones] = useState('')
@@ -82,8 +87,16 @@ export default function FormInspeccion() {
   // áreas: las asignadas a la plantilla; si es general, cualquiera
   const areasPlantilla = useMemo(() => {
     const asignadas = asignaciones.filter((a) => a.checklist_id === checklistId).map((a) => a.area_id)
-    return asignadas.length ? areas.filter((a) => asignadas.includes(a.id)) : areas.filter((a) => a.activa)
-  }, [asignaciones, checklistId, areas])
+    const deLaPlantilla = asignadas.length ? areas.filter((a) => asignadas.includes(a.id)) : areas.filter((a) => a.activa)
+    return deLaPlantilla.filter((a) => a.id === areaId || !sucursal || a.sucursal === sucursal)
+  }, [asignaciones, checklistId, areas, areaId, sucursal])
+
+  // con área, la sucursal es la del área
+  function elegirArea(id: string) {
+    setAreaId(id)
+    const area = areas.find((a) => a.id === id)
+    if (area) setSucursal(area.sucursal)
+  }
 
   if (!permisosLoading && !puede('crear')) return <Navigate to={RUTA.inspecciones} replace />
 
@@ -102,6 +115,10 @@ export default function FormInspeccion() {
       toast.error('Elige la plantilla')
       return
     }
+    if (!areaId && !sucursal) {
+      toast.error('Elige la sucursal (o un área)')
+      return
+    }
     if (sinResponder > 0) {
       toast.error(`Faltan ${sinResponder} ítems por responder`)
       return
@@ -111,7 +128,7 @@ export default function FormInspeccion() {
     setEnviando(true)
     try {
       const r = await registrarInspeccion(
-        { checklist_id: plantilla.id, area_id: areaId || null, fecha, ubicacion: ubicacion.trim() || null, observaciones: observaciones.trim() || null },
+        { checklist_id: plantilla.id, area_id: areaId || null, sucursal, fecha, ubicacion: ubicacion.trim() || null, observaciones: observaciones.trim() || null },
         items.map((i) => ({
           item_id: i.id,
           texto: i.texto,
@@ -140,7 +157,7 @@ export default function FormInspeccion() {
         <Card>
           <CardContent className="space-y-3 pt-5">
             <h1 className="text-lg font-extrabold">Realizar inspección</h1>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="i-plantilla">Plantilla *</Label>
                 <select id="i-plantilla" value={checklistId} onChange={(e) => { setChecklistId(e.target.value); setAreaId('') }} className={selectClase} required>
@@ -154,7 +171,7 @@ export default function FormInspeccion() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="i-area">Área</Label>
-                <select id="i-area" value={areaId} onChange={(e) => setAreaId(e.target.value)} className={selectClase}>
+                <select id="i-area" value={areaId} onChange={(e) => elegirArea(e.target.value)} className={selectClase}>
                   <option value="">General / sin área</option>
                   {areasPlantilla.map((a) => (
                     <option key={a.id} value={a.id}>
@@ -163,6 +180,7 @@ export default function FormInspeccion() {
                   ))}
                 </select>
               </div>
+              <CampoSucursal id="i-suc" value={sucursal} onChange={setSucursal} areaId={areaId} areas={areas} />
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="i-fecha">Fecha *</Label>
                 <Input id="i-fecha" type="date" value={fecha} max={hoyChile()} onChange={(e) => setFecha(e.target.value)} required />

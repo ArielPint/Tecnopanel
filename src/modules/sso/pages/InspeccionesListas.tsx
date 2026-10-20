@@ -91,12 +91,12 @@ export function ProgramaInspecciones() {
               </TableHeader>
               <TableBody>
                 {ordenado.map((p) => (
-                  <TableRow key={`${p.checklist_id}:${p.area_id ?? ''}`}>
+                  <TableRow key={`${p.checklist_id}:${p.area_id ?? p.sucursal}`}>
                     <TableCell>
                       <p className="font-medium">{p.checklist}</p>
                       <p className="text-xs text-muted-foreground">cada {p.periodicidad_dias} días</p>
                     </TableCell>
-                    <TableCell>{p.area_id ? nombreArea(p.area_id) : 'General'}</TableCell>
+                    <TableCell>{p.area_id ? nombreArea(p.area_id) : `General · ${p.sucursal}`}</TableCell>
                     <TableCell className="whitespace-nowrap">
                       {p.ultima_id ? (
                         <Link to={RUTA.inspeccion(p.ultima_id)} className="hover:underline">
@@ -116,7 +116,7 @@ export function ProgramaInspecciones() {
                     <TableCell className="text-right">
                       {puede('crear') && (
                         <Button asChild size="sm" variant={p.situacion === 'al_dia' ? 'ghost' : 'outline'}>
-                          <Link to={RUTA.nuevaInspeccion(p.checklist_id, p.area_id)}>
+                          <Link to={RUTA.nuevaInspeccion(p.checklist_id, p.area_id, p.sucursal)}>
                             <ClipboardCheck className="mr-1 h-4 w-4" /> Inspeccionar
                           </Link>
                         </Button>
@@ -137,7 +137,7 @@ export function ProgramaInspecciones() {
 export function InspeccionesRealizadas() {
   const navigate = useNavigate()
   const { puede } = usePermisosSso('inspecciones')
-  const { areas, nombreArea, nombreUsuario } = useDatosSso()
+  const { areas, nombreArea, nombreUsuario, marcaSucursal } = useDatosSso()
   const [lista, setLista] = useState<InspeccionV[]>([])
   const [plantillas, setPlantillas] = useState<Plantilla[]>([])
   const [loading, setLoading] = useState(true)
@@ -236,7 +236,10 @@ export function InspeccionesRealizadas() {
                       <TableCell className="whitespace-nowrap">{fmtFecha(i.fecha)}</TableCell>
                       <TableCell className="font-medium">{i.checklist}</TableCell>
                       <TableCell>
-                        <p>{i.area_id ? nombreArea(i.area_id) : 'General'}</p>
+                        <p>
+                          {i.area_id ? nombreArea(i.area_id) : 'General'}
+                          {marcaSucursal(i.sucursal)}
+                        </p>
                         {i.ubicacion && <p className="text-xs text-muted-foreground">{i.ubicacion}</p>}
                       </TableCell>
                       <TableCell>{nombreUsuario(i.inspector)}</TableCell>

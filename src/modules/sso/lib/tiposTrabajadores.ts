@@ -1,3 +1,5 @@
+import type { Sucursal } from '@/lib/lineasNegocio'
+
 export interface Empresa {
   id: string
   nombre: string
@@ -22,6 +24,8 @@ export interface Trabajador {
   empresa_id: string
   cargo: string | null
   area_id: string | null
+  /** la de su área; sin área, la de la ficha */
+  sucursal: Sucursal
   fecha_ingreso: string | null
   telefono: string | null
   email: string | null
@@ -70,10 +74,15 @@ export type SituacionExamen = 'vigente' | 'por_vencer' | 'vencido'
 /** Fila de sso_examenes_vigentes: el último examen de cada tipo del trabajador. */
 export interface ExamenVigente extends Examen {
   situacion: SituacionExamen
+  /** la del trabajador */
+  sucursal: Sucursal
 }
 
 /** Campos editables de la ficha (alta, edición e importación). */
 export type FichaTrabajador = Pick<
   Trabajador,
   'rut' | 'nombres' | 'apellidos' | 'empresa_id' | 'cargo' | 'area_id' | 'fecha_ingreso' | 'telefono' | 'email' | 'contacto_emergencia' | 'observaciones'
->
+> & {
+  /** null: la del area (sin area la base la exige) */
+  sucursal: Sucursal | null
+}

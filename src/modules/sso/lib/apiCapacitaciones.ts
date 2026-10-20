@@ -1,5 +1,7 @@
 import { supabase, unwrap } from '@/lib/supabaseClient'
 import { nombreParaStorage } from '@/lib/storageKey'
+import type { Sucursal } from '@/lib/lineasNegocio'
+import { enSucursal } from '../hooks/useSucursalSso'
 import { comprimirImagen } from './imagen'
 
 // Capacitaciones y charlas (fase 3). La evidencia (lista de asistencia firmada, foto o PDF) va en el
@@ -21,6 +23,7 @@ export interface Capacitacion {
   duracion_min: number
   relator: string
   area_id: string | null
+  sucursal: Sucursal
   lugar: string | null
   contenido: string | null
   evidencia_path: string | null
@@ -55,9 +58,14 @@ export interface VigenciaCapacitacion {
   fecha: string
   vencimiento: string | null
   situacion: SituacionVigencia
+  /** la del trabajador */
+  sucursal: Sucursal
 }
 
-export type FichaCapacitacion = Pick<Capacitacion, 'tipo_id' | 'tema' | 'fecha' | 'duracion_min' | 'relator' | 'area_id' | 'lugar' | 'contenido'>
+export type FichaCapacitacion = Pick<Capacitacion, 'tipo_id' | 'tema' | 'fecha' | 'duracion_min' | 'relator' | 'area_id' | 'lugar' | 'contenido'> & {
+  /** null: la del area (sin area la base la exige) */
+  sucursal: Sucursal | null
+}
 
 // ---------------------------------------------------------------- catálogo
 
@@ -73,7 +81,7 @@ export async function guardarTipoCapacitacion(t: Partial<TipoCapacitacion> & { n
 // ---------------------------------------------------------------- capacitaciones
 
 export async function listarCapacitaciones(): Promise<CapacitacionV[]> {
-  return (await unwrap(supabase.from('sso_capacitaciones_v').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }))) as CapacitacionV[]
+  return (await unwrap(enSucursal(supabase.from('sso_capacitaciones_v').select('*')).order('fecha', { ascending: false }).order('created_at', { ascending: false }))) as CapacitacionV[]
 }
 
 export async function obtenerCapacitacion(id: string): Promise<CapacitacionV | null> {
@@ -101,7 +109,7 @@ export async function listarCapacitacionesDeTrabajador(trabajadorId: string): Pr
 
 export async function listarVigencias(trabajadorId?: string): Promise<VigenciaCapacitacion[]> {
   let q = supabase.from('sso_capacitaciones_vigentes').select('*')
-  if (trabajadorId) q = q.eq('trabajador_id', trabajadorId)
+  q = trabajadorId ? q.eq('trabajador_id', trabajadorId) : enSucursal(q)
   return (await unwrap(q)) as VigenciaCapacitacion[]
 }
 

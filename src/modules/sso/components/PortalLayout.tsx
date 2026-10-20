@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Ambulance, ArrowLeft, ClipboardCheck, FolderOpen, GraduationCap, Handshake, HardHat, KeyRound, LayoutDashboard, LogOut, Menu, Moon, Plus, Settings, Shield, ShieldAlert, Sun, Users } from 'lucide-react'
+import { Ambulance, ArrowLeft, ClipboardCheck, FolderOpen, GraduationCap, Handshake, HardHat, KeyRound, LayoutDashboard, LogOut, MapPin, Menu, Moon, Plus, Settings, Shield, ShieldAlert, Sun, Users } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useOtrosPortales } from '@/hooks/useOtrosPortales'
@@ -10,9 +10,11 @@ import { Button } from '@/modules/financiero/components/ui/button'
 import { Sheet, SheetContent } from '@/modules/financiero/components/ui/sheet'
 import { Toaster } from '@/modules/financiero/components/ui/sonner'
 import { cn } from '@/lib/utils'
+import { SUCURSALES } from '@/lib/lineasNegocio'
 import { GRUPOS_MENU, SSO_MODULOS, type ModuloSso } from '../lib/accesos'
 import { RUTA } from '../lib/rutas'
 import { usePermisosSso } from '../hooks/usePermisosSso'
+import { useSucursalSso, type FiltroSucursal } from '../hooks/useSucursalSso'
 import NotificacionesSso from './NotificacionesSso'
 
 // Contenedor del portal de Prevención: mismo esquema que el CRM (menú propio por grupos, un permiso
@@ -117,11 +119,47 @@ function Marca() {
   )
 }
 
+const selectClase =
+  'flex h-9 w-auto rounded-md border border-input bg-transparent py-1 pl-8 pr-3 text-[13px] font-semibold shadow-sm focus:outline-none focus:ring-1 focus:ring-ring'
+
+/** Sucursal que se mira en todo el portal. Quien tiene sucursal propia la ve fija. */
+function SelectorSucursal() {
+  const { sucursal, fija, elegir } = useSucursalSso()
+  if (fija) {
+    return (
+      <span className="flex h-9 items-center gap-1 rounded-md border px-2.5 text-[13px] font-semibold" title="Tu sucursal">
+        <MapPin className="h-4 w-4 text-muted-foreground" /> {fija}
+      </span>
+    )
+  }
+  return (
+    <div className="relative">
+      <MapPin className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <select
+        value={sucursal}
+        onChange={(e) => elegir(e.target.value as FiltroSucursal)}
+        className={selectClase}
+        aria-label="Sucursal"
+        title="Sucursal"
+      >
+        {/* corto: en el celular comparte la cabecera con los botones */}
+        <option value="todas">Todas</option>
+        {SUCURSALES.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 export default function PortalLayout() {
   const { user, signOut } = useAuthStore()
   const mode = useThemeStore((s) => s.mode)
   const toggleMode = useThemeStore((s) => s.toggleMode)
   const { puedeEn } = usePermisosSso()
+  const { sucursal, loading: cargandoSucursal } = useSucursalSso()
   const location = useLocation()
   const [menuMovil, setMenuMovil] = useState(false)
   const [cambiarClave, setCambiarClave] = useState(false)
@@ -160,6 +198,7 @@ export default function PortalLayout() {
             </span>
           </div>
           <div className="flex items-center gap-1.5">
+            <SelectorSucursal />
             {puedeEn('hallazgos', 'crear') && (
               <Button asChild size="sm" className="mr-1">
                 <Link to={RUTA.nuevoHallazgo}>
@@ -195,7 +234,8 @@ export default function PortalLayout() {
           </div>
         </header>
         <main className="flex-1 bg-background p-4 md:p-6">
-          <Outlet />
+          {/* key: al cambiar de sucursal cada pantalla vuelve a cargar sus datos */}
+          {!cargandoSucursal && <Outlet key={sucursal} />}
         </main>
       </div>
       <ChangePasswordDialog open={cambiarClave} onOpenChange={setCambiarClave} />

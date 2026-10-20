@@ -32,7 +32,7 @@ export function GravedadBadge({ gravedad }: { gravedad: string }) {
 export default function Eventos() {
   const navigate = useNavigate()
   const { puede } = usePermisosSso('accidentes')
-  const { nombreArea } = useDatosSso()
+  const { nombreArea, marcaSucursal } = useDatosSso()
   const { empresas } = useCatalogosTrabajadores()
   const [eventos, setEventos] = useState<EventoV[]>([])
   const [trabajadores, setTrabajadores] = useState<TrabajadorV[]>([])
@@ -146,7 +146,9 @@ export default function Eventos() {
                     </TableCell>
                     <TableCell className="max-w-xs">
                       <p className="line-clamp-2">{e.descripcion}</p>
-                      <p className="text-xs text-muted-foreground">{e.area_id ? nombreArea(e.area_id) : e.lugar ?? ''}</p>
+                      <p className="text-xs text-muted-foreground">{e.area_id ? nombreArea(e.area_id) : e.lugar ?? ''}
+                        {marcaSucursal(e.sucursal)}
+                      </p>
                     </TableCell>
                     <TableCell>
                       <p>{nombreTrabajador(e.trabajador_id) || '—'}</p>
