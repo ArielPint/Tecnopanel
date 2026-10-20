@@ -55,7 +55,7 @@ export default function StockConfig() {
         <CardHeader>
           <CardTitle>📦 Stock de productos</CardTitle>
           <CardDescription>
-            Sube el Excel de stock (columnas: código, descripción, unidad, cantidad). Cada carga reemplaza la cantidad disponible por código; los productos que no vengan en el archivo quedan sin stock.
+            Sube el Excel de stock (columnas: código, descripción, unidad, cantidad). Se usa la hoja con la fecha más reciente (dd-mm-aaaa) y se validan los encabezados antes de cargar. Cada carga reemplaza la cantidad disponible por código; los productos que no vengan en el archivo quedan sin stock.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -68,7 +68,7 @@ export default function StockConfig() {
           {error && <p className="text-xs text-destructive">{error}</p>}
           {lastResult && !error && (
             <p className="text-xs text-success">
-              {lastResult.nuevos} producto(s) nuevo(s), {lastResult.actualizados} actualizado(s)
+              Hoja "{lastResult.hoja}": {lastResult.nuevos} producto(s) nuevo(s), {lastResult.actualizados} actualizado(s)
               {lastResult.sinStock > 0 && `, ${lastResult.sinStock} sin stock (no venían en el archivo)`}.
             </p>
           )}
