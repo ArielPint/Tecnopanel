@@ -9,14 +9,57 @@ export interface StockRow {
   cantidad: number
 }
 
-// Columnas por posición (0:código, 1:descripción, 2:unidad, 3:stock) — el nombre de
-// la hoja y de los encabezados varía según la fecha de exportación del Excel.
-export function parseStock(wb: WorkBook, XLSX: XLSXLib): StockRow[] {
-  const sheetName = wb.SheetNames[0]
-  const ws = sheetName ? wb.Sheets[sheetName] : undefined
-  if (!ws) throw new Error('El archivo no tiene hojas.')
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true }) as unknown[][]
-  if (rows.length < 2) throw new Error(`La hoja "${sheetName}" está vacía.`)
+export interface StockParseado {
+  hoja: string
+  rows: StockRow[]
+}
+
+// El export de SAP trae una hoja por fecha de corte ("dd-mm-aaaa"); se usa la más reciente.
+const HOJA_FECHA = /^(\d{2})-(\d{2})-(\d{4})$/
+
+// Columnas por posición; el texto exacto del encabezado varía entre exportaciones
+// ("Unidad de medida" / "Unidad de medida de inventario"), así que se valida por palabra clave.
+const COLUMNAS: { letra: string; esperado: string; claves: string[] }[] = [
+  { letra: 'A', esperado: 'Número de artículo', claves: ['numero', 'codigo'] },
+  { letra: 'B', esperado: 'Descripción del artículo', claves: ['descripcion'] },
+  { letra: 'C', esperado: 'Unidad de medida', claves: ['unidad'] },
+  { letra: 'D', esperado: 'En stock', claves: ['stock', 'cantidad'] },
+]
+
+function normTexto(v: unknown): string {
+  return String(v ?? '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+function hojaMasReciente(nombres: string[]): string {
+  const conFecha = nombres
+    .map((n) => ({ n, m: HOJA_FECHA.exec(n.trim()) }))
+    .filter((x): x is { n: string; m: RegExpExecArray } => x.m !== null)
+    .map(({ n, m }) => ({ n, clave: `${m[3]}${m[2]}${m[1]}` }))
+  if (!conFecha.length) {
+    throw new Error(
+      `Ninguna hoja tiene nombre de fecha (dd-mm-aaaa). Hojas encontradas: ${nombres.map((n) => `"${n}"`).join(', ') || 'ninguna'}.`,
+    )
+  }
+  return conFecha.reduce((a, b) => (b.clave > a.clave ? b : a)).n
+}
+
+export function parseStock(wb: WorkBook, XLSX: XLSXLib): StockParseado {
+  const hoja = hojaMasReciente(wb.SheetNames)
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[hoja], { header: 1, defval: null, raw: true }) as unknown[][]
+  if (rows.length < 2) throw new Error(`La hoja "${hoja}" está vacía.`)
+
+  const encabezado = rows[0] ?? []
+  const errores = COLUMNAS.flatMap((c, i) => {
+    const texto = normTexto(encabezado[i])
+    if (c.claves.some((k) => texto.includes(k))) return []
+    const actual = String(encabezado[i] ?? '').trim()
+    return [`columna ${c.letra} debería ser "${c.esperado}" y dice ${actual ? `"${actual}"` : '(vacía)'}`]
+  })
+  if (errores.length) throw new Error(`Encabezados inválidos en la hoja "${hoja}": ${errores.join('; ')}.`)
 
   const out: StockRow[] = []
   for (let i = 1; i < rows.length; i++) {
@@ -30,8 +73,8 @@ export function parseStock(wb: WorkBook, XLSX: XLSXLib): StockRow[] {
       cantidad: parseFloat(String(r[3] ?? '0')) || 0,
     })
   }
-  if (!out.length) throw new Error('No se encontraron filas con código de producto.')
-  return out
+  if (!out.length) throw new Error(`No se encontraron filas con código de producto en la hoja "${hoja}".`)
+  return { hoja, rows: out }
 }
 
 export interface StockUpsertResult {
