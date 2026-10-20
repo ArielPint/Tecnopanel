@@ -156,7 +156,10 @@ create trigger sso_examen_antes before insert or update of fecha, tipo_id, venci
   for each row execute function public.sso_examen_antes();
 
 -- Ultimo examen de cada tipo por trabajador, con su situacion (lo que importa para la vigencia).
-create or replace view public.sso_examenes_vigentes with (security_invoker = true) as
+-- drop + create: 20261028120000_sso_sucursal la recrea con la columna sucursal ("or replace" fallaria al re-correr)
+drop view if exists public.sso_trabajadores_v;   -- depende de esta
+drop view if exists public.sso_examenes_vigentes;
+create view public.sso_examenes_vigentes with (security_invoker = true) as
 select distinct on (e.trabajador_id, e.tipo_id)
   e.*,
   case
@@ -170,7 +173,9 @@ order by e.trabajador_id, e.tipo_id, e.fecha desc, e.created_at desc;
 
 -- Ficha con el resumen de examenes. Los conteos de examenes salen en 0 para quien no tiene
 -- 'aprobar': la vista es security_invoker y la RLS de sso_examenes no le deja ver filas.
-create or replace view public.sso_trabajadores_v with (security_invoker = true) as
+-- drop + create: 20261028120000_sso_sucursal la recrea con la columna sucursal ("or replace" fallaria al re-correr)
+drop view if exists public.sso_trabajadores_v;
+create view public.sso_trabajadores_v with (security_invoker = true) as
 select t.*,
   em.nombre as empresa,
   em.propia as empresa_propia,

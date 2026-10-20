@@ -1,5 +1,6 @@
 import { supabase, unwrap } from '@/lib/supabaseClient'
 import { nombreParaStorage } from '@/lib/storageKey'
+import { enSucursal } from '../hooks/useSucursalSso'
 import type { Empresa, Examen, ExamenVigente, FichaTrabajador, TipoExamen, Trabajador, TrabajadorV } from './tiposTrabajadores'
 
 // Exámenes = datos de salud: bucket propio, distinto del de hallazgos ('sso'), y la RLS exige el
@@ -30,7 +31,7 @@ export async function guardarTipoExamen(t: Partial<TipoExamen> & { nombre: strin
 // ---------------------------------------------------------------- trabajadores
 
 export async function listarTrabajadores(): Promise<TrabajadorV[]> {
-  return (await unwrap(supabase.from('sso_trabajadores_v').select('*').order('apellidos').order('nombres'))) as TrabajadorV[]
+  return (await unwrap(enSucursal(supabase.from('sso_trabajadores_v').select('*')).order('apellidos').order('nombres'))) as TrabajadorV[]
 }
 
 export async function obtenerTrabajador(id: string): Promise<TrabajadorV | null> {
@@ -42,7 +43,7 @@ export async function crearTrabajador(ficha: FichaTrabajador): Promise<string> {
   return fila.id
 }
 
-export async function actualizarTrabajador(id: string, cambios: Partial<Trabajador>): Promise<void> {
+export async function actualizarTrabajador(id: string, cambios: Partial<Omit<Trabajador, 'sucursal'> & Pick<FichaTrabajador, 'sucursal'>>): Promise<void> {
   await unwrap(supabase.from('sso_trabajadores').update(cambios).eq('id', id))
 }
 
@@ -72,7 +73,7 @@ export async function listarExamenes(trabajadorId: string): Promise<Examen[]> {
 }
 
 export async function listarExamenesVigentes(): Promise<ExamenVigente[]> {
-  return (await unwrap(supabase.from('sso_examenes_vigentes').select('*'))) as ExamenVigente[]
+  return (await unwrap(enSucursal(supabase.from('sso_examenes_vigentes').select('*')))) as ExamenVigente[]
 }
 
 export interface NuevoExamen {

@@ -249,7 +249,9 @@ create trigger sso_acuerdo_notificar after insert or update of responsable_user_
 
 -- ---------------------------------------------------------------- vistas
 
-create or replace view public.sso_comite_acuerdos_v with (security_invoker = true) as
+-- drop + create: 20261028120000_sso_sucursal la recrea con la columna sucursal ("or replace" fallaria al re-correr)
+drop view if exists public.sso_comite_acuerdos_v;
+create view public.sso_comite_acuerdos_v with (security_invoker = true) as
 select a.*,
   r.numero as reunion_numero, r.fecha as reunion_fecha,
   (a.estado in ('pendiente', 'en_proceso') and a.fecha_compromiso < public.sso_hoy()) as vencido,
@@ -277,7 +279,9 @@ left join lateral (
 ) s on true;
 
 -- resumen por comite: integrantes vigentes, ultima reunion ordinaria, acuerdos abiertos
-create or replace view public.sso_comites_v with (security_invoker = true) as
+-- drop + create: 20261028120000_sso_sucursal la recrea con la columna sucursal ("or replace" fallaria al re-correr)
+drop view if exists public.sso_comites_v;
+create view public.sso_comites_v with (security_invoker = true) as
 select c.*,
   (c.periodo_hasta < public.sso_hoy()) as periodo_vencido,
   (select count(*) from public.sso_comite_miembros m where m.comite_id = c.id and (m.hasta is null or m.hasta >= public.sso_hoy())

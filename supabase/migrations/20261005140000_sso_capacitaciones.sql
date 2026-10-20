@@ -82,7 +82,9 @@ create trigger sso_capacitacion_antes before insert or update on public.sso_capa
   for each row execute function public.sso_capacitacion_antes();
 
 -- Listado con conteos (asistentes y horas-hombre = duracion x asistentes que asistieron)
-create or replace view public.sso_capacitaciones_v with (security_invoker = true) as
+-- drop + create: 20261028120000_sso_sucursal la recrea con la columna sucursal ("or replace" fallaria al re-correr)
+drop view if exists public.sso_capacitaciones_v;
+create view public.sso_capacitaciones_v with (security_invoker = true) as
 select c.*,
   tc.nombre as tipo,
   tc.vigencia_meses,
@@ -93,7 +95,9 @@ from public.sso_capacitaciones c
 join public.sso_tipos_capacitacion tc on tc.id = c.tipo_id;
 
 -- Vigencia de cada trabajador por tipo de capacitacion: la ultima vez que asistio.
-create or replace view public.sso_capacitaciones_vigentes with (security_invoker = true) as
+-- drop + create: 20261028120000_sso_sucursal la recrea con la columna sucursal ("or replace" fallaria al re-correr)
+drop view if exists public.sso_capacitaciones_vigentes;
+create view public.sso_capacitaciones_vigentes with (security_invoker = true) as
 select distinct on (a.trabajador_id, c.tipo_id)
   a.trabajador_id, c.tipo_id, c.id as capacitacion_id, c.fecha,
   case when tc.vigencia_meses is not null then (c.fecha + make_interval(months => tc.vigencia_meses))::date end as vencimiento,

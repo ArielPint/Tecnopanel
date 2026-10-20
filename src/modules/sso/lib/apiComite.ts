@@ -1,6 +1,8 @@
 import { cargarXLSX } from '@/lib/cargarLibrerias'
 import { supabase, unwrap } from '@/lib/supabaseClient'
 import { nombreParaStorage } from '@/lib/storageKey'
+import type { Sucursal } from '@/lib/lineasNegocio'
+import { enSucursal } from '../hooks/useSucursalSso'
 import type { UsuarioSso } from './tipos'
 
 // Comité Paritario de Higiene y Seguridad (fase 8, DS 54): comités con su periodo, integrantes,
@@ -14,6 +16,7 @@ export interface Comite {
   id: string
   nombre: string
   faena: string | null
+  sucursal: Sucursal
   periodo_desde: string
   periodo_hasta: string
   activo: boolean
@@ -112,6 +115,8 @@ export interface AcuerdoV extends Acuerdo {
   reunion_fecha: string | null
   vencido: boolean
   dias_atraso: number
+  /** la del comite */
+  sucursal: Sucursal
 }
 
 export const abierto = (a: Pick<Acuerdo, 'estado'>) => a.estado === 'pendiente' || a.estado === 'en_proceso'
@@ -119,10 +124,10 @@ export const abierto = (a: Pick<Acuerdo, 'estado'>) => a.estado === 'pendiente' 
 // ---------------------------------------------------------------- comités y miembros
 
 export async function listarComites(): Promise<ComiteV[]> {
-  return (await unwrap(supabase.from('sso_comites_v').select('*').order('activo', { ascending: false }).order('nombre'))) as ComiteV[]
+  return (await unwrap(enSucursal(supabase.from('sso_comites_v').select('*')).order('activo', { ascending: false }).order('nombre'))) as ComiteV[]
 }
 
-export type FichaComite = Pick<Comite, 'nombre' | 'faena' | 'periodo_desde' | 'periodo_hasta' | 'activo' | 'observaciones'>
+export type FichaComite = Pick<Comite, 'nombre' | 'faena' | 'periodo_desde' | 'periodo_hasta' | 'activo' | 'observaciones'> & { sucursal: Sucursal | null }
 
 export async function guardarComite(id: string | null, f: FichaComite): Promise<string> {
   if (id) {
@@ -235,6 +240,7 @@ export async function listarAcuerdos(filtro: { comiteId?: string; reunionId?: st
   let q = supabase.from('sso_comite_acuerdos_v').select('*')
   if (filtro.comiteId) q = q.eq('comite_id', filtro.comiteId)
   if (filtro.reunionId) q = q.eq('reunion_id', filtro.reunionId)
+  if (!filtro.comiteId && !filtro.reunionId) q = enSucursal(q)
   return (await unwrap(q.order('created_at'))) as AcuerdoV[]
 }
 

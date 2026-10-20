@@ -24,7 +24,7 @@ const selectClase =
 export default function Trabajadores() {
   const navigate = useNavigate()
   const { puede, puedeEn } = usePermisosSso('trabajadores')
-  const { areas, nombreArea } = useDatosSso()
+  const { areas, nombreArea, marcaSucursal } = useDatosSso()
   const { empresas } = useCatalogosTrabajadores()
   const [lista, setLista] = useState<TrabajadorV[]>([])
   const [loading, setLoading] = useState(true)
@@ -168,7 +168,10 @@ export default function Trabajadores() {
                     </TableCell>
                     <TableCell>
                       <p>{t.cargo ?? '—'}</p>
-                      <p className="text-xs text-muted-foreground">{t.area_id ? nombreArea(t.area_id) : 'Sin área'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t.area_id ? nombreArea(t.area_id) : 'Sin área'}
+                        {marcaSucursal(t.sucursal)}
+                      </p>
                     </TableCell>
                     {salud && (
                       <TableCell className="space-x-1 whitespace-nowrap text-[11px] font-semibold">

@@ -1,6 +1,8 @@
 import { cargarXLSX } from '@/lib/cargarLibrerias'
 import { supabase, unwrap } from '@/lib/supabaseClient'
 import { nombreParaStorage } from '@/lib/storageKey'
+import type { Sucursal } from '@/lib/lineasNegocio'
+import { sucursalSso } from '../hooks/useSucursalSso'
 
 // Documentos (fase 7): listado maestro con versiones. Archivos en el bucket 'sso', carpeta
 // documentos/<documento_id>/. Se aceptan PDF, Word, Excel e imágenes, hasta 25 MB.
@@ -45,6 +47,8 @@ export interface Documento {
   titulo: string
   tipo: TipoDocumento
   area_id: string | null
+  /** null: de las dos sucursales */
+  sucursal: Sucursal | null
   responsable_user_id: string | null
   revision_meses: number | null
   descripcion: string | null
@@ -79,7 +83,7 @@ export interface Version {
   created_at: string
 }
 
-export type FichaDocumento = Pick<Documento, 'codigo' | 'titulo' | 'tipo' | 'area_id' | 'responsable_user_id' | 'revision_meses' | 'descripcion' | 'activo'>
+export type FichaDocumento = Pick<Documento, 'codigo' | 'titulo' | 'tipo' | 'area_id' | 'sucursal' | 'responsable_user_id' | 'revision_meses' | 'descripcion' | 'activo'>
 
 export function errorArchivo(f: File): string | null {
   if (!ARCHIVOS_ACEPTADOS.includes(f.type)) return `"${f.name}": solo PDF, Word, Excel o imagen`
@@ -88,7 +92,9 @@ export function errorArchivo(f: File): string | null {
 }
 
 export async function listarDocumentos(): Promise<DocumentoV[]> {
-  return (await unwrap(supabase.from('sso_documentos_v').select('*').order('codigo'))) as DocumentoV[]
+  const s = sucursalSso()
+  const q = supabase.from('sso_documentos_v').select('*')
+  return (await unwrap((s === 'todas' ? q : q.or(`sucursal.is.null,sucursal.eq.${s}`)).order('codigo'))) as DocumentoV[]
 }
 
 export async function obtenerDocumento(id: string): Promise<DocumentoV | null> {

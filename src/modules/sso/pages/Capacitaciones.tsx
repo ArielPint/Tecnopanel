@@ -48,7 +48,7 @@ function Tile({ titulo, valor, detalle }: { titulo: string; valor: string; detal
 export default function Capacitaciones() {
   const navigate = useNavigate()
   const { puede } = usePermisosSso('capacitaciones')
-  const { areas, nombreArea } = useDatosSso()
+  const { areas, nombreArea, marcaSucursal } = useDatosSso()
   const [caps, setCaps] = useState<CapacitacionV[]>([])
   const [tipos, setTipos] = useState<TipoCapacitacion[]>([])
   const [loading, setLoading] = useState(true)
@@ -174,7 +174,10 @@ export default function Capacitaciones() {
                       </p>
                     </TableCell>
                     <TableCell>{c.relator}</TableCell>
-                    <TableCell>{c.area_id ? nombreArea(c.area_id) : 'Toda la empresa'}</TableCell>
+                    <TableCell>
+                      {c.area_id ? nombreArea(c.area_id) : 'Toda la empresa'}
+                      {marcaSucursal(c.sucursal)}
+                    </TableCell>
                     <TableCell className="text-right font-mono-tabular">
                       {c.asistentes}
                       {c.ausentes > 0 && <span className="text-xs text-muted-foreground"> (+{c.ausentes} aus.)</span>}

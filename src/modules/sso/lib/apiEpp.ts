@@ -1,6 +1,8 @@
 import { cargarXLSX } from '@/lib/cargarLibrerias'
 import { supabase, unwrap } from '@/lib/supabaseClient'
 import { nombreParaStorage } from '@/lib/storageKey'
+import type { Sucursal } from '@/lib/lineasNegocio'
+import { enSucursal } from '../hooks/useSucursalSso'
 import { comprimirImagen } from './imagen'
 import type { TrabajadorV } from './tiposTrabajadores'
 
@@ -54,6 +56,8 @@ export interface Entrega {
 export interface EntregaV extends Entrega {
   elementos: number
   unidades: number
+  /** la del trabajador */
+  sucursal: Sucursal
 }
 
 export interface ItemEntrega {
@@ -75,6 +79,8 @@ export interface EppVigente {
   talla: string | null
   reposicion: string | null
   situacion: SituacionEpp
+  /** la del trabajador */
+  sucursal: Sucursal
 }
 
 // ---------------------------------------------------------------- catálogo
@@ -92,7 +98,7 @@ export async function guardarElementoEpp(e: Partial<ElementoEpp> & { nombre: str
 
 export async function listarEntregas(trabajadorId?: string): Promise<EntregaV[]> {
   let q = supabase.from('sso_epp_entregas_v').select('*')
-  if (trabajadorId) q = q.eq('trabajador_id', trabajadorId)
+  q = trabajadorId ? q.eq('trabajador_id', trabajadorId) : enSucursal(q)
   return (await unwrap(q.order('fecha', { ascending: false }).order('created_at', { ascending: false }))) as EntregaV[]
 }
 
@@ -108,7 +114,7 @@ export async function listarItems(entregaIds?: string[]): Promise<ItemEntrega[]>
 
 export async function listarEppVigentes(trabajadorId?: string): Promise<EppVigente[]> {
   let q = supabase.from('sso_epp_vigentes').select('*')
-  if (trabajadorId) q = q.eq('trabajador_id', trabajadorId)
+  q = trabajadorId ? q.eq('trabajador_id', trabajadorId) : enSucursal(q)
   return (await unwrap(q)) as EppVigente[]
 }
 

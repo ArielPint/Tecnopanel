@@ -145,6 +145,7 @@ export default function Documento() {
           <Dato label="Versión vigente">{doc.version && `${doc.version} · ${fmtFecha(doc.fecha_emision)}`}</Dato>
           <Dato label="Vigente hasta">{doc.vigente_hasta ? fmtFecha(doc.vigente_hasta) : doc.version ? 'Sin vencimiento' : null}</Dato>
           <Dato label="Área">{doc.area_id ? nombreArea(doc.area_id) : 'Toda la empresa'}</Dato>
+          <Dato label="Sucursal">{doc.sucursal ?? 'Las dos'}</Dato>
           <Dato label="Responsable">{doc.responsable_user_id && nombreUsuario(doc.responsable_user_id)}</Dato>
           <Dato label="Revisión">{doc.revision_meses ? `Cada ${doc.revision_meses} meses` : 'Sin vencimiento'}</Dato>
           {doc.descripcion && (

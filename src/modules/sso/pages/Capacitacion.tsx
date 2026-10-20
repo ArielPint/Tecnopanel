@@ -120,6 +120,7 @@ export default function Capacitacion() {
           <Dato label="Duración">{cap.duracion_min} minutos</Dato>
           <Dato label="Relator">{cap.relator}</Dato>
           <Dato label="Área">{cap.area_id ? nombreArea(cap.area_id) : 'Toda la empresa'}</Dato>
+          <Dato label="Sucursal">{cap.sucursal}</Dato>
           <Dato label="Lugar">{cap.lugar}</Dato>
           <Dato label="Asistentes">
             {cap.asistentes}

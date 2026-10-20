@@ -74,7 +74,9 @@ create trigger sso_documento_version_antes before insert or update on public.sso
   for each row execute function public.sso_documento_version_antes();
 
 -- Listado maestro: el documento con su version vigente y su situacion
-create or replace view public.sso_documentos_v with (security_invoker = true) as
+-- drop + create: 20261028120000_sso_sucursal la recrea con la columna sucursal ("or replace" fallaria al re-correr)
+drop view if exists public.sso_documentos_v;
+create view public.sso_documentos_v with (security_invoker = true) as
 select d.*,
   v.id as version_id, v.version, v.fecha_emision, v.vigente_hasta, v.archivo_path, v.archivo_nombre,
   (select count(*) from public.sso_documento_versiones x where x.documento_id = d.id) as versiones,

@@ -143,7 +143,9 @@ drop trigger if exists sso_evento_0_guardas on public.sso_eventos;
 create trigger sso_evento_0_guardas before insert or update on public.sso_eventos
   for each row execute function public.sso_evento_guardas();
 
-create or replace view public.sso_eventos_v with (security_invoker = true) as
+-- drop + create: 20261028120000_sso_sucursal la recrea con la columna sucursal ("or replace" fallaria al re-correr)
+drop view if exists public.sso_eventos_v;
+create view public.sso_eventos_v with (security_invoker = true) as
 select e.*,
   (e.ocurrido_en at time zone 'America/Santiago')::date as fecha,
   em.nombre as empresa,

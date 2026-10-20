@@ -1,6 +1,8 @@
 import { cargarXLSX } from '@/lib/cargarLibrerias'
 import { supabase, unwrap } from '@/lib/supabaseClient'
 import { nombreParaStorage } from '@/lib/storageKey'
+import type { Sucursal } from '@/lib/lineasNegocio'
+import { enSucursal } from '../hooks/useSucursalSso'
 import { comprimirImagen } from './imagen'
 
 // Accidentes e incidentes (fase 6). Archivos (fotos, DIAT, informe) en el bucket 'sso', carpeta
@@ -37,6 +39,8 @@ export interface Evento {
   gravedad: Gravedad
   ocurrido_en: string
   area_id: string | null
+  /** la de su area; sin area, la del afectado */
+  sucursal: Sucursal
   lugar: string | null
   descripcion: string
   trabajador_id: string | null
@@ -72,6 +76,7 @@ export interface EventoV extends Evento {
 export interface Dotacion {
   mes: string
   empresa_id: string
+  sucursal: Sucursal
   trabajadores: number
   horas_hombre: number
 }
@@ -82,7 +87,7 @@ export type FichaEvento = Partial<Omit<Evento, 'id' | 'numero' | 'created_at' | 
 
 export async function listarEventos(trabajadorId?: string): Promise<EventoV[]> {
   let q = supabase.from('sso_eventos_v').select('*')
-  if (trabajadorId) q = q.eq('trabajador_id', trabajadorId)
+  q = trabajadorId ? q.eq('trabajador_id', trabajadorId) : enSucursal(q)
   return (await unwrap(q.order('ocurrido_en', { ascending: false }))) as EventoV[]
 }
 
@@ -160,15 +165,15 @@ export async function urlArchivo(path: string): Promise<string> {
 // ---------------------------------------------------------------- dotación
 
 export async function listarDotacion(): Promise<Dotacion[]> {
-  return (await unwrap(supabase.from('sso_dotacion_mensual').select('mes, empresa_id, trabajadores, horas_hombre').order('mes'))) as Dotacion[]
+  return (await unwrap(enSucursal(supabase.from('sso_dotacion_mensual').select('mes, empresa_id, sucursal, trabajadores, horas_hombre')).order('mes'))) as Dotacion[]
 }
 
 export async function guardarDotacion(d: Dotacion): Promise<void> {
-  await unwrap(supabase.from('sso_dotacion_mensual').upsert(d, { onConflict: 'mes,empresa_id' }))
+  await unwrap(supabase.from('sso_dotacion_mensual').upsert(d, { onConflict: 'mes,empresa_id,sucursal' }))
 }
 
-export async function borrarDotacion(mes: string, empresaId: string): Promise<void> {
-  await unwrap(supabase.from('sso_dotacion_mensual').delete().eq('mes', mes).eq('empresa_id', empresaId))
+export async function borrarDotacion(mes: string, empresaId: string, sucursal: Sucursal): Promise<void> {
+  await unwrap(supabase.from('sso_dotacion_mensual').delete().eq('mes', mes).eq('empresa_id', empresaId).eq('sucursal', sucursal))
 }
 
 // ---------------------------------------------------------------- tasas (Ley 16.744)
@@ -209,7 +214,9 @@ export function calcularTasas(eventos: EventoV[], dotacion: Dotacion[], empresaI
   const dot = dotacion.filter((d) => d.empresa_id === empresaId && meses.includes(d.mes.slice(0, 7)))
   const accidentes = enPeriodo.length
   const diasPerdidos = enPeriodo.reduce((s, e) => s + e.dias_perdidos, 0)
-  const dotacionPromedio = dot.length ? dot.reduce((s, d) => s + Number(d.trabajadores), 0) / dot.length : null
+  // mirando las dos sucursales hay una fila por sucursal en cada mes: se suman antes de promediar
+  const mesesConDotacion = new Set(dot.map((d) => d.mes.slice(0, 7))).size
+  const dotacionPromedio = mesesConDotacion ? dot.reduce((s, d) => s + Number(d.trabajadores), 0) / mesesConDotacion : null
   const horasHombre = dot.reduce((s, d) => s + Number(d.horas_hombre), 0)
   const r1 = (x: number) => Math.round(x * 100) / 100
   return {

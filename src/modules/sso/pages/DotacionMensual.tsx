@@ -3,11 +3,13 @@ import { toast } from 'sonner'
 import { Card, CardContent } from '@/modules/financiero/components/ui/card'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
+import { SUCURSALES, type Sucursal } from '@/lib/lineasNegocio'
 import { borrarDotacion, guardarDotacion, listarDotacion, mesesEntre, type Dotacion } from '../lib/apiAccidentes'
 import { hoyChile } from '../lib/estados'
 import { etiquetaMes } from '../lib/indicadores'
 import { usePermisosSso } from '../hooks/usePermisosSso'
 import { useCatalogosTrabajadores } from '../hooks/useCatalogosTrabajadores'
+import { useSucursalSso } from '../hooks/useSucursalSso'
 
 const selectClase =
   'flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring'
@@ -17,6 +19,9 @@ export default function DotacionMensual() {
   const { puede } = usePermisosSso('accidentes')
   const editable = puede('aprobar')
   const { empresas } = useCatalogosTrabajadores()
+  // se carga por sucursal: mirando las dos, se elige aquí cuál
+  const { porDefecto } = useSucursalSso()
+  const [sucursal, setSucursal] = useState<Sucursal>(porDefecto ?? SUCURSALES[0])
   const [filas, setFilas] = useState<Dotacion[]>([])
   const [empresaId, setEmpresaId] = useState('')
   const [anio, setAnio] = useState(hoyChile().slice(0, 4))
@@ -44,7 +49,7 @@ export default function DotacionMensual() {
     const desde = Math.min(+hoy.slice(0, 4) - 1, ...filas.map((f) => +f.mes.slice(0, 4)))
     return Array.from({ length: +hoy.slice(0, 4) - desde + 1 }, (_, i) => String(+hoy.slice(0, 4) - i))
   }, [filas, hoy])
-  const de = (mes: string) => filas.find((f) => f.empresa_id === empresaId && f.mes.startsWith(mes))
+  const de = (mes: string) => filas.find((f) => f.empresa_id === empresaId && f.sucursal === sucursal && f.mes.startsWith(mes))
 
   async function guardar(mes: string, campo: 'trabajadores' | 'horas_hombre', valor: string) {
     const actual = de(mes)
@@ -56,8 +61,8 @@ export default function DotacionMensual() {
     const nueva = { trabajadores: actual?.trabajadores ?? 0, horas_hombre: actual?.horas_hombre ?? 0, [campo]: n ?? 0 }
     if (Number(actual?.[campo] ?? -1) === (n ?? 0) && actual) return
     try {
-      if (n === null && actual && Number(nueva.trabajadores) === 0 && Number(nueva.horas_hombre) === 0) await borrarDotacion(actual.mes, empresaId)
-      else await guardarDotacion({ mes: `${mes}-01`, empresa_id: empresaId, trabajadores: Number(nueva.trabajadores), horas_hombre: Number(nueva.horas_hombre) })
+      if (n === null && actual && Number(nueva.trabajadores) === 0 && Number(nueva.horas_hombre) === 0) await borrarDotacion(actual.mes, empresaId, sucursal)
+      else await guardarDotacion({ mes: `${mes}-01`, empresa_id: empresaId, sucursal, trabajadores: Number(nueva.trabajadores), horas_hombre: Number(nueva.horas_hombre) })
       await cargar()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No se pudo guardar')
@@ -73,6 +78,15 @@ export default function DotacionMensual() {
         aparte. {editable ? 'Se guarda al salir de cada casilla.' : 'Solo Prevención puede cargarlas.'}
       </p>
       <div className="flex flex-wrap gap-2">
+        {!porDefecto && (
+          <select value={sucursal} onChange={(e) => setSucursal(e.target.value as Sucursal)} className={selectClase} aria-label="Sucursal">
+            {SUCURSALES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        )}
         <select value={empresaId} onChange={(e) => setEmpresaId(e.target.value)} className={selectClase} aria-label="Empresa">
           {empresas.map((e) => (
             <option key={e.id} value={e.id}>
@@ -104,11 +118,11 @@ export default function DotacionMensual() {
               {meses.map((m) => {
                 const d = de(m)
                 return (
-                  <TableRow key={`${empresaId}:${m}`}>
+                  <TableRow key={`${sucursal}:${empresaId}:${m}`}>
                     <TableCell className="font-medium">{etiquetaMes(m)}</TableCell>
                     <TableCell>
                       <Input
-                        key={`t-${empresaId}-${m}-${d?.trabajadores ?? ''}`}
+                        key={`t-${sucursal}-${empresaId}-${m}-${d?.trabajadores ?? ''}`}
                         type="number"
                         min={0}
                         step="0.1"
@@ -121,7 +135,7 @@ export default function DotacionMensual() {
                     </TableCell>
                     <TableCell>
                       <Input
-                        key={`h-${empresaId}-${m}-${d?.horas_hombre ?? ''}`}
+                        key={`h-${sucursal}-${empresaId}-${m}-${d?.horas_hombre ?? ''}`}
                         type="number"
                         min={0}
                         step="1"

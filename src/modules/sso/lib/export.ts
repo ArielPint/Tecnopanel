@@ -40,6 +40,7 @@ export async function exportarHallazgosExcel(hallazgos: Hallazgo[], nombreUsuari
     'N°': h.numero,
     Estado: ESTADO_META[h.estado].label,
     Área: nombreArea(h.area_id),
+    Sucursal: h.sucursal,
     Ubicación: h.ubicacion,
     Descripción: h.descripcion,
     'Fecha detección': fechaExcel(h.fecha_deteccion),
@@ -274,6 +275,7 @@ export async function exportarFichaPdf(h: Hallazgo, evidencias: Evidencia[], bit
 
   pdf.datos([
     ['Área', nombreArea(h.area_id)],
+    ['Sucursal', h.sucursal],
     ['Ubicación', h.ubicacion],
     ['Detectado', `${fmtFecha(h.fecha_deteccion)} por ${nombreUsuario(h.reportado_por)}`],
     ['Responsable', nombreUsuario(h.responsable_user_id)],

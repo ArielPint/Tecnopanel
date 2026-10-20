@@ -1,10 +1,12 @@
 import { supabase, unwrap } from '@/lib/supabaseClient'
+import type { Sucursal } from '@/lib/lineasNegocio'
 import { comprimirImagen } from './imagen'
+import { enSucursal } from '../hooks/useSucursalSso'
 import { evidenciaPath, eliminarEvidenciaStorage, subirEvidencia } from '../services/storage'
 import type { Area, EstadoSso, EventoBitacora, Evidencia, Hallazgo, TipoEvidencia, UsuarioSso } from './tipos'
 
 export async function listarHallazgos(): Promise<Hallazgo[]> {
-  return (await unwrap(supabase.from('sso_hallazgos_v').select('*').order('numero', { ascending: false }))) as Hallazgo[]
+  return (await unwrap(enSucursal(supabase.from('sso_hallazgos_v').select('*')).order('numero', { ascending: false }))) as Hallazgo[]
 }
 
 export async function obtenerHallazgo(id: string): Promise<Hallazgo | null> {
@@ -12,7 +14,7 @@ export async function obtenerHallazgo(id: string): Promise<Hallazgo | null> {
 }
 
 export async function listarAreas(): Promise<Area[]> {
-  return (await unwrap(supabase.from('sso_areas').select('id, nombre, encargado_user_id, activa').order('nombre'))) as Area[]
+  return (await unwrap(enSucursal(supabase.from('sso_areas').select('id, nombre, encargado_user_id, activa, sucursal')).order('nombre'))) as Area[]
 }
 
 /** Personas con acceso SSO (y los admin), para elegir responsable o encargado. 'editar' = pueden responder. */
@@ -28,6 +30,8 @@ export interface NuevoHallazgoInput {
   descripcion: string
   fecha_deteccion: string
   fecha_compromiso: string
+  /** sin area, la elegida (con area la base pone la del area) */
+  sucursal: Sucursal | null
   /** null: lo toma la base del encargado del área */
   responsable_user_id: string | null
 }
@@ -98,7 +102,7 @@ export async function comentar(hallazgoId: string, comentario: string, userId: s
   await unwrap(supabase.from('sso_bitacora').insert({ hallazgo_id: hallazgoId, comentario: comentario.trim(), user_id: userId }))
 }
 
-export async function guardarArea(area: { id?: string; nombre: string; encargado_user_id: string | null; activa?: boolean }): Promise<void> {
+export async function guardarArea(area: { id?: string; nombre: string; encargado_user_id: string | null; activa?: boolean; sucursal?: Sucursal }): Promise<void> {
   if (area.id) {
     const { id, ...cambios } = area
     await unwrap(supabase.from('sso_areas').update(cambios).eq('id', id))

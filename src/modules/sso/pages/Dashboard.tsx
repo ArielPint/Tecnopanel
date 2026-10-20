@@ -21,6 +21,7 @@ import { listarAcuerdos, listarComites, type AcuerdoV, type ComiteV } from '../l
 import type { TrabajadorV } from '../lib/tiposTrabajadores'
 import { usePermisosSso } from '../hooks/usePermisosSso'
 import { useDatosSso } from '../hooks/useDatosSso'
+import { sucursalSso } from '../hooks/useSucursalSso'
 import { EstadoBadge, VencidoBadge } from '../components/EstadoBadge'
 
 // Dashboard del portal: lo ve cualquiera con acceso. Cada fase (Accidentes, Capacitaciones, EPP,
@@ -174,7 +175,7 @@ function PanelAtencion() {
 
   useEffect(() => {
     supabase
-      .rpc('sso_pendientes')
+      .rpc('sso_pendientes_en', { p_sucursal: sucursalSso() === 'todas' ? null : sucursalSso() })
       .then(({ data, error }) => setItems(error ? [] : ((data as Pendiente[]) ?? []).sort((a, b) => Number(b.nivel === 'critico') - Number(a.nivel === 'critico'))))
   }, [])
 

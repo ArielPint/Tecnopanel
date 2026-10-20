@@ -10,6 +10,7 @@ import { descargarPlantilla, leerExcelTrabajadores, type ResultadoLectura } from
 import { formatearRut } from '../lib/rut'
 import type { Area } from '../lib/tipos'
 import type { Empresa, FichaTrabajador, TrabajadorV } from '../lib/tiposTrabajadores'
+import { useSucursalSso } from '../hooks/useSucursalSso'
 
 interface Props {
   open: boolean
@@ -33,6 +34,7 @@ export function ImportarTrabajadores({ open, onOpenChange, empresas, areas, exis
   const [archivo, setArchivo] = useState<string | null>(null)
   const [lectura, setLectura] = useState<ResultadoLectura | null>(null)
   const [importando, setImportando] = useState(false)
+  const { porDefecto, fija } = useSucursalSso()
 
   function cerrar(v: boolean) {
     if (!v) {
@@ -46,7 +48,7 @@ export function ImportarTrabajadores({ open, onOpenChange, empresas, areas, exis
     if (!f) return
     try {
       setArchivo(f.name)
-      setLectura(await leerExcelTrabajadores(f, { empresas, areas, existentes, puedeCrearEmpresas }))
+      setLectura(await leerExcelTrabajadores(f, { empresas, areas, existentes, puedeCrearEmpresas, sucursal: porDefecto, soloSucursal: fija }))
     } catch {
       toast.error('No se pudo leer el archivo. ¿Es un Excel (.xlsx / .xls) o CSV?')
       setArchivo(null)

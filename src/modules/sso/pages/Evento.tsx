@@ -209,6 +209,7 @@ export default function Evento() {
         <CardContent className="grid gap-4 pt-5 sm:grid-cols-4">
           <Dato label="Ocurrido">{fmtFechaHora(e.ocurrido_en)}</Dato>
           <Dato label="Área">{e.area_id ? nombreArea(e.area_id) : null}</Dato>
+          <Dato label="Sucursal">{e.sucursal}</Dato>
           <Dato label="Lugar">{e.lugar}</Dato>
           <Dato label="Empresa">{e.empresa}</Dato>
           <div className="sm:col-span-2">

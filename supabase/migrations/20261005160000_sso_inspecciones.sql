@@ -100,7 +100,9 @@ drop trigger if exists sso_inspeccion_antes on public.sso_inspecciones;
 create trigger sso_inspeccion_antes before insert or update on public.sso_inspecciones
   for each row execute function public.sso_inspeccion_antes();
 
-create or replace view public.sso_inspecciones_v with (security_invoker = true) as
+-- drop + create: 20261028120000_sso_sucursal la recrea con la columna sucursal ("or replace" fallaria al re-correr)
+drop view if exists public.sso_inspecciones_v;
+create view public.sso_inspecciones_v with (security_invoker = true) as
 select i.*,
   c.nombre as checklist,
   (select count(*) from public.sso_inspeccion_respuestas r where r.inspeccion_id = i.id and r.resultado = 'cumple') as cumple,
@@ -111,7 +113,9 @@ from public.sso_inspecciones i
 join public.sso_checklists c on c.id = i.checklist_id;
 
 -- Programa: por plantilla periodica y area asignada (o general), ultima inspeccion y proxima.
-create or replace view public.sso_programa_inspecciones with (security_invoker = true) as
+-- drop + create: 20261028120000_sso_sucursal la recrea con la columna sucursal ("or replace" fallaria al re-correr)
+drop view if exists public.sso_programa_inspecciones;
+create view public.sso_programa_inspecciones with (security_invoker = true) as
 with destinos as (
   select c.id as checklist_id, ca.area_id
   from public.sso_checklists c join public.sso_checklist_areas ca on ca.checklist_id = c.id

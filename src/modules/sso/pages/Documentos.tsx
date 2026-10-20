@@ -38,7 +38,7 @@ export async function descargar(path: string, nombre: string) {
 export default function Documentos() {
   const navigate = useNavigate()
   const { puede } = usePermisosSso('documentos')
-  const { areas, nombreArea, nombreUsuario } = useDatosSso()
+  const { areas, nombreArea, nombreUsuario, marcaSucursal } = useDatosSso()
   const [docs, setDocs] = useState<DocumentoV[]>([])
   const [loading, setLoading] = useState(true)
   const [texto, setTexto] = useState('')
@@ -161,7 +161,10 @@ export default function Documentos() {
                       </p>
                       <p className="text-xs text-muted-foreground">{TIPO_DOCUMENTO[d.tipo]}</p>
                     </TableCell>
-                    <TableCell>{d.area_id ? nombreArea(d.area_id) : 'Toda la empresa'}</TableCell>
+                    <TableCell>
+                      {d.area_id ? nombreArea(d.area_id) : 'Toda la empresa'}
+                      {marcaSucursal(d.sucursal ?? 'las dos sucursales')}
+                    </TableCell>
                     <TableCell className="whitespace-nowrap">
                       {d.version ?? '—'}
                       {d.fecha_emision && <span className="block text-xs text-muted-foreground">{fmtFecha(d.fecha_emision)}</span>}
