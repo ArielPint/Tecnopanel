@@ -740,10 +740,20 @@ export default function OportunidadDrawer({ oportunidad, onClose, onUpdate, init
   }
 
   async function loadMensajes() {
-    const { data, error } = await supabase.from('mensajes_oportunidad').select('*,usuario:profiles(nombre,apellido)')
+    // Historial completo de la oportunidad (todas las etapas). Los nombres salen de
+    // crm_perfiles_basicos: el RLS de profiles oculta a los companeros (ver loadAll).
+    const { data, error } = await supabase.from('mensajes_oportunidad').select('*')
       .eq('oportunidad_id', opp.id).order('created_at', { ascending: true })
-    handleSupabaseError(error, 'OportunidadDrawer.loadMensajes')
-    setMensajes((data as MensajeOportunidad[]) ?? [])
+    if (handleSupabaseError(error, 'OportunidadDrawer.loadMensajes')) return
+    const base = (data as MensajeOportunidad[]) ?? []
+    const ids = [...new Set(base.map(m => m.usuario_id).filter((id): id is string => !!id))]
+    let perfilesById: Record<string, PerfilBasico> = {}
+    if (ids.length) {
+      const { data: perfiles, error: perfilesErr } = await supabase.from('crm_perfiles_basicos').select('id,nombre,apellido,rol,activo').in('id', ids)
+      handleSupabaseError(perfilesErr, 'OportunidadDrawer.loadMensajes.perfiles')
+      perfilesById = Object.fromEntries(((perfiles as PerfilBasico[]) ?? []).map(u => [u.id, u]))
+    }
+    setMensajes(base.map(m => ({ ...m, usuario: (m.usuario_id ? perfilesById[m.usuario_id] : undefined) as unknown as MensajeOportunidad['usuario'] })))
   }
 
   async function enviarMensaje() {
