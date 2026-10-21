@@ -9,6 +9,7 @@ import {
   Factory,
   HardHat,
   UserPlus,
+  ShieldCheck,
   KeyRound,
   Landmark,
   LayoutDashboard,
@@ -57,6 +58,8 @@ const navSections = [
       { to: '/prevencion', label: 'Prevención de Riesgos', end: false, icon: HardHat, requiere: 'sso' },
       // Portal propio (/personal), transversal: un rol por fila de permisos sobre el ancla ING_ANCLA_ID.
       { to: '/personal', label: 'Ingreso de Personal', end: false, icon: UserPlus, requiere: 'ingreso' },
+      // Portal propio (/control-contratistas), transversal: un rol por fila de permisos sobre el ancla CTR_ANCLA_ID.
+      { to: '/control-contratistas', label: 'Control de Contratistas', end: false, icon: ShieldCheck, requiere: 'control_contratistas' },
       // Portal propio (/adquisiciones), transversal: un rol por fila de permisos sobre el ancla ADQ_ANCLA_ID.
       { to: '/adquisiciones', label: 'Adquisiciones', end: false, icon: ShoppingCart, requiere: 'adquisiciones' },
       // Portal propio (/financiero), transversal: un permiso por informe y sucursal sobre el ancla FIN_ANCLA_ID.
@@ -81,7 +84,7 @@ const navSections = [
 // usuario puede abrir. '/proyectos' exige admin porque su ruta no trae slug.
 function useNavSections() {
   const acceso = useAccesoUsuario()
-  const ok = { admin: acceso.isAdmin, superadmin: acceso.isSuperAdmin, crm: acceso.tieneCrm, gestion: acceso.tieneGestion, sip: acceso.tieneSip, sso: acceso.tieneSso, ingreso: acceso.tieneIngreso, adquisiciones: acceso.tieneAdquisiciones, financiero: acceso.tieneFinanciero }
+  const ok = { admin: acceso.isAdmin, superadmin: acceso.isSuperAdmin, crm: acceso.tieneCrm, gestion: acceso.tieneGestion, sip: acceso.tieneSip, sso: acceso.tieneSso, ingreso: acceso.tieneIngreso, control_contratistas: acceso.tieneControlContratistas, adquisiciones: acceso.tieneAdquisiciones, financiero: acceso.tieneFinanciero }
   return navSections
     .map((s) => ({ ...s, items: s.items.filter((i) => !('requiere' in i) || ok[i.requiere as keyof typeof ok]) }))
     .filter((s) => s.items.length > 0)

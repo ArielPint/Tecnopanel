@@ -8,11 +8,12 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { cn } from '@/lib/utils'
 import { formatearRut } from '@/modules/sso/lib/rut'
 import { fmtFecha, fmtFechaHora } from '@/modules/sso/lib/estados'
-import { ARCHIVOS_ACEPTADOS, abrirArchivo, type DocEmpresa, type EstadoRevision, type Listado } from '../lib/api'
+import { ARCHIVOS_ACEPTADOS, abrirArchivo } from '@/modules/personal/lib/api'
+import type { DocEmpresa, EstadoRevision, Listado } from '../lib/api'
 import { nombreMes } from '../lib/contratistas'
 
-// Piezas del control mensual de contratistas, compartidas por la pantalla Contratistas (RRHH,
-// Prevención, coordinadores y quienes validan) y por el portal de cada empresa (/contratistas).
+// Piezas del control mensual de contratistas, compartidas por Control de Contratistas (personal de
+// Tecnopanel) y por el portal de cada empresa (/contratistas).
 // Cada documento y el listado quedan por revisar hasta que Tecnopanel los aprueba o los rechaza.
 
 const msg = (err: unknown, porDefecto: string) => (err instanceof Error ? err.message : porDefecto)

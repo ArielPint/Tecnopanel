@@ -10,6 +10,7 @@ import SipLoginPage from './modules/sip/pages/Login'
 import PrevencionLoginPage from './modules/sso/pages/Login'
 import PersonalLoginPage from './modules/personal/pages/Login'
 import ContratistasLoginPage from './modules/contratistas/pages/Login'
+import ControlContratistasLoginPage from './modules/control_contratistas/pages/Login'
 import AdquisicionesLoginPage from './modules/adquisiciones/pages/Login'
 import FinancieroSapLoginPage from './modules/financiero_sap/pages/Login'
 import { useAuthStore } from './store/authStore'
@@ -34,6 +35,7 @@ const SipApp = diferido(() => import('./modules/sip/SipApp'))
 const PrevencionApp = diferido(() => import('./modules/sso/PrevencionApp'))
 const PersonalApp = diferido(() => import('./modules/personal/PersonalApp'))
 const ContratistasApp = diferido(() => import('./modules/contratistas/ContratistasApp'))
+const ControlContratistasApp = diferido(() => import('./modules/control_contratistas/ControlContratistasApp'))
 const MonitoreoPage = diferido(() => import('./modules/monitoreo/MonitoreoPage'))
 const AdquisicionesApp = diferido(() => import('./modules/adquisiciones/AdquisicionesApp'))
 const FinancieroSapApp = diferido(() => import('./modules/financiero_sap/FinancieroSapApp'))
@@ -78,6 +80,16 @@ export default function App() {
           element={
             <ProtectedRoute loginPath="/personal/login" requiere="ingreso">
               <ConCarga><PersonalApp /></ConCarga>
+            </ProtectedRoute>
+          }
+        />
+        {/* Control de Contratistas: personal de Tecnopanel que valida documentación y estados de pago (accesos propios) */}
+        <Route path="/control-contratistas/login" element={<ControlContratistasLoginPage />} />
+        <Route
+          path="/control-contratistas/*"
+          element={
+            <ProtectedRoute loginPath="/control-contratistas/login" requiere="control_contratistas">
+              <ConCarga><ControlContratistasApp /></ConCarga>
             </ProtectedRoute>
           }
         />

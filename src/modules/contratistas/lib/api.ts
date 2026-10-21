@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabaseClient'
-import { listarEmpresas, type Empresa } from '@/modules/personal/lib/api'
+import { listarEmpresas, type Empresa } from '@/modules/control_contratistas/lib/api'
 import type { Empresa as EmpresaSso, FichaTrabajador, TrabajadorV } from '@/modules/sso/lib/tiposTrabajadores'
 import { formatearRut } from '@/modules/sso/lib/rut'
 import type { EstadoPago } from '@/modules/estados_pago/types'

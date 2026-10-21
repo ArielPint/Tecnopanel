@@ -117,6 +117,7 @@ export default function UsuariosPage() {
                       {nSip(a) > 0 && <Badge variant="outline">Producción ({nSip(a)})</Badge>}
                       {nSso > 0 && <Badge variant="outline">Prevención ({nSso})</Badge>}
                       {a.ingresoRoles.length > 0 && <Badge variant="outline">Ingreso personal ({a.ingresoRoles.length})</Badge>}
+                      {a.contratistasRoles.length > 0 && <Badge variant="outline">Contratistas ({a.contratistasRoles.length})</Badge>}
                       {a.adquisicionesRoles.length > 0 && <Badge variant="outline">Adquisiciones ({a.adquisicionesRoles.length})</Badge>}
                       {a.financieroPermisos.length > 0 && <Badge variant="outline">Financiero ({a.financieroPermisos.length})</Badge>}
                       {proyectosObra.every((proy) => (a.proyectos[proy.id]?.modulos.length ?? 0) === 0) &&
@@ -124,6 +125,7 @@ export default function UsuariosPage() {
                         nSip(a) === 0 &&
                         nSso === 0 &&
                         a.ingresoRoles.length === 0 &&
+                        a.contratistasRoles.length === 0 &&
                         a.adquisicionesRoles.length === 0 &&
                         a.financieroPermisos.length === 0 && <span className="text-sm text-muted-foreground">Sin accesos</span>}
                     </div>

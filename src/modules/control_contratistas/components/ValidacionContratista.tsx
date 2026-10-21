@@ -11,7 +11,7 @@ import { formatCLP } from '@/modules/financiero/utils/formatters'
 import DetalleEstadoPago from '@/modules/estados_pago/components/DetalleEstadoPago'
 import { AuthProviderSubcontratista } from '@/modules/estados_pago/hooks/useAuth'
 import { ESTADO_LABEL, ESTADO_VARIANT } from '@/modules/estados_pago/lib/estadosFlujo'
-import { usePermisosIngreso } from '../hooks/usePermisosIngreso'
+import { usePermisosContratistas } from '../hooks/usePermisosContratistas'
 import { DOCS_EMPRESA } from '../lib/catalogos'
 import {
   cambiarEstadoEp,
@@ -29,7 +29,7 @@ import { nombreMes, periodoDe } from '../lib/contratistas'
 import { RUTA } from '../lib/rutas'
 import { CeldaDoc, CeldaListado } from './DocsEmpresa'
 
-// Validación de contratistas en Ingreso de Personal > Contratistas: la documentación del mes de una
+// Validación en Control de Contratistas: la documentación del mes de una
 // empresa (con su revisión) y la tabla de estados de pago con los cambios de estado según el rol.
 
 const msg = (err: unknown, porDefecto: string) => (err instanceof Error ? err.message : porDefecto)
@@ -70,9 +70,9 @@ export function MesEmpresa({
   activos?: number
   recargar: () => Promise<void>
 }) {
-  const { tiene, userId, revisaDocs } = usePermisosIngreso()
+  const { userId, revisaDocs } = usePermisosContratistas()
   const { ocupado, hacer } = useAccion(recargar)
-  const confirma = tiene('rrhh') || tiene('prevencion')
+  const confirma = revisaDocs
 
   return (
     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
@@ -94,7 +94,7 @@ export function MesEmpresa({
           titulo={t.label}
           archivos={docs.filter((d) => d.tipo === t.key)}
           puedeSubir={empresa.activa}
-          puedeBorrar={(d) => tiene('rrhh') || (d.subido_por === userId && d.estado !== 'aprobado')}
+          puedeBorrar={(d) => revisaDocs || (d.subido_por === userId && d.estado !== 'aprobado')}
           ocupado={ocupado}
           onSubir={(f) => hacer(() => subirDocEmpresa(empresa.id, periodo, t.key, f), 'Documento cargado')}
           onBorrar={(d) => window.confirm(`¿Eliminar "${d.nombre}"?`) && hacer(() => eliminarDocEmpresa(d), 'Documento eliminado')}
@@ -118,8 +118,8 @@ export function TablaEstadosPago({
   nombreEmpresa?: (id: string) => string
   recargar: () => Promise<void>
 }) {
-  const { tiene } = usePermisosIngreso()
-  const revisor = tiene('revisor_contratistas') || tiene('aprobador_ep')
+  const { tiene } = usePermisosContratistas()
+  const revisor = tiene('revisor_ep') || tiene('aprobador_ep')
   const aprobador = tiene('aprobador_ep')
   const { ocupado, hacer } = useAccion(recargar)
   const [dialogo, setDialogo] = useState<Dialogo>(null)
