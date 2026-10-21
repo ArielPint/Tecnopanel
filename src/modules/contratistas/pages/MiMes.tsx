@@ -8,7 +8,7 @@ import { Label } from '@/modules/financiero/components/ui/label'
 import { useAuthStore } from '@/store/authStore'
 import { CeldaDoc, CeldaListado } from '@/modules/personal/components/DocsEmpresa'
 import { DIA_LIMITE_EMPRESA, DOCS_EMPRESA } from '@/modules/personal/lib/catalogos'
-import { ESTADO_MES, estadoMes, faltantes, nombreMes, periodoDe } from '@/modules/personal/lib/contratistas'
+import { ESTADO_MES, nombreMes, periodoDe, situacionMes } from '@/modules/personal/lib/contratistas'
 import {
   confirmarListado,
   eliminarDocEmpresa,
@@ -64,8 +64,7 @@ export default function MiMes() {
     }
   }
 
-  const falta = faltantes(empresa.id, docs, listado ? [listado] : [])
-  const estado = estadoMes(falta.length, periodo)
+  const { estado, porCargar, porRevisar } = situacionMes(empresa.id, docs, listado ? [listado] : [], periodo)
   const futuro = periodo > periodoDe()
 
   return (
@@ -74,7 +73,8 @@ export default function MiMes() {
         <div className="min-w-0">
           <h1 className="text-xl font-extrabold">Documentación de {nombreMes(periodo)}</h1>
           <p className="text-sm text-muted-foreground">
-            Cada mes: confirmar el listado de trabajadores y subir los documentos. Plazo: día {DIA_LIMITE_EMPRESA} del mes.
+            Cada mes: confirmar el listado de trabajadores y subir los documentos. Plazo: día {DIA_LIMITE_EMPRESA} del mes. Tecnopanel revisa cada uno; si
+            rechaza alguno, le llega un correo con el motivo y debe subirlo de nuevo.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -106,7 +106,11 @@ export default function MiMes() {
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant={ESTADO_MES[estado].variant}>{ESTADO_MES[estado].label}</Badge>
               <span className="text-sm text-muted-foreground">
-                {falta.length === 0 ? 'Está todo lo del mes.' : `Falta: ${falta.join(', ')}.`}
+                {estado === 'al_dia'
+                  ? 'Tecnopanel aprobó todo lo del mes.'
+                  : [porCargar.length ? `Falta subir o confirmar: ${porCargar.join(', ')}.` : '', porRevisar.length ? `Tecnopanel está revisando: ${porRevisar.join(', ')}.` : '']
+                      .filter(Boolean)
+                      .join(' ')}
               </span>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
@@ -128,7 +132,7 @@ export default function MiMes() {
                   titulo={t.label}
                   archivos={docs.filter((d) => d.tipo === t.key)}
                   puedeSubir={empresa.activa && !futuro}
-                  puedeBorrar={(d) => d.subido_por === userId}
+                  puedeBorrar={(d) => d.subido_por === userId && d.estado !== 'aprobado'}
                   ocupado={ocupado}
                   onSubir={(f) => hacer(() => subirDocEmpresa(empresa.id, periodo, t.key, f), 'Documento cargado')}
                   onBorrar={(d) => window.confirm(`¿Eliminar "${d.nombre}"?`) && hacer(() => eliminarDocEmpresa(d), 'Documento eliminado')}

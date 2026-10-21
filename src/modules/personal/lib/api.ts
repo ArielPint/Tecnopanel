@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient'
 import { errorTamanoArchivo, nombreParaStorage } from '@/lib/storageKey'
+import type { EstadoPago as EstadoPagoBase } from '@/modules/estados_pago/types'
 import type { AreaTarea, Motivo, Situacion, TipoContrato, TipoDoc, TipoDocEmpresa, TipoTrabajador } from './catalogos'
 
 // Acceso a datos del portal Ingreso de Personal. Quién ve y hace qué lo decide la base (RLS y
@@ -133,9 +134,21 @@ export interface Listado {
   trabajadores: { rut: string; nombre: string; cargo: string | null; sucursal: string }[]
   confirmado_por: string | null
   confirmado_at: string
+  estado: EstadoRevision
+  motivo_rechazo: string | null
+  revisado_at: string | null
+}
+
+/** Estado de pago visto desde Contratistas (ing_estados_pago_v): con proyecto, subcontrato y empresa. */
+export interface EstadoPagoEmpresa extends EstadoPagoBase {
+  especialidad: string
+  empresa_id: string
+  proyecto_nombre: string
 }
 
 /** Documento mensual de una empresa contratista. periodo: primer día del mes. */
+export type EstadoRevision = 'por_revisar' | 'aprobado' | 'rechazado'
+
 export interface DocEmpresa {
   id: string
   empresa_id: string
@@ -145,6 +158,9 @@ export interface DocEmpresa {
   nombre: string
   subido_por: string | null
   created_at: string
+  estado: EstadoRevision
+  motivo_rechazo: string | null
+  revisado_at: string | null
 }
 
 /** Jornada con su horario (Configuración > Jornadas). El horario se copia a la solicitud. */
@@ -279,6 +295,36 @@ export async function eliminarDocEmpresa(d: DocEmpresa): Promise<void> {
   if (e) error(e)
   if (!data?.length) throw new Error('No puedes eliminar este documento')
   await supabase.storage.from(BUCKET).remove([d.path])
+}
+
+export async function revisarDocEmpresa(id: string, aprobar: boolean, motivo?: string): Promise<void> {
+  const { error: e } = await supabase.rpc('ing_revisar_doc_empresa', { p_id: id, p_aprobar: aprobar, p_motivo: motivo ?? null })
+  if (e) error(e)
+}
+
+export async function revisarListado(empresaId: string, periodo: string, aprobar: boolean, motivo?: string): Promise<void> {
+  const { error: e } = await supabase.rpc('ing_revisar_listado', { p_empresa_id: empresaId, p_periodo: periodo, p_aprobar: aprobar, p_motivo: motivo ?? null })
+  if (e) error(e)
+}
+
+/** Estados de pago de todas las empresas (o de una), para quien valida (revisor o aprobador). */
+export async function listarEstadosPagoEmpresas(empresaId?: string): Promise<EstadoPagoEmpresa[]> {
+  let q = supabase.from('ing_estados_pago_v').select('*').order('created_at', { ascending: false })
+  if (empresaId) q = q.eq('empresa_id', empresaId)
+  const { data, error: e } = await q
+  if (e) error(e)
+  return (data ?? []) as EstadoPagoEmpresa[]
+}
+
+/** en_revision y rechazado: revisor; aprobado y pagado: aprobador. Rechazar exige comentario. */
+export async function cambiarEstadoEp(id: string, estado: 'en_revision' | 'rechazado' | 'aprobado' | 'pagado', comentario?: string, montoPagado?: number): Promise<void> {
+  const { error: e } = await supabase.rpc('ing_cambiar_estado_ep', {
+    p_id: id,
+    p_estado: estado,
+    p_comentario: comentario ?? null,
+    p_monto_pagado: montoPagado ?? null,
+  })
+  if (e) error(e)
 }
 
 /** Nombre de quien está conectado, para mostrar quién completa el formulario. */

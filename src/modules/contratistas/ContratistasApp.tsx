@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom'
-import { FileCheck2, KeyRound, LogOut, Moon, Sun, Users } from 'lucide-react'
+import { FileCheck2, KeyRound, LogOut, Moon, Receipt, Sun, Users } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import ChangePasswordDialog from '@/components/ChangePasswordDialog'
@@ -12,10 +12,11 @@ import type { Empresa as EmpresaSso } from '@/modules/sso/lib/tiposTrabajadores'
 import { miEmpresa, miEmpresaSso } from './lib/api'
 import MiMes from './pages/MiMes'
 import MisTrabajadores from './pages/MisTrabajadores'
+import MisEstadosPago from './pages/MisEstadosPago'
 
 // Portal Contratistas (/contratistas): la cuenta de una empresa contratista (enlazada en Usuarios a su
-// empresa de Estados de Pago) sube su documentación mensual, confirma su listado y mantiene sus
-// trabajadores. Solo ve lo suyo: lo asegura la base. El acceso lo controla ProtectedRoute en App.tsx.
+// empresa de Estados de Pago) sube su documentación mensual, confirma su listado, mantiene sus
+// trabajadores y emite los estados de pago de sus subcontratos, por proyecto. Solo ve lo suyo: lo asegura la base. El acceso lo controla ProtectedRoute en App.tsx.
 
 interface EmpresaActual {
   empresa: Empresa
@@ -48,6 +49,7 @@ function Layout() {
   const items = [
     { to: '/contratistas', label: 'Documentación del mes', icon: FileCheck2, end: true },
     { to: '/contratistas/trabajadores', label: 'Trabajadores', icon: Users, end: false },
+    { to: '/contratistas/estados-pago', label: 'Estados de pago', icon: Receipt, end: false },
   ]
 
   return (
@@ -132,6 +134,7 @@ export default function ContratistasApp() {
       <Route element={<Layout />}>
         <Route index element={<MiMes />} />
         <Route path="trabajadores" element={<MisTrabajadores />} />
+        <Route path="estados-pago" element={<MisEstadosPago />} />
         <Route path="*" element={<Navigate to="/contratistas" replace />} />
       </Route>
     </Routes>

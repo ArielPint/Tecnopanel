@@ -24,7 +24,7 @@ function Menu_({ onNavigate }: { onNavigate?: () => void }) {
   const items: { to: string; label: string; icon: typeof ClipboardList; end: boolean; aviso?: number }[] = [
     { to: RUTA.inicio, label: 'Ingresos', icon: ClipboardList, end: true },
     ...(puedeSolicitar ? [{ to: RUTA.nueva, label: 'Nueva solicitud', icon: Plus, end: true }] : []),
-    ...(gestionaContratistas ? [{ to: RUTA.contratistas, label: 'Contratistas', icon: Building2, end: true, aviso: atrasadas }] : []),
+    ...(gestionaContratistas ? [{ to: RUTA.contratistas, label: 'Contratistas', icon: Building2, end: false, aviso: atrasadas }] : []),
     ...(tiene('rrhh') ? [{ to: RUTA.configuracion, label: 'Configuración', icon: Settings, end: true }] : []),
   ]
 
@@ -117,7 +117,7 @@ export default function PortalLayout() {
       ? 'Nueva solicitud'
       : location.pathname === RUTA.configuracion
         ? 'Configuración'
-        : location.pathname === RUTA.contratistas
+        : location.pathname.startsWith(RUTA.contratistas)
           ? 'Contratistas'
         : location.pathname === RUTA.inicio
           ? 'Ingresos'
