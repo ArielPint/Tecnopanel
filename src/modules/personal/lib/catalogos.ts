@@ -3,7 +3,7 @@
 // (checks de las tablas, ing_catalogo_tareas, ing_docs_requeridos): si cambia uno, cambia el otro.
 
 /** Un rol por fila de permisos: modulo_key 'ing:<rol>', accion 'ver', sobre el ancla ING_ANCLA_ID. */
-export type RolIngreso = 'solicitante' | 'coordinador' | 'ti' | 'bodega' | 'prevencion' | 'rrhh'
+export type RolIngreso = 'solicitante' | 'coordinador' | 'ti' | 'bodega' | 'prevencion' | 'rrhh' | 'revisor_contratistas' | 'aprobador_ep'
 
 export const ROLES_INGRESO: { key: RolIngreso; label: string; detalle: string }[] = [
   { key: 'solicitante', label: 'Solicitante', detalle: 'Crea solicitudes de ingreso para su área y sigue las suyas. Puede indicar la renta, pero después no la ve.' },
@@ -16,6 +16,16 @@ export const ROLES_INGRESO: { key: RolIngreso; label: string; detalle: string }[
   { key: 'bodega', label: 'Bodega', detalle: 'Entrega de EPP y uniforme de los ingresos de su sucursal.' },
   { key: 'prevencion', label: 'Prevención', detalle: 'IRL (inducción de seguridad) de los ingresos de su sucursal. Empresas contratistas y su documentación mensual.' },
   { key: 'rrhh', label: 'RRHH', detalle: 'Ve todos los ingresos, incluida la renta. Contrato, cierre con la ficha de BUK y anulación.' },
+  {
+    key: 'revisor_contratistas',
+    label: 'Revisor de contratistas',
+    detalle: 'En Contratistas: aprueba o rechaza la documentación y el listado de cada empresa, y pasa a revisión o rechaza sus estados de pago (todos los proyectos).',
+  },
+  {
+    key: 'aprobador_ep',
+    label: 'Aprobador de estados de pago',
+    detalle: 'En Contratistas: aprueba los estados de pago en revisión y registra su pago (todos los proyectos).',
+  },
 ]
 
 export type AreaTarea = 'rrhh' | 'ti' | 'bodega' | 'prevencion' | 'jefatura'

@@ -268,9 +268,9 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                   </SelectContent>
                 </Select>
                 <p className="text-[11px] text-muted-foreground">
-                  Un subcontratista puede tener varios usuarios vinculados. Si se vincula, dale también acceso al proyecto con el módulo &quot;Estados de Pago&quot; (pestaña
-                  Listado, acción Crear) para que aparezca en su menú — la base de datos lo limita a ver y cargar
-                  solo lo suyo aunque tenga ese permiso.
+                  Con una empresa elegida, la cuenta entra al Portal Contratistas (/contratistas): documentación del mes, sus trabajadores y
+                  los estados de pago de los proyectos donde tiene subcontrato. No necesita otros permisos; la base de datos la limita a ver
+                  y cargar solo lo de su empresa. Una empresa puede tener varias cuentas.
                 </p>
               </div>
             </TabsContent>
@@ -627,6 +627,10 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               <p className="text-[11px] text-muted-foreground">
                 Portal Ingreso de Personal (/personal): solicitudes de ingreso de nuevo personal. Se puede marcar más de un rol. El coordinador
                 y las áreas ven solo su sucursal (pestaña Cuenta). Los admin ya tienen todo.
+              </p>
+              <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
+                ¿Es la cuenta de una empresa contratista? No marques roles aquí: elige su empresa en la pestaña Cuenta, en &quot;Portal de
+                subcontratista&quot;. Con eso entra al Portal Contratistas (/contratistas) y ve solo lo de su empresa.
               </p>
               <div className="flex flex-col gap-2">
                 <Label>Roles</Label>

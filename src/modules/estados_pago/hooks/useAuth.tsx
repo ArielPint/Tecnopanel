@@ -81,6 +81,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 }
 
+/** Para pantallas sin proyecto en la ruta que solo muestran el detalle de un EP: el Portal
+ *  Contratistas (la cuenta del subcontratista ve y crea solo lo suyo, lo asegura la RLS) e Ingreso de
+ *  Personal > Contratistas (que cambia los estados con sus propios botones). No edita ni aprueba. */
+export function AuthProviderSubcontratista({ children, esSubcontratista = true }: { children: ReactNode; esSubcontratista?: boolean }) {
+  return (
+    <AuthContext.Provider
+      value={{
+        loading: false,
+        isAdmin: false,
+        rolNegocio: null,
+        puedeVer: true,
+        puedeVerTab: (tab) => tab === 'listado',
+        puedeCrear: true,
+        puedeEditar: false,
+        puedeAprobar: false,
+        puedeAdministrar: false,
+        esSubcontratista,
+        signOut: async () => {
+          await supabase.auth.signOut()
+        },
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
 export function useAuth() {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth debe usarse dentro de <AuthProvider>')

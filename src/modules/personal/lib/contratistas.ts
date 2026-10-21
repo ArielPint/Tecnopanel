@@ -9,29 +9,43 @@ export function periodoDe(fecha: string = hoyChile()): string {
   return `${fecha.slice(0, 7)}-01`
 }
 
-export type EstadoMes = 'al_dia' | 'pendiente' | 'atrasado'
+export type EstadoMes = 'al_dia' | 'en_revision' | 'pendiente' | 'atrasado'
 
-export const ESTADO_MES: Record<EstadoMes, { label: string; variant: 'success' | 'warning' | 'destructive' }> = {
+export const ESTADO_MES: Record<EstadoMes, { label: string; variant: 'success' | 'default' | 'warning' | 'destructive' }> = {
   al_dia: { label: 'Al día', variant: 'success' },
+  en_revision: { label: 'Por revisar', variant: 'default' },
   pendiente: { label: 'Pendiente', variant: 'warning' },
   atrasado: { label: 'Atrasado', variant: 'destructive' },
 }
 
-/** Lo que le falta a una empresa en el mes: los documentos sin cargar y, si no lo confirmó, el listado. */
-export function faltantes(empresaId: string, docs: DocEmpresa[], listados: Listado[]): string[] {
-  return [
-    ...DOCS_EMPRESA.filter((t) => !docs.some((d) => d.empresa_id === empresaId && d.tipo === t.key)).map((t) => t.corto),
-    ...(listados.some((x) => x.empresa_id === empresaId) ? [] : ['Listado']),
-  ]
+export interface SituacionMes {
+  estado: EstadoMes
+  /** lo que la empresa todavía tiene que subir o confirmar (o volver a subir, si se rechazó) */
+  porCargar: string[]
+  /** lo cargado que Tecnopanel todavía no revisa */
+  porRevisar: string[]
 }
 
-/** Al día si no falta nada; si falta algo, pendiente hasta el día límite del mes y atrasado después. */
-export function estadoMes(faltan: number, periodo: string, hoy: string = hoyChile()): EstadoMes {
-  if (faltan === 0) return 'al_dia'
-  const actual = periodoDe(hoy)
-  if (periodo > actual) return 'pendiente'
-  if (periodo < actual) return 'atrasado'
-  return +hoy.slice(8, 10) > DIA_LIMITE_EMPRESA ? 'atrasado' : 'pendiente'
+/** Cómo está una empresa en el mes. Un tipo de documento cuenta como cargado si tiene alguno que no
+ *  esté rechazado, y como al día si tiene uno aprobado (igual que ing_empresa_faltan()). */
+export function situacionMes(empresaId: string, docs: DocEmpresa[], listados: Listado[], periodo: string, hoy: string = hoyChile()): SituacionMes {
+  const porCargar: string[] = []
+  const porRevisar: string[] = []
+  const listado = listados.find((x) => x.empresa_id === empresaId)
+  if (!listado || listado.estado === 'rechazado') porCargar.push('Listado')
+  else if (listado.estado === 'por_revisar') porRevisar.push('Listado')
+  for (const t of DOCS_EMPRESA) {
+    const propios = docs.filter((d) => d.empresa_id === empresaId && d.tipo === t.key)
+    if (propios.some((d) => d.estado === 'aprobado')) continue
+    if (propios.some((d) => d.estado === 'por_revisar')) porRevisar.push(t.corto)
+    else porCargar.push(t.corto)
+  }
+  let estado: EstadoMes = 'al_dia'
+  if (porCargar.length) {
+    const actual = periodoDe(hoy)
+    estado = periodo < actual || (periodo === actual && +hoy.slice(8, 10) > DIA_LIMITE_EMPRESA) ? 'atrasado' : 'pendiente'
+  } else if (porRevisar.length) estado = 'en_revision'
+  return { estado, porCargar, porRevisar }
 }
 
 /** 'octubre de 2026' */

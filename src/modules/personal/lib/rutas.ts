@@ -5,5 +5,6 @@ export const RUTA = {
   nueva: '/personal/nueva',
   configuracion: '/personal/configuracion',
   contratistas: '/personal/contratistas',
+  contratista: (id: string) => `/personal/contratistas/${id}`,
   ingreso: (id: string) => `/personal/${id}`,
 }

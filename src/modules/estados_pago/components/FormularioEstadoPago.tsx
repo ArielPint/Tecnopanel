@@ -46,7 +46,8 @@ export default function FormularioEstadoPago({ estadoPago, subcontratos, trigger
   const [enviando, setEnviando] = useState(false)
   const esEdicion = !!estadoPago
 
-  const [subcontratoId, setSubcontratoId] = useState(estadoPago?.subcontrato_id ?? '')
+  // con un solo subcontrato posible (Portal Contratistas, desde su tarjeta) queda elegido
+  const [subcontratoId, setSubcontratoId] = useState(estadoPago?.subcontrato_id ?? (subcontratos.length === 1 ? subcontratos[0].id : ''))
   const [numeroEp, setNumeroEp] = useState(estadoPago?.numero_ep ?? '')
   const [periodo, setPeriodo] = useState(estadoPago?.periodo ?? '')
   const [fechaEmision, setFechaEmision] = useState(estadoPago?.fecha_emision ?? new Date().toISOString().slice(0, 10))
