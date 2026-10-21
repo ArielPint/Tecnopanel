@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabaseClient'
 import { errorTamanoArchivo, nombreParaStorage } from '@/lib/storageKey'
-import type { AreaTarea, Motivo, Situacion, TipoContrato, TipoDoc, TipoTrabajador } from './catalogos'
+import type { AreaTarea, Motivo, Situacion, TipoContrato, TipoDoc, TipoDocEmpresa, TipoTrabajador } from './catalogos'
 
 // Acceso a datos del portal Ingreso de Personal. Quién ve y hace qué lo decide la base (RLS y
 // funciones ing_*): aquí no se filtra nada por rol.
@@ -14,6 +14,8 @@ export interface DatosIngreso {
   area: string
   cargo: string
   tipo_trabajador: TipoTrabajador
+  /** Solo contratistas: ing_empresas */
+  empresa_id: string | null
   motivo: Motivo | null
   /** Solo si el motivo es reemplazo */
   reemplaza_a: string | null
@@ -58,6 +60,9 @@ export interface Ingreso extends DatosIngreso {
   created_at: string
   creado_por_nombre: string | null
   cerrado_por_nombre: string | null
+  empresa_nombre: string | null
+  /** Documentos del mes en curso que le faltan a la empresa contratista (null si es de planta) */
+  empresa_docs_faltan: number | null
   tareas_total: number
   tareas_hechas: number
   /** Tareas pendientes que la persona que mira puede completar */
@@ -108,6 +113,27 @@ export interface Area {
   id: string
   nombre: string
   activa: boolean
+}
+
+/** Empresa contratista (Contratistas). */
+export interface Empresa {
+  id: string
+  nombre: string
+  rut: string | null
+  contacto: string | null
+  activa: boolean
+}
+
+/** Documento mensual de una empresa contratista. periodo: primer día del mes. */
+export interface DocEmpresa {
+  id: string
+  empresa_id: string
+  periodo: string
+  tipo: TipoDocEmpresa
+  path: string
+  nombre: string
+  subido_por: string | null
+  created_at: string
 }
 
 /** Jornada con su horario (Configuración > Jornadas). El horario se copia a la solicitud. */
@@ -179,6 +205,62 @@ export async function actualizarJornada(id: string, cambios: Partial<Pick<Jornad
 export async function eliminarJornada(id: string): Promise<void> {
   const { error: e } = await supabase.from('ing_jornadas').delete().eq('id', id)
   if (e) error(e)
+}
+
+export async function listarEmpresas(): Promise<Empresa[]> {
+  const { data, error: e } = await supabase.from('ing_empresas').select('id, nombre, rut, contacto, activa').order('nombre')
+  if (e) error(e)
+  return (data ?? []) as Empresa[]
+}
+
+function errorEmpresa(e: { message: string; code?: string }): never {
+  if (e.code === '23505') throw new Error('Ya existe una empresa con ese nombre.')
+  if (e.code === '23503') throw new Error('La empresa tiene ingresos: desactívala en vez de eliminarla.')
+  error(e)
+}
+
+export async function guardarEmpresa(datos: Omit<Empresa, 'id' | 'activa'> & { id?: string; activa?: boolean }): Promise<void> {
+  const { id, ...resto } = datos
+  const { error: e } = id ? await supabase.from('ing_empresas').update(resto).eq('id', id) : await supabase.from('ing_empresas').insert(resto)
+  if (e) errorEmpresa(e)
+}
+
+/** Elimina la empresa y sus documentos (filas y archivos). Con ingresos la base no la deja. */
+export async function eliminarEmpresa(id: string): Promise<void> {
+  const { data: docs } = await supabase.from('ing_empresa_docs').select('path').eq('empresa_id', id)
+  const { error: e } = await supabase.from('ing_empresas').delete().eq('id', id)
+  if (e) errorEmpresa(e)
+  if (docs?.length) await supabase.storage.from(BUCKET).remove(docs.map((d) => d.path))
+}
+
+/** Documentos de todas las empresas en un mes ('YYYY-MM-01'). */
+export async function listarDocsEmpresas(periodo: string): Promise<DocEmpresa[]> {
+  const { data, error: e } = await supabase.from('ing_empresa_docs').select('*').eq('periodo', periodo).order('created_at')
+  if (e) error(e)
+  return (data ?? []) as DocEmpresa[]
+}
+
+export async function subirDocEmpresa(empresaId: string, periodo: string, tipo: TipoDocEmpresa, file: File): Promise<void> {
+  const tamano = errorTamanoArchivo(file)
+  if (tamano) throw new Error(tamano)
+  if (file.size > 25 * 1024 * 1024) throw new Error(`"${file.name}" pesa más de 25 MB, el máximo de este portal.`)
+  const path = `empresas/${empresaId}/${periodo.slice(0, 7)}/${Date.now()}-${nombreParaStorage(file.name)}`
+  const { error: eSubir } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type || undefined })
+  if (eSubir) error(eSubir, `No se pudo subir "${file.name}"`)
+  const { error: eFila } = await supabase
+    .from('ing_empresa_docs')
+    .insert({ empresa_id: empresaId, periodo, tipo, path, nombre: file.name })
+  if (eFila) {
+    await supabase.storage.from(BUCKET).remove([path])
+    error(eFila)
+  }
+}
+
+export async function eliminarDocEmpresa(d: DocEmpresa): Promise<void> {
+  const { data, error: e } = await supabase.from('ing_empresa_docs').delete().eq('id', d.id).select('id')
+  if (e) error(e)
+  if (!data?.length) throw new Error('No puedes eliminar este documento')
+  await supabase.storage.from(BUCKET).remove([d.path])
 }
 
 /** Nombre de quien está conectado, para mostrar quién completa el formulario. */
@@ -292,7 +374,7 @@ export async function eliminarArchivo(a: Archivo): Promise<void> {
   await supabase.storage.from(BUCKET).remove([a.path])
 }
 
-export async function abrirArchivo(a: Archivo): Promise<void> {
+export async function abrirArchivo(a: Pick<Archivo, 'path'>): Promise<void> {
   const { data, error: e } = await supabase.storage.from(BUCKET).createSignedUrl(a.path, 600)
   if (e || !data?.signedUrl) error(e ?? { message: 'Sin enlace' }, 'No se pudo abrir el archivo')
   window.open(data.signedUrl, '_blank')

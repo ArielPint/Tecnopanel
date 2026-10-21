@@ -6,6 +6,7 @@ import Ingresos from './pages/Ingresos'
 import NuevaSolicitud from './pages/NuevaSolicitud'
 import Ingreso from './pages/Ingreso'
 import Configuracion from './pages/Configuracion'
+import Contratistas from './pages/Contratistas'
 
 // Portal Ingreso de Personal: web propia como Prevención, en /personal. Transversal a la empresa,
 // con un rol por fila de permisos sobre el ancla ING_ANCLA_ID. La sesión y el acceso al portal los
@@ -25,6 +26,13 @@ function SoloRrhh({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function SoloContratistas({ children }: { children: React.ReactNode }) {
+  const { gestionaContratistas, loading } = usePermisosIngreso()
+  if (loading) return <div className="h-24 animate-pulse rounded bg-muted" />
+  if (!gestionaContratistas) return <Navigate to={RUTA.inicio} replace />
+  return <>{children}</>
+}
+
 export default function PersonalApp() {
   return (
     <Routes>
@@ -32,6 +40,7 @@ export default function PersonalApp() {
         <Route index element={<Ingresos />} />
         <Route path="nueva" element={<SoloSolicitantes><NuevaSolicitud /></SoloSolicitantes>} />
         <Route path="configuracion" element={<SoloRrhh><Configuracion /></SoloRrhh>} />
+        <Route path="contratistas" element={<SoloContratistas><Contratistas /></SoloContratistas>} />
         <Route path=":id" element={<Ingreso />} />
         <Route path="*" element={<Navigate to={RUTA.inicio} replace />} />
       </Route>

@@ -14,7 +14,7 @@ export const ROLES_INGRESO: { key: RolIngreso; label: string; detalle: string }[
   },
   { key: 'ti', label: 'TI', detalle: 'Correo, accesos y equipo de los ingresos de su sucursal.' },
   { key: 'bodega', label: 'Bodega', detalle: 'Entrega de EPP y uniforme de los ingresos de su sucursal.' },
-  { key: 'prevencion', label: 'Prevención', detalle: 'Inducción de seguridad de los ingresos de su sucursal.' },
+  { key: 'prevencion', label: 'Prevención', detalle: 'IRL (inducción de seguridad) de los ingresos de su sucursal. Empresas contratistas y su documentación mensual.' },
   { key: 'rrhh', label: 'RRHH', detalle: 'Ve todos los ingresos, incluida la renta. Contrato, cierre con la ficha de BUK y anulación.' },
 ]
 
@@ -41,8 +41,8 @@ export type ClaveRequerimiento = (typeof REQUERIMIENTOS)[number]['key']
 
 /** Tareas que se crean solas en todo ingreso (o en los de planta). */
 export const TAREAS_SIEMPRE: { titulo: string; area: string; soloPlanta?: boolean }[] = [
-  { titulo: 'Contrato y anexos', area: 'RRHH' },
-  { titulo: 'Inducción de seguridad', area: 'Prevención' },
+  { titulo: 'Contrato y anexos', area: 'RRHH', soloPlanta: true },
+  { titulo: 'IRL: informar riesgos laborales', area: 'Prevención' },
   { titulo: 'Inducción de bienvenida', area: 'RRHH', soloPlanta: true },
 ]
 
@@ -83,13 +83,15 @@ export const LICENCIAS = [
   'Certificación operador de puente grúa',
 ]
 
-/** Tallas por prenda. Zapato para EPP; polera, pantalón y chaqueta para el uniforme. */
-const LETRAS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+/** Tallas por prenda, las que entrega Bodega a los operadores de Tecno Panel y Zobek. Zapato para EPP;
+ *  polera, pantalón y polar para el uniforme. Una talla fuera de la lista va en "Otras tallas".
+ *  (El polar se guarda en talla_chaqueta.) */
+const LETRAS = ['S', 'M', 'L', 'XL']
 export const TALLAS = {
-  talla_zapato: { label: 'Zapato de seguridad', opciones: Array.from({ length: 13 }, (_, k) => String(35 + k)), para: 'epp' },
-  talla_polera: { label: 'Polera / camisa', opciones: LETRAS, para: 'uniforme' },
-  talla_pantalon: { label: 'Pantalón', opciones: [...Array.from({ length: 11 }, (_, k) => String(36 + 2 * k)), ...LETRAS], para: 'uniforme' },
-  talla_chaqueta: { label: 'Chaqueta / parka', opciones: LETRAS, para: 'uniforme' },
+  talla_zapato: { label: 'Zapato de seguridad', opciones: ['39', '40', '41', '42'], para: 'epp' },
+  talla_polera: { label: 'Polera', opciones: LETRAS, para: 'uniforme' },
+  talla_pantalon: { label: 'Pantalón', opciones: LETRAS, para: 'uniforme' },
+  talla_chaqueta: { label: 'Polar', opciones: LETRAS, para: 'uniforme' },
 } as const
 
 export type CampoTalla = keyof typeof TALLAS
@@ -97,23 +99,51 @@ export type CampoTalla = keyof typeof TALLAS
 /** Días hábiles de anticipación que pide el procedimiento para la fecha de ingreso. */
 export const DIAS_AVISO = 10
 
-export type TipoDoc = 'cedula' | 'antecedentes' | 'afp' | 'salud' | 'estudios' | 'residencia' | 'licencia' | 'otro'
+export type TipoDoc =
+  | 'cedula'
+  | 'antecedentes'
+  | 'afp'
+  | 'salud'
+  | 'estudios'
+  | 'residencia'
+  | 'licencia'
+  | 'contrato_empleador'
+  | 'reglamento'
+  | 'otro'
 
-export const DOCUMENTOS: { key: TipoDoc; label: string }[] = [
+/** `solo`: el documento se ofrece solo para ese tipo de trabajador (si ya se cargó, se muestra igual). */
+export const DOCUMENTOS: { key: TipoDoc; label: string; solo?: TipoTrabajador }[] = [
   { key: 'cedula', label: 'Cédula de identidad (ambos lados)' },
   { key: 'antecedentes', label: 'Certificado de antecedentes' },
-  { key: 'afp', label: 'Certificado de afiliación AFP' },
-  { key: 'salud', label: 'Certificado Fonasa o Isapre' },
+  { key: 'afp', label: 'Certificado de afiliación AFP', solo: 'planta' },
+  { key: 'salud', label: 'Certificado Fonasa o Isapre', solo: 'planta' },
+  { key: 'contrato_empleador', label: 'Contrato de trabajo con la empresa contratista', solo: 'contratista' },
+  { key: 'reglamento', label: 'Recepción del reglamento interno', solo: 'contratista' },
   { key: 'licencia', label: 'Licencia de conducir y hoja de vida del conductor' },
   { key: 'estudios', label: 'Certificado de estudios o título' },
   { key: 'residencia', label: 'Certificado de residencia' },
   { key: 'otro', label: 'Otros documentos' },
 ]
 
-/** Sin estos no se puede cerrar el ingreso (igual que ing_docs_requeridos()). */
-export function docsRequeridos(reqVehiculo: boolean): TipoDoc[] {
-  return reqVehiculo ? ['cedula', 'antecedentes', 'afp', 'salud', 'licencia'] : ['cedula', 'antecedentes', 'afp', 'salud']
+/** Sin estos no se puede cerrar el ingreso (igual que ing_docs_req()). */
+export function docsRequeridos(reqVehiculo: boolean, tipo: TipoTrabajador): TipoDoc[] {
+  const base: TipoDoc[] = tipo === 'contratista' ? ['cedula', 'contrato_empleador', 'reglamento'] : ['cedula', 'antecedentes', 'afp', 'salud']
+  return reqVehiculo ? [...base, 'licencia'] : base
 }
+
+/** Documentos que cada empresa contratista envía todos los meses (igual que ing_empresa_doc_tipos()). */
+export type TipoDocEmpresa = 'adhesion' | 'listado' | 'contratos' | 'reglamento' | 'f30'
+
+export const DOCS_EMPRESA: { key: TipoDocEmpresa; label: string; corto: string }[] = [
+  { key: 'adhesion', label: 'Certificado de adhesión al organismo administrador', corto: 'Adhesión' },
+  { key: 'listado', label: 'Listado de trabajadores', corto: 'Listado' },
+  { key: 'contratos', label: 'Contratos de trabajo', corto: 'Contratos' },
+  { key: 'reglamento', label: 'Recepción del reglamento interno', corto: 'Reglamento' },
+  { key: 'f30', label: 'Formulario F30', corto: 'F30' },
+]
+
+/** Hasta este día del mes la documentación del mes está "pendiente"; después, "atrasada". */
+export const DIA_LIMITE_EMPRESA = 10
 
 export type TipoContrato = 'plazo_fijo' | 'indefinido' | 'obra_faena'
 
