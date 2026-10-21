@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '@/modules/financiero/components/ui/button'
 import CamposIngreso, { Seccion, datosVacios, limpiarDatos, validarDatos } from '../components/CamposIngreso'
 import CamposRenta, { rentaVacia } from '../components/CamposRenta'
-import { crearIngreso, listarAreas, listarJornadas, miNombre, type Area, type Jornada } from '../lib/api'
+import { crearIngreso, listarAreas, listarEmpresas, listarJornadas, miNombre, type Area, type Empresa, type Jornada } from '../lib/api'
 import { usePermisosIngreso } from '../hooks/usePermisosIngreso'
 import { RUTA } from '../lib/rutas'
 
@@ -18,6 +18,7 @@ export default function NuevaSolicitud() {
   const [enviando, setEnviando] = useState(false)
   const [areas, setAreas] = useState<Area[] | null>(null)
   const [jornadas, setJornadas] = useState<Jornada[]>([])
+  const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [solicitante, setSolicitante] = useState<string | null>(null)
   const { tiene, userId } = usePermisosIngreso()
 
@@ -31,6 +32,9 @@ export default function NuevaSolicitud() {
     listarJornadas()
       .then(setJornadas)
       .catch(() => setJornadas([]))
+    listarEmpresas()
+      .then(setEmpresas)
+      .catch(() => setEmpresas([]))
   }, [])
 
   useEffect(() => {
@@ -97,7 +101,7 @@ export default function NuevaSolicitud() {
         </p>
       </div>
 
-      <CamposIngreso datos={datos} onChange={setDatos} nueva areas={areas} jornadas={jornadas} solicitante={solicitante} />
+      <CamposIngreso datos={datos} onChange={setDatos} nueva areas={areas} jornadas={jornadas} empresas={empresas} solicitante={solicitante} />
 
       <Seccion titulo="Renta (opcional)">
         <CamposRenta renta={renta} onChange={setRenta} />

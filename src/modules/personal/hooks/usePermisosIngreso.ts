@@ -36,6 +36,8 @@ export function usePermisosIngreso() {
   const esAdmin = isAdmin || isSuperAdmin
   const tiene = useCallback((rol: RolIngreso) => esAdmin || roles.has(rol), [esAdmin, roles])
   const puedeSolicitar = tiene('solicitante') || tiene('coordinador') || tiene('rrhh')
+  // igual que ing_gestiona_contratistas()
+  const gestionaContratistas = tiene('rrhh') || tiene('prevencion') || tiene('coordinador')
 
-  return { userId: userId ?? '', tiene, puedeSolicitar, esAdmin, loading: loading || accesoLoading }
+  return { userId: userId ?? '', tiene, puedeSolicitar, gestionaContratistas, esAdmin, loading: loading || accesoLoading }
 }

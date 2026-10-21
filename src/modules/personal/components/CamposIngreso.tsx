@@ -22,7 +22,7 @@ import {
   type TipoTrabajador,
 } from '../lib/catalogos'
 import { fechaMinimaAviso } from '../lib/plazos'
-import type { Area, DatosIngreso, Jornada } from '../lib/api'
+import type { Area, DatosIngreso, Empresa, Jornada } from '../lib/api'
 
 // Campos de la solicitud, compartidos por Nueva solicitud y Editar (detalle del ingreso).
 
@@ -32,6 +32,7 @@ export function datosVacios(): DatosIngreso {
     area: '',
     cargo: '',
     tipo_trabajador: 'planta',
+    empresa_id: null,
     motivo: null,
     reemplaza_a: null,
     jefatura_directa: null,
@@ -80,6 +81,7 @@ export function validarDatos(d: DatosIngreso, nueva: boolean): string | null {
       ['a quién reemplaza', d.motivo === 'reemplazo' ? d.reemplaza_a : 'no aplica'],
       ['jefatura directa', d.jefatura_directa],
       ['cargo', d.cargo],
+      ['empresa contratista', d.tipo_trabajador === 'contratista' ? d.empresa_id : 'no aplica'],
       ['fecha de ingreso', d.fecha_ingreso],
       ['jornada', d.jornada],
       ['horario', d.horario],
@@ -113,6 +115,7 @@ export function limpiarDatos(d: DatosIngreso): DatosIngreso {
   return {
     ...d,
     rut: normalizarRut(d.rut) ?? d.rut,
+    empresa_id: d.tipo_trabajador === 'contratista' ? d.empresa_id : null,
     reemplaza_a: d.motivo === 'reemplazo' ? t(d.reemplaza_a) : null,
     jefatura_directa: t(d.jefatura_directa),
     horario: t(d.horario),
@@ -151,6 +154,7 @@ export default function CamposIngreso({
   nueva,
   areas,
   jornadas,
+  empresas,
   solicitante,
 }: {
   datos: DatosIngreso
@@ -160,11 +164,14 @@ export default function CamposIngreso({
   areas: Area[]
   /** Configuración > Jornadas. Al elegir una se copia su horario, que se puede ajustar. */
   jornadas: Jornada[]
+  /** Contratistas > Empresas. Se ofrecen las activas, más la que ya tiene la solicitud si se desactivó. */
+  empresas: Empresa[]
   /** Quien completa el formulario (en una solicitud nueva, la persona conectada) */
   solicitante: string | null
 }) {
   const set = <K extends keyof DatosIngreso>(k: K, v: DatosIngreso[K]) => onChange({ ...datos, [k]: v })
   const opcionesArea = areas.filter((a) => a.activa).map((a) => a.nombre)
+  const opcionesEmpresa = empresas.filter((e) => e.activa || e.id === datos.empresa_id)
   if (datos.area && !opcionesArea.includes(datos.area)) opcionesArea.push(datos.area)
   const rutMalo = datos.rut.trim().length > 0 && !rutValido(datos.rut)
   // El aviso se mide desde el día en que se pide: solo tiene sentido al crearla
@@ -266,6 +273,22 @@ export default function CamposIngreso({
               ))}
             </select>
           </div>
+          {datos.tipo_trabajador === 'contratista' && (
+            <div className="space-y-1">
+              <Label htmlFor="ip-empresa">Empresa contratista</Label>
+              <select id="ip-empresa" value={datos.empresa_id ?? ''} onChange={(e) => set('empresa_id', e.target.value || null)} className={selectClase}>
+                <option value="">Elegir empresa</option>
+                {opcionesEmpresa.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.nombre}
+                  </option>
+                ))}
+              </select>
+              {opcionesEmpresa.length === 0 && (
+                <p className="text-xs text-muted-foreground">No hay empresas contratistas registradas: pide a Prevención o RRHH que la agreguen.</p>
+              )}
+            </div>
+          )}
           <div className="space-y-1">
             <Label htmlFor="ip-contrato">Tipo de contrato</Label>
             <select

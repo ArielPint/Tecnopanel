@@ -43,6 +43,7 @@ import {
   listarArchivos,
   listarAreas,
   listarBitacora,
+  listarEmpresas,
   listarJornadas,
   listarTareas,
   obtenerIngreso,
@@ -53,6 +54,7 @@ import {
   type Archivo,
   type Area,
   type DatosIngreso,
+  type Empresa,
   type EventoBitacora,
   type Ingreso as IngresoT,
   type Jornada,
@@ -187,7 +189,7 @@ export default function Ingreso() {
   const gestiona = abierto && (esRrhh || tiene('coordinador'))
   const veDocs = esRrhh || tiene('coordinador')
   const puedeAnular = abierto && (gestiona || i.creado_por === userId)
-  const requeridos = docsRequeridos(i.req_vehiculo)
+  const requeridos = docsRequeridos(i.req_vehiculo, i.tipo_trabajador)
   const docs = archivos.filter((a) => a.tipo_doc)
   const tareaHecha = (tareaId: string | null) => !!tareas.find((t) => t.id === tareaId)?.hecha
   const puedeBorrar = (a: Archivo) => abierto && (esRrhh || a.subido_por === userId) && !tareaHecha(a.tarea_id)
@@ -282,6 +284,18 @@ export default function Ingreso() {
               </Dato>
               <Dato label="Jefatura directa">{i.jefatura_directa}</Dato>
               <Dato label="Tipo de trabajador">{TIPO_TRABAJADOR[i.tipo_trabajador]}</Dato>
+              {i.tipo_trabajador === 'contratista' && (
+                <Dato label="Empresa contratista">
+                  {i.empresa_nombre}
+                  {i.empresa_docs_faltan != null && (
+                    <span className={cn('block text-xs', i.empresa_docs_faltan ? 'font-semibold text-warning' : 'text-success')}>
+                      {i.empresa_docs_faltan
+                        ? `Le faltan ${i.empresa_docs_faltan} documento${i.empresa_docs_faltan === 1 ? '' : 's'} del mes`
+                        : 'Documentación del mes al día'}
+                    </span>
+                  )}
+                </Dato>
+              )}
               <Dato label="Contrato">{TIPO_CONTRATO[i.tipo_contrato]}</Dato>
               <Dato label="Jornada">
                 {i.jornada}
@@ -319,7 +333,12 @@ export default function Ingreso() {
                 </p>
               ) : (
                 <div className="divide-y">
-                  {DOCUMENTOS.filter((d) => d.key !== 'licencia' || requeridos.includes(d.key) || docs.some((a) => a.tipo_doc === d.key)).map((d) => {
+                  {DOCUMENTOS.filter(
+                    (d) =>
+                      requeridos.includes(d.key) ||
+                      docs.some((a) => a.tipo_doc === d.key) ||
+                      (d.key !== 'licencia' && (!d.solo || d.solo === i.tipo_trabajador)),
+                  ).map((d) => {
                     const propios = docs.filter((a) => a.tipo_doc === d.key)
                     const requerido = requeridos.includes(d.key)
                     return (
@@ -567,7 +586,11 @@ function DialogoEditar({
   const [problema, setProblema] = useState<string | null>(null)
   const [areas, setAreas] = useState<Area[]>([])
   const [jornadas, setJornadas] = useState<Jornada[]>([])
+  const [empresas, setEmpresas] = useState<Empresa[]>([])
   useEffect(() => {
+    listarEmpresas()
+      .then(setEmpresas)
+      .catch(() => setEmpresas([]))
     listarAreas()
       .then(setAreas)
       .catch(() => setAreas([]))
@@ -596,7 +619,7 @@ function DialogoEditar({
             <p className="mb-3 text-xs text-muted-foreground">
               Si quitas un requerimiento, su tarea se elimina mientras no tenga avance. Si agregas uno, se avisa al área.
             </p>
-            <CamposIngreso datos={datos} onChange={setDatos} nueva={false} areas={areas} jornadas={jornadas} solicitante={ingreso.creado_por_nombre} />
+            <CamposIngreso datos={datos} onChange={setDatos} nueva={false} areas={areas} jornadas={jornadas} empresas={empresas} solicitante={ingreso.creado_por_nombre} />
           </div>
           <DialogFooter className="items-center gap-2 border-t pt-3">
             {problema && <p className="mr-auto text-sm text-destructive">{problema}</p>}

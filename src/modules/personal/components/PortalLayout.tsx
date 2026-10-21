@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ArrowLeft, ClipboardList, KeyRound, LogOut, Menu, Moon, Plus, Settings, Sun, UserPlus } from 'lucide-react'
+import { ArrowLeft, Building2, ClipboardList, KeyRound, LogOut, Menu, Moon, Plus, Settings, Sun, UserPlus } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useOtrosPortales } from '@/hooks/useOtrosPortales'
@@ -12,16 +12,19 @@ import { Toaster } from '@/modules/financiero/components/ui/sonner'
 import { cn } from '@/lib/utils'
 import { RUTA } from '../lib/rutas'
 import { usePermisosIngreso } from '../hooks/usePermisosIngreso'
+import { useAlertaContratistas } from '../hooks/useAlertaContratistas'
 
 // Contenedor del portal Ingreso de Personal: mismo esquema que el de Prevención (menú propio,
 // login propio), con los tokens del hub para que el modo claro y el oscuro funcionen igual.
 
 function Menu_({ onNavigate }: { onNavigate?: () => void }) {
-  const { puedeSolicitar, tiene } = usePermisosIngreso()
+  const { puedeSolicitar, gestionaContratistas, tiene } = usePermisosIngreso()
   const { conHub, portales } = useOtrosPortales({ tipo: 'personal' })
-  const items = [
+  const atrasadas = useAlertaContratistas(gestionaContratistas)
+  const items: { to: string; label: string; icon: typeof ClipboardList; end: boolean; aviso?: number }[] = [
     { to: RUTA.inicio, label: 'Ingresos', icon: ClipboardList, end: true },
     ...(puedeSolicitar ? [{ to: RUTA.nueva, label: 'Nueva solicitud', icon: Plus, end: true }] : []),
+    ...(gestionaContratistas ? [{ to: RUTA.contratistas, label: 'Contratistas', icon: Building2, end: true, aviso: atrasadas }] : []),
     ...(tiene('rrhh') ? [{ to: RUTA.configuracion, label: 'Configuración', icon: Settings, end: true }] : []),
   ]
 
@@ -44,6 +47,14 @@ function Menu_({ onNavigate }: { onNavigate?: () => void }) {
             >
               <it.icon className="h-[18px] w-[18px] shrink-0" />
               {it.label}
+              {!!it.aviso && (
+                <span
+                  className="ml-auto rounded-full bg-destructive px-1.5 text-[11px] font-bold tabular-nums text-destructive-foreground"
+                  title="Empresas con documentación del mes atrasada"
+                >
+                  {it.aviso}
+                </span>
+              )}
             </NavLink>
           ))}
         </div>
@@ -106,6 +117,8 @@ export default function PortalLayout() {
       ? 'Nueva solicitud'
       : location.pathname === RUTA.configuracion
         ? 'Configuración'
+        : location.pathname === RUTA.contratistas
+          ? 'Contratistas'
         : location.pathname === RUTA.inicio
           ? 'Ingresos'
           : 'Detalle'
