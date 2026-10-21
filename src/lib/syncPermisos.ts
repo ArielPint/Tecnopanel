@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient'
-import { ADQ_ANCLA_ID, FIN_ANCLA_ID, getProyectoId, ING_ANCLA_ID, NOTIF_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from './proyectoIds'
+import { ADQ_ANCLA_ID, CTR_ANCLA_ID, FIN_ANCLA_ID, getProyectoId, ING_ANCLA_ID, NOTIF_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from './proyectoIds'
 
 async function reemplazarPermisos(userId: string, proyectoId: string, filas: { modulo_key: string; accion: string }[]) {
   const { error: delErr } = await supabase.from('permisos').delete().eq('user_id', userId).eq('proyecto_id', proyectoId)
@@ -114,6 +114,14 @@ export async function syncPermisosSso(userId: string, acciones: Record<string, b
  */
 export async function syncPermisosIngreso(userId: string, roles: string[]) {
   await reemplazarPermisos(userId, ING_ANCLA_ID, roles.map((r) => ({ modulo_key: `ing:${r}`, accion: 'ver' })))
+}
+
+/**
+ * Control de Contratistas: transversal, sobre su propio ancla (CTR_ANCLA_ID). Un rol por fila:
+ * modulo_key 'ctr:<rol>' con accion 'ver' (consulta, revisor_docs, revisor_ep, aprobador_ep, administrador).
+ */
+export async function syncPermisosContratistas(userId: string, roles: string[]) {
+  await reemplazarPermisos(userId, CTR_ANCLA_ID, roles.map((r) => ({ modulo_key: `ctr:${r}`, accion: 'ver' })))
 }
 
 /**

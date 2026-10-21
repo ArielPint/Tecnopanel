@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { cn } from '@/lib/utils'
 import { formatearRut, rutValido } from '@/modules/sso/lib/rut'
 import { MesEmpresa, TablaEstadosPago, useAccion } from '../components/ValidacionContratista'
-import { usePermisosIngreso } from '../hooks/usePermisosIngreso'
+import { usePermisosContratistas } from '../hooks/usePermisosContratistas'
 import { DIA_LIMITE_EMPRESA } from '../lib/catalogos'
 import { ESTADO_MES, nombreMes, periodoDe, situacionMes, type EstadoMes } from '../lib/contratistas'
 import {
@@ -33,11 +33,11 @@ type EmpresaForm = { id?: string; nombre: string; rut: string; email: string; te
 
 const ORDEN: Record<EstadoMes, number> = { atrasado: 0, en_revision: 1, pendiente: 2, al_dia: 3 }
 
-/** Contratistas (personal de Tecnopanel): aquí se valida lo que sube cada empresa desde su portal
+/** Control de Contratistas (personal de Tecnopanel): aquí se valida lo que sube cada empresa desde su portal
  *  (/contratistas): la documentación del mes, el listado de trabajadores y los estados de pago. */
 export default function Contratistas() {
-  const { tiene, validaEp } = usePermisosIngreso()
-  const administra = tiene('rrhh') || tiene('prevencion')
+  const { tiene, validaEp } = usePermisosContratistas()
+  const administra = tiene('administrador')
   const [periodo, setPeriodo] = useState(periodoDe)
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [docs, setDocs] = useState<DocEmpresa[]>([])

@@ -45,7 +45,6 @@ import {
   listarArchivos,
   listarAreas,
   listarBitacora,
-  listarEmpresas,
   listarJornadas,
   listarTareas,
   obtenerIngreso,
@@ -56,7 +55,6 @@ import {
   type Archivo,
   type Area,
   type DatosIngreso,
-  type Empresa,
   type EventoBitacora,
   type Ingreso as IngresoT,
   type Jornada,
@@ -64,6 +62,7 @@ import {
   type Tarea,
 } from '../lib/api'
 import { RUTA } from '../lib/rutas'
+import { listarEmpresas, type Empresa } from '@/modules/control_contratistas/lib/api'
 import { Avance } from './Ingresos'
 
 const msg = (err: unknown, porDefecto: string) => (err instanceof Error ? err.message : porDefecto)

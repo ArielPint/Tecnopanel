@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { ADQ_ANCLA_ID, FIN_ANCLA_ID, getProyectoId, ING_ANCLA_ID, NOTIF_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from '@/lib/proyectoIds'
-import { syncPermisosAdquisiciones, syncPermisosCrm, syncPermisosFinanciero, syncPermisosGestion, syncPermisosIngreso, syncPermisosProyecto, syncPermisosSip, syncPermisosSso, syncNotifSinCorreo, syncRolNegocio } from '@/lib/syncPermisos'
+import { ADQ_ANCLA_ID, CTR_ANCLA_ID, FIN_ANCLA_ID, getProyectoId, ING_ANCLA_ID, NOTIF_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from '@/lib/proyectoIds'
+import { syncPermisosAdquisiciones, syncPermisosCrm, syncPermisosFinanciero, syncPermisosContratistas, syncPermisosGestion, syncPermisosIngreso, syncPermisosProyecto, syncPermisosSip, syncPermisosSso, syncNotifSinCorreo, syncRolNegocio } from '@/lib/syncPermisos'
 import { normalizarAccionesSip } from '@/modules/sip/lib/accesos'
 import { normalizarAccionesSso } from '@/modules/sso/lib/accesos'
 
@@ -68,6 +68,8 @@ export interface Acceso {
   ssoAcciones: Record<string, boolean>
   /** Portal Ingreso de Personal: roles (en la base, modulo_key 'ing:<rol>' sobre ING_ANCLA_ID). */
   ingresoRoles: string[]
+  /** Control de Contratistas: roles (en la base, modulo_key 'ctr:<rol>' sobre CTR_ANCLA_ID). */
+  contratistasRoles: string[]
   /** Portal Adquisiciones: '<rol>:<sucursal>' (en la base, modulo_key 'adq:<rol>:<sucursal>' sobre ADQ_ANCLA_ID). */
   adquisicionesRoles: string[]
   /** Portal Financiero: '<informe>:<sucursal>' o 'configurar' (en la base, modulo_key 'fin:...' sobre FIN_ANCLA_ID). */
@@ -101,6 +103,7 @@ export interface AccesoInput {
   sipAcciones: Record<string, boolean>
   ssoAcciones: Record<string, boolean>
   ingresoRoles: string[]
+  contratistasRoles: string[]
   adquisicionesRoles: string[]
   financieroPermisos: string[]
   notifSinCorreo: string[]
@@ -157,6 +160,7 @@ async function syncAccesos(userId: string, input: AccesoInput) {
     syncPermisosSip(userId, normalizarAccionesSip(input.sipAcciones)),
     syncPermisosSso(userId, normalizarAccionesSso(input.ssoAcciones)),
     syncPermisosIngreso(userId, input.ingresoRoles),
+    syncPermisosContratistas(userId, input.contratistasRoles),
     syncPermisosAdquisiciones(userId, input.adquisicionesRoles),
     syncPermisosFinanciero(userId, input.financieroPermisos),
     syncNotifSinCorreo(userId, input.notifSinCorreo),
@@ -302,6 +306,10 @@ export function useAccesos() {
       const ingresoRoles = misPermisos
         .filter((x) => x.proyecto_id === ING_ANCLA_ID && x.modulo_key.startsWith('ing:'))
         .map((x) => x.modulo_key.slice(4))
+      // roles a partir de modulo_key 'ctr:<rol>' (ver syncPermisosContratistas)
+      const contratistasRoles = misPermisos
+        .filter((x) => x.proyecto_id === CTR_ANCLA_ID && x.modulo_key.startsWith('ctr:'))
+        .map((x) => x.modulo_key.slice(4))
       // '<rol>:<sucursal>' a partir de modulo_key 'adq:<rol>:<sucursal>' (ver syncPermisosAdquisiciones)
       const adquisicionesRoles = misPermisos
         .filter((x) => x.proyecto_id === ADQ_ANCLA_ID && x.modulo_key.startsWith('adq:'))
@@ -330,6 +338,7 @@ export function useAccesos() {
         sipAcciones,
         ssoAcciones,
         ingresoRoles,
+        contratistasRoles,
         adquisicionesRoles,
         financieroPermisos,
         notifSinCorreo,

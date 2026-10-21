@@ -3,7 +3,7 @@
 // (checks de las tablas, ing_catalogo_tareas, ing_docs_requeridos): si cambia uno, cambia el otro.
 
 /** Un rol por fila de permisos: modulo_key 'ing:<rol>', accion 'ver', sobre el ancla ING_ANCLA_ID. */
-export type RolIngreso = 'solicitante' | 'coordinador' | 'ti' | 'bodega' | 'prevencion' | 'rrhh' | 'revisor_contratistas' | 'aprobador_ep'
+export type RolIngreso = 'solicitante' | 'coordinador' | 'ti' | 'bodega' | 'prevencion' | 'rrhh'
 
 export const ROLES_INGRESO: { key: RolIngreso; label: string; detalle: string }[] = [
   { key: 'solicitante', label: 'Solicitante', detalle: 'Crea solicitudes de ingreso para su área y sigue las suyas. Puede indicar la renta, pero después no la ve.' },
@@ -14,18 +14,8 @@ export const ROLES_INGRESO: { key: RolIngreso; label: string; detalle: string }[
   },
   { key: 'ti', label: 'TI', detalle: 'Correo, accesos y equipo de los ingresos de su sucursal.' },
   { key: 'bodega', label: 'Bodega', detalle: 'Entrega de EPP y uniforme de los ingresos de su sucursal.' },
-  { key: 'prevencion', label: 'Prevención', detalle: 'IRL (inducción de seguridad) de los ingresos de su sucursal. Empresas contratistas y su documentación mensual.' },
+  { key: 'prevencion', label: 'Prevención', detalle: 'IRL (inducción de seguridad) de los ingresos de su sucursal.' },
   { key: 'rrhh', label: 'RRHH', detalle: 'Ve todos los ingresos, incluida la renta. Contrato, cierre con la ficha de BUK y anulación.' },
-  {
-    key: 'revisor_contratistas',
-    label: 'Revisor de contratistas',
-    detalle: 'En Contratistas: aprueba o rechaza la documentación y el listado de cada empresa, y pasa a revisión o rechaza sus estados de pago (todos los proyectos).',
-  },
-  {
-    key: 'aprobador_ep',
-    label: 'Aprobador de estados de pago',
-    detalle: 'En Contratistas: aprueba los estados de pago en revisión y registra su pago (todos los proyectos).',
-  },
 ]
 
 export type AreaTarea = 'rrhh' | 'ti' | 'bodega' | 'prevencion' | 'jefatura'
@@ -160,20 +150,6 @@ export function docsRequeridos(reqVehiculo: boolean, tipo: TipoTrabajador): Tipo
   const base: TipoDoc[] = tipo === 'contratista' ? ['cedula', 'contrato_empleador', 'reglamento'] : ['cedula', 'antecedentes', 'afp', 'salud']
   return reqVehiculo ? [...base, 'licencia'] : base
 }
-
-/** Documentos que cada empresa contratista sube todos los meses (igual que ing_empresa_doc_tipos()).
- *  El listado de trabajadores no es un archivo: la empresa lo confirma (ing_listados). */
-export type TipoDocEmpresa = 'adhesion' | 'contratos' | 'reglamento' | 'f30'
-
-export const DOCS_EMPRESA: { key: TipoDocEmpresa; label: string; corto: string }[] = [
-  { key: 'adhesion', label: 'Certificado de adhesión al organismo administrador', corto: 'Adhesión' },
-  { key: 'contratos', label: 'Contratos de trabajo', corto: 'Contratos' },
-  { key: 'reglamento', label: 'Recepción del reglamento interno', corto: 'Reglamento' },
-  { key: 'f30', label: 'Formulario F30', corto: 'F30' },
-]
-
-/** Hasta este día del mes la documentación del mes está "pendiente"; después, "atrasada". */
-export const DIA_LIMITE_EMPRESA = 10
 
 export type TipoContrato = 'plazo_fijo' | 'indefinido' | 'obra_faena'
 

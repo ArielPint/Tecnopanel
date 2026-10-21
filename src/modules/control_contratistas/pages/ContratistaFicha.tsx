@@ -10,18 +10,18 @@ import { formatearRut } from '@/modules/sso/lib/rut'
 import { fmtFecha } from '@/modules/sso/lib/estados'
 import type { TrabajadorV } from '@/modules/sso/lib/tiposTrabajadores'
 import { MesEmpresa, TablaEstadosPago } from '../components/ValidacionContratista'
-import { usePermisosIngreso } from '../hooks/usePermisosIngreso'
+import { usePermisosContratistas } from '../hooks/usePermisosContratistas'
 import { ESTADO_MES, nombreMes, periodoDe, situacionMes } from '../lib/contratistas'
+import { listarIngresos, type Ingreso } from '@/modules/personal/lib/api'
+import { RUTA as RUTA_INGRESO } from '@/modules/personal/lib/rutas'
 import {
   listarDocsEmpresas,
   listarEmpresas,
   listarEstadosPagoEmpresas,
-  listarIngresos,
   listarListados,
   type DocEmpresa,
   type Empresa,
   type EstadoPagoEmpresa,
-  type Ingreso,
   type Listado,
 } from '../lib/api'
 import { RUTA } from '../lib/rutas'
@@ -40,7 +40,7 @@ async function trabajadoresDe(empresaId: string): Promise<TrabajadorV[]> {
 /** Ficha de una empresa contratista: documentación del mes, estados de pago, trabajadores e ingresos. */
 export default function ContratistaFicha() {
   const { id = '' } = useParams<{ id: string }>()
-  const { validaEp } = usePermisosIngreso()
+  const { validaEp } = usePermisosContratistas()
   const [periodo, setPeriodo] = useState(periodoDe)
   const [empresa, setEmpresa] = useState<Empresa | null | undefined>()
   const [docs, setDocs] = useState<DocEmpresa[]>([])
@@ -58,7 +58,7 @@ export default function ContratistaFicha() {
         listarListados(periodo),
         validaEp ? listarEstadosPagoEmpresas(id) : Promise.resolve([]),
         trabajadoresDe(id),
-        listarIngresos(),
+        listarIngresos().catch(() => [] as Ingreso[]),
       ])
       setEmpresa(es.find((e) => e.id === id) ?? null)
       setDocs(d.filter((x) => x.empresa_id === id))
@@ -188,7 +188,7 @@ export default function ContratistaFicha() {
           <ul className="divide-y rounded-md border bg-card">
             {ingresos.map((i) => (
               <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
-                <Link to={RUTA.ingreso(i.id)} className="font-medium text-brand hover:underline">
+                <Link to={RUTA_INGRESO.ingreso(i.id)} className="font-medium text-brand hover:underline">
                   N° {i.numero} · {i.nombre}
                 </Link>
                 <span className="text-xs text-muted-foreground">

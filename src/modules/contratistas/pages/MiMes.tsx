@@ -6,9 +6,9 @@ import { Card, CardContent } from '@/modules/financiero/components/ui/card'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { Label } from '@/modules/financiero/components/ui/label'
 import { useAuthStore } from '@/store/authStore'
-import { CeldaDoc, CeldaListado } from '@/modules/personal/components/DocsEmpresa'
-import { DIA_LIMITE_EMPRESA, DOCS_EMPRESA } from '@/modules/personal/lib/catalogos'
-import { ESTADO_MES, nombreMes, periodoDe, situacionMes } from '@/modules/personal/lib/contratistas'
+import { CeldaDoc, CeldaListado } from '@/modules/control_contratistas/components/DocsEmpresa'
+import { DIA_LIMITE_EMPRESA, DOCS_EMPRESA } from '@/modules/control_contratistas/lib/catalogos'
+import { ESTADO_MES, nombreMes, periodoDe, situacionMes } from '@/modules/control_contratistas/lib/contratistas'
 import {
   confirmarListado,
   eliminarDocEmpresa,
@@ -17,7 +17,7 @@ import {
   subirDocEmpresa,
   type DocEmpresa,
   type Listado,
-} from '@/modules/personal/lib/api'
+} from '@/modules/control_contratistas/lib/api'
 import { useEmpresa } from '../ContratistasApp'
 import { misTrabajadores } from '../lib/api'
 

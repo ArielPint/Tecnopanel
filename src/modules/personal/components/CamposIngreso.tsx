@@ -24,7 +24,8 @@ import {
   type TipoTrabajador,
 } from '../lib/catalogos'
 import { fechaMinimaAviso } from '../lib/plazos'
-import type { Area, DatosIngreso, Empresa, Jornada } from '../lib/api'
+import type { Area, DatosIngreso, Jornada } from '../lib/api'
+import type { Empresa } from '@/modules/control_contratistas/lib/api'
 
 // Campos de la solicitud, compartidos por Nueva solicitud y Editar (detalle del ingreso).
 

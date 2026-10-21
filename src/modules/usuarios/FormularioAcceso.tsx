@@ -14,6 +14,7 @@ import { ROL_META, MODULOS as CRM_MODULOS, CRM_ACCION_GROUPS } from '@/modules/c
 import { SIP_MODULOS, claveAcceso as claveSip, normalizarAccionesSip } from '@/modules/sip/lib/accesos'
 import { SSO_MODULOS, claveAcceso, normalizarAccionesSso } from '@/modules/sso/lib/accesos'
 import { ROLES_INGRESO } from '@/modules/personal/lib/catalogos'
+import { ROLES_CONTRATISTAS } from '@/modules/control_contratistas/lib/catalogos'
 import { ROLES_ADQ } from '@/modules/adquisiciones/lib/catalogos'
 import { INFORMES_FIN, PERMISO_CONFIGURAR } from '@/modules/financiero_sap/lib/catalogos'
 import { NOTIF_CORREO_GRUPOS } from './notificaciones'
@@ -50,6 +51,7 @@ function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: Proye
     sipAcciones: acceso?.sipAcciones ?? {},
     ssoAcciones: acceso?.ssoAcciones ?? {},
     ingresoRoles: acceso?.ingresoRoles ?? [],
+    contratistasRoles: acceso?.contratistasRoles ?? [],
     adquisicionesRoles: acceso?.adquisicionesRoles ?? [],
     financieroPermisos: acceso?.financieroPermisos ?? [],
     notifSinCorreo: acceso?.notifSinCorreo ?? [],
@@ -174,6 +176,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                 ['sip', 'Producción'],
                 ['prevencion', 'Prevención'],
                 ['personal', 'Ingreso de personal'],
+                ['contratistas', 'Contratistas'],
                 ['adquisiciones', 'Adquisiciones'],
                 ['financiero', 'Financiero'],
                 ['notificaciones', 'Notificaciones'],
@@ -630,7 +633,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
               </p>
               <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
                 ¿Es la cuenta de una empresa contratista? No marques roles aquí: elige su empresa en la pestaña Cuenta, en &quot;Portal de
-                subcontratista&quot;. Con eso entra al Portal Contratistas (/contratistas) y ve solo lo de su empresa.
+                subcontratista&quot;. Quien valida a los contratistas se configura en la pestaña Contratistas.
               </p>
               <div className="flex flex-col gap-2">
                 <Label>Roles</Label>
@@ -642,6 +645,38 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                         setForm((f) => ({
                           ...f,
                           ingresoRoles: v ? [...f.ingresoRoles.filter((x) => x !== r.key), r.key] : f.ingresoRoles.filter((x) => x !== r.key),
+                        }))
+                      }
+                    />
+                    <span>
+                      <span className="font-medium">{r.label}</span>
+                      <span className="block text-xs text-muted-foreground">{r.detalle}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="contratistas" className="flex data-[state=inactive]:hidden min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
+              <p className="text-[11px] text-muted-foreground">
+                Control de Contratistas (/control-contratistas): personal de Tecnopanel que revisa y valida lo que sube cada empresa
+                contratista (documentación mensual, listado de trabajadores y estados de pago de todos los proyectos). Se puede marcar más
+                de un rol. Los admin ya tienen todo.
+              </p>
+              <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
+                ¿Es la cuenta de una empresa contratista? No marques roles aquí: elige su empresa en la pestaña Cuenta, en &quot;Portal de
+                subcontratista&quot;. Con eso entra a su propio portal (/contratistas) y ve solo lo de su empresa.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Label>Roles</Label>
+                {ROLES_CONTRATISTAS.map((r) => (
+                  <label key={r.key} className="flex items-start gap-2 text-sm [&>button]:mt-0.5">
+                    <Checkbox
+                      checked={form.contratistasRoles.includes(r.key)}
+                      onCheckedChange={(v) =>
+                        setForm((f) => ({
+                          ...f,
+                          contratistasRoles: v ? [...f.contratistasRoles.filter((x) => x !== r.key), r.key] : f.contratistasRoles.filter((x) => x !== r.key),
                         }))
                       }
                     />

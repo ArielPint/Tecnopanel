@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuthStore } from '@/store/authStore'
-import { ADQ_ANCLA_ID, FIN_ANCLA_ID, getProyectoId, ING_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from '@/lib/proyectoIds'
+import { ADQ_ANCLA_ID, CTR_ANCLA_ID, FIN_ANCLA_ID, getProyectoId, ING_ANCLA_ID, SIP_ANCLA_ID, SSO_ANCLA_ID } from '@/lib/proyectoIds'
 
-export type Escenario = 'hub_completo' | 'solo_proyecto' | 'solo_crm' | 'solo_sip' | 'solo_sso' | 'solo_ingreso' | 'solo_adquisiciones' | 'solo_financiero' | 'solo_contratista' | 'selector_portales' | 'sin_acceso'
+export type Escenario = 'hub_completo' | 'solo_proyecto' | 'solo_crm' | 'solo_sip' | 'solo_sso' | 'solo_ingreso' | 'solo_adquisiciones' | 'solo_financiero' | 'solo_contratista' | 'solo_control_contratistas' | 'selector_portales' | 'sin_acceso'
 
 export interface ProyectoObra {
   id: string
@@ -31,6 +31,8 @@ interface AccesoUsuario {
   tieneAdquisiciones: boolean
   /** Cualquier fila en `permisos` sobre el ancla FIN_ANCLA_ID: portal Financiero. */
   tieneFinanciero: boolean
+  /** Cualquier fila en `permisos` sobre el ancla CTR_ANCLA_ID: portal Control de Contratistas. */
+  tieneControlContratistas: boolean
   /** Cuenta de una empresa contratista (subcontratista_actual()): portal Contratistas, solo su información. */
   tieneContratista: boolean
   /** Proyectos tipo obra con permiso real — Fase F: antes era un boolean fijo a La Chacra, ahora N proyectos. */
@@ -50,6 +52,7 @@ const ESTADO_INICIAL: AccesoUsuario = {
   tieneIngreso: false,
   tieneAdquisiciones: false,
   tieneFinanciero: false,
+  tieneControlContratistas: false,
   tieneContratista: false,
   proyectosObra: [],
 }
@@ -114,18 +117,19 @@ export function useAccesoUsuario(): AccesoUsuario {
         const tieneIngreso = isAdmin || isSuperAdmin || proyectosConAcceso.has(ING_ANCLA_ID)
         const tieneAdquisiciones = isAdmin || isSuperAdmin || proyectosConAcceso.has(ADQ_ANCLA_ID)
         const tieneFinanciero = isAdmin || isSuperAdmin || proyectosConAcceso.has(FIN_ANCLA_ID)
+        const tieneControlContratistas = isAdmin || isSuperAdmin || proyectosConAcceso.has(CTR_ANCLA_ID)
         const tieneContratista = !!empresaContratista
         const proyectosObra = (obras ?? []).filter((p) => isAdmin || proyectosConAcceso.has(p.id))
         const tieneProyecto = proyectosObra.length > 0
 
         if (isAdmin) {
-          setEstado({ loading: false, escenario: 'hub_completo', isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, tieneSip, tieneSso, tieneIngreso, tieneAdquisiciones, tieneFinanciero, tieneContratista, proyectosObra })
+          setEstado({ loading: false, escenario: 'hub_completo', isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, tieneSip, tieneSso, tieneIngreso, tieneAdquisiciones, tieneFinanciero, tieneControlContratistas, tieneContratista, proyectosObra })
           return
         }
 
         // Producción SIP, Prevención, Ingreso de Personal, Adquisiciones y Financiero cuentan como un portal más:
         // con otro acceso va al selector; solo, aterriza en /produccion, /prevencion, /personal, /adquisiciones o /financiero
-        const portales = [tieneCrm, tieneProyecto, tieneSip, tieneSso, tieneIngreso, tieneAdquisiciones, tieneFinanciero, tieneContratista].filter(Boolean).length
+        const portales = [tieneCrm, tieneProyecto, tieneSip, tieneSso, tieneIngreso, tieneAdquisiciones, tieneFinanciero, tieneControlContratistas, tieneContratista].filter(Boolean).length
         let escenario: Escenario
         if (portales > 1) escenario = 'selector_portales'
         else if (tieneCrm) escenario = 'solo_crm'
@@ -135,10 +139,11 @@ export function useAccesoUsuario(): AccesoUsuario {
         else if (tieneIngreso) escenario = 'solo_ingreso'
         else if (tieneAdquisiciones) escenario = 'solo_adquisiciones'
         else if (tieneFinanciero) escenario = 'solo_financiero'
+        else if (tieneControlContratistas) escenario = 'solo_control_contratistas'
         else if (tieneContratista) escenario = 'solo_contratista'
         else escenario = 'sin_acceso'
 
-        setEstado({ loading: false, escenario, isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, tieneSip, tieneSso, tieneIngreso, tieneAdquisiciones, tieneFinanciero, tieneContratista, proyectosObra })
+        setEstado({ loading: false, escenario, isAdmin, isSuperAdmin, tieneCrm, tieneProyecto, tieneGestion, tieneSip, tieneSso, tieneIngreso, tieneAdquisiciones, tieneFinanciero, tieneControlContratistas, tieneContratista, proyectosObra })
       } catch (err) {
         if (cancelado) return
         // Mismo race de token que getProyectoId (ver comentario ahí): profiles/permisos no
