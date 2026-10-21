@@ -70,7 +70,7 @@ function ListaAtencion({ titulo, vacio, items, nombreArea }: { titulo: string; v
 }
 
 export default function Dashboard() {
-  const { puedeEn, userId, loading: permisosLoading } = usePermisosSso()
+  const { puedeEn, userId, loading: permisosLoading, restringido } = usePermisosSso()
   const { areas, nombreArea } = useDatosSso()
   const [hallazgos, setHallazgos] = useState<Hallazgo[]>([])
   const [trabajadores, setTrabajadores] = useState<TrabajadorV[]>([])
@@ -151,7 +151,7 @@ export default function Dashboard() {
 
       {puedeEn('epp', 'ver') && <SeccionEpp />}
 
-      {puedeEn('comite', 'ver') && <SeccionComite userId={userId} />}
+      {puedeEn('comite', 'ver') && !restringido && <SeccionComite userId={userId} />}
 
       {puedeEn('documentos', 'ver') && <SeccionDocumentos />}
 
@@ -211,6 +211,7 @@ function PanelAtencion() {
 }
 
 function SeccionAccidentes() {
+  const { restringido } = usePermisosSso()
   const [eventos, setEventos] = useState<EventoV[]>([])
   const [dotacion, setDotacion] = useState<Dotacion[]>([])
   const [propia, setPropia] = useState<string | null>(null)
@@ -248,6 +249,8 @@ function SeccionAccidentes() {
       )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Tile titulo="Días sin accidentes" valor={sin === null ? '—' : String(sin)} detalle="Con tiempo perdido" to={RUTA.indicadoresAccidentes} />
+        {!restringido && (
+          <>
         <Tile
           titulo="Accidentabilidad del año"
           valor={anio.accidentabilidad === null ? '—' : anio.accidentabilidad.toLocaleString('es-CL')}
@@ -260,7 +263,15 @@ function SeccionAccidentes() {
           detalle={anio.mesesSinDotacion.length ? `Faltan ${anio.mesesSinDotacion.length} meses de dotación` : 'Días perdidos ÷ dotación × 100'}
           to={RUTA.indicadoresAccidentes}
         />
-        <Tile titulo="Investigaciones abiertas" valor={String(abiertos.length)} alerta={abiertos.length > 0} detalle="Toda la empresa y contratistas" to={RUTA.accidentes} />
+          </>
+        )}
+        <Tile
+          titulo="Investigaciones abiertas"
+          valor={String(abiertos.length)}
+          alerta={abiertos.length > 0}
+          detalle={restringido ? 'De tus áreas' : 'Toda la empresa y contratistas'}
+          to={RUTA.accidentes}
+        />
       </div>
     </section>
   )

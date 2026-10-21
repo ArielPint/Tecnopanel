@@ -52,6 +52,7 @@ function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: Proye
     ssoAcciones: acceso?.ssoAcciones ?? {},
     ingresoRoles: acceso?.ingresoRoles ?? [],
     contratistasRoles: acceso?.contratistasRoles ?? [],
+    ssoAreas: acceso?.ssoAreas ?? [],
     adquisicionesRoles: acceso?.adquisicionesRoles ?? [],
     financieroPermisos: acceso?.financieroPermisos ?? [],
     notifSinCorreo: acceso?.notifSinCorreo ?? [],
@@ -67,6 +68,7 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
   const [form, setForm] = useState<AccesoInput>(inputFromAcceso(acceso, proyectosObra))
   const [gruposPorProyecto, setGruposPorProyecto] = useState<Record<string, { id: number; nombre: string }[]>>({})
   const [subcontratistas, setSubcontratistas] = useState<{ id: string; nombre: string }[]>([])
+  const [areasSso, setAreasSso] = useState<{ id: string; nombre: string; sucursal: string; activa: boolean }[]>([])
 
   useEffect(() => {
     if (open) setForm(inputFromAcceso(acceso, proyectosObra))
@@ -95,6 +97,12 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
       .eq('activo', true)
       .order('nombre')
       .then(({ data }) => setSubcontratistas(data ?? []))
+    supabase
+      .from('sso_areas')
+      .select('id, nombre, sucursal, activa')
+      .order('sucursal')
+      .order('nombre')
+      .then(({ data }) => setAreasSso(data ?? []))
   }, [open, acceso])
 
   function toggleCrmModulo(modulo: string, checked: boolean) {
@@ -623,6 +631,34 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                     </div>
                   )
                 })}
+              </div>
+              <div className="flex flex-col gap-1.5 rounded-md border p-2.5">
+                <Label>Áreas que ve</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Sin áreas marcadas ve todo el portal (Prevención, gerencia). Con áreas, ve solo los trabajadores, hallazgos, accidentes,
+                  capacitaciones, inspecciones y documentos de esas áreas (más los documentos generales), y no ve el Comité ni las tasas.
+                </p>
+                {areasSso.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No hay áreas creadas en Prevención.</p>
+                ) : (
+                  <div className="grid gap-1 sm:grid-cols-2">
+                    {areasSso
+                      .filter((a) => a.activa || form.ssoAreas.includes(a.id))
+                      .map((a) => (
+                        <label key={a.id} className="flex items-start gap-1.5 text-xs [&>button]:mt-0.5">
+                          <Checkbox
+                            checked={form.ssoAreas.includes(a.id)}
+                            onCheckedChange={(v) =>
+                              setForm((f) => ({ ...f, ssoAreas: v ? [...f.ssoAreas.filter((x) => x !== a.id), a.id] : f.ssoAreas.filter((x) => x !== a.id) }))
+                            }
+                          />
+                          <span>
+                            {a.nombre} <span className="text-muted-foreground">· {a.sucursal}</span>
+                          </span>
+                        </label>
+                      ))}
+                  </div>
+                )}
               </div>
             </TabsContent>
 

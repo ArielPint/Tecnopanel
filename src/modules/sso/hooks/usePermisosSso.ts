@@ -13,22 +13,23 @@ export function usePermisosSso(modulo?: ModuloSso) {
   const userId = useAuthStore((s) => s.user?.id)
   const { isAdmin, isSuperAdmin, loading: accesoLoading } = useAccesoUsuario()
   const [claves, setClaves] = useState<Set<string>>(new Set())
+  const [areas, setAreas] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!userId) return
     let cancelado = false
-    supabase
-      .from('permisos')
-      .select('modulo_key, accion')
-      .eq('user_id', userId)
-      .eq('proyecto_id', SSO_ANCLA_ID)
-      .like('modulo_key', 'sso:%')
-      .then(({ data }) => {
-        if (cancelado) return
-        setClaves(new Set((data ?? []).map((p) => `${p.modulo_key.slice(4)}:${p.accion}`)))
-        setLoading(false)
-      })
+    Promise.all([
+      supabase.from('permisos').select('modulo_key, accion').eq('user_id', userId).eq('proyecto_id', SSO_ANCLA_ID).like('modulo_key', 'sso:%'),
+      // áreas a las que está restringido (Usuarios > Prevención); sin filas, ve todas
+      supabase.from('sso_area_usuarios').select('area:sso_areas(nombre)').eq('user_id', userId),
+    ]).then(([{ data }, { data: au }]) => {
+      if (cancelado) return
+      setClaves(new Set((data ?? []).map((p) => `${p.modulo_key.slice(4)}:${p.accion}`)))
+      const nombres = ((au ?? []) as unknown as { area: { nombre: string } | null }[]).map((x) => x.area?.nombre ?? '').filter(Boolean)
+      setAreas(nombres.sort())
+      setLoading(false)
+    })
     return () => {
       cancelado = true
     }
@@ -42,5 +43,8 @@ export function usePermisosSso(modulo?: ModuloSso) {
   )
   const puede = useCallback((accion: AccionSso) => (modulo ? puedeEn(modulo, accion) : false), [modulo, puedeEn])
 
-  return { userId: userId ?? '', puede, puedeEn, esAdmin, loading: loading || accesoLoading }
+  // Mismo criterio que sso_restringido_area(): con áreas asignadas y sin ser admin
+  const restringido = !esAdmin && areas.length > 0
+
+  return { userId: userId ?? '', puede, puedeEn, esAdmin, restringido, misAreas: areas, loading: loading || accesoLoading }
 }

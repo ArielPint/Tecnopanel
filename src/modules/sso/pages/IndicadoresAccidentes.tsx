@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { AlertTriangle } from 'lucide-react'
+import { usePermisosSso } from '../hooks/usePermisosSso'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/modules/financiero/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/financiero/components/ui/table'
@@ -36,6 +37,19 @@ function Tasa({ titulo, valor, formula }: { titulo: string; valor: number | null
 
 /** Tasas legales (Ley 16.744) por empresa: Tecnopanel y cada contratista aparte. */
 export default function IndicadoresAccidentes() {
+  const { restringido } = usePermisosSso()
+  if (restringido) {
+    return (
+      <p className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+        Las tasas de accidentabilidad son de toda la empresa y usan la dotación mensual: no están disponibles con acceso por área. Los
+        accidentes de tus áreas están en Accidentes e incidentes.
+      </p>
+    )
+  }
+  return <Tasas />
+}
+
+function Tasas() {
   const { empresas } = useCatalogosTrabajadores()
   const [eventos, setEventos] = useState<EventoV[]>([])
   const [dotacion, setDotacion] = useState<Dotacion[]>([])
