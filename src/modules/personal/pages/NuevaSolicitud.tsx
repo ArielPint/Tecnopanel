@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '@/modules/financiero/components/ui/button'
 import CamposIngreso, { Seccion, datosVacios, limpiarDatos, validarDatos } from '../components/CamposIngreso'
 import CamposRenta, { rentaVacia } from '../components/CamposRenta'
-import { crearIngreso, listarAreas, type Area } from '../lib/api'
+import { crearIngreso, listarAreas, listarJornadas, miNombre, type Area, type Jornada } from '../lib/api'
 import { usePermisosIngreso } from '../hooks/usePermisosIngreso'
 import { RUTA } from '../lib/rutas'
 
@@ -17,7 +17,9 @@ export default function NuevaSolicitud() {
   const [problema, setProblema] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [areas, setAreas] = useState<Area[] | null>(null)
-  const { tiene } = usePermisosIngreso()
+  const [jornadas, setJornadas] = useState<Jornada[]>([])
+  const [solicitante, setSolicitante] = useState<string | null>(null)
+  const { tiene, userId } = usePermisosIngreso()
 
   useEffect(() => {
     listarAreas()
@@ -26,7 +28,14 @@ export default function NuevaSolicitud() {
         setAreas([])
         toast.error(err instanceof Error ? err.message : 'No se pudieron cargar las áreas')
       })
+    listarJornadas()
+      .then(setJornadas)
+      .catch(() => setJornadas([]))
   }, [])
+
+  useEffect(() => {
+    if (userId) miNombre(userId).then(setSolicitante)
+  }, [userId])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -88,7 +97,7 @@ export default function NuevaSolicitud() {
         </p>
       </div>
 
-      <CamposIngreso datos={datos} onChange={setDatos} nueva areas={areas} />
+      <CamposIngreso datos={datos} onChange={setDatos} nueva areas={areas} jornadas={jornadas} solicitante={solicitante} />
 
       <Seccion titulo="Renta (opcional)">
         <CamposRenta renta={renta} onChange={setRenta} />
