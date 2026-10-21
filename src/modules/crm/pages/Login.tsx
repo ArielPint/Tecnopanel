@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
+import OlvideContrasena from '@/components/OlvideContrasena'
 import { useAuthStore } from '@/store/authStore'
 
 // Alias de login para la cuenta root — mismo criterio que usuarios/LoginPage.tsx.
@@ -90,6 +91,9 @@ export default function Login() {
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
         </form>
+        <div className="mt-4">
+          <OlvideContrasena email={email} resolveEmail={resolveEmail} className="text-crm-red" />
+        </div>
       </div>
     </div>
   )
