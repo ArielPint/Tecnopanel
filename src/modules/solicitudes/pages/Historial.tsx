@@ -46,6 +46,8 @@ export default function Historial() {
   // El admin de Solicitudes (ver todas/editar/enviar) al retomar una solicitud puede
   // agregar productos, pero no toca la cantidad solicitada — solo la cantidad real.
   const soloCantidadReal = isAdmin || puedeEditar
+  // El stock solo lo ve quien gestiona el pedido, no quien lo solicita.
+  const verStock = isAdmin || puedeEditar
   const { grupos, responsables } = useGruposResponsables()
 
   // Usuarios con grupo_id (acceso restringido) — "Para quién" replica su propio nombre
@@ -392,7 +394,7 @@ export default function Historial() {
                                     <TableHead>Descripción</TableHead>
                                     <TableHead className="text-center">Cant. Sol.</TableHead>
                                     <TableHead className="text-center">Cant. Real</TableHead>
-                                    <TableHead className="text-center">Stock</TableHead>
+                                    {verStock && <TableHead className="text-center">Stock</TableHead>}
                                     <TableHead>Unidad</TableHead>
                                     {!soloCantidadReal && <TableHead className="w-10" />}
                                   </TableRow>
@@ -420,7 +422,7 @@ export default function Historial() {
                                           onChange={(e) => cambiarCantidad(i, 'cantidad_real', e.target.value)}
                                         />
                                       </TableCell>
-                                      <TableCell className="text-center tabular-nums">{celdaStock(it)}</TableCell>
+                                      {verStock && <TableCell className="text-center tabular-nums">{celdaStock(it)}</TableCell>}
                                       <TableCell className="text-xs text-muted-foreground">{it.unidad}</TableCell>
                                       {!soloCantidadReal && (
                                         <TableCell>
@@ -460,7 +462,7 @@ export default function Historial() {
                                   <TableHead>Descripción</TableHead>
                                   <TableHead className="text-center">Cant. Sol.</TableHead>
                                   <TableHead className="text-center">Cant. Real</TableHead>
-                                  <TableHead className="text-center">Stock</TableHead>
+                                  {verStock && <TableHead className="text-center">Stock</TableHead>}
                                   <TableHead>Unidad</TableHead>
                                   <TableHead className="text-center">Módulos</TableHead>
                                 </TableRow>
@@ -475,7 +477,7 @@ export default function Historial() {
                                       <TableCell className="text-sm">{it.descripcion}</TableCell>
                                       <TableCell className="text-center">{it.cantidad}</TableCell>
                                       <TableCell className="text-center">{it.cantidad_real}</TableCell>
-                                      <TableCell className="text-center tabular-nums">{celdaStock(it)}</TableCell>
+                                      {verStock && <TableCell className="text-center tabular-nums">{celdaStock(it)}</TableCell>}
                                       <TableCell className="text-xs text-muted-foreground">{it.unidad}</TableCell>
                                       <TableCell className="text-center font-semibold text-primary">{modulos != null ? modulos.toFixed(2) : '—'}</TableCell>
                                     </TableRow>
@@ -483,7 +485,7 @@ export default function Historial() {
                                 })}
                                 {s.observacion && (
                                   <TableRow>
-                                    <TableCell colSpan={8} className="text-xs text-muted-foreground">
+                                    <TableCell colSpan={verStock ? 8 : 7} className="text-xs text-muted-foreground">
                                       📝 {s.observacion}
                                     </TableCell>
                                   </TableRow>
