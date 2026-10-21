@@ -28,16 +28,74 @@ export const AREA_TAREA: Record<AreaTarea, string> = {
   jefatura: 'Jefatura',
 }
 
-/** Lo que la solicitud puede pedir. Cada uno genera una tarea para el área indicada. */
+/** Lo que la solicitud puede pedir. Cada uno genera una tarea para el área indicada. Las inducciones
+ *  no se eligen: ver TAREAS_SIEMPRE (ing_tipos_ingreso() en la base). */
 export const REQUERIMIENTOS = [
-  { key: 'req_ti', titulo: 'Correo, accesos y equipo', detalle: 'Cuenta de correo, usuario de sistemas, PC o notebook', area: 'TI' },
+  { key: 'req_ti', titulo: 'Equipo computacional y accesos', detalle: 'Correo, notebook, pantalla u otros', area: 'TI' },
   { key: 'req_epp', titulo: 'Elementos de protección personal', detalle: 'Casco, zapatos de seguridad, guantes, lentes, protección auditiva', area: 'Bodega' },
   { key: 'req_uniforme', titulo: 'Uniforme', detalle: 'Ropa de trabajo según tallas', area: 'Bodega' },
-  { key: 'req_induccion', titulo: 'Inducción de seguridad', detalle: 'Información de riesgos laborales del puesto', area: 'Prevención' },
-  { key: 'req_vehiculo', titulo: 'Conducción de vehículos', detalle: 'Grúa horquilla, camión o vehículo de la empresa. Pide la licencia.', area: 'Jefatura que solicita' },
+  { key: 'req_vehiculo', titulo: 'Conducción de vehículos', detalle: 'Grúa horquilla, camión o vehículo de la empresa. Pide la licencia o certificación.', area: 'Jefatura que solicita' },
 ] as const
 
 export type ClaveRequerimiento = (typeof REQUERIMIENTOS)[number]['key']
+
+/** Tareas que se crean solas en todo ingreso (o en los de planta). */
+export const TAREAS_SIEMPRE: { titulo: string; area: string; soloPlanta?: boolean }[] = [
+  { titulo: 'Contrato y anexos', area: 'RRHH' },
+  { titulo: 'Inducción de seguridad', area: 'Prevención' },
+  { titulo: 'Inducción de bienvenida', area: 'RRHH', soloPlanta: true },
+]
+
+/** Qué necesita de TI. Basta uno para que se cree la tarea de TI. */
+export const ITEMS_TI = [
+  { key: 'ti_correo', label: 'Correo' },
+  { key: 'ti_notebook', label: 'Notebook' },
+  { key: 'ti_pantalla', label: 'Pantalla' },
+] as const
+
+export type TipoTrabajador = 'planta' | 'contratista'
+
+export const TIPO_TRABAJADOR: Record<TipoTrabajador, string> = {
+  planta: 'Planta (Tecnopanel)',
+  contratista: 'Contratista',
+}
+
+export type Motivo = 'reemplazo' | 'aumento_dotacion' | 'nuevo_cargo' | 'proyecto' | 'temporada' | 'otro'
+
+/** Igual que ing_motivo_label() */
+export const MOTIVOS: Record<Motivo, string> = {
+  reemplazo: 'Reemplazo',
+  aumento_dotacion: 'Aumento de dotación',
+  nuevo_cargo: 'Cargo nuevo',
+  proyecto: 'Proyecto u obra específica',
+  temporada: 'Temporada o peak de producción',
+  otro: 'Otro',
+}
+
+/** Sugerencias para la conducción; se puede escribir otra. */
+export const LICENCIAS = [
+  'Clase B (vehículo liviano)',
+  'Clase A4 (camión de carga simple)',
+  'Clase A5 (camión de carga articulado)',
+  'Clase D (grúa horquilla y maquinaria)',
+  'Certificación operador de grúa horquilla',
+  'Certificación operador de plataforma elevadora',
+  'Certificación operador de puente grúa',
+]
+
+/** Tallas por prenda. Zapato para EPP; polera, pantalón y chaqueta para el uniforme. */
+const LETRAS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+export const TALLAS = {
+  talla_zapato: { label: 'Zapato de seguridad', opciones: Array.from({ length: 13 }, (_, k) => String(35 + k)), para: 'epp' },
+  talla_polera: { label: 'Polera / camisa', opciones: LETRAS, para: 'uniforme' },
+  talla_pantalon: { label: 'Pantalón', opciones: [...Array.from({ length: 11 }, (_, k) => String(36 + 2 * k)), ...LETRAS], para: 'uniforme' },
+  talla_chaqueta: { label: 'Chaqueta / parka', opciones: LETRAS, para: 'uniforme' },
+} as const
+
+export type CampoTalla = keyof typeof TALLAS
+
+/** Días hábiles de anticipación que pide el procedimiento para la fecha de ingreso. */
+export const DIAS_AVISO = 10
 
 export type TipoDoc = 'cedula' | 'antecedentes' | 'afp' | 'salud' | 'estudios' | 'residencia' | 'licencia' | 'otro'
 
@@ -64,8 +122,6 @@ export const TIPO_CONTRATO: Record<TipoContrato, string> = {
   indefinido: 'Indefinido',
   obra_faena: 'Por obra o faena',
 }
-
-export const JORNADAS = ['Administrativa', 'Turno mañana', 'Turno tarde', 'Turno noche', 'Part time']
 
 export type Situacion = 'en_proceso' | 'listo' | 'ingresado' | 'anulado'
 

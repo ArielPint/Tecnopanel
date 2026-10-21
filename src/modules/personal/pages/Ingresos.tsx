@@ -7,7 +7,8 @@ import { SUCURSALES } from '@/lib/lineasNegocio'
 import { cn } from '@/lib/utils'
 import { formatearRut } from '@/modules/sso/lib/rut'
 import { fmtFecha } from '@/modules/sso/lib/estados'
-import { SITUACION, type Situacion } from '../lib/catalogos'
+import { DIAS_AVISO, SITUACION, type Situacion } from '../lib/catalogos'
+import { diasHabilesAviso, fechaChile } from '../lib/plazos'
 import { listarIngresos, type Ingreso } from '../lib/api'
 import { RUTA } from '../lib/rutas'
 
@@ -166,10 +167,20 @@ export default function Ingresos() {
                   </td>
                   <td className="px-3 py-2.5">
                     <p>{i.cargo}</p>
-                    <p className="text-xs text-muted-foreground">{i.area}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {i.area}
+                      {i.creado_por_nombre && <> · pidió {i.creado_por_nombre}</>}
+                    </p>
                   </td>
                   <td className="px-3 py-2.5">{i.sucursal}</td>
-                  <td className="px-3 py-2.5 font-mono-tabular">{fmtFecha(i.fecha_ingreso)}</td>
+                  <td className="px-3 py-2.5">
+                    <p className="font-mono-tabular">{fmtFecha(i.fecha_ingreso)}</p>
+                    {i.estado !== 'anulado' && diasHabilesAviso(fechaChile(i.created_at), i.fecha_ingreso) < DIAS_AVISO && (
+                      <p className="text-[11px] font-semibold text-warning" title={`Pedida con menos de ${DIAS_AVISO} días hábiles de anticipación`}>
+                        Poca anticipación
+                      </p>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5">
                     <Avance i={i} />
                   </td>

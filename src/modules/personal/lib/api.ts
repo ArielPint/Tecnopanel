@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabaseClient'
 import { errorTamanoArchivo, nombreParaStorage } from '@/lib/storageKey'
-import type { AreaTarea, Situacion, TipoContrato, TipoDoc } from './catalogos'
+import type { AreaTarea, Motivo, Situacion, TipoContrato, TipoDoc, TipoTrabajador } from './catalogos'
 
 // Acceso a datos del portal Ingreso de Personal. Quién ve y hace qué lo decide la base (RLS y
 // funciones ing_*): aquí no se filtra nada por rol.
@@ -13,24 +13,41 @@ export interface DatosIngreso {
   sucursal: string
   area: string
   cargo: string
+  tipo_trabajador: TipoTrabajador
+  motivo: Motivo | null
+  /** Solo si el motivo es reemplazo */
+  reemplaza_a: string | null
+  jefatura_directa: string | null
   fecha_ingreso: string
   tipo_contrato: TipoContrato
   jornada: string
+  horario: string | null
   nombre: string
   rut: string
   telefono: string | null
   email: string | null
-  tallas: string | null
   req_ti: boolean
+  ti_correo: boolean
+  ti_notebook: boolean
+  ti_pantalla: boolean
+  ti_otros: string | null
   req_epp: boolean
   req_uniforme: boolean
-  req_induccion: boolean
+  talla_zapato: string | null
+  talla_polera: string | null
+  talla_pantalon: string | null
+  talla_chaqueta: string | null
+  /** Otras tallas u observaciones de tallas */
+  tallas: string | null
   req_vehiculo: boolean
+  licencia_requerida: string | null
   observacion: string | null
 }
 
 export interface Ingreso extends DatosIngreso {
   id: string
+  /** Siempre true: la inducción de seguridad es obligatoria */
+  req_induccion: boolean
   numero: number
   estado: 'en_proceso' | 'ingresado' | 'anulado'
   buk_id: string | null
@@ -93,6 +110,14 @@ export interface Area {
   activa: boolean
 }
 
+/** Jornada con su horario (Configuración > Jornadas). El horario se copia a la solicitud. */
+export interface Jornada {
+  id: string
+  nombre: string
+  horario: string | null
+  activa: boolean
+}
+
 export interface Remuneracion {
   renta_ofrecida: number | null
   pretension_renta: number | null
@@ -128,6 +153,39 @@ export async function actualizarArea(id: string, cambios: Partial<Pick<Area, 'no
 export async function eliminarArea(id: string): Promise<void> {
   const { error: e } = await supabase.from('ing_areas').delete().eq('id', id)
   if (e) error(e)
+}
+
+export async function listarJornadas(): Promise<Jornada[]> {
+  const { data, error: e } = await supabase.from('ing_jornadas').select('id, nombre, horario, activa').order('nombre')
+  if (e) error(e)
+  return (data ?? []) as Jornada[]
+}
+
+function errorJornada(e: { message: string; code?: string }): never {
+  if (e.code === '23505') throw new Error('Ya existe una jornada con ese nombre.')
+  error(e)
+}
+
+export async function crearJornada(nombre: string, horario: string | null): Promise<void> {
+  const { error: e } = await supabase.from('ing_jornadas').insert({ nombre, horario })
+  if (e) errorJornada(e)
+}
+
+export async function actualizarJornada(id: string, cambios: Partial<Pick<Jornada, 'nombre' | 'horario' | 'activa'>>): Promise<void> {
+  const { error: e } = await supabase.from('ing_jornadas').update(cambios).eq('id', id)
+  if (e) errorJornada(e)
+}
+
+export async function eliminarJornada(id: string): Promise<void> {
+  const { error: e } = await supabase.from('ing_jornadas').delete().eq('id', id)
+  if (e) error(e)
+}
+
+/** Nombre de quien está conectado, para mostrar quién completa el formulario. */
+export async function miNombre(userId: string): Promise<string | null> {
+  const { data } = await supabase.from('profiles').select('nombre, apellido, email').eq('id', userId).maybeSingle()
+  if (!data) return null
+  return [data.nombre, data.apellido].filter(Boolean).join(' ').trim() || data.email
 }
 
 export async function listarIngresos(): Promise<Ingreso[]> {

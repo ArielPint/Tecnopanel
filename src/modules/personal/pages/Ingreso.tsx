@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Ban, CheckCircle2, Circle, FileText, Lock, Pencil, RotateCcw, Trash2, Upload } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Ban, CheckCircle2, Circle, FileText, Lock, Pencil, RotateCcw, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/modules/financiero/components/ui/badge'
 import { Button } from '@/modules/financiero/components/ui/button'
@@ -12,10 +12,24 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { cn } from '@/lib/utils'
 import { formatearRut } from '@/modules/sso/lib/rut'
 import { fmtFecha, fmtFechaHora } from '@/modules/sso/lib/estados'
-import CamposIngreso, { limpiarDatos, validarDatos } from '../components/CamposIngreso'
+import CamposIngreso, { datosDe, limpiarDatos, validarDatos } from '../components/CamposIngreso'
 import CamposRenta, { rentaVacia } from '../components/CamposRenta'
 import { usePermisosIngreso } from '../hooks/usePermisosIngreso'
-import { AREA_TAREA, DOCUMENTOS, REQUERIMIENTOS, SITUACION, TIPO_CONTRATO, docsRequeridos } from '../lib/catalogos'
+import {
+  AREA_TAREA,
+  DIAS_AVISO,
+  DOCUMENTOS,
+  ITEMS_TI,
+  MOTIVOS,
+  REQUERIMIENTOS,
+  SITUACION,
+  TALLAS,
+  TIPO_CONTRATO,
+  TIPO_TRABAJADOR,
+  docsRequeridos,
+  type CampoTalla,
+} from '../lib/catalogos'
+import { diasHabilesAviso, fechaChile } from '../lib/plazos'
 import {
   ARCHIVOS_ACEPTADOS,
   abrirArchivo,
@@ -29,6 +43,7 @@ import {
   listarArchivos,
   listarAreas,
   listarBitacora,
+  listarJornadas,
   listarTareas,
   obtenerIngreso,
   obtenerRemuneracion,
@@ -40,6 +55,7 @@ import {
   type DatosIngreso,
   type EventoBitacora,
   type Ingreso as IngresoT,
+  type Jornada,
   type Remuneracion,
   type Tarea,
 } from '../lib/api'
@@ -176,6 +192,12 @@ export default function Ingreso() {
   const tareaHecha = (tareaId: string | null) => !!tareas.find((t) => t.id === tareaId)?.hecha
   const puedeBorrar = (a: Archivo) => abierto && (esRrhh || a.subido_por === userId) && !tareaHecha(a.tarea_id)
   const pedidos = REQUERIMIENTOS.filter((r) => i[r.key]).map((r) => r.titulo)
+  const itemsTi = [...ITEMS_TI.filter((t) => i[t.key]).map((t) => t.label), ...(i.ti_otros ? [`Otros: ${i.ti_otros}`] : [])]
+  const tallas = [
+    ...(Object.keys(TALLAS) as CampoTalla[]).filter((k) => i[k]).map((k) => `${TALLAS[k].label}: ${i[k]}`),
+    ...(i.tallas ? [i.tallas] : []),
+  ]
+  const aviso = diasHabilesAviso(fechaChile(i.created_at), i.fecha_ingreso)
 
   function borrar(a: Archivo) {
     if (!window.confirm(`¿Eliminar "${a.nombre}"?`)) return
@@ -218,6 +240,13 @@ export default function Ingreso() {
         </div>
       </div>
 
+      {aviso < DIAS_AVISO && i.estado !== 'anulado' && (
+        <p className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+          Pedida con poca anticipación: {aviso === 1 ? '1 día hábil' : `${aviso} días hábiles`} antes del ingreso (el procedimiento pide{' '}
+          {DIAS_AVISO}).
+        </p>
+      )}
       {i.estado === 'anulado' && (
         <p className="rounded-md border border-border bg-muted/50 p-3 text-sm">
           Anulado el {fmtFechaHora(i.fecha_cierre)} por {i.cerrado_por_nombre ?? '—'}. Motivo: {i.motivo_anulacion}
@@ -245,14 +274,25 @@ export default function Ingreso() {
               </Dato>
               <Dato label="Teléfono">{i.telefono}</Dato>
               <Dato label="Correo personal">{i.email}</Dato>
-              <Dato label="Contrato">{TIPO_CONTRATO[i.tipo_contrato]}</Dato>
-              <Dato label="Jornada">{i.jornada}</Dato>
-              <Dato label="Tallas">{i.tallas}</Dato>
-              <Dato label="Pidió">{i.creado_por_nombre}</Dato>
+              <Dato label="Completó el formulario">{i.creado_por_nombre}</Dato>
               <Dato label="Solicitada el">{fmtFechaHora(i.created_at)}</Dato>
+              <Dato label="Motivo">
+                {i.motivo && MOTIVOS[i.motivo]}
+                {i.reemplaza_a && <> de {i.reemplaza_a}</>}
+              </Dato>
+              <Dato label="Jefatura directa">{i.jefatura_directa}</Dato>
+              <Dato label="Tipo de trabajador">{TIPO_TRABAJADOR[i.tipo_trabajador]}</Dato>
+              <Dato label="Contrato">{TIPO_CONTRATO[i.tipo_contrato]}</Dato>
+              <Dato label="Jornada">
+                {i.jornada}
+                {i.horario && <span className="block text-xs text-muted-foreground">{i.horario}</span>}
+              </Dato>
               <div className="sm:col-span-2">
-                <Dato label="Necesita">{pedidos.join(' · ') || 'Solo contrato'}</Dato>
+                <Dato label="Necesita">{pedidos.join(' · ') || 'Solo lo de siempre (contrato e inducciones)'}</Dato>
               </div>
+              {itemsTi.length > 0 && <Dato label="TI">{itemsTi.join(' · ')}</Dato>}
+              {tallas.length > 0 && <Dato label="Tallas">{tallas.join(' · ')}</Dato>}
+              {i.licencia_requerida && <Dato label="Licencia o certificación">{i.licencia_requerida}</Dato>}
               {i.observacion && (
                 <div className="sm:col-span-2">
                   <Dato label="Observaciones">
@@ -523,31 +563,17 @@ function DialogoEditar({
   onGuardar: (d: DatosIngreso) => void
   ocupado: boolean
 }) {
-  const [datos, setDatos] = useState<DatosIngreso>(() => ({
-    sucursal: ingreso.sucursal,
-    area: ingreso.area,
-    cargo: ingreso.cargo,
-    fecha_ingreso: ingreso.fecha_ingreso,
-    tipo_contrato: ingreso.tipo_contrato,
-    jornada: ingreso.jornada,
-    nombre: ingreso.nombre,
-    rut: formatearRut(ingreso.rut),
-    telefono: ingreso.telefono,
-    email: ingreso.email,
-    tallas: ingreso.tallas,
-    req_ti: ingreso.req_ti,
-    req_epp: ingreso.req_epp,
-    req_uniforme: ingreso.req_uniforme,
-    req_induccion: ingreso.req_induccion,
-    req_vehiculo: ingreso.req_vehiculo,
-    observacion: ingreso.observacion,
-  }))
+  const [datos, setDatos] = useState<DatosIngreso>(() => datosDe(ingreso))
   const [problema, setProblema] = useState<string | null>(null)
   const [areas, setAreas] = useState<Area[]>([])
+  const [jornadas, setJornadas] = useState<Jornada[]>([])
   useEffect(() => {
     listarAreas()
       .then(setAreas)
       .catch(() => setAreas([]))
+    listarJornadas()
+      .then(setJornadas)
+      .catch(() => setJornadas([]))
   }, [])
 
   return (
@@ -570,7 +596,7 @@ function DialogoEditar({
             <p className="mb-3 text-xs text-muted-foreground">
               Si quitas un requerimiento, su tarea se elimina mientras no tenga avance. Si agregas uno, se avisa al área.
             </p>
-            <CamposIngreso datos={datos} onChange={setDatos} nueva={false} areas={areas} />
+            <CamposIngreso datos={datos} onChange={setDatos} nueva={false} areas={areas} jornadas={jornadas} solicitante={ingreso.creado_por_nombre} />
           </div>
           <DialogFooter className="items-center gap-2 border-t pt-3">
             {problema && <p className="mr-auto text-sm text-destructive">{problema}</p>}
