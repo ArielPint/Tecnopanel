@@ -33,6 +33,10 @@ export interface DatosIngreso {
   ti_correo: boolean
   ti_notebook: boolean
   ti_pantalla: boolean
+  /** LICENCIAS_TI */
+  ti_licencias: string[]
+  /** PORTALES_TI */
+  ti_portales: string[]
   ti_otros: string | null
   req_epp: boolean
   req_uniforme: boolean

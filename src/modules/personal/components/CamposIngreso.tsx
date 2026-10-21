@@ -10,6 +10,8 @@ import {
   DIAS_AVISO,
   ITEMS_TI,
   LICENCIAS,
+  LICENCIAS_TI,
+  PORTALES_TI,
   MOTIVOS,
   REQUERIMIENTOS,
   TALLAS,
@@ -48,6 +50,8 @@ export function datosVacios(): DatosIngreso {
     ti_correo: false,
     ti_notebook: false,
     ti_pantalla: false,
+    ti_licencias: [],
+    ti_portales: [],
     ti_otros: null,
     req_epp: false,
     req_uniforme: false,
@@ -95,8 +99,8 @@ export function validarDatos(d: DatosIngreso, nueva: boolean): string | null {
   if (!rutValido(d.rut)) return 'El RUT no es válido. Revisa el dígito verificador.'
   if (nueva && d.fecha_ingreso < hoyChile()) return 'La fecha de ingreso no puede ser anterior a hoy.'
   if (d.email && !/^\S+@\S+\.\S+$/.test(d.email)) return 'El correo del trabajador no es válido.'
-  if (d.req_ti && !d.ti_correo && !d.ti_notebook && !d.ti_pantalla && vacio(d.ti_otros))
-    return 'Indica qué necesita de TI: correo, notebook, pantalla u otros.'
+  if (d.req_ti && !d.ti_correo && !d.ti_notebook && !d.ti_pantalla && !d.ti_licencias.length && !d.ti_portales.length && vacio(d.ti_otros))
+    return 'Indica qué necesita de TI: equipo, licencias, portales u otros.'
   const tallas = (Object.keys(TALLAS) as CampoTalla[]).filter((k) => pideTalla(d, k) && vacio(d[k]))
   if (tallas.length) return `Falta la talla de: ${tallas.map((k) => TALLAS[k].label.toLowerCase()).join(', ')}.`
   if (d.req_vehiculo && vacio(d.licencia_requerida)) return 'Indica la licencia o certificación que pide la conducción.'
@@ -124,6 +128,8 @@ export function limpiarDatos(d: DatosIngreso): DatosIngreso {
     ti_correo: d.req_ti && d.ti_correo,
     ti_notebook: d.req_ti && d.ti_notebook,
     ti_pantalla: d.req_ti && d.ti_pantalla,
+    ti_licencias: d.req_ti ? d.ti_licencias : [],
+    ti_portales: d.req_ti ? d.ti_portales : [],
     ti_otros: d.req_ti ? t(d.ti_otros) : null,
     talla_zapato: talla('talla_zapato'),
     talla_polera: talla('talla_polera'),
@@ -133,6 +139,15 @@ export function limpiarDatos(d: DatosIngreso): DatosIngreso {
     licencia_requerida: d.req_vehiculo ? t(d.licencia_requerida) : null,
     observacion: t(d.observacion),
   }
+}
+
+function GrupoTi({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</p>
+      <div className="flex flex-wrap gap-x-5 gap-y-2">{children}</div>
+    </div>
+  )
 }
 
 export function Seccion({ titulo, detalle, children }: { titulo: string; detalle?: string; children: React.ReactNode }) {
@@ -170,6 +185,8 @@ export default function CamposIngreso({
   solicitante: string | null
 }) {
   const set = <K extends keyof DatosIngreso>(k: K, v: DatosIngreso[K]) => onChange({ ...datos, [k]: v })
+  const alternar = (k: 'ti_licencias' | 'ti_portales', valor: string, si: boolean) =>
+    set(k, si ? [...datos[k].filter((x) => x !== valor), valor] : datos[k].filter((x) => x !== valor))
   const opcionesArea = areas.filter((a) => a.activa).map((a) => a.nombre)
   const opcionesEmpresa = empresas.filter((e) => e.activa || e.id === datos.empresa_id)
   if (datos.area && !opcionesArea.includes(datos.area)) opcionesArea.push(datos.area)
@@ -418,21 +435,47 @@ export default function CamposIngreso({
         {datos.req_ti && (
           <div className="space-y-2 rounded-md border p-3">
             <p className="text-sm font-semibold">Equipo computacional y accesos</p>
-            <div className="flex flex-wrap gap-x-5 gap-y-2">
+            <GrupoTi titulo="Equipo y correo">
               {ITEMS_TI.map((it) => (
                 <label key={it.key} className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={datos[it.key]} onChange={(e) => set(it.key, e.target.checked)} className="accent-[hsl(var(--brand))]" />
                   {it.label}
                 </label>
               ))}
-            </div>
+            </GrupoTi>
+            <GrupoTi titulo="Licencias">
+              {LICENCIAS_TI.map((it) => (
+                <label key={it.key} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={datos.ti_licencias.includes(it.key)}
+                    onChange={(e) => alternar('ti_licencias', it.key, e.target.checked)}
+                    className="accent-[hsl(var(--brand))]"
+                  />
+                  {it.label}
+                </label>
+              ))}
+            </GrupoTi>
+            <GrupoTi titulo="Acceso a portales">
+              {PORTALES_TI.map((it) => (
+                <label key={it.key} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={datos.ti_portales.includes(it.key)}
+                    onChange={(e) => alternar('ti_portales', it.key, e.target.checked)}
+                    className="accent-[hsl(var(--brand))]"
+                  />
+                  {it.label}
+                </label>
+              ))}
+            </GrupoTi>
             <div className="space-y-1">
               <Label htmlFor="ip-ti-otros">Otros</Label>
               <Input
                 id="ip-ti-otros"
                 value={datos.ti_otros ?? ''}
                 onChange={(e) => set('ti_otros', e.target.value)}
-                placeholder="Accesos a sistemas, celular, impresora, software…"
+                placeholder="Otro software, accesos a sistemas, celular, impresora…"
               />
             </div>
           </div>
