@@ -18,6 +18,11 @@ const TIPO_COLOR: Record<TipoVenta, string> = {
   VIT: 'bg-emerald-100 text-emerald-700',
 }
 
+// El vendedor de la oportunidad. RLS ya limita la lista: un vendedor solo ve las suyas,
+// gerencia ve todas, asi que el nombre sirve sobre todo para distinguirlas en gerencia.
+const nombreVendedor = (o: Oportunidad) =>
+  o.vendedor ? `${o.vendedor.nombre} ${o.vendedor.apellido}`.trim() : ''
+
 const TIPO_VENTA_LABELS: Record<TipoVenta, string> = {
   Proyecto: 'Proyecto',
   Producto: 'Venta Directa',
@@ -60,7 +65,8 @@ export default function Oportunidades({ soloVit = false }: { soloVit?: boolean }
     .filter(o => (o.tipo_venta === 'VIT') === soloVit)
     .filter(o =>
       o.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      o.codigo.toLowerCase().includes(busqueda.toLowerCase())
+      o.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
+      nombreVendedor(o).toLowerCase().includes(busqueda.toLowerCase())
     )
   const porEtapa = (etapa: EtapaOportunidad) => filtradas.filter(o => o.etapa_actual === etapa)
 
@@ -98,6 +104,7 @@ export default function Oportunidades({ soloVit = false }: { soloVit?: boolean }
                       </div>
                       <p className="text-sm font-semibold text-gray-800 leading-tight">{opp.nombre}</p>
                       {opp.cliente && <p className="text-xs text-gray-500 mt-0.5 truncate">{opp.cliente.razon_social}{!soloVit && opp.cliente.rut ? ' · ' + opp.cliente.rut : ''}</p>}
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">Vendedor: {nombreVendedor(opp) || '—'}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
                       {opp.monto_estimado != null && (
