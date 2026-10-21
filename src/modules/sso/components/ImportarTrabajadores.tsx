@@ -20,6 +20,8 @@ interface Props {
   existentes: TrabajadorV[]
   puedeCrearEmpresas: boolean
   onImportado: () => void
+  /** Cómo se guardan las fichas (por defecto, de a lotes). El portal de contratistas las guarda de a una. */
+  guardar?: (fichas: FichaTrabajador[]) => Promise<void>
 }
 
 const ESTADO_CLASE = {
@@ -29,7 +31,7 @@ const ESTADO_CLASE = {
 }
 const ESTADO_LABEL = { nuevo: 'Nuevo', actualiza: 'Actualiza', error: 'Error' }
 
-export function ImportarTrabajadores({ open, onOpenChange, empresas, areas, existentes, puedeCrearEmpresas, onImportado }: Props) {
+export function ImportarTrabajadores({ open, onOpenChange, empresas, areas, existentes, puedeCrearEmpresas, onImportado, guardar = importarTrabajadores }: Props) {
   const input = useRef<HTMLInputElement>(null)
   const [archivo, setArchivo] = useState<string | null>(null)
   const [lectura, setLectura] = useState<ResultadoLectura | null>(null)
@@ -74,13 +76,14 @@ export function ImportarTrabajadores({ open, onOpenChange, empresas, areas, exis
         ...f.ficha!,
         empresa_id: f.empresaNueva ? nuevas.get(f.empresaNueva)! : f.ficha!.empresa_id,
       }))
-      await importarTrabajadores(fichas)
+      await guardar(fichas)
       const n = validas.filter((f) => f.estado === 'nuevo').length
       toast.success(`Importación lista: ${n} nuevos, ${validas.length - n} actualizados${conError ? `, ${conError} filas con error omitidas` : ''}`)
       onImportado()
       cerrar(false)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'No se pudo importar')
+      onImportado() // puede haber quedado una parte guardada
     } finally {
       setImportando(false)
     }

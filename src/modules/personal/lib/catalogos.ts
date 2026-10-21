@@ -131,12 +131,12 @@ export function docsRequeridos(reqVehiculo: boolean, tipo: TipoTrabajador): Tipo
   return reqVehiculo ? [...base, 'licencia'] : base
 }
 
-/** Documentos que cada empresa contratista envía todos los meses (igual que ing_empresa_doc_tipos()). */
-export type TipoDocEmpresa = 'adhesion' | 'listado' | 'contratos' | 'reglamento' | 'f30'
+/** Documentos que cada empresa contratista sube todos los meses (igual que ing_empresa_doc_tipos()).
+ *  El listado de trabajadores no es un archivo: la empresa lo confirma (ing_listados). */
+export type TipoDocEmpresa = 'adhesion' | 'contratos' | 'reglamento' | 'f30'
 
 export const DOCS_EMPRESA: { key: TipoDocEmpresa; label: string; corto: string }[] = [
   { key: 'adhesion', label: 'Certificado de adhesión al organismo administrador', corto: 'Adhesión' },
-  { key: 'listado', label: 'Listado de trabajadores', corto: 'Listado' },
   { key: 'contratos', label: 'Contratos de trabajo', corto: 'Contratos' },
   { key: 'reglamento', label: 'Recepción del reglamento interno', corto: 'Reglamento' },
   { key: 'f30', label: 'Formulario F30', corto: 'F30' },

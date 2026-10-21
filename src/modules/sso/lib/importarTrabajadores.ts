@@ -223,7 +223,7 @@ export async function descargarPlantilla(empresas: Empresa[], areas: Area[]) {
     ['RUT', 'Sí', 'Con o sin puntos y guion (12.345.678-5 o 123456785). Si ya existe, la ficha se actualiza.'],
     ['Nombres', 'Sí (si es nuevo)', 'También sirve una sola columna "Nombre completo".'],
     ['Apellidos', 'Sí (si es nuevo)', 'También sirven "Apellido paterno" y "Apellido materno".'],
-    ['Empresa', 'No', 'Vacía = Tecnopanel. Debe ser una de las empresas de abajo (o se crea si quien importa tiene Configuración).'],
+    ['Empresa', 'No', `Vacía = ${(empresas.find((e) => e.propia) ?? empresas[0])?.nombre ?? 'Tecnopanel'}. Debe ser una de las empresas de abajo (o se crea si quien importa tiene Configuración).`],
     ['Cargo', 'No', 'Texto libre.'],
     ['Área', 'No', 'Una de las áreas de abajo.'],
     ['Sucursal', 'Sí (si no hay área)', `${SUCURSALES.join(' o ')}. Con área, es la del área. Vacía = la que se está mirando en el portal.`],
