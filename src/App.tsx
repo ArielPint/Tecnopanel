@@ -9,6 +9,7 @@ import CrmLoginPage from './modules/crm/pages/Login'
 import SipLoginPage from './modules/sip/pages/Login'
 import PrevencionLoginPage from './modules/sso/pages/Login'
 import PersonalLoginPage from './modules/personal/pages/Login'
+import ContratistasLoginPage from './modules/contratistas/pages/Login'
 import AdquisicionesLoginPage from './modules/adquisiciones/pages/Login'
 import FinancieroSapLoginPage from './modules/financiero_sap/pages/Login'
 import { useAuthStore } from './store/authStore'
@@ -32,6 +33,7 @@ const GestionApp = diferido(() => import('./modules/gestion/GestionApp'))
 const SipApp = diferido(() => import('./modules/sip/SipApp'))
 const PrevencionApp = diferido(() => import('./modules/sso/PrevencionApp'))
 const PersonalApp = diferido(() => import('./modules/personal/PersonalApp'))
+const ContratistasApp = diferido(() => import('./modules/contratistas/ContratistasApp'))
 const MonitoreoPage = diferido(() => import('./modules/monitoreo/MonitoreoPage'))
 const AdquisicionesApp = diferido(() => import('./modules/adquisiciones/AdquisicionesApp'))
 const FinancieroSapApp = diferido(() => import('./modules/financiero_sap/FinancieroSapApp'))
@@ -76,6 +78,16 @@ export default function App() {
           element={
             <ProtectedRoute loginPath="/personal/login" requiere="ingreso">
               <ConCarga><PersonalApp /></ConCarga>
+            </ProtectedRoute>
+          }
+        />
+        {/* Portal Contratistas: cada empresa (cuenta enlazada en Usuarios) ve y carga solo lo suyo */}
+        <Route path="/contratistas/login" element={<ContratistasLoginPage />} />
+        <Route
+          path="/contratistas/*"
+          element={
+            <ProtectedRoute loginPath="/contratistas/login" requiere="contratista">
+              <ConCarga><ContratistasApp /></ConCarga>
             </ProtectedRoute>
           }
         />

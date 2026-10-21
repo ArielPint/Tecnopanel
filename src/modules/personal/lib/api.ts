@@ -115,13 +115,24 @@ export interface Area {
   activa: boolean
 }
 
-/** Empresa contratista (Contratistas). */
+/** Empresa contratista: las de Estados de Pago (subcontratistas), por la vista ing_empresas_v. */
 export interface Empresa {
   id: string
   nombre: string
   rut: string | null
-  contacto: string | null
+  email: string | null
+  telefono: string | null
   activa: boolean
+}
+
+/** Listado de trabajadores que la empresa confirmó para un mes: la foto de sus trabajadores activos. */
+export interface Listado {
+  empresa_id: string
+  periodo: string
+  total: number
+  trabajadores: { rut: string; nombre: string; cargo: string | null; sucursal: string }[]
+  confirmado_por: string | null
+  confirmado_at: string
 }
 
 /** Documento mensual de una empresa contratista. periodo: primer día del mes. */
@@ -208,29 +219,36 @@ export async function eliminarJornada(id: string): Promise<void> {
 }
 
 export async function listarEmpresas(): Promise<Empresa[]> {
-  const { data, error: e } = await supabase.from('ing_empresas').select('id, nombre, rut, contacto, activa').order('nombre')
+  const { data, error: e } = await supabase.from('ing_empresas_v').select('*').order('nombre')
   if (e) error(e)
   return (data ?? []) as Empresa[]
 }
 
-function errorEmpresa(e: { message: string; code?: string }): never {
-  if (e.code === '23505') throw new Error('Ya existe una empresa con ese nombre.')
-  if (e.code === '23503') throw new Error('La empresa tiene ingresos: desactívala en vez de eliminarla.')
-  error(e)
+/** Crea o corrige una empresa de la lista de Estados de Pago (RRHH y Prevención). */
+export async function guardarEmpresa(d: Omit<Empresa, 'id'> & { id?: string }): Promise<void> {
+  const { error: e } = await supabase.rpc('ing_guardar_empresa', {
+    p_id: d.id ?? null,
+    p_nombre: d.nombre,
+    p_rut: d.rut,
+    p_email: d.email,
+    p_telefono: d.telefono,
+    p_activa: d.activa,
+  })
+  if (e) error(e)
 }
 
-export async function guardarEmpresa(datos: Omit<Empresa, 'id' | 'activa'> & { id?: string; activa?: boolean }): Promise<void> {
-  const { id, ...resto } = datos
-  const { error: e } = id ? await supabase.from('ing_empresas').update(resto).eq('id', id) : await supabase.from('ing_empresas').insert(resto)
-  if (e) errorEmpresa(e)
+/** Listados confirmados de un mes ('YYYY-MM-01'): de todas las empresas que se pueden ver. */
+export async function listarListados(periodo: string): Promise<Listado[]> {
+  const { data, error: e } = await supabase.from('ing_listados').select('*').eq('periodo', periodo)
+  if (e) error(e)
+  return (data ?? []) as Listado[]
 }
 
-/** Elimina la empresa y sus documentos (filas y archivos). Con ingresos la base no la deja. */
-export async function eliminarEmpresa(id: string): Promise<void> {
-  const { data: docs } = await supabase.from('ing_empresa_docs').select('path').eq('empresa_id', id)
-  const { error: e } = await supabase.from('ing_empresas').delete().eq('id', id)
-  if (e) errorEmpresa(e)
-  if (docs?.length) await supabase.storage.from(BUCKET).remove(docs.map((d) => d.path))
+/** Confirma el listado del mes. Sin empresa, el de la empresa de quien está conectado. Devuelve el total. */
+export async function confirmarListado(periodo: string, empresaId?: string): Promise<number> {
+  const { data, error: e } = await supabase.rpc('ing_confirmar_listado', { p_periodo: periodo, p_empresa_id: empresaId ?? null })
+  if (e) error(e)
+  return data as number
 }
 
 /** Documentos de todas las empresas en un mes ('YYYY-MM-01'). */

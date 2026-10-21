@@ -1,6 +1,6 @@
 import { hoyChile } from '@/modules/sso/lib/estados'
 import { DIA_LIMITE_EMPRESA, DOCS_EMPRESA } from './catalogos'
-import type { DocEmpresa } from './api'
+import type { DocEmpresa, Listado } from './api'
 
 // Control mensual de las empresas contratistas: cada mes tienen que estar los DOCS_EMPRESA.
 
@@ -17,9 +17,12 @@ export const ESTADO_MES: Record<EstadoMes, { label: string; variant: 'success' |
   atrasado: { label: 'Atrasado', variant: 'destructive' },
 }
 
-/** Tipos de documento que faltan a una empresa en el mes, según los documentos de ese mes. */
-export function faltantes(empresaId: string, docs: DocEmpresa[]) {
-  return DOCS_EMPRESA.filter((t) => !docs.some((d) => d.empresa_id === empresaId && d.tipo === t.key))
+/** Lo que le falta a una empresa en el mes: los documentos sin cargar y, si no lo confirmó, el listado. */
+export function faltantes(empresaId: string, docs: DocEmpresa[], listados: Listado[]): string[] {
+  return [
+    ...DOCS_EMPRESA.filter((t) => !docs.some((d) => d.empresa_id === empresaId && d.tipo === t.key)).map((t) => t.corto),
+    ...(listados.some((x) => x.empresa_id === empresaId) ? [] : ['Listado']),
+  ]
 }
 
 /** Al día si no falta nada; si falta algo, pendiente hasta el día límite del mes y atrasado después. */

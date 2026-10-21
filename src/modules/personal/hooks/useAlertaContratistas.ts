@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { listarDocsEmpresas, listarEmpresas } from '../lib/api'
+import { listarDocsEmpresas, listarEmpresas, listarListados } from '../lib/api'
 import { estadoMes, faltantes, periodoDe } from '../lib/contratistas'
 
 /** Empresas activas con la documentación del mes en curso atrasada, para el aviso del menú.
@@ -13,10 +13,10 @@ export function useAlertaContratistas(activo: boolean): number {
     if (!activo) return
     let cancelado = false
     const periodo = periodoDe()
-    Promise.all([listarEmpresas(), listarDocsEmpresas(periodo)])
-      .then(([empresas, docs]) => {
+    Promise.all([listarEmpresas(), listarDocsEmpresas(periodo), listarListados(periodo)])
+      .then(([empresas, docs, listados]) => {
         if (cancelado) return
-        setN(empresas.filter((e) => e.activa && estadoMes(faltantes(e.id, docs).length, periodo) === 'atrasado').length)
+        setN(empresas.filter((e) => e.activa && estadoMes(faltantes(e.id, docs, listados).length, periodo) === 'atrasado').length)
       })
       .catch(() => {})
     return () => {

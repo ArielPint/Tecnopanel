@@ -84,6 +84,9 @@ export default function DashboardPage() {
   if (acceso.escenario === 'solo_financiero') {
     return <Navigate to="/financiero" replace />
   }
+  if (acceso.escenario === 'solo_contratista') {
+    return <Navigate to="/contratistas" replace />
+  }
 
   if (acceso.escenario === 'solo_proyecto') {
     // Si tiene más de un proyecto obra (futuro, hoy siempre 1), manda al selector /proyectos en vez de adivinar cuál.
@@ -184,6 +187,15 @@ export default function DashboardPage() {
             className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
           >
             Financiero
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        )}
+        {acceso.tieneContratista && (
+          <Link
+            to="/contratistas"
+            className="flex items-center justify-between rounded-md border bg-white p-4 text-sm font-medium hover:bg-muted dark:bg-neutral-800"
+          >
+            Mi empresa (documentación y trabajadores)
             <ArrowRight className="h-4 w-4" />
           </Link>
         )}
