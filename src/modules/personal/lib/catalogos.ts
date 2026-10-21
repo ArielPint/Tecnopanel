@@ -41,7 +41,7 @@ export const AREA_TAREA: Record<AreaTarea, string> = {
 /** Lo que la solicitud puede pedir. Cada uno genera una tarea para el área indicada. Las inducciones
  *  no se eligen: ver TAREAS_SIEMPRE (ing_tipos_ingreso() en la base). */
 export const REQUERIMIENTOS = [
-  { key: 'req_ti', titulo: 'Equipo computacional y accesos', detalle: 'Correo, notebook, pantalla u otros', area: 'TI' },
+  { key: 'req_ti', titulo: 'Equipo computacional y accesos', detalle: 'Correo, notebook, pantalla, licencias y portales', area: 'TI' },
   { key: 'req_epp', titulo: 'Elementos de protección personal', detalle: 'Casco, zapatos de seguridad, guantes, lentes, protección auditiva', area: 'Bodega' },
   { key: 'req_uniforme', titulo: 'Uniforme', detalle: 'Ropa de trabajo según tallas', area: 'Bodega' },
   { key: 'req_vehiculo', titulo: 'Conducción de vehículos', detalle: 'Grúa horquilla, camión o vehículo de la empresa. Pide la licencia o certificación.', area: 'Jefatura que solicita' },
@@ -61,6 +61,26 @@ export const ITEMS_TI = [
   { key: 'ti_correo', label: 'Correo' },
   { key: 'ti_notebook', label: 'Notebook' },
   { key: 'ti_pantalla', label: 'Pantalla' },
+] as const
+
+/** Licencias de software (igual que ing_licencia_label()). */
+export const LICENCIAS_TI = [
+  { key: 'aec', label: 'Licencia AEC' },
+  { key: 'autocad_lt', label: 'AutoCAD LT' },
+  { key: 'autocad_full', label: 'AutoCAD Full' },
+  { key: 'sap', label: 'Licencia SAP' },
+] as const
+
+/** Portales del hub a los que hay que darle acceso (igual que ing_portal_label()). */
+export const PORTALES_TI = [
+  { key: 'crm', label: 'CRM' },
+  { key: 'proyectos', label: 'Proyectos' },
+  { key: 'produccion', label: 'Producción' },
+  { key: 'prevencion', label: 'Prevención' },
+  { key: 'ingreso', label: 'Ingreso de Personal' },
+  { key: 'adquisiciones', label: 'Adquisiciones' },
+  { key: 'financiero', label: 'Financiero' },
+  { key: 'gestion', label: 'Gestión' },
 ] as const
 
 export type TipoTrabajador = 'planta' | 'contratista'

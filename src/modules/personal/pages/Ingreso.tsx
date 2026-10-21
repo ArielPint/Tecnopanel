@@ -20,7 +20,9 @@ import {
   DIAS_AVISO,
   DOCUMENTOS,
   ITEMS_TI,
+  LICENCIAS_TI,
   MOTIVOS,
+  PORTALES_TI,
   REQUERIMIENTOS,
   SITUACION,
   TALLAS,
@@ -194,7 +196,13 @@ export default function Ingreso() {
   const tareaHecha = (tareaId: string | null) => !!tareas.find((t) => t.id === tareaId)?.hecha
   const puedeBorrar = (a: Archivo) => abierto && (esRrhh || a.subido_por === userId) && !tareaHecha(a.tarea_id)
   const pedidos = REQUERIMIENTOS.filter((r) => i[r.key]).map((r) => r.titulo)
-  const itemsTi = [...ITEMS_TI.filter((t) => i[t.key]).map((t) => t.label), ...(i.ti_otros ? [`Otros: ${i.ti_otros}`] : [])]
+  const portales = PORTALES_TI.filter((p) => i.ti_portales?.includes(p.key)).map((p) => p.label)
+  const itemsTi = [
+    ...ITEMS_TI.filter((t) => i[t.key]).map((t) => t.label),
+    ...LICENCIAS_TI.filter((l) => i.ti_licencias?.includes(l.key)).map((l) => l.label),
+    ...(portales.length ? [`Portales: ${portales.join(', ')}`] : []),
+    ...(i.ti_otros ? [`Otros: ${i.ti_otros}`] : []),
+  ]
   const tallas = [
     ...(Object.keys(TALLAS) as CampoTalla[]).filter((k) => i[k]).map((k) => `${TALLAS[k].label}: ${i[k]}`),
     ...(i.tallas ? [i.tallas] : []),
