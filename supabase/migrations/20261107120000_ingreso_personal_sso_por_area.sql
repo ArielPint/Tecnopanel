@@ -16,7 +16,10 @@
 -- Mismo patrón que la sucursal (20261028120000_sso_sucursal.sql): políticas RESTRICTIVE que se
 -- suman a las de permisos de cada módulo, que no cambian. Las vistas son security_invoker.
 --
--- Re-ejecutable. Va después de 20261028120000_sso_sucursal.sql. Lo aplica 06-sso.ps1.
+-- Re-ejecutable. Va después de 20261028120000_sso_sucursal.sql.
+-- El nombre lleva _ingreso_personal_ para que lo aplique 21-ingreso-personal.ps1, que toma las
+-- migraciones del repo actualizado a main (06-sso.ps1 las lee de otra carpeta, que no se
+-- actualiza). También calza con *_sso_*: si el 06 la aplica, no pasa nada (re-ejecutable).
 set client_encoding = 'UTF8';
 
 begin;
