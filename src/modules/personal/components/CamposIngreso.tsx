@@ -101,7 +101,7 @@ export function validarDatos(d: DatosIngreso, nueva: boolean): string | null {
   return null
 }
 
-/** Zapato si pide EPP; polera, pantalón y chaqueta si pide uniforme. */
+/** Zapato si pide EPP; polera, pantalón y polar si pide uniforme. */
 function pideTalla(d: DatosIngreso, k: CampoTalla): boolean {
   return TALLAS[k].para === 'epp' ? d.req_epp : d.req_uniforme
 }
@@ -439,7 +439,12 @@ export default function CamposIngreso({
             </div>
             <div className="space-y-1">
               <Label htmlFor="ip-tallas">Otras tallas u observaciones</Label>
-              <Input id="ip-tallas" value={datos.tallas ?? ''} onChange={(e) => set('tallas', e.target.value)} placeholder="Guantes M, overol 52, horma ancha…" />
+              <Input
+                id="ip-tallas"
+                value={datos.tallas ?? ''}
+                onChange={(e) => set('tallas', e.target.value)}
+                placeholder="Si necesita una talla fuera de la lista (zapato 44, polera XXL…), indícala aquí"
+              />
             </div>
           </div>
         )}

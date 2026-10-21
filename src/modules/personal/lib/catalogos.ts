@@ -14,7 +14,7 @@ export const ROLES_INGRESO: { key: RolIngreso; label: string; detalle: string }[
   },
   { key: 'ti', label: 'TI', detalle: 'Correo, accesos y equipo de los ingresos de su sucursal.' },
   { key: 'bodega', label: 'Bodega', detalle: 'Entrega de EPP y uniforme de los ingresos de su sucursal.' },
-  { key: 'prevencion', label: 'Prevención', detalle: 'Inducción de seguridad de los ingresos de su sucursal.' },
+  { key: 'prevencion', label: 'Prevención', detalle: 'IRL (inducción de seguridad) de los ingresos de su sucursal.' },
   { key: 'rrhh', label: 'RRHH', detalle: 'Ve todos los ingresos, incluida la renta. Contrato, cierre con la ficha de BUK y anulación.' },
 ]
 
@@ -42,7 +42,7 @@ export type ClaveRequerimiento = (typeof REQUERIMIENTOS)[number]['key']
 /** Tareas que se crean solas en todo ingreso (o en los de planta). */
 export const TAREAS_SIEMPRE: { titulo: string; area: string; soloPlanta?: boolean }[] = [
   { titulo: 'Contrato y anexos', area: 'RRHH' },
-  { titulo: 'Inducción de seguridad', area: 'Prevención' },
+  { titulo: 'IRL: informar riesgos laborales', area: 'Prevención' },
   { titulo: 'Inducción de bienvenida', area: 'RRHH', soloPlanta: true },
 ]
 
@@ -83,13 +83,15 @@ export const LICENCIAS = [
   'Certificación operador de puente grúa',
 ]
 
-/** Tallas por prenda. Zapato para EPP; polera, pantalón y chaqueta para el uniforme. */
-const LETRAS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+/** Tallas por prenda, las que entrega Bodega a los operadores de Tecno Panel y Zobek. Zapato para EPP;
+ *  polera, pantalón y polar para el uniforme. Una talla fuera de la lista va en "Otras tallas".
+ *  (El polar se guarda en talla_chaqueta.) */
+const LETRAS = ['S', 'M', 'L', 'XL']
 export const TALLAS = {
-  talla_zapato: { label: 'Zapato de seguridad', opciones: Array.from({ length: 13 }, (_, k) => String(35 + k)), para: 'epp' },
-  talla_polera: { label: 'Polera / camisa', opciones: LETRAS, para: 'uniforme' },
-  talla_pantalon: { label: 'Pantalón', opciones: [...Array.from({ length: 11 }, (_, k) => String(36 + 2 * k)), ...LETRAS], para: 'uniforme' },
-  talla_chaqueta: { label: 'Chaqueta / parka', opciones: LETRAS, para: 'uniforme' },
+  talla_zapato: { label: 'Zapato de seguridad', opciones: ['39', '40', '41', '42'], para: 'epp' },
+  talla_polera: { label: 'Polera', opciones: LETRAS, para: 'uniforme' },
+  talla_pantalon: { label: 'Pantalón', opciones: LETRAS, para: 'uniforme' },
+  talla_chaqueta: { label: 'Polar', opciones: LETRAS, para: 'uniforme' },
 } as const
 
 export type CampoTalla = keyof typeof TALLAS
