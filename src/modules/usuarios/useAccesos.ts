@@ -66,6 +66,8 @@ export interface Acceso {
   sipAcciones: Record<string, boolean>
   /** Portal de Prevención: clave "<modulo>:<accion>" (en la base, modulo_key 'sso:<modulo>' sobre SSO_ANCLA_ID). */
   ssoAcciones: Record<string, boolean>
+  /** Prevención: áreas a las que queda restringido (sso_area_usuarios). Vacío = ve todas. */
+  ssoAreas: string[]
   /** Portal Ingreso de Personal: roles (en la base, modulo_key 'ing:<rol>' sobre ING_ANCLA_ID). */
   ingresoRoles: string[]
   /** Control de Contratistas: roles (en la base, modulo_key 'ctr:<rol>' sobre CTR_ANCLA_ID). */
@@ -102,6 +104,7 @@ export interface AccesoInput {
   gestionVer: boolean
   sipAcciones: Record<string, boolean>
   ssoAcciones: Record<string, boolean>
+  ssoAreas: string[]
   ingresoRoles: string[]
   contratistasRoles: string[]
   adquisicionesRoles: string[]
@@ -115,6 +118,15 @@ export interface AccesoInput {
 // Vincula (o desvincula) este usuario con una ficha de subcontratista. Un subcontratista
 // puede tener varios usuarios (subcontratista_usuarios); cada usuario, a lo sumo uno.
 // También limpia el vínculo viejo de una sola cuenta (subcontratistas.user_id).
+// Áreas de Prevención del usuario: reemplaza todas (sin áreas, ve todo el portal).
+async function syncSsoAreas(userId: string, areas: string[]) {
+  const { error: delErr } = await supabase.from('sso_area_usuarios').delete().eq('user_id', userId)
+  if (delErr) throw new Error(delErr.message)
+  if (areas.length === 0) return
+  const { error } = await supabase.from('sso_area_usuarios').insert(areas.map((area_id) => ({ user_id: userId, area_id })))
+  if (error) throw new Error(error.message)
+}
+
 async function syncSubcontratistaLink(userId: string, subcontratistaId: string | null) {
   const { error: unlinkErr } = await supabase.from('subcontratistas').update({ user_id: null }).eq('user_id', userId)
   if (unlinkErr) throw new Error(unlinkErr.message)
@@ -159,6 +171,7 @@ async function syncAccesos(userId: string, input: AccesoInput) {
     syncPermisosGestion(userId, input.gestionVer),
     syncPermisosSip(userId, normalizarAccionesSip(input.sipAcciones)),
     syncPermisosSso(userId, normalizarAccionesSso(input.ssoAcciones)),
+    syncSsoAreas(userId, input.ssoAreas),
     syncPermisosIngreso(userId, input.ingresoRoles),
     syncPermisosContratistas(userId, input.contratistasRoles),
     syncPermisosAdquisiciones(userId, input.adquisicionesRoles),
@@ -199,6 +212,7 @@ export function useAccesos() {
       { data: access, error: accessError },
       loginsResp,
       { data: subcontratistas, error: subcontratistasError },
+      { data: areasSso },
     ] = await Promise.all([
       // is_root excluida: cuenta root oculta del listado, ver comentario en la columna.
       supabase.from('profiles').select('id, nombre, apellido, email, activo, is_super_admin, rol, grupo_id, sucursal').eq('is_root', false).order('nombre'),
@@ -206,6 +220,7 @@ export function useAccesos() {
       supabase.from('project_access').select('user_id, proyecto_id, rol_negocio'),
       supabase.functions.invoke('manage-access', { body: { action: 'list_last_logins' } }),
       supabase.from('subcontratista_usuarios').select('user_id, subcontratista_id'),
+      supabase.from('sso_area_usuarios').select('user_id, area_id'),
     ])
     const primerError = profilesError || permisosError || accessError || subcontratistasError
     if (primerError) {
@@ -339,6 +354,7 @@ export function useAccesos() {
         ssoAcciones,
         ingresoRoles,
         contratistasRoles,
+        ssoAreas: (areasSso ?? []).filter((x) => x.user_id === p.id).map((x) => x.area_id),
         adquisicionesRoles,
         financieroPermisos,
         notifSinCorreo,

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Ambulance, ArrowLeft, ClipboardCheck, FolderOpen, GraduationCap, Handshake, HardHat, KeyRound, LayoutDashboard, LogOut, MapPin, Menu, Moon, Plus, Settings, Shield, ShieldAlert, Sun, Users } from 'lucide-react'
+import { Ambulance, ArrowLeft, ClipboardCheck, FolderOpen, GraduationCap, Handshake, HardHat, KeyRound, Layers, LayoutDashboard, LogOut, MapPin, Menu, Moon, Plus, Settings, Shield, ShieldAlert, Sun, Users } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useOtrosPortales } from '@/hooks/useOtrosPortales'
@@ -33,10 +33,11 @@ const ICONO: Record<ModuloSso, typeof LayoutDashboard> = {
 }
 
 function useMenu() {
-  const { puedeEn } = usePermisosSso()
+  const { puedeEn, restringido } = usePermisosSso()
+  // el Comité Paritario es de toda la sucursal: no lo ve quien está restringido a sus áreas
   const grupos = GRUPOS_MENU.map((g) => ({
     label: g,
-    items: SSO_MODULOS.filter((m) => m.grupo === g && puedeEn(m.key, 'ver')).map((m) => ({ to: m.ruta, label: m.label, icon: ICONO[m.key], end: false })),
+    items: SSO_MODULOS.filter((m) => m.grupo === g && puedeEn(m.key, 'ver') && !(restringido && m.key === 'comite')).map((m) => ({ to: m.ruta, label: m.label, icon: ICONO[m.key], end: false })),
   }))
   // El Dashboard lo ve cualquiera con acceso al portal
   grupos[0].items.unshift({ to: RUTA.inicio, label: 'Dashboard', icon: LayoutDashboard, end: true })
@@ -122,6 +123,20 @@ function Marca() {
 const selectClase =
   'flex h-9 w-auto rounded-md border border-input bg-transparent py-1 pl-8 pr-3 text-[13px] font-semibold shadow-sm focus:outline-none focus:ring-1 focus:ring-ring'
 
+/** Áreas a las que está restringido el usuario (Usuarios > Prevención): solo ve lo de ellas. */
+function AreasPropias() {
+  const { restringido, misAreas } = usePermisosSso()
+  if (!restringido) return null
+  return (
+    <span
+      className="hidden h-9 max-w-[220px] items-center gap-1 truncate rounded-md border px-2.5 text-[13px] font-semibold sm:flex"
+      title={`Ves solo la información de: ${misAreas.join(', ')}`}
+    >
+      <Layers className="h-4 w-4 shrink-0 text-muted-foreground" /> <span className="truncate">{misAreas.join(', ')}</span>
+    </span>
+  )
+}
+
 /** Sucursal que se mira en todo el portal. Quien tiene sucursal propia la ve fija. */
 function SelectorSucursal() {
   const { sucursal, fija, elegir } = useSucursalSso()
@@ -198,6 +213,7 @@ export default function PortalLayout() {
             </span>
           </div>
           <div className="flex items-center gap-1.5">
+            <AreasPropias />
             <SelectorSucursal />
             {puedeEn('hallazgos', 'crear') && (
               <Button asChild size="sm" className="mr-1">
