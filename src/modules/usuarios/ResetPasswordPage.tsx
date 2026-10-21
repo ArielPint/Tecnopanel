@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabaseClient'
 import logo from '../../assets/tecnopanel-logo-color.png'
 
@@ -8,6 +8,10 @@ import logo from '../../assets/tecnopanel-logo-color.png'
 // (evento PASSWORD_RECOVERY) — acá solo dejamos que la persona defina su nueva clave.
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
+  // Portal desde donde se pidió la recuperación (p. ej. /produccion); solo rutas internas.
+  const [params] = useSearchParams()
+  const volverParam = params.get('volver') ?? ''
+  const volver = volverParam.startsWith('/') && !volverParam.startsWith('//') ? volverParam : '/'
   const [ready, setReady] = useState(false)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -48,7 +52,7 @@ export default function ResetPasswordPage() {
       return
     }
     setDone(true)
-    setTimeout(() => navigate('/'), 1500)
+    setTimeout(() => navigate(volver, { replace: true }), 1500)
   }
 
   if (!ready && !done) {
