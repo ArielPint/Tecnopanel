@@ -487,7 +487,13 @@ async function traerTodo<T>(pagina: (desde: number, hasta: number, contar: boole
   return filas
 }
 
-/** OC de SAP con fecha entre desde y hasta (null = sin límite). */
+/** Filtro PostgREST: fecha entre desde y hasta, o la OC sigue abierta (las abiertas salen siempre). null = sin filtro. */
+function fechaOAbierta(desde: string | null, hasta: string | null, abierta: string): string | null {
+  const rango = [desde && `fecha.gte.${desde}`, hasta && `fecha.lte.${hasta}`].filter(Boolean)
+  return rango.length ? `and(${rango.join(',')}),${abierta}.is.true` : null
+}
+
+/** OC de SAP con fecha entre desde y hasta (null = sin límite), más todas las abiertas. */
 export async function listarOcSap(desde: string | null, hasta: string | null = null): Promise<OcSap[]> {
   return traerTodo<OcSap>((i, j, contar) => {
     let q = supabase
@@ -498,8 +504,8 @@ export async function listarOcSap(desde: string | null, hasta: string | null = n
       )
       .order('docnum', { ascending: false })
       .range(i, j)
-    if (desde) q = q.gte('fecha', desde)
-    if (hasta) q = q.lte('fecha', hasta)
+    const filtro = fechaOAbierta(desde, hasta, 'abierta')
+    if (filtro) q = q.or(filtro)
     return q as unknown as Pagina<OcSap>
   })
 }
@@ -1253,7 +1259,7 @@ export interface LineaOcSap {
   solicitudes: string | null
 }
 
-/** Líneas de OC de SAP con fecha de la OC entre desde y hasta (null = sin límite). */
+/** Líneas de OC de SAP con fecha de la OC entre desde y hasta (null = sin límite), más las de OC abiertas. */
 export async function listarLineasOcSap(desde: string | null, hasta: string | null = null): Promise<LineaOcSap[]> {
   return traerTodo<LineaOcSap>((i, j, contar) => {
     let q = supabase
@@ -1262,8 +1268,8 @@ export async function listarLineasOcSap(desde: string | null, hasta: string | nu
       .order('docnum', { ascending: false })
       .order('linea')
       .range(i, j)
-    if (desde) q = q.gte('fecha', desde)
-    if (hasta) q = q.lte('fecha', hasta)
+    const filtro = fechaOAbierta(desde, hasta, 'oc_abierta')
+    if (filtro) q = q.or(filtro)
     return q as unknown as Pagina<LineaOcSap>
   })
 }

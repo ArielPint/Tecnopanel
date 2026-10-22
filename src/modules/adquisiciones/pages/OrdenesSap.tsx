@@ -34,7 +34,7 @@ export default function OrdenesSap() {
   const [lineas, setLineas] = useState<LineaOcSap[]>([])
   const [sincronizado, setSincronizado] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  // Parte en 3 meses: todo el historial de SAP son miles de OC y líneas
+  // Parte en 3 meses: todo el historial de SAP son miles de OC y líneas. Las abiertas salen con cualquier período.
   const [dias, setDias] = useState(90)
   // rango de fechas de la OC (solo con «Rango de fechas…»)
   const [rangoDesde, setRangoDesde] = useState(sumarDias(hoyChile(), -30))
