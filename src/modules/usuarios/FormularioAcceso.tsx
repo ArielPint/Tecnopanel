@@ -26,7 +26,8 @@ interface Props {
   acceso?: Acceso | null
   proyectosObra: ProyectoObra[]
   trigger: React.ReactNode
-  onGuardar: (input: AccesoInput) => Promise<void>
+  /** Puede devolver un aviso (p. ej. el correo de credenciales no salió) para mostrarlo sin cerrar en error. */
+  onGuardar: (input: AccesoInput) => Promise<string | void>
 }
 
 function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: ProyectoObra[]): AccesoInput {
@@ -40,6 +41,7 @@ function inputFromAcceso(acceso: Acceso | null | undefined, proyectosObra: Proye
     email: acceso?.email ?? '',
     password: '',
     exigirCambioClave: false,
+    enviarCredenciales: !acceso,
     activo: acceso?.activo ?? true,
     isSuperAdmin: acceso?.isSuperAdmin ?? false,
     rol: acceso?.rol ?? 'vendedor',
@@ -152,8 +154,10 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
     }
     setEnviando(true)
     try {
-      await onGuardar(form)
-      toast.success(acceso ? 'Usuario actualizado' : 'Usuario creado')
+      const aviso = await onGuardar(form)
+      if (aviso) toast.warning(aviso, { duration: 10000 })
+      else if (!acceso && form.enviarCredenciales) toast.success(`Usuario creado. Se enviaron las credenciales a ${form.email}`)
+      else toast.success(acceso ? 'Usuario actualizado' : 'Usuario creado')
       setOpen(false)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al guardar')
@@ -226,6 +230,12 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                   <label className="flex items-center gap-2 text-sm">
                     <Checkbox checked={!!form.exigirCambioClave} onCheckedChange={(v) => setForm((f) => ({ ...f, exigirCambioClave: !!v }))} />
                     Debe cambiar la contraseña en el siguiente inicio de sesión
+                  </label>
+                )}
+                {!acceso && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={!!form.enviarCredenciales} onCheckedChange={(v) => setForm((f) => ({ ...f, enviarCredenciales: !!v }))} />
+                    Enviar por correo la dirección del portal, el usuario y la contraseña
                   </label>
                 )}
               </div>
