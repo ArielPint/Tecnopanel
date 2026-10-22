@@ -467,25 +467,41 @@ export async function buscarArticulos(q: string): Promise<ArticuloSap[]> {
   return (data ?? []) as ArticuloSap[]
 }
 
-/** OC de SAP con fecha entre desde y hasta (null = sin límite), de a 1000 por página. */
+type Pagina<T> = PromiseLike<{ data: T[] | null; error: { message: string; code?: string } | null; count?: number | null }>
+
+/** Todas las filas, de a 1000: la primera página trae el total y el resto se pide en paralelo (de a 6). */
+async function traerTodo<T>(pagina: (desde: number, hasta: number, contar: boolean) => Pagina<T>): Promise<T[]> {
+  const primera = await pagina(0, 999, true)
+  if (primera.error) error(primera.error)
+  const filas = [...(primera.data ?? [])]
+  const total = primera.count ?? filas.length
+  const inicios: number[] = []
+  for (let i = 1000; i < total; i += 1000) inicios.push(i)
+  for (let k = 0; k < inicios.length; k += 6) {
+    const resp = await Promise.all(inicios.slice(k, k + 6).map((i) => pagina(i, i + 999, false)))
+    for (const r of resp) {
+      if (r.error) error(r.error)
+      filas.push(...(r.data ?? []))
+    }
+  }
+  return filas
+}
+
+/** OC de SAP con fecha entre desde y hasta (null = sin límite). */
 export async function listarOcSap(desde: string | null, hasta: string | null = null): Promise<OcSap[]> {
-  const filas: OcSap[] = []
-  for (let i = 0; ; i += 1000) {
+  return traerTodo<OcSap>((i, j, contar) => {
     let q = supabase
       .from('adq_sap_oc_v')
       .select(
         'doc_entry, docnum, proveedor_codigo, proveedor_nombre, fecha, fecha_entrega, abierta, cancelada, total, moneda, comentarios, neto, facturado, recepcion_pct, facturado_pct, cecos, solicitudes',
+        contar ? { count: 'exact' } : undefined,
       )
       .order('docnum', { ascending: false })
-      .range(i, i + 999)
+      .range(i, j)
     if (desde) q = q.gte('fecha', desde)
     if (hasta) q = q.lte('fecha', hasta)
-    const { data, error: e } = await q
-    if (e) error(e)
-    filas.push(...((data ?? []) as OcSap[]))
-    if (!data || data.length < 1000) break
-  }
-  return filas
+    return q as unknown as Pagina<OcSap>
+  })
 }
 
 /** Cuándo se trajo SAP por última vez; null si la base no tiene la sincronización. */
@@ -1237,17 +1253,17 @@ export interface LineaOcSap {
   solicitudes: string | null
 }
 
-/** Líneas de OC de SAP con fecha de la OC entre desde y hasta (null = sin límite), de a 1000 por página. */
+/** Líneas de OC de SAP con fecha de la OC entre desde y hasta (null = sin límite). */
 export async function listarLineasOcSap(desde: string | null, hasta: string | null = null): Promise<LineaOcSap[]> {
-  const filas: LineaOcSap[] = []
-  for (let i = 0; ; i += 1000) {
-    let q = supabase.from('adq_sap_oc_lineas_v').select('*').order('docnum', { ascending: false }).order('linea').range(i, i + 999)
+  return traerTodo<LineaOcSap>((i, j, contar) => {
+    let q = supabase
+      .from('adq_sap_oc_lineas_v')
+      .select('*', contar ? { count: 'exact' } : undefined)
+      .order('docnum', { ascending: false })
+      .order('linea')
+      .range(i, j)
     if (desde) q = q.gte('fecha', desde)
     if (hasta) q = q.lte('fecha', hasta)
-    const { data, error: e } = await q
-    if (e) error(e)
-    filas.push(...((data ?? []) as LineaOcSap[]))
-    if (!data || data.length < 1000) break
-  }
-  return filas
+    return q as unknown as Pagina<LineaOcSap>
+  })
 }
