@@ -94,6 +94,8 @@ export interface AccesoInput {
   password?: string
   /** Con password: el usuario debe cambiarla en su próximo ingreso (profiles.must_change_password). */
   exigirCambioClave?: boolean
+  /** Solo al crear: manda al usuario un correo con la dirección del portal, su usuario y la clave. */
+  enviarCredenciales?: boolean
   activo: boolean
   isSuperAdmin: boolean
   rol: string
@@ -376,7 +378,10 @@ export function useAccesos() {
   const crear = useCallback(
     async (input: AccesoInput) => {
       const { data, error } = await supabase.functions.invoke('manage-access', {
-        body: { action: 'create', nombre: input.nombre, apellido: input.apellido, email: input.email, password: input.password },
+        body: {
+          action: 'create', nombre: input.nombre, apellido: input.apellido, email: input.email, password: input.password,
+          enviar_credenciales: !!input.enviarCredenciales, exigir_cambio_clave: !!input.exigirCambioClave,
+        },
       })
       if (error) throw new Error(error.message)
       if (data?.error) throw new Error(data.error)
@@ -391,6 +396,10 @@ export function useAccesos() {
       }
       await syncAccesos(userId, input)
       await refetch()
+      // La cuenta ya existe aunque el correo falle: se informa como aviso, no como error.
+      if (input.enviarCredenciales && data.correoError) {
+        return `Usuario creado, pero no se pudo enviar el correo con las credenciales: ${data.correoError}`
+      }
     },
     [refetch],
   )

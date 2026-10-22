@@ -2,6 +2,10 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+const RESEND_API_URL = Deno.env.get('RESEND_API_URL') ?? 'https://api.resend.com/emails'
+const FROM_EMAIL = Deno.env.get('RESEND_FROM') ?? 'onboarding@resend.dev'
+const PORTAL_URL = Deno.env.get('PORTAL_URL') ?? 'https://portal.tecnopanel.cl:8080'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -13,6 +17,50 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   })
+}
+
+function escapar(s: string) {
+  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
+}
+
+// Correo de bienvenida con la dirección del portal, el usuario y la clave inicial. En el servidor
+// RESEND_API_URL apunta a tp-fn-mailer (Microsoft Graph, como portal@tecnopanel.cl); sin esa
+// variable va a la API de Resend. Devuelve el error en vez de lanzarlo: la cuenta ya quedó creada.
+async function enviarCredenciales(
+  d: { nombre: string; email: string; password: string; url: string; exigirCambio: boolean },
+): Promise<string | null> {
+  if (!RESEND_API_KEY) return 'Envío de correo no configurado (falta RESEND_API_KEY)'
+  const fila = (etiqueta: string, valor: string) =>
+    `<tr><td style="padding:6px 12px 6px 0;color:#6b7280">${etiqueta}</td><td style="padding:6px 0;font-weight:bold">${valor}</td></tr>`
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:520px">
+      <p><img src="cid:logo-tecnopanel" alt="Tecnopanel" style="height:40px"></p>
+      <p>Hola ${escapar(d.nombre)},</p>
+      <p>Se creó tu cuenta en el Portal Tecnopanel. Estos son tus datos de acceso:</p>
+      <table style="border-collapse:collapse;margin:8px 0 16px">
+        ${fila('Dirección', `<a href="${escapar(d.url)}">${escapar(d.url)}</a>`)}
+        ${fila('Usuario', escapar(d.email))}
+        ${fila('Contraseña', `<span style="font-family:Consolas,monospace">${escapar(d.password)}</span>`)}
+      </table>
+      <p><a href="${escapar(d.url)}" style="background:#ed3224;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Ingresar al portal</a></p>
+      <p>${d.exigirCambio
+        ? 'Al ingresar por primera vez el sistema te pedirá cambiar la contraseña.'
+        : 'Te recomendamos cambiar la contraseña después de tu primer ingreso.'}</p>
+      <p style="font-size:12px;color:#9ca3af;margin-top:24px">Correo automático de Tecnopanel Portal · no compartas estos datos.</p>
+    </div>`
+  try {
+    const resp = await fetch(RESEND_API_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: FROM_EMAIL, to: d.email, subject: 'Tu acceso al Portal Tecnopanel', html }),
+    })
+    if (resp.ok) return null
+    const detalle = await resp.text()
+    console.error('No se pudo enviar el correo de credenciales a', d.email, '->', detalle)
+    return `El servidor de correo rechazó el envío: ${detalle}`
+  } catch (err) {
+    return err instanceof Error ? err.message : 'Error al enviar el correo'
+  }
 }
 
 // E4: única Edge Function de administración de cuentas (reemplaza create-user +
@@ -49,7 +97,7 @@ Deno.serve(async (req) => {
 
   try {
     if (action === 'create') {
-      const { nombre, apellido, email, password } = body
+      const { nombre, apellido, email, password, enviar_credenciales, exigir_cambio_clave } = body
       if (!nombre || !email || !password) return json({ error: 'Faltan campos requeridos' }, 400)
 
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
@@ -61,7 +109,13 @@ Deno.serve(async (req) => {
       if (createErr) return json({ error: createErr.message }, 400)
 
       // El trigger on_auth_user_created ya insertó la fila en profiles (id, nombre, apellido, email).
-      return json({ id: created.user.id })
+      if (!enviar_credenciales) return json({ id: created.user.id })
+      // La dirección es la del portal desde donde se creó la cuenta (la misma que verá el usuario).
+      const url = req.headers.get('origin') || PORTAL_URL
+      const correoError = await enviarCredenciales({
+        nombre, email, password, url, exigirCambio: !!exigir_cambio_clave,
+      })
+      return json({ id: created.user.id, correoEnviado: !correoError, correoError })
     }
 
     if (action === 'update') {
