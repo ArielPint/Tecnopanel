@@ -2,6 +2,8 @@
 export const RUTA = {
   inicio: '/control-contratistas',
   login: '/control-contratistas/login',
-  contratistas: '/control-contratistas',
-  contratista: (id: string) => `/control-contratistas/${id}`,
+  documentacion: '/control-contratistas/documentacion',
+  estadosPago: '/control-contratistas/estados-pago',
+  empresas: '/control-contratistas/empresas',
+  contratista: (id: string) => `/control-contratistas/empresas/${id}`,
 }

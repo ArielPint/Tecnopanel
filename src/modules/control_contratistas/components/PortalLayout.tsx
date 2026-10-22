@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ArrowLeft, Building2, KeyRound, LogOut, Menu, Moon, ShieldCheck, Sun } from 'lucide-react'
+import { ArrowLeft, Building2, FileCheck2, KeyRound, LogOut, Menu, Moon, Receipt, ShieldCheck, Sun } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useOtrosPortales } from '@/hooks/useOtrosPortales'
@@ -11,15 +11,19 @@ import { Toaster } from '@/modules/financiero/components/ui/sonner'
 import { cn } from '@/lib/utils'
 import { RUTA } from '../lib/rutas'
 import { useAlertaContratistas } from '../hooks/useAlertaContratistas'
+import { usePermisosContratistas } from '../hooks/usePermisosContratistas'
 
 // Contenedor del portal Control de Contratistas: mismo esquema que Ingreso de Personal (menú propio,
 // login propio), con los tokens del hub para que el modo claro y el oscuro funcionen igual.
 
 function Menu_({ onNavigate }: { onNavigate?: () => void }) {
   const { conHub, portales } = useOtrosPortales({ tipo: 'control_contratistas' })
-  const atrasadas = useAlertaContratistas(true)
-  const items: { to: string; label: string; icon: typeof Building2; end: boolean; aviso?: number }[] = [
-    { to: RUTA.inicio, label: 'Contratistas', icon: Building2, end: false, aviso: atrasadas },
+  const { validaEp } = usePermisosContratistas()
+  const { atrasadas, epsPorValidar } = useAlertaContratistas(validaEp)
+  const items: { to: string; label: string; icon: typeof Building2; aviso?: number; avisoTitulo?: string }[] = [
+    { to: RUTA.documentacion, label: 'Documentación', icon: FileCheck2, aviso: atrasadas, avisoTitulo: 'Empresas con documentación del mes atrasada' },
+    ...(validaEp ? [{ to: RUTA.estadosPago, label: 'Estados de pago', icon: Receipt, aviso: epsPorValidar, avisoTitulo: 'Estados de pago por validar' }] : []),
+    { to: RUTA.empresas, label: 'Empresas', icon: Building2 },
   ]
 
   return (
@@ -30,7 +34,6 @@ function Menu_({ onNavigate }: { onNavigate?: () => void }) {
             <NavLink
               key={it.to}
               to={it.to}
-              end={it.end}
               onClick={onNavigate}
               className={({ isActive }) =>
                 cn(
@@ -44,7 +47,7 @@ function Menu_({ onNavigate }: { onNavigate?: () => void }) {
               {!!it.aviso && (
                 <span
                   className="ml-auto rounded-full bg-destructive px-1.5 text-[11px] font-bold tabular-nums text-destructive-foreground"
-                  title="Empresas con documentación del mes atrasada"
+                  title={it.avisoTitulo}
                 >
                   {it.aviso}
                 </span>
@@ -105,7 +108,14 @@ export default function PortalLayout() {
   const [cambiarClave, setCambiarClave] = useState(false)
   const isDark = mode === 'dark'
 
-  const titulo = location.pathname === RUTA.inicio ? 'Contratistas' : 'Ficha de la empresa'
+  const p = location.pathname
+  const titulo = p.startsWith(RUTA.estadosPago)
+    ? 'Estados de pago'
+    : p === RUTA.empresas
+      ? 'Empresas'
+      : p.startsWith(RUTA.empresas)
+        ? 'Ficha de la empresa'
+        : 'Documentación'
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">

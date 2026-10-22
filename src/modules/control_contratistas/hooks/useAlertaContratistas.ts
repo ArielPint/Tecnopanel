@@ -1,29 +1,30 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { listarDocsEmpresas, listarEmpresas, listarListados } from '../lib/api'
-import { periodoDe, situacionMes } from '../lib/contratistas'
+import { listarDocsEmpresas, listarEmpresas, listarEstadosPagoEmpresas, listarListados } from '../lib/api'
+import { epPorValidar, periodoDe, situacionMes } from '../lib/contratistas'
 
-/** Empresas activas con la documentación del mes en curso atrasada, para el aviso del menú.
- *  (Lo que está por revisar lo muestra la pantalla Contratistas.)
- *  Se recalcula al cambiar de pantalla (después de cargar documentos en Contratistas). */
-export function useAlertaContratistas(activo: boolean): number {
+/** Avisos del menú: empresas activas con la documentación del mes en curso atrasada y estados de pago
+ *  por validar (solo si quien entra los valida). Se recalcula al cambiar de pantalla. */
+export function useAlertaContratistas(validaEp: boolean): { atrasadas: number; epsPorValidar: number } {
   const { pathname } = useLocation()
-  const [n, setN] = useState(0)
+  const [n, setN] = useState({ atrasadas: 0, epsPorValidar: 0 })
 
   useEffect(() => {
-    if (!activo) return
     let cancelado = false
     const periodo = periodoDe()
-    Promise.all([listarEmpresas(), listarDocsEmpresas(periodo), listarListados(periodo)])
-      .then(([empresas, docs, listados]) => {
+    Promise.all([listarEmpresas(), listarDocsEmpresas(periodo), listarListados(periodo), validaEp ? listarEstadosPagoEmpresas() : Promise.resolve([])])
+      .then(([empresas, docs, listados, eps]) => {
         if (cancelado) return
-        setN(empresas.filter((e) => e.activa && situacionMes(e.id, docs, listados, periodo).estado === 'atrasado').length)
+        setN({
+          atrasadas: empresas.filter((e) => e.activa && situacionMes(e.id, docs, listados, periodo).estado === 'atrasado').length,
+          epsPorValidar: eps.filter((e) => epPorValidar(e.estado)).length,
+        })
       })
       .catch(() => {})
     return () => {
       cancelado = true
     }
-  }, [activo, pathname])
+  }, [validaEp, pathname])
 
   return n
 }
