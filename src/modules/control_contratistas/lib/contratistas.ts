@@ -1,6 +1,6 @@
 import { hoyChile } from '@/modules/sso/lib/estados'
 import { DIA_LIMITE_EMPRESA, DOCS_EMPRESA } from './catalogos'
-import type { DocEmpresa, Listado } from './api'
+import type { DocEmpresa, EstadoRevision, Listado } from './api'
 
 // Control mensual de las empresas contratistas: cada mes tienen que estar los DOCS_EMPRESA.
 
@@ -53,3 +53,17 @@ export function nombreMes(periodo: string): string {
   const [a, m] = periodo.split('-').map(Number)
   return new Date(Date.UTC(a, m - 1, 15)).toLocaleDateString('es-CL', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 }
+
+export type EstadoItem = 'aprobado' | 'por_revisar' | 'rechazado' | 'falta'
+
+/** Cómo está un tipo de documento (o el listado) de una empresa en el mes, con el mismo criterio que situacionMes(). */
+export function estadoItem(revisiones: { estado: EstadoRevision }[]): EstadoItem {
+  if (revisiones.some((r) => r.estado === 'aprobado')) return 'aprobado'
+  if (revisiones.some((r) => r.estado === 'por_revisar')) return 'por_revisar'
+  if (revisiones.some((r) => r.estado === 'rechazado')) return 'rechazado'
+  return 'falta'
+}
+
+/** Estados de pago que esperan algo de Tecnopanel: pasar a revisión, aprobar o pagar. */
+export const EP_POR_VALIDAR = ['emitido', 'en_revision', 'aprobado'] as const
+export const epPorValidar = (estado: string) => (EP_POR_VALIDAR as readonly string[]).includes(estado)
