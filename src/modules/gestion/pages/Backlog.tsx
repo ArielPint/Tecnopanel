@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Download } from 'lucide-react'
 import { useBacklog, type FilaBacklog } from '../hooks/useBacklog'
+import { useBacklogHistoria } from '../hooks/useBacklogHistoria'
+import { SIN_LINEA } from '../lib/backlogAnalisis'
+import { LINEAS } from '../components/backlog/colores'
+import Resumen from '../components/backlog/Resumen'
+import Tendencia from '../components/backlog/Tendencia'
 import { exportarExcel } from '@/modules/financiero/utils/exportExcel'
 import { formatCLP } from '@/modules/financiero/utils/formatters'
 import { Card, CardContent } from '@/modules/financiero/components/ui/card'
@@ -84,21 +89,13 @@ function Filtro({
   )
 }
 
-export default function Backlog() {
+function Proyectos({ linea, sucursal, busqueda }: { linea: string; sucursal: string; busqueda: string }) {
   const { filas: todas, disponible, sincronizadoEn, loading, error } = useBacklog()
   const [agrupacion, setAgrupacion] = useState<Agrupacion>('proyecto')
-  const [linea, setLinea] = useState(TODOS)
-  const [sucursal, setSucursal] = useState(TODOS)
-  const [busqueda, setBusqueda] = useState('')
 
   // Proyectos con el pedido abierto pero ya despachados o facturados entero (o de más): no son backlog.
   const filas = useMemo(() => todas.filter((f) => f.backlog > 0), [todas])
   const sinSaldo = todas.length - filas.length
-  const lineas = useMemo(() => [...new Set(filas.map((f) => f.linea).filter((l): l is string => !!l))].sort(), [filas])
-  const sucursales = useMemo(
-    () => [...new Set(filas.map((f) => f.sucursal).filter((s): s is string => !!s))].sort(),
-    [filas],
-  )
 
   const filtradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
@@ -160,27 +157,6 @@ export default function Backlog() {
         venta abierta. Actualizado{' '}
         {sincronizadoEn ? new Date(sincronizadoEn).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' }) : '—'}.
       </p>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Filtro
-          valor={linea}
-          onChange={setLinea}
-          todos="Todas las líneas"
-          opciones={[...lineas.map((l) => ({ value: l, label: l })), { value: 'sin', label: 'Sin línea' }]}
-        />
-        <Filtro
-          valor={sucursal}
-          onChange={setSucursal}
-          todos="Todas las sucursales"
-          opciones={[...sucursales.map((s) => ({ value: s, label: s })), { value: 'sin', label: 'Sin sucursal' }]}
-        />
-        <Input
-          className="h-8 w-60"
-          placeholder="Buscar proyecto o cliente…"
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-        />
-      </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
         <Card>
@@ -288,6 +264,92 @@ export default function Backlog() {
           </p>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+type Vista = 'resumen' | 'tendencia' | 'proyectos'
+
+const VISTAS: { key: Vista; label: string }[] = [
+  { key: 'resumen', label: 'Resumen' },
+  { key: 'tendencia', label: 'Tendencia' },
+  { key: 'proyectos', label: 'Proyectos' },
+]
+
+export default function Backlog() {
+  const { historia, disponible, loading, error } = useBacklogHistoria()
+  const [vista, setVista] = useState<Vista>('resumen')
+  const [linea, setLinea] = useState(TODOS)
+  const [sucursal, setSucursal] = useState(TODOS)
+  const [busqueda, setBusqueda] = useState('')
+
+  // Mismos filtros para el análisis (por los datos del proyecto en SAP) y para la lista de proyectos
+  const incluir = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase()
+    return (codigo: string) => {
+      const p = historia?.proyectos.get(codigo)
+      if (!p) return linea === TODOS && sucursal === TODOS && !texto
+      return (
+        (linea === TODOS || (linea === 'sin' ? !p.linea : p.linea === linea)) &&
+        (sucursal === TODOS || (sucursal === 'sin' ? !p.sucursal : p.sucursal === sucursal)) &&
+        (!texto || p.nombre.toLowerCase().includes(texto) || (p.cliente ?? '').toLowerCase().includes(texto))
+      )
+    }
+  }, [historia, linea, sucursal, busqueda])
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex gap-1">
+          {VISTAS.map((v) => (
+            <Button key={v.key} size="sm" variant={vista === v.key ? 'default' : 'outline'} onClick={() => setVista(v.key)}>
+              {v.label}
+            </Button>
+          ))}
+        </div>
+        <span className="mx-1 hidden h-6 w-px bg-border sm:block" />
+        <Filtro
+          valor={linea}
+          onChange={setLinea}
+          todos="Todas las líneas"
+          opciones={[
+            ...LINEAS.filter((l) => l.nombre !== SIN_LINEA).map((l) => ({ value: l.nombre, label: l.nombre })),
+            { value: 'sin', label: 'Sin línea' },
+          ]}
+        />
+        <Filtro
+          valor={sucursal}
+          onChange={setSucursal}
+          todos="Todas las sucursales"
+          opciones={[
+            { value: 'Santiago', label: 'Santiago' },
+            { value: 'Puerto Varas', label: 'Puerto Varas' },
+            { value: 'sin', label: 'Sin sucursal' },
+          ]}
+        />
+        <Input
+          className="h-8 w-60"
+          placeholder="Buscar proyecto o cliente…"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+      </div>
+
+      {vista === 'proyectos' ? (
+        <Proyectos linea={linea} sucursal={sucursal} busqueda={busqueda} />
+      ) : loading ? (
+        <div className="h-24 animate-pulse rounded bg-muted" />
+      ) : error ? (
+        <p className="text-sm text-destructive">{error}</p>
+      ) : !disponible || !historia ? (
+        <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+          El análisis del backlog todavía no tiene la historia de SAP. Se carga con la sincronización horaria de ventas.
+        </p>
+      ) : vista === 'resumen' ? (
+        <Resumen historia={historia} incluir={incluir} />
+      ) : (
+        <Tendencia historia={historia} incluir={incluir} />
+      )}
     </div>
   )
 }
