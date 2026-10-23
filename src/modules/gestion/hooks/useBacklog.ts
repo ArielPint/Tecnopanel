@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabaseClient'
 
 /**
  * Un proyecto de SAP con alguna nota de venta abierta (`sap_backlog`, solo en el servidor propio; la
- * llena la sincronización horaria de ventas). Backlog = contratado − facturado.
+ * llena la sincronización horaria de ventas). Backlog = contratado − despachado con guías (menos
+ * devoluciones) − facturas que no salen de una guía. `facturado` (criterio de Ventas) es solo informativo.
  */
 export interface FilaBacklog {
   proyectoCodigo: string
@@ -15,6 +16,8 @@ export interface FilaBacklog {
   ultimoPedido: string | null
   contratado: number
   facturado: number
+  despachado: number
+  facturadoDirecto: number
   backlog: number
 }
 
@@ -35,7 +38,7 @@ export function useBacklog() {
     const [datos, estado] = await Promise.all([
       supabase
         .from('sap_backlog')
-        .select('proyecto_codigo, proyecto_nombre, cliente_nombre, linea, sucursal, pedidos_abiertos, ultimo_pedido, contratado, facturado'),
+        .select('proyecto_codigo, proyecto_nombre, cliente_nombre, linea, sucursal, pedidos_abiertos, ultimo_pedido, contratado, facturado, despachado, facturado_directo'),
       supabase.from('sap_backlog_estado').select('sincronizado_en').maybeSingle(),
     ])
     if (esTablaInexistente(datos.error)) {
@@ -50,6 +53,8 @@ export function useBacklog() {
         (datos.data ?? []).map((d) => {
           const contratado = Number(d.contratado)
           const facturado = Number(d.facturado)
+          const despachado = Number(d.despachado)
+          const facturadoDirecto = Number(d.facturado_directo)
           return {
             proyectoCodigo: d.proyecto_codigo,
             proyecto: d.proyecto_nombre ? `${d.proyecto_codigo} · ${d.proyecto_nombre}` : d.proyecto_codigo,
@@ -60,7 +65,9 @@ export function useBacklog() {
             ultimoPedido: d.ultimo_pedido,
             contratado,
             facturado,
-            backlog: contratado - facturado,
+            despachado,
+            facturadoDirecto,
+            backlog: contratado - despachado - facturadoDirecto,
           }
         }),
       )

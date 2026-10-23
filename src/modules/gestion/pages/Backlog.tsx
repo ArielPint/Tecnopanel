@@ -28,12 +28,14 @@ interface Grupo {
   proyectos: number
   contratado: number
   facturado: number
+  /** Despachado con guías + facturado sin guía: lo que rebaja el backlog. */
+  ejecutado: number
   backlog: number
 }
 
-function porcentaje(facturado: number, contratado: number): string {
+function porcentaje(parte: number, contratado: number): string {
   if (contratado <= 0) return '—'
-  return `${Math.round((facturado / contratado) * 100)}%`
+  return `${Math.round((parte / contratado) * 100)}%`
 }
 
 function agrupar(filas: FilaBacklog[], por: Agrupacion): Grupo[] {
@@ -45,11 +47,12 @@ function agrupar(filas: FilaBacklog[], por: Agrupacion): Grupo[] {
       : por === 'sucursal' ? f.sucursal ?? 'Sin sucursal'
       : f.proyecto
     const g = mapa.get(clave) ?? {
-      clave, cliente: f.cliente, linea: f.linea, sucursal: f.sucursal, proyectos: 0, contratado: 0, facturado: 0, backlog: 0,
+      clave, cliente: f.cliente, linea: f.linea, sucursal: f.sucursal, proyectos: 0, contratado: 0, facturado: 0, ejecutado: 0, backlog: 0,
     }
     g.proyectos += 1
     g.contratado += f.contratado
     g.facturado += f.facturado
+    g.ejecutado += f.despachado + f.facturadoDirecto
     g.backlog += f.backlog
     mapa.set(clave, g)
   }
@@ -88,7 +91,7 @@ export default function Backlog() {
   const [sucursal, setSucursal] = useState(TODOS)
   const [busqueda, setBusqueda] = useState('')
 
-  // Proyectos con el pedido abierto pero ya facturados entero (o de más): no son backlog.
+  // Proyectos con el pedido abierto pero ya despachados o facturados entero (o de más): no son backlog.
   const filas = useMemo(() => todas.filter((f) => f.backlog > 0), [todas])
   const sinSaldo = todas.length - filas.length
   const lineas = useMemo(() => [...new Set(filas.map((f) => f.linea).filter((l): l is string => !!l))].sort(), [filas])
@@ -111,6 +114,7 @@ export default function Backlog() {
   const totalBacklog = filtradas.reduce((a, f) => a + f.backlog, 0)
   const totalContratado = filtradas.reduce((a, f) => a + f.contratado, 0)
   const totalFacturado = filtradas.reduce((a, f) => a + f.facturado, 0)
+  const totalEjecutado = filtradas.reduce((a, f) => a + f.despachado + f.facturadoDirecto, 0)
   const etiqueta = AGRUPACIONES.find((a) => a.key === agrupacion)!.label.replace('Por ', '')
   const porProyecto = agrupacion === 'proyecto'
 
@@ -140,8 +144,9 @@ export default function Backlog() {
           ? { Cliente: g.cliente ?? '', Línea: g.linea ?? '', Sucursal: g.sucursal ?? '' }
           : { Proyectos: g.proyectos }),
         'Contratado (CLP)': g.contratado,
+        'Despachado + facturado sin guía (CLP)': g.ejecutado,
+        '% avance': g.contratado > 0 ? g.ejecutado / g.contratado : '',
         'Facturado (CLP)': g.facturado,
-        '% facturado': g.contratado > 0 ? g.facturado / g.contratado : '',
         'Backlog (CLP)': g.backlog,
       })),
     )
@@ -150,8 +155,9 @@ export default function Backlog() {
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        Fuente: SAP Business One. Backlog = notas de venta del proyecto (neto) − lo facturado (facturas + anticipos − notas
-        de crédito, como en Ventas). Solo proyectos con alguna nota de venta abierta. Actualizado{' '}
+        Fuente: SAP Business One. Backlog = notas de venta del proyecto (neto) − lo despachado con guías (menos
+        devoluciones) − las facturas que no salen de una guía. Los anticipos no rebajan. Solo proyectos con alguna nota de
+        venta abierta. Actualizado{' '}
         {sincronizadoEn ? new Date(sincronizadoEn).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' }) : '—'}.
       </p>
 
@@ -191,11 +197,12 @@ export default function Backlog() {
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground">FACTURADO</p>
+            <p className="text-xs text-muted-foreground">DESPACHADO</p>
             <p className="text-xl font-extrabold tabular-nums">
-              {formatCLP(totalFacturado)}{' '}
-              <span className="text-sm font-semibold text-muted-foreground">{porcentaje(totalFacturado, totalContratado)}</span>
+              {formatCLP(totalEjecutado)}{' '}
+              <span className="text-sm font-semibold text-muted-foreground">{porcentaje(totalEjecutado, totalContratado)}</span>
             </p>
+            <p className="text-xs text-muted-foreground">Facturado {formatCLP(totalFacturado)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -240,8 +247,9 @@ export default function Backlog() {
                     <TableHead className="text-right">Proyectos</TableHead>
                   )}
                   <TableHead className="text-right">Contratado</TableHead>
+                  <TableHead className="text-right">Despachado</TableHead>
+                  <TableHead className="text-right">% avance</TableHead>
                   <TableHead className="text-right">Facturado</TableHead>
-                  <TableHead className="text-right">% fact.</TableHead>
                   <TableHead className="text-right">Backlog</TableHead>
                 </TableRow>
               </TableHeader>
@@ -261,8 +269,9 @@ export default function Backlog() {
                       <TableCell className="text-right tabular-nums">{g.proyectos}</TableCell>
                     )}
                     <TableCell className="text-right tabular-nums">{formatCLP(g.contratado)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatCLP(g.facturado)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{porcentaje(g.facturado, g.contratado)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatCLP(g.ejecutado)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{porcentaje(g.ejecutado, g.contratado)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{formatCLP(g.facturado)}</TableCell>
                     <TableCell className="text-right font-semibold tabular-nums">{formatCLP(g.backlog)}</TableCell>
                   </TableRow>
                 ))}
@@ -271,9 +280,11 @@ export default function Backlog() {
           )}
           <p className="mt-2 text-xs text-muted-foreground">
             La línea y la sucursal de cada proyecto son las del centro de costo con más monto en sus notas de venta.
-            Cuando SAP cierra la última nota de venta abierta del proyecto, este sale del backlog.
+            "Despachado" son las guías de despacho menos devoluciones, más lo facturado sin guía; lo facturado desde una
+            guía no se cuenta dos veces. "Facturado" es el de Ventas (incluye anticipos) y es solo informativo. Cuando SAP
+            cierra la última nota de venta abierta del proyecto, este sale del backlog.
             {sinSaldo > 0 &&
-              ` ${sinSaldo} proyecto${sinSaldo === 1 ? '' : 's'} con nota de venta abierta ya facturado${sinSaldo === 1 ? '' : 's'} completo${sinSaldo === 1 ? '' : 's'} no se muestra${sinSaldo === 1 ? '' : 'n'}.`}
+              ` ${sinSaldo} proyecto${sinSaldo === 1 ? '' : 's'} con nota de venta abierta ya despachado${sinSaldo === 1 ? '' : 's'} completo${sinSaldo === 1 ? '' : 's'} no se muestra${sinSaldo === 1 ? '' : 'n'}.`}
           </p>
         </CardContent>
       </Card>
