@@ -218,7 +218,7 @@ export default function Layout() {
         </SheetContent>
       </Sheet>
 
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-[60px] items-center justify-between gap-4 border-b border-border bg-card px-4 md:px-6">
           <div className="flex items-center gap-2">
             <button
