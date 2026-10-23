@@ -1,6 +1,6 @@
 import { useAccesoUsuario } from '@/hooks/useAccesoUsuario'
 import Reportes from './pages/Reportes'
-import Ventas from './pages/Ventas'
+import Backlog from './pages/Backlog'
 import Inventario from './pages/Inventario'
 import Calendarizacion from './pages/Calendarizacion'
 import Documentos from './pages/Documentos'
@@ -12,21 +12,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/modules/financiero/c
 // (§3.6.4 — notifications es personal/CRM, ya visible en la campana del CRM, sin fuente de
 // proyecto/obra que agregar) — sin pestaña ni placeholder, no forma parte del roadmap hasta
 // que el usuario decida retomarla.
+// Ventas se movió al portal Financiero (/financiero, misma página): aquí va el Backlog (2026-10-23).
 
 export default function GestionApp() {
-  const { proyectosObra, tieneCrm, isAdmin, loading } = useAccesoUsuario()
+  const { proyectosObra, tieneCrm, loading } = useAccesoUsuario()
 
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-extrabold">Gestión</h1>
-        <p className="text-sm text-muted-foreground">Reportes, ventas, inventario, documentos y comunicaciones transversales a todo el portal.</p>
+        <p className="text-sm text-muted-foreground">Reportes, backlog, inventario, documentos y comunicaciones transversales a todo el portal.</p>
       </div>
 
       <Tabs defaultValue="reportes">
         <TabsList>
           <TabsTrigger value="reportes">Reportes</TabsTrigger>
-          <TabsTrigger value="ventas">Ventas</TabsTrigger>
+          <TabsTrigger value="backlog">Backlog</TabsTrigger>
           <TabsTrigger value="inventario">Inventario</TabsTrigger>
           <TabsTrigger value="calendarizacion">Calendarización</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
@@ -36,8 +37,8 @@ export default function GestionApp() {
         <TabsContent value="reportes" className="pt-3">
           {loading ? <div className="h-24 animate-pulse rounded bg-muted" /> : <Reportes proyectosObra={proyectosObra} />}
         </TabsContent>
-        <TabsContent value="ventas" className="pt-3">
-          {loading ? <div className="h-24 animate-pulse rounded bg-muted" /> : <Ventas esAdmin={isAdmin} />}
+        <TabsContent value="backlog" className="pt-3">
+          <Backlog />
         </TabsContent>
         <TabsContent value="inventario" className="pt-3">
           <Inventario />

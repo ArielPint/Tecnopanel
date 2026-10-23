@@ -43,14 +43,20 @@ function Inicio() {
   )
 }
 
+function VentasFin() {
+  const { admin } = usePermisosFin()
+  return <Ventas esAdmin={admin} />
+}
+
 export default function FinancieroSapApp() {
   return (
     <Routes>
       <Route element={<PortalLayout />}>
         <Route index element={<Inicio />} />
         <Route path="lineas" element={<Solo si={(p) => p.veEerr}><PorLinea /></Solo>} />
-        {/* Las mismas ventas de Gestión › Ventas: la base deja ver sap_ventas a quien tenga el informe Ventas */}
-        <Route path="ventas" element={<Solo si={(p) => p.veVentas}><Ventas esAdmin={false} /></Solo>} />
+        {/* Las ventas de SAP (antes Gestión › Ventas, que ahora muestra el Backlog): la base deja ver sap_ventas
+            a quien tenga el informe Ventas. Los administradores cargan aquí la UF de un mes si falta. */}
+        <Route path="ventas" element={<Solo si={(p) => p.veVentas}><VentasFin /></Solo>} />
         <Route path="prorrateo" element={<Solo si={(p) => p.veEerr || p.configurar}><Prorrateo /></Solo>} />
         <Route path="balance" element={<Solo si={(p) => p.veBalance}><Balance /></Solo>} />
         <Route path="ifrs" element={<Solo si={(p) => p.veBalance}><Ifrs /></Solo>} />

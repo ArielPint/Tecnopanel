@@ -11,7 +11,7 @@ export const INFORMES_FIN: { key: InformeFin; label: string; detalle: string }[]
     label: 'Estado de resultados',
     detalle: 'Ingresos, costos y gastos contables de SAP por línea, CECO y sucursal, con el detalle de asientos.',
   },
-  { key: 'ventas', label: 'Ventas', detalle: 'Ventas según el libro de ventas de SAP (las mismas de Gestión › Ventas).' },
+  { key: 'ventas', label: 'Ventas', detalle: 'Ventas según el libro de ventas de SAP.' },
   {
     key: 'balance',
     label: 'Balance',
@@ -31,7 +31,7 @@ export const GRUPOS: { grupo: number; nombre: string }[] = [
   { grupo: 8, nombre: 'Otros egresos' },
 ]
 
-/** Orden de las líneas de negocio (como en Gestión › Ventas); la administración al final. */
+/** Orden de las líneas de negocio (como en Ventas); la administración al final. */
 export const LINEAS = [
   'SIP',
   'Madera',
