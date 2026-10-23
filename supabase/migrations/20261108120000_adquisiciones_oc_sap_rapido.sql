@@ -52,8 +52,10 @@ where case when cardinality(o.sucursales) = 0 then (select adq_es_compras())
 revoke all on public.adq_sap_oc_v, public.adq_sap_oc_lineas_v from anon, authenticated;
 grant select on public.adq_sap_oc_v, public.adq_sap_oc_lineas_v to authenticated;
 
--- Solo la usan las vistas (corren como su dueño)
-revoke execute on function public.adq_sucursales_compras() from public, anon, authenticated;
+-- La usan las vistas, pero Postgres revisa el EXECUTE de una funcion contra quien consulta (no contra el
+-- dueño de la vista, como con las tablas): authenticated la necesita. Solo devuelve sus propias sucursales.
+revoke execute on function public.adq_sucursales_compras() from public, anon;
+grant execute on function public.adq_sucursales_compras() to authenticated;
 
 notify pgrst, 'reload schema';
 
