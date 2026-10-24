@@ -78,7 +78,7 @@ export default function CuentasRendiciones() {
   async function cargar() {
     const [c, n, s] = await Promise.all([cargarConfig(), cargarNombresCampos(), cargarCatalogosSap()])
     setConfig(c.config)
-    setTiposTexto(c.config.tipos_excluidos.join(', '))
+    setTiposTexto(c.config.tipos_factura.join(', '))
     setCategorias(c.categorias)
     setOriginales(c.categorias)
     setNombres(n)
@@ -110,7 +110,7 @@ export default function CuentasRendiciones() {
     setGuardando(true)
     try {
       if (que === 'config') {
-        await guardarConfig({ ...config, tipos_excluidos: tiposTexto.split(',').map((t) => t.trim()).filter(Boolean) })
+        await guardarConfig({ ...config, tipos_factura: tiposTexto.split(',').map((t) => t.trim()).filter(Boolean) })
       } else {
         await guardarCategorias(cambiadas.map(({ categoria, cuenta, regla_ceco, ceco_fijo, excluir }) => ({ categoria, cuenta, regla_ceco, ceco_fijo, excluir })))
       }
@@ -138,21 +138,79 @@ export default function CuentasRendiciones() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Contrapartida y campos de Rindegastos</CardTitle>
+          <CardTitle className="text-base">Contrapartida, facturas y campos de Rindegastos</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Contrapartida (haber)</span>
+            <Select
+              value={config.contrapartida_modo}
+              onValueChange={(v) => setConfig({ ...config, contrapartida_modo: v as ConfigRendiciones['contrapartida_modo'] })}
+              disabled={!puedeEditar}
+            >
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="socio">El colaborador como socio de negocio</SelectItem>
+                <SelectItem value="cuenta">Una cuenta fija</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground">
+              {config.contrapartida_modo === 'socio'
+                ? `Como hoy en SAP: el código de socio es el RUT del colaborador + «${config.sufijo_socio}» (11849833-K${config.sufijo_socio}) y se usa su cuenta asociada.`
+                : 'Todas las rendiciones contra la misma cuenta (p. ej. Fondos por rendir).'}
+            </span>
+          </label>
+          {config.contrapartida_modo === 'socio' ? (
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Sufijo del código de socio</span>
+              <Input
+                value={config.sufijo_socio}
+                onChange={(e) => setConfig({ ...config, sufijo_socio: e.target.value.trim() })}
+                disabled={!puedeEditar}
+                className="h-9 w-24"
+              />
+              <span className="text-xs text-muted-foreground">Los proveedores de SAP tienen código RUT + P. Vale también para el proveedor de una factura.</span>
+            </label>
+          ) : (
+            <span />
+          )}
           <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-sm font-medium">Cuenta de contrapartida (haber)</span>
+            <span className="text-sm font-medium">
+              {config.contrapartida_modo === 'socio' ? 'Cuenta asociada si el socio no la trae' : 'Cuenta de contrapartida'}
+            </span>
             <SelectorCodigo
               opciones={opcCuentas}
               valor={config.cuenta_contrapartida}
               onCambio={(v) => setConfig({ ...config, cuenta_contrapartida: v })}
-              placeholder="Escribe el código o el nombre (p. ej. Fondos por rendir)"
+              placeholder="Escribe el código o el nombre (p. ej. 2102101 Proveedores Nacionales)"
               disabled={!puedeEditar}
               className="h-9 text-sm"
               ariaLabel="Cuenta de contrapartida"
             />
-            <span className="text-xs text-muted-foreground">Lo que se le debe al colaborador o el fondo por rendir que se rebaja.</span>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Facturas</span>
+            <Select
+              value={config.facturas_modo}
+              onValueChange={(v) => setConfig({ ...config, facturas_modo: v as ConfigRendiciones['facturas_modo'] })}
+              disabled={!puedeEditar}
+            >
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="proveedor">Al debe del proveedor (socio de negocio)</SelectItem>
+                <SelectItem value="excluir">Fuera del asiento</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground">
+              {config.facturas_modo === 'proveedor'
+                ? 'Como hoy en SAP: la factura ya entró por la recepción del SII; la rendición pasa la deuda del proveedor al colaborador. Necesita el RUT del proveedor.'
+                : 'Las facturas no se contabilizan en la rendición.'}
+            </span>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Tipos de documento que son factura</span>
+            <Input value={tiposTexto} onChange={(e) => setTiposTexto(e.target.value)} disabled={!puedeEditar} className="h-9" placeholder="factura" />
+            <span className="text-xs text-muted-foreground">Separados por coma; basta que el tipo contenga el texto.</span>
           </label>
           <CampoExtra
             label="Campo con el CECO"
@@ -172,7 +230,7 @@ export default function CuentasRendiciones() {
           />
           <CampoExtra
             label="Campo con el tipo de documento"
-            detalle="Boleta, factura, etc. Sirve para dejar fuera las facturas."
+            detalle="Boleta, factura, etc. Sirve para reconocer las facturas."
             valor={config.campo_tipo_documento}
             nombres={nombres}
             onCambio={(v) => setConfig({ ...config, campo_tipo_documento: v })}
@@ -186,13 +244,14 @@ export default function CuentasRendiciones() {
             onCambio={(v) => setConfig({ ...config, campo_numero_documento: v })}
             disabled={!puedeEditar}
           />
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Tipos de documento que no van al asiento</span>
-            <Input value={tiposTexto} onChange={(e) => setTiposTexto(e.target.value)} disabled={!puedeEditar} className="h-9" placeholder="factura" />
-            <span className="text-xs text-muted-foreground">
-              Separados por coma; basta que el tipo contenga el texto. Las facturas suelen entrar a SAP por la recepción de documentos del SII.
-            </span>
-          </label>
+          <CampoExtra
+            label="Campo con el RUT del proveedor"
+            detalle="Para llevar la factura al proveedor: su código de socio es este RUT + el sufijo."
+            valor={config.campo_rut_proveedor}
+            nombres={nombres}
+            onCambio={(v) => setConfig({ ...config, campo_rut_proveedor: v })}
+            disabled={!puedeEditar}
+          />
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">Rendiciones aprobadas desde</span>
             <Input type="date" value={config.desde} onChange={(e) => setConfig({ ...config, desde: e.target.value })} disabled={!puedeEditar} className="h-9 w-44" />
@@ -201,13 +260,25 @@ export default function CuentasRendiciones() {
           <label className="flex items-start gap-2 text-sm sm:col-span-2">
             <Checkbox
               className="mt-0.5"
-              checked={config.excluir_con_iva}
+              checked={config.factura_si_iva}
               disabled={!puedeEditar}
-              onCheckedChange={(v) => setConfig({ ...config, excluir_con_iva: v === true })}
+              onCheckedChange={(v) => setConfig({ ...config, factura_si_iva: v === true })}
             />
             <span>
-              Sin tipo de documento, dejar fuera los gastos que traen IVA
+              Sin tipo de documento, tratar como factura los gastos que traen IVA
               <span className="block text-xs text-muted-foreground">Un gasto con IVA separado normalmente es una factura.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm sm:col-span-2">
+            <Checkbox
+              className="mt-0.5"
+              checked={config.marcar_rindegastos}
+              disabled={!puedeEditar}
+              onCheckedChange={(v) => setConfig({ ...config, marcar_rindegastos: v === true })}
+            />
+            <span>
+              Cuando el asiento aparezca en SAP, marcar la rendición como integrada en Rindegastos
+              <span className="block text-xs text-muted-foreground">Con el número de asiento de SAP; así Rindegastos no la vuelve a entregar.</span>
             </span>
           </label>
           {puedeEditar && (

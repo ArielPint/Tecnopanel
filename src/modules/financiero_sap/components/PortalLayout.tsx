@@ -106,6 +106,7 @@ const TITULOS: Record<string, string> = {
   [RUTA.clasificacion]: 'Clasificación IFRS',
   [RUTA.rendiciones]: 'Rendiciones',
   [RUTA.rendicionesCuentas]: 'Rendiciones · Tabla de cuentas',
+  [RUTA.rendicionesLotes]: 'Rendiciones · Lotes para SAP',
 }
 
 export default function PortalLayout() {

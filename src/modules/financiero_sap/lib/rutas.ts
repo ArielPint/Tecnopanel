@@ -11,5 +11,6 @@ export const RUTA = {
   clasificacion: '/financiero/clasificacion-ifrs',
   rendiciones: '/financiero/rendiciones',
   rendicionesCuentas: '/financiero/rendiciones/cuentas',
+  rendicionesLotes: '/financiero/rendiciones/lotes',
   rendicion: (id: number) => `/financiero/rendiciones/${id}`,
 }

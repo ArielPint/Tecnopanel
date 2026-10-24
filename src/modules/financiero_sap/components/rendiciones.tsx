@@ -83,12 +83,20 @@ export function SelectorCodigo({
   )
 }
 
-const VARIANTE: Record<EstadoRendicion, 'warning' | 'destructive' | 'success'> = {
+const VARIANTE: Record<EstadoRendicion, 'warning' | 'destructive' | 'success' | 'default' | 'secondary'> = {
   pendiente: 'warning',
   observado: 'destructive',
-  aprobado: 'success',
+  aprobado: 'default',
+  exportado: 'secondary',
+  integrado: 'success',
 }
-const TEXTO: Record<EstadoRendicion, string> = { pendiente: 'Pendiente', observado: 'Con observaciones', aprobado: 'Aprobada' }
+const TEXTO: Record<EstadoRendicion, string> = {
+  pendiente: 'Pendiente',
+  observado: 'Con observaciones',
+  aprobado: 'Aprobada',
+  exportado: 'Exportada',
+  integrado: 'En SAP',
+}
 
 export function EstadoBadge({ estado }: { estado: EstadoRendicion }) {
   return <Badge variant={VARIANTE[estado]}>{TEXTO[estado]}</Badge>

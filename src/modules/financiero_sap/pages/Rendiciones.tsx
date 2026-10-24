@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { AlertTriangle, Search, Settings2 } from 'lucide-react'
+import { AlertTriangle, FileOutput, Package, Search, Settings2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Card, CardContent } from '@/modules/financiero/components/ui/card'
+import { Checkbox } from '@/modules/financiero/components/ui/checkbox'
 import { Input } from '@/modules/financiero/components/ui/input'
 import { formatFecha, formatFechaHora } from '@/modules/financiero/utils/formatters'
 import { cn } from '@/lib/utils'
@@ -13,16 +15,21 @@ import { pesos } from '../lib/formato'
 import { RUTA } from '../lib/rutas'
 import {
   cargarAsiento,
+  cargarAsientoFinal,
   cargarConfig,
   cargarInformes,
+  congelada,
+  crearLote,
   ESTADOS,
   type EstadoRendicion,
   type EstadoSyncRg,
   type Informe,
   type LineaAsiento,
+  type LineaFinal,
 } from '../lib/rendiciones'
 
 // Bandeja: rendiciones aprobadas en Rindegastos y aún no integradas, con lo que iría al asiento y lo que le falta.
+// En «Aprobadas» se eligen las que van al archivo de importación de SAP (un lote).
 
 interface Resumen {
   contabilizar: number
@@ -32,23 +39,29 @@ interface Resumen {
   sinCeco: number
 }
 
+const vacio = (): Resumen => ({ contabilizar: 0, excluido: 0, gastos: 0, sinCuenta: 0, sinCeco: 0 })
+
 export default function Rendiciones() {
   const navigate = useNavigate()
   const { rendiciones_aprobar } = usePermisosFin()
   const [informes, setInformes] = useState<Informe[] | null>(null)
   const [lineas, setLineas] = useState<LineaAsiento[]>([])
+  const [finales, setFinales] = useState<LineaFinal[]>([])
   const [estadoSync, setEstadoSync] = useState<EstadoSyncRg | null>(null)
   const [error, setError] = useState<Error | null>(null)
   const [estado, setEstado] = useState<EstadoRendicion>('pendiente')
   const [buscar, setBuscar] = useState('')
+  const [elegidas, setElegidas] = useState<Set<number>>(new Set())
+  const [generando, setGenerando] = useState(false)
 
   useEffect(() => {
     let cancelado = false
-    Promise.all([cargarInformes(), cargarAsiento(), cargarConfig()])
-      .then(([i, l, c]) => {
+    Promise.all([cargarInformes(), cargarAsiento(), cargarAsientoFinal(), cargarConfig()])
+      .then(([i, l, f, c]) => {
         if (cancelado) return
         setInformes(i)
         setLineas(l)
+        setFinales(f)
         setEstadoSync(c.estado)
       })
       .catch((e) => !cancelado && setError(e))
@@ -57,24 +70,33 @@ export default function Rendiciones() {
     }
   }, [])
 
+  // propuesta en vivo para las que se revisan; asiento congelado desde aprobada
   const resumen = useMemo(() => {
+    const congeladas = new Set((informes ?? []).filter((i) => congelada(i.estado)).map((i) => i.id))
     const m = new Map<number, Resumen>()
     for (const l of lineas) {
-      const r = m.get(l.informe_id) ?? { contabilizar: 0, excluido: 0, gastos: 0, sinCuenta: 0, sinCeco: 0 }
+      const r = m.get(l.informe_id) ?? vacio()
       if (l.lado === 'haber') r.contabilizar = l.haber
       else if (l.motivo_exclusion) r.excluido += l.debe
       else {
         r.gastos++
-        if (!l.cuenta) r.sinCuenta++
-        if (!l.ceco) r.sinCeco++
+        if (l.tipo === 'gasto' && !l.cuenta) r.sinCuenta++
+        if (l.tipo === 'gasto' && !l.ceco) r.sinCeco++
       }
       m.set(l.informe_id, r)
     }
+    for (const id of congeladas) m.set(id, { ...(m.get(id) ?? vacio()), contabilizar: 0, gastos: 0, sinCuenta: 0, sinCeco: 0 })
+    for (const f of finales) {
+      const r = m.get(f.informe_id) ?? vacio()
+      if (f.tipo === 'contrapartida') r.contabilizar += f.haber
+      else r.gastos++
+      m.set(f.informe_id, r)
+    }
     return m
-  }, [lineas])
+  }, [lineas, finales, informes])
 
   const conteo = useMemo(() => {
-    const c: Record<EstadoRendicion, number> = { pendiente: 0, observado: 0, aprobado: 0 }
+    const c: Record<EstadoRendicion, number> = { pendiente: 0, observado: 0, aprobado: 0, exportado: 0, integrado: 0 }
     for (const i of informes ?? []) c[i.estado]++
     return c
   }, [informes])
@@ -92,12 +114,36 @@ export default function Rendiciones() {
   if (!informes) return <Cargando />
 
   const totalVisible = visibles.reduce((s, i) => s + (resumen.get(i.id)?.contabilizar ?? 0), 0)
+  const seleccionables = estado === 'aprobado' && rendiciones_aprobar ? visibles.filter((i) => !i.cambio_rg) : []
+  const elegidasVisibles = seleccionables.filter((i) => elegidas.has(i.id))
+  const columnas = seleccionables.length ? 9 : 8
+
+  function alternar(id: number, si: boolean) {
+    setElegidas((s) => {
+      const n = new Set(s)
+      if (si) n.add(id)
+      else n.delete(id)
+      return n
+    })
+  }
+
+  async function generar() {
+    setGenerando(true)
+    try {
+      const lote = await crearLote(elegidasVisibles.map((i) => i.id))
+      toast.success(`Lote ${lote} generado: descarga sus archivos para importarlos en SAP.`)
+      navigate(`${RUTA.rendicionesLotes}?nuevo=${lote}`)
+    } catch (e) {
+      toast.error((e as Error).message)
+      setGenerando(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
       <p className="max-w-3xl text-sm text-muted-foreground">
-        Rendiciones aprobadas en Rindegastos que aún no están en SAP. Revisa el asiento propuesto de cada una, corrige cuenta o centro de
-        costo si hace falta y apruébala. Por ahora nada se carga en SAP: la carga llega en la fase 2.
+        Rendiciones aprobadas en Rindegastos que aún no están en SAP. Revisa el asiento propuesto de cada una, corrige lo que haga falta y
+        apruébala. Las aprobadas se juntan en un lote: un archivo que contabilidad importa en SAP.
       </p>
 
       {estadoSync?.mensaje && (
@@ -126,22 +172,51 @@ export default function Rendiciones() {
           <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Colaborador, folio o título" className="h-9 pl-8" />
         </div>
-        <Button variant="outline" size="sm" className="ml-auto" asChild>
-          <Link to={RUTA.rendicionesCuentas}>
-            <Settings2 className="mr-1 h-4 w-4" /> Tabla de cuentas{!rendiciones_aprobar && ' (solo lectura)'}
-          </Link>
-        </Button>
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link to={RUTA.rendicionesLotes}>
+              <Package className="mr-1 h-4 w-4" /> Lotes para SAP
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to={RUTA.rendicionesCuentas}>
+              <Settings2 className="mr-1 h-4 w-4" /> Tabla de cuentas{!rendiciones_aprobar && ' (solo lectura)'}
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      {seleccionables.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border bg-card p-3 text-sm">
+          <span>
+            {elegidasVisibles.length
+              ? `${elegidasVisibles.length} ${elegidasVisibles.length === 1 ? 'rendición elegida' : 'rendiciones elegidas'} por ${pesos(elegidasVisibles.reduce((s, i) => s + (resumen.get(i.id)?.contabilizar ?? 0), 0))}`
+              : 'Elige las rendiciones aprobadas que van al archivo para SAP.'}
+          </span>
+          <Button size="sm" disabled={generando || elegidasVisibles.length === 0} onClick={generar} className="ml-auto">
+            <FileOutput className="mr-1 h-4 w-4" /> {generando ? 'Generando…' : 'Generar archivo para SAP'}
+          </Button>
+        </div>
+      )}
 
       <Card>
         <CardContent className="overflow-x-auto p-0">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
+                {seleccionables.length > 0 && (
+                  <th className="w-8 px-3 py-2">
+                    <Checkbox
+                      aria-label="Elegir todas"
+                      checked={elegidasVisibles.length === seleccionables.length}
+                      onCheckedChange={(v) => setElegidas(new Set(v === true ? seleccionables.map((i) => i.id) : []))}
+                    />
+                  </th>
+                )}
                 <th className="px-3 py-2 text-left font-semibold">Folio</th>
                 <th className="px-3 py-2 text-left font-semibold">Colaborador</th>
                 <th className="px-3 py-2 text-left font-semibold">Título</th>
-                <th className="px-3 py-2 text-left font-semibold">Aprobada en Rindegastos</th>
+                <th className="px-3 py-2 text-left font-semibold">{congelada(estado) ? 'Fecha contable' : 'Aprobada en Rindegastos'}</th>
                 <th className="px-3 py-2 text-right font-semibold">Gastos</th>
                 <th className="px-3 py-2 text-right font-semibold">A contabilizar</th>
                 <th className="px-3 py-2 text-right font-semibold">Fuera del asiento</th>
@@ -152,12 +227,20 @@ export default function Rendiciones() {
               {visibles.map((i) => {
                 const r = resumen.get(i.id)
                 const falta = [r?.sinCuenta ? `${r.sinCuenta} sin cuenta` : null, r?.sinCeco ? `${r.sinCeco} sin CECO` : null].filter(Boolean)
+                const elegible = seleccionables.includes(i)
                 return (
                   <tr
                     key={i.id}
                     onClick={() => navigate(RUTA.rendicion(i.id))}
                     className="cursor-pointer border-b last:border-0 hover:bg-accent/50"
                   >
+                    {seleccionables.length > 0 && (
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                        {elegible && (
+                          <Checkbox aria-label={`Elegir ${i.folio ?? i.id}`} checked={elegidas.has(i.id)} onCheckedChange={(v) => alternar(i.id, v === true)} />
+                        )}
+                      </td>
+                    )}
                     <td className="px-3 py-2 font-medium tabular-nums">
                       <Link to={RUTA.rendicion(i.id)} onClick={(e) => e.stopPropagation()} className="hover:underline">
                         {i.folio ?? i.id}
@@ -165,7 +248,7 @@ export default function Rendiciones() {
                     </td>
                     <td className="px-3 py-2">{i.empleado_nombre}</td>
                     <td className="max-w-[260px] truncate px-3 py-2 text-muted-foreground" title={i.titulo ?? ''}>{i.titulo}</td>
-                    <td className="px-3 py-2 tabular-nums">{formatFecha(i.fecha_cierre)}</td>
+                    <td className="px-3 py-2 tabular-nums">{formatFecha(congelada(i.estado) ? i.fecha_asiento : i.fecha_cierre)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{r?.gastos ?? 0}</td>
                     <td className="px-3 py-2 text-right font-semibold tabular-nums">{pesos(r?.contabilizar ?? 0)}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r?.excluido ? pesos(r.excluido) : '—'}</td>
@@ -173,9 +256,9 @@ export default function Rendiciones() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <EstadoBadge estado={i.estado} />
                         {i.cambio_rg && <span className="text-xs font-medium text-destructive">Cambió en Rindegastos</span>}
-                        {i.estado !== 'aprobado' && falta.length > 0 && (
-                          <span className="text-xs text-muted-foreground">{falta.join(' · ')}</span>
-                        )}
+                        {!congelada(i.estado) && falta.length > 0 && <span className="text-xs text-muted-foreground">{falta.join(' · ')}</span>}
+                        {i.estado === 'exportado' && i.lote_id && <span className="text-xs text-muted-foreground">Lote {i.lote_id}</span>}
+                        {i.estado === 'integrado' && i.sap_numero && <span className="text-xs text-muted-foreground">Asiento N° {i.sap_numero}</span>}
                       </div>
                     </td>
                   </tr>
@@ -183,7 +266,7 @@ export default function Rendiciones() {
               })}
               {visibles.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={columnas} className="px-3 py-10 text-center text-sm text-muted-foreground">
                     {informes.length === 0
                       ? 'Aún no hay rendiciones de Rindegastos. Aparecen aquí cuando la sincronización tenga el token de la API.'
                       : 'No hay rendiciones en este estado.'}
@@ -194,7 +277,7 @@ export default function Rendiciones() {
             {visibles.length > 1 && (
               <tfoot>
                 <tr className="border-t bg-accent font-semibold">
-                  <td colSpan={5} className="px-3 py-2">{visibles.length} rendiciones</td>
+                  <td colSpan={columnas - 3} className="px-3 py-2">{visibles.length} rendiciones</td>
                   <td className="px-3 py-2 text-right tabular-nums">{pesos(totalVisible)}</td>
                   <td colSpan={2} />
                 </tr>
@@ -206,7 +289,7 @@ export default function Rendiciones() {
 
       {estadoSync && (
         <p className="text-xs text-muted-foreground">
-          Fuente: API de Rindegastos (informes cerrados y no integrados). Actualizado el {formatFechaHora(estadoSync.sincronizado_en)}.
+          Fuente: API de Rindegastos (informes cerrados y no integrados) y SAP. Actualizado el {formatFechaHora(estadoSync.sincronizado_en)}.
         </p>
       )}
     </div>

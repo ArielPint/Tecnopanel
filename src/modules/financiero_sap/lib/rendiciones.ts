@@ -1,18 +1,23 @@
 import { supabase } from '@/lib/supabaseClient'
 import { lanzar, paginado } from './api'
 
-// Rendiciones de Rindegastos (fase 1: leer, proponer el asiento y aprobar; nada se escribe en SAP ni en
-// Rindegastos). Las tablas rg_* existen solo en el servidor: las llena stack\tareas\sincronizar-rindegastos.ps1
-// (migración 20261112120000_financiero_rindegastos.sql). Las correcciones y aprobaciones pasan por RPC que
-// validan el permiso fin:rendiciones_aprobar.
+// Rendiciones de Rindegastos: leer, proponer el asiento, aprobar, generar el archivo de importación de SAP (lotes)
+// y seguir hasta que el asiento aparece en SAP. Las tablas rg_* existen solo en el servidor: las llena
+// stack\tareas\sincronizar-rindegastos.ps1 (migración 20261112120000_financiero_rindegastos.sql). Las acciones
+// pasan por RPC que validan el permiso fin:rendiciones_aprobar.
 
-export type EstadoRendicion = 'pendiente' | 'observado' | 'aprobado'
+export type EstadoRendicion = 'pendiente' | 'observado' | 'aprobado' | 'exportado' | 'integrado'
 
 export const ESTADOS: { key: EstadoRendicion; label: string }[] = [
   { key: 'pendiente', label: 'Pendientes' },
   { key: 'observado', label: 'Con observaciones' },
   { key: 'aprobado', label: 'Aprobadas' },
+  { key: 'exportado', label: 'Exportadas' },
+  { key: 'integrado', label: 'En SAP' },
 ]
+
+/** Desde aprobada el asiento queda congelado (rg_asiento_final). */
+export const congelada = (e: EstadoRendicion) => e === 'aprobado' || e === 'exportado' || e === 'integrado'
 
 export interface Archivo {
   nombre: string | null
@@ -43,6 +48,11 @@ export interface Informe {
   observacion: string | null
   fecha_asiento: string | null
   aprobado_en: string | null
+  lote_id: number | null
+  sap_numero: number | null
+  integrado_en: string | null
+  rg_marcado_en: string | null
+  rg_marca_error: string | null
   cambio_rg: boolean
   sincronizado_en: string
 }
@@ -56,6 +66,7 @@ export interface Gasto {
   categoria: string
   tipo_documento: string | null
   numero_documento: string | null
+  rut_proveedor: string | null
   neto: number
   iva: number
   total: number
@@ -67,14 +78,19 @@ export interface Gasto {
   cuenta: string | null
   ceco: string | null
   proyecto: string | null
+  socio: string | null
   glosa: string | null
 }
+
+export type TipoLinea = 'gasto' | 'proveedor' | 'contrapartida'
 
 export interface LineaAsiento {
   informe_id: number
   gasto_id: number | null
   lado: 'debe' | 'haber'
+  tipo: TipoLinea
   cuenta: string | null
+  socio: string | null
   ceco: string | null
   proyecto: string | null
   glosa: string | null
@@ -92,15 +108,54 @@ export interface Categoria {
   excluir: boolean
 }
 
+/** Línea del asiento aprobado (congelado): lo que va al archivo de SAP. */
+export interface LineaFinal {
+  informe_id: number
+  linea: number
+  gasto_id: number | null
+  tipo: TipoLinea
+  cuenta: string | null
+  socio: string | null
+  ceco: string | null
+  proyecto: string | null
+  glosa: string | null
+  debe: number
+  haber: number
+}
+
 export interface ConfigRendiciones {
+  contrapartida_modo: 'socio' | 'cuenta'
   cuenta_contrapartida: string | null
+  sufijo_socio: string
+  facturas_modo: 'proveedor' | 'excluir'
+  tipos_factura: string[]
+  factura_si_iva: boolean
   campo_ceco: string | null
   campo_proyecto: string | null
   campo_tipo_documento: string | null
   campo_numero_documento: string | null
-  tipos_excluidos: string[]
-  excluir_con_iva: boolean
+  campo_rut_proveedor: string | null
+  marcar_rindegastos: boolean
   desde: string
+}
+
+export interface SocioSap {
+  codigo: string
+  nombre: string
+  rut: string | null
+  cuenta_asociada: string | null
+  activo: boolean
+}
+
+export interface Lote {
+  id: number
+  creado_por_nombre: string | null
+  creado_en: string
+  informes: number
+  total: number
+  anulado_en: string | null
+  anulado_por_nombre: string | null
+  motivo_anulacion: string | null
 }
 
 export interface CuentaSap {
@@ -150,7 +205,7 @@ export async function cargarInformes(): Promise<Informe[]> {
   const filas = await paginado<Informe>((d, h) =>
     supabase
       .from('rg_informes')
-      .select('id, folio, titulo, empleado_nombre, empleado_email, empleado_rut, empleado_ceco, politica, fondo, aprobador, fecha_envio, fecha_cierre, total, total_aprobado, moneda, nota, campos, archivos, estado, observacion, fecha_asiento, aprobado_en, cambio_rg, sincronizado_en')
+      .select('id, folio, titulo, empleado_nombre, empleado_email, empleado_rut, empleado_ceco, politica, fondo, aprobador, fecha_envio, fecha_cierre, total, total_aprobado, moneda, nota, campos, archivos, estado, observacion, fecha_asiento, aprobado_en, lote_id, sap_numero, integrado_en, rg_marcado_en, rg_marca_error, cambio_rg, sincronizado_en')
       .order('fecha_cierre', { ascending: false })
       .order('id', { ascending: false })
       .range(d, h),
@@ -166,6 +221,34 @@ export async function cargarAsiento(informe?: number): Promise<LineaAsiento[]> {
     return q.order('informe_id').order('lado').order('gasto_id').range(d, h)
   })
   return filas.map((f) => num(f, ['debe', 'haber']))
+}
+
+/** Asiento aprobado (congelado) de esos informes, o de todos. */
+export async function cargarAsientoFinal(informes?: number[]): Promise<LineaFinal[]> {
+  const filas = await paginado<LineaFinal>((d, h) => {
+    let q = supabase.from('rg_asiento_final').select('*')
+    if (informes) q = q.in('informe_id', informes)
+    return q.order('informe_id').order('linea').range(d, h)
+  })
+  return filas.map((f) => num(f, ['debe', 'haber']))
+}
+
+export async function cargarLotes(): Promise<Lote[]> {
+  const { data, error } = await supabase.from('rg_lotes').select('*').order('id', { ascending: false })
+  if (error) lanzar(error)
+  return ((data ?? []) as Lote[]).map((l) => num(l, ['total']))
+}
+
+/** Pasa esas rendiciones aprobadas a un lote nuevo (exportadas) y devuelve su número. */
+export async function crearLote(informes: number[]): Promise<number> {
+  const { data, error } = await supabase.rpc('rg_crear_lote', { p_informes: informes })
+  if (error) lanzar(error)
+  return data as number
+}
+
+export async function anularLote(lote: number, motivo: string) {
+  const { error } = await supabase.rpc('rg_anular_lote', { p_lote: lote, p_motivo: motivo })
+  if (error) lanzar(error)
 }
 
 export async function cargarInforme(id: number) {
@@ -184,17 +267,24 @@ export async function cargarInforme(id: number) {
   }
 }
 
-let catalogos: Promise<{ cuentas: CuentaSap[]; proyectos: ProyectoSap[] }> | null = null
+export interface CatalogosSap {
+  cuentas: CuentaSap[]
+  proyectos: ProyectoSap[]
+  socios: SocioSap[]
+}
 
-/** Plan de cuentas imputable y proyectos de SAP: cambian poco, se piden una vez por sesión. */
+let catalogos: Promise<CatalogosSap> | null = null
+
+/** Plan de cuentas imputable, proyectos y proveedores de SAP: cambian poco, se piden una vez por sesión. */
 export function cargarCatalogosSap() {
   if (!catalogos) {
     catalogos = (async () => {
-      const [cuentas, proyectos] = await Promise.all([
+      const [cuentas, proyectos, socios] = await Promise.all([
         paginado<CuentaSap>((d, h) => supabase.from('rg_cuentas_sap').select('*').order('codigo_formato').range(d, h)),
         paginado<ProyectoSap>((d, h) => supabase.from('rg_proyectos_sap').select('*').order('codigo').range(d, h)),
+        paginado<SocioSap>((d, h) => supabase.from('rg_socios_sap').select('*').order('codigo').range(d, h)),
       ])
-      return { cuentas, proyectos }
+      return { cuentas, proyectos, socios }
     })()
     catalogos.catch(() => (catalogos = null))
   }
@@ -228,7 +318,7 @@ export async function cargarNombresCampos(): Promise<string[]> {
   return [...nombres].sort((a, b) => a.localeCompare(b, 'es'))
 }
 
-export type CambioGasto = Partial<Pick<Gasto, 'incluir' | 'cuenta' | 'ceco' | 'proyecto' | 'glosa'>>
+export type CambioGasto = Partial<Pick<Gasto, 'incluir' | 'cuenta' | 'ceco' | 'proyecto' | 'socio' | 'glosa'>>
 
 export async function guardarGasto(id: number, cambio: CambioGasto) {
   const { error } = await supabase.rpc('rg_guardar_gasto', { p_gasto: id, p: cambio })
@@ -253,6 +343,13 @@ export async function guardarCategorias(filas: Pick<Categoria, 'categoria' | 'cu
 export async function guardarConfig(config: ConfigRendiciones) {
   const { error } = await supabase.rpc('rg_guardar_config', { p: config })
   if (error) lanzar(error)
+}
+
+/** "11849833-KP · ROSA VILCHES" a partir del código de socio. */
+export function nombreSocio(socios: Map<string, SocioSap>, codigo: string | null) {
+  if (!codigo) return null
+  const s = socios.get(codigo)
+  return s ? `${s.codigo} · ${s.nombre}` : codigo
 }
 
 /** "6101117 · Viático" a partir del AcctCode. */

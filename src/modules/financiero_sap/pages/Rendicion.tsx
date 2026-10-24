@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, Check, Eye, MessageSquareWarning, Paperclip, RotateCcw } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Eye, MessageSquareWarning, Package, Paperclip, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/modules/financiero/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/financiero/components/ui/card'
@@ -18,33 +18,53 @@ import { RUTA } from '../lib/rutas'
 import {
   cambiarEstado,
   cargarAsiento,
+  cargarAsientoFinal,
   cargarCatalogosSap,
   cargarInforme,
   cargarPeriodos,
+  congelada,
   guardarGasto,
   nombreCuenta,
+  nombreSocio,
   type Archivo,
   type CambioGasto,
-  type CuentaSap,
+  type CatalogosSap,
   type Gasto,
   type Historial,
   type Informe,
   type LineaAsiento,
-  type ProyectoSap,
+  type LineaFinal,
+  type TipoLinea,
 } from '../lib/rendiciones'
 
-// Detalle de una rendición: sus gastos (con las correcciones de contabilidad), el asiento propuesto y las
-// acciones aprobar / observar / reabrir. La base valida todo de nuevo (rg_guardar_gasto, rg_cambiar_estado).
+// Detalle de una rendición: sus gastos (con las correcciones de contabilidad), el asiento (propuesto mientras se
+// revisa; congelado desde que se aprueba) y las acciones aprobar / observar / reabrir. Después muestra su lote y
+// el asiento de SAP. La base valida todo de nuevo (rg_guardar_gasto, rg_cambiar_estado).
 
 const ACCIONES: Record<string, string> = {
   aprobado: 'Aprobada',
   observado: 'Observada',
   reabierto: 'Reabierta',
   gasto: 'Corrección',
+  exportado: 'En lote para SAP',
+  lote_anulado: 'Lote anulado',
+  integrado: 'Encontrada en SAP',
+  marcado_rg: 'Marcada en Rindegastos',
   cambio_rg: 'Cambio en Rindegastos',
 }
 
 const hoy = () => new Date().toLocaleDateString('sv-SE')
+
+interface FilaAsiento {
+  tipo: TipoLinea
+  cuenta: string | null
+  socio: string | null
+  ceco: string | null
+  proyecto: string | null
+  glosa: string | null
+  debe: number
+  haber: number
+}
 
 function Respaldos({ archivos }: { archivos: Archivo[] }) {
   if (!archivos?.length) return <span className="text-muted-foreground">—</span>
@@ -76,7 +96,8 @@ export default function Rendicion() {
   const [historial, setHistorial] = useState<Historial[]>([])
   const [problemas, setProblemas] = useState<string[]>([])
   const [lineas, setLineas] = useState<LineaAsiento[]>([])
-  const [sap, setSap] = useState<{ cuentas: CuentaSap[]; proyectos: ProyectoSap[] } | null>(null)
+  const [finales, setFinales] = useState<LineaFinal[]>([])
+  const [sap, setSap] = useState<CatalogosSap | null>(null)
   const [periodos, setPeriodos] = useState<Record<string, string>>({})
   const [error, setError] = useState<Error | null>(null)
   const [cargado, setCargado] = useState(false)
@@ -86,12 +107,13 @@ export default function Rendicion() {
   const [ocupado, setOcupado] = useState(false)
 
   const recargar = useCallback(async () => {
-    const [d, l] = await Promise.all([cargarInforme(id), cargarAsiento(id)])
+    const [d, l, f] = await Promise.all([cargarInforme(id), cargarAsiento(id), cargarAsientoFinal([id])])
     setInforme(d.informe)
     setGastos(d.gastos)
     setHistorial(d.historial)
     setProblemas(d.problemas)
     setLineas(l)
+    setFinales(f)
   }, [id])
 
   useEffect(() => {
@@ -117,12 +139,17 @@ export default function Rendicion() {
   }, [cargado, informe, periodos, fecha])
 
   const cuentas = useMemo(() => new Map((sap?.cuentas ?? []).map((c) => [c.codigo, c])), [sap])
+  const socios = useMemo(() => new Map((sap?.socios ?? []).map((s) => [s.codigo, s])), [sap])
   const opcCuentas = useMemo<Opcion[]>(
     () => (sap?.cuentas ?? []).filter((c) => c.activa).map((c) => ({ valor: c.codigo, etiqueta: `${c.codigo_formato ?? c.codigo} · ${c.nombre}` })),
     [sap],
   )
   const opcProyectos = useMemo<Opcion[]>(
     () => (sap?.proyectos ?? []).filter((p) => p.activo).map((p) => ({ valor: p.codigo, etiqueta: `${p.codigo} · ${p.nombre}` })),
+    [sap],
+  )
+  const opcSocios = useMemo<Opcion[]>(
+    () => (sap?.socios ?? []).filter((s) => s.activo).map((s) => ({ valor: s.codigo, etiqueta: `${s.codigo} · ${s.nombre}` })),
     [sap],
   )
   const opcCecos = useMemo<Opcion[]>(
@@ -141,11 +168,13 @@ export default function Rendicion() {
     )
   }
 
-  const editable = rendiciones_aprobar && informe.estado !== 'aprobado'
-  const incluidas = lineas.filter((l) => !l.motivo_exclusion)
+  const fija = congelada(informe.estado)
+  const editable = rendiciones_aprobar && !fija
   const excluidas = lineas.filter((l) => l.motivo_exclusion)
-  const debe = incluidas.reduce((s, l) => s + l.debe, 0)
-  const haber = incluidas.reduce((s, l) => s + l.haber, 0)
+  // desde aprobada se muestra el asiento congelado (lo que va al archivo), no la propuesta en vivo
+  const asiento: FilaAsiento[] = fija ? finales : lineas.filter((l) => !l.motivo_exclusion)
+  const debe = asiento.reduce((s, l) => s + l.debe, 0)
+  const haber = asiento.reduce((s, l) => s + l.haber, 0)
   const avisoPeriodo = fecha ? textoPeriodo(periodos[fecha.slice(0, 7)]) : null
 
   async function corregir(gasto: number, cambio: CambioGasto) {
@@ -171,6 +200,8 @@ export default function Rendicion() {
       setOcupado(false)
     }
   }
+
+  const textoCuenta = (l: FilaAsiento) => (l.socio ? nombreSocio(socios, l.socio) : nombreCuenta(cuentas, l.cuenta))
 
   return (
     <div className="space-y-4">
@@ -220,8 +251,8 @@ export default function Rendicion() {
         <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
           <span>
-            Rindegastos cambió esta rendición después de aprobada (ver historial). El asiento sigue con los datos de la aprobación: reábrela para
-            tomar los nuevos.
+            Rindegastos cambió esta rendición después de aprobada (ver historial). El asiento sigue con los datos de la aprobación
+            {informe.estado === 'aprobado' ? ': reábrela para tomar los nuevos.' : '.'}
           </span>
         </div>
       )}
@@ -231,6 +262,29 @@ export default function Rendicion() {
           <span><span className="font-semibold">Observación:</span> {informe.observacion}</span>
         </div>
       )}
+      {informe.estado === 'exportado' && (
+        <div className="flex items-start gap-2 rounded-md border bg-card p-3 text-sm">
+          <Package className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+          <span>
+            En el <Link to={RUTA.rendicionesLotes} className="font-semibold text-primary hover:underline">lote {informe.lote_id}</Link>, esperando
+            que contabilidad lo importe en SAP. Cuando su asiento aparezca en SAP pasa a «En SAP».
+          </span>
+        </div>
+      )}
+      {informe.estado === 'integrado' && (
+        <div className="flex items-start gap-2 rounded-md border border-success/40 bg-success/10 p-3 text-sm">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+          <span>
+            En SAP: asiento <span className="font-semibold">N° {informe.sap_numero}</span>
+            {informe.integrado_en && <span className="text-muted-foreground"> (encontrado el {formatFechaHora(informe.integrado_en)})</span>}.{' '}
+            {informe.rg_marcado_en
+              ? 'Marcada como integrada en Rindegastos.'
+              : informe.rg_marca_error
+                ? `No se pudo marcar en Rindegastos (se reintenta cada hora): ${informe.rg_marca_error}`
+                : 'Se marcará como integrada en Rindegastos en la próxima sincronización.'}
+          </span>
+        </div>
+      )}
 
       {/* gastos */}
       <Card>
@@ -238,8 +292,8 @@ export default function Rendicion() {
           <CardTitle className="text-base">Gastos</CardTitle>
           <p className="text-xs text-muted-foreground">
             {editable
-              ? 'Cuenta, CECO y proyecto vienen de la tabla de cuentas y los campos de Rindegastos. Si cambias uno, queda fijo para ese gasto; déjalo vacío para volver a la regla.'
-              : 'Cuenta, CECO y proyecto según la tabla de cuentas, los campos de Rindegastos y las correcciones de contabilidad.'}
+              ? 'Cuenta, CECO y proyecto vienen de la tabla de cuentas y los campos de Rindegastos; una factura va al proveedor. Si cambias uno, queda fijo para ese gasto; déjalo vacío para volver a la regla.'
+              : 'Cuenta, CECO, proyecto o proveedor según la tabla de cuentas, los campos de Rindegastos y las correcciones de contabilidad.'}
           </p>
         </CardHeader>
         <CardContent className="overflow-x-auto p-0">
@@ -262,6 +316,8 @@ export default function Rendicion() {
                 const l = porGasto.get(g.id)
                 const fuera = !!l?.motivo_exclusion
                 const rechazado = g.estado_rg !== 1
+                const factura = l?.tipo === 'proveedor'
+                const campos = editable && !rechazado
                 return (
                   <tr key={g.id} className={cn('border-b align-top last:border-0', fuera && 'text-muted-foreground')}>
                     <td className="px-3 py-2">
@@ -286,55 +342,78 @@ export default function Rendicion() {
                     </td>
                     <td className="px-3 py-2 text-xs">
                       {g.tipo_documento ?? '—'}
-                      {g.numero_documento && <span className="block">N.º {g.numero_documento}</span>}
+                      {g.numero_documento && <span className="block">N° {g.numero_documento}</span>}
+                      {g.rut_proveedor && <span className="block text-muted-foreground">RUT {g.rut_proveedor}</span>}
                       {g.iva > 0 && <span className="block text-muted-foreground">IVA {pesos(g.iva)}</span>}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums">
                       {pesos(g.total)}
                       {g.moneda !== 'CLP' && <span className="block text-xs text-destructive">{g.moneda}</span>}
                     </td>
-                    <td className="px-3 py-2">
-                      {editable && !rechazado ? (
-                        <SelectorCodigo
-                          opciones={opcCuentas}
-                          valor={g.cuenta ?? l?.cuenta ?? null}
-                          onCambio={(v) => corregir(g.id, { cuenta: v })}
-                          placeholder="Sin cuenta"
-                          ariaLabel="Cuenta"
-                          className={cn(!g.cuenta && 'border-dashed')}
-                        />
-                      ) : (
-                        <span className="text-xs">{nombreCuenta(cuentas, l?.cuenta ?? null) ?? '—'}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      {editable && !rechazado ? (
-                        <SelectorCodigo
-                          opciones={opcCecos}
-                          valor={g.ceco ?? l?.ceco ?? null}
-                          onCambio={(v) => corregir(g.id, { ceco: v })}
-                          placeholder="Sin CECO"
-                          ariaLabel="CECO"
-                          className={cn(!g.ceco && 'border-dashed')}
-                        />
-                      ) : (
-                        <span className="text-xs">{l?.ceco ?? '—'}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      {editable && !rechazado ? (
-                        <SelectorCodigo
-                          opciones={opcProyectos}
-                          valor={g.proyecto ?? l?.proyecto ?? null}
-                          onCambio={(v) => corregir(g.id, { proyecto: v })}
-                          placeholder="Sin proyecto"
-                          ariaLabel="Proyecto"
-                          className={cn(!g.proyecto && 'border-dashed')}
-                        />
-                      ) : (
-                        <span className="text-xs">{l?.proyecto ?? '—'}</span>
-                      )}
-                    </td>
+                    {factura && !fuera ? (
+                      <td colSpan={3} className="px-3 py-2">
+                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Factura: al debe del proveedor (socio de negocio)
+                        </span>
+                        {campos ? (
+                          <SelectorCodigo
+                            opciones={opcSocios}
+                            valor={g.socio ?? l?.socio ?? null}
+                            onCambio={(v) => corregir(g.id, { socio: v })}
+                            placeholder="Proveedor (RUT o nombre)"
+                            ariaLabel="Proveedor"
+                            className={cn('max-w-md', !g.socio && 'border-dashed')}
+                          />
+                        ) : (
+                          <span className="text-xs">{nombreSocio(socios, l?.socio ?? null) ?? 'Sin proveedor'}</span>
+                        )}
+                      </td>
+                    ) : (
+                      <>
+                        <td className="px-3 py-2">
+                          {campos ? (
+                            <SelectorCodigo
+                              opciones={opcCuentas}
+                              valor={g.cuenta ?? l?.cuenta ?? null}
+                              onCambio={(v) => corregir(g.id, { cuenta: v })}
+                              placeholder="Sin cuenta"
+                              ariaLabel="Cuenta"
+                              className={cn(!g.cuenta && 'border-dashed')}
+                            />
+                          ) : (
+                            <span className="text-xs">{nombreCuenta(cuentas, l?.cuenta ?? null) ?? '—'}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {campos ? (
+                            <SelectorCodigo
+                              opciones={opcCecos}
+                              valor={g.ceco ?? l?.ceco ?? null}
+                              onCambio={(v) => corregir(g.id, { ceco: v })}
+                              placeholder="Sin CECO"
+                              ariaLabel="CECO"
+                              className={cn(!g.ceco && 'border-dashed')}
+                            />
+                          ) : (
+                            <span className="text-xs">{l?.ceco ?? '—'}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {campos ? (
+                            <SelectorCodigo
+                              opciones={opcProyectos}
+                              valor={g.proyecto ?? l?.proyecto ?? null}
+                              onCambio={(v) => corregir(g.id, { proyecto: v })}
+                              placeholder="Sin proyecto"
+                              ariaLabel="Proyecto"
+                              className={cn(!g.proyecto && 'border-dashed')}
+                            />
+                          ) : (
+                            <span className="text-xs">{l?.proyecto ?? '—'}</span>
+                          )}
+                        </td>
+                      </>
+                    )}
                     <td className="px-3 py-2"><Respaldos archivos={g.archivos} /></td>
                   </tr>
                 )
@@ -349,17 +428,21 @@ export default function Rendicion() {
         </CardContent>
       </Card>
 
-      {/* asiento propuesto */}
+      {/* asiento */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Asiento propuesto</CardTitle>
-          <p className="text-xs text-muted-foreground">Un asiento por rendición: una línea al debe por gasto y la contrapartida al haber.</p>
+          <CardTitle className="text-base">{fija ? 'Asiento aprobado' : 'Asiento propuesto'}</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            {fija
+              ? 'Congelado al aprobar: es lo que va al archivo de SAP, aunque después cambie la tabla de cuentas.'
+              : 'Un asiento por rendición: una línea al debe por gasto y la contrapartida al haber.'}
+          </p>
         </CardHeader>
         <CardContent className="overflow-x-auto p-0">
           <table className="w-full min-w-[760px] border-collapse text-sm">
             <thead>
               <tr className="border-y bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2 text-left font-semibold">Cuenta</th>
+                <th className="px-3 py-2 text-left font-semibold">Cuenta / socio de negocio</th>
                 <th className="px-3 py-2 text-left font-semibold">CECO</th>
                 <th className="px-3 py-2 text-left font-semibold">Proyecto</th>
                 <th className="px-3 py-2 text-left font-semibold">Glosa</th>
@@ -368,18 +451,24 @@ export default function Rendicion() {
               </tr>
             </thead>
             <tbody>
-              {incluidas.map((l, i) => (
-                <tr key={i} className="border-b last:border-0">
-                  <td className={cn('px-3 py-2', !l.cuenta && 'font-medium text-destructive')}>{nombreCuenta(cuentas, l.cuenta) ?? 'Falta la cuenta'}</td>
-                  <td className={cn('px-3 py-2', l.lado === 'debe' && !l.ceco && 'font-medium text-destructive')}>
-                    {l.ceco ?? (l.lado === 'debe' ? 'Falta' : '')}
-                  </td>
-                  <td className="px-3 py-2">{l.proyecto}</td>
-                  <td className="max-w-[280px] truncate px-3 py-2 text-muted-foreground" title={l.glosa ?? ''}>{l.glosa}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{l.debe ? pesos(l.debe) : ''}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{l.haber ? pesos(l.haber) : ''}</td>
-                </tr>
-              ))}
+              {asiento.map((l, i) => {
+                const texto = textoCuenta(l)
+                return (
+                  <tr key={i} className="border-b last:border-0">
+                    <td className={cn('px-3 py-2', !texto && 'font-medium text-destructive')}>
+                      {texto ?? (l.tipo === 'gasto' ? 'Falta la cuenta' : 'Falta el socio de negocio')}
+                      {l.socio && <span className="block text-xs text-muted-foreground">{nombreCuenta(cuentas, l.cuenta) ?? 'sin cuenta asociada'}</span>}
+                    </td>
+                    <td className={cn('px-3 py-2', l.tipo === 'gasto' && !l.ceco && 'font-medium text-destructive')}>
+                      {l.ceco ?? (l.tipo === 'gasto' ? 'Falta' : '')}
+                    </td>
+                    <td className="px-3 py-2">{l.proyecto}</td>
+                    <td className="max-w-[280px] truncate px-3 py-2 text-muted-foreground" title={l.glosa ?? ''}>{l.glosa}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{l.debe ? pesos(l.debe) : ''}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{l.haber ? pesos(l.haber) : ''}</td>
+                  </tr>
+                )
+              })}
             </tbody>
             <tfoot>
               <tr className="border-t bg-accent font-semibold">
@@ -389,7 +478,7 @@ export default function Rendicion() {
               </tr>
             </tfoot>
           </table>
-          {excluidas.length > 0 && (
+          {!fija && excluidas.length > 0 && (
             <p className="px-3 py-2 text-xs text-muted-foreground">
               Fuera del asiento: {excluidas.length} {excluidas.length === 1 ? 'gasto' : 'gastos'} por {pesos(excluidas.reduce((s, l) => s + l.debe, 0))}.
             </p>
@@ -398,7 +487,7 @@ export default function Rendicion() {
       </Card>
 
       {/* acciones */}
-      {rendiciones_aprobar && (
+      {rendiciones_aprobar && !['exportado', 'integrado'].includes(informe.estado) && (
         <Card>
           <CardContent className="space-y-3 p-4">
             {informe.estado !== 'aprobado' ? (
@@ -443,7 +532,7 @@ export default function Rendicion() {
                 <p className="text-sm">
                   Aprobada con fecha contable <span className="font-semibold">{formatFecha(informe.fecha_asiento)}</span>
                   {informe.aprobado_en && <span className="text-muted-foreground"> · {formatFechaHora(informe.aprobado_en)}</span>}. Queda lista para
-                  la carga a SAP (fase 2).
+                  el próximo lote (Rendiciones › Aprobadas).
                 </p>
                 <Button variant="outline" size="sm" disabled={ocupado} onClick={() => accion('pendiente')}>
                   <RotateCcw className="mr-1 h-4 w-4" /> Reabrir
