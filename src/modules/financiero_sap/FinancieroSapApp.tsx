@@ -10,6 +10,9 @@ import Prorrateo from './pages/Prorrateo'
 import Balance from './pages/Balance'
 import Ifrs from './pages/Ifrs'
 import ClasificacionIfrs from './pages/ClasificacionIfrs'
+import Rendiciones from './pages/Rendiciones'
+import Rendicion from './pages/Rendicion'
+import CuentasRendiciones from './pages/CuentasRendiciones'
 import Ventas from '@/modules/gestion/pages/Ventas'
 
 // Portal Financiero: web propia como Adquisiciones, en /financiero. Contabilidad de SAP (estado de
@@ -35,6 +38,7 @@ function Inicio() {
   if (p.veEerr) return <EstadoResultados />
   if (p.veVentas) return <Navigate to={RUTA.ventas} replace />
   if (p.veBalance) return <Navigate to={RUTA.balance} replace />
+  if (p.rendiciones) return <Navigate to={RUTA.rendiciones} replace />
   if (p.configurar) return <Navigate to={RUTA.prorrateo} replace />
   return (
     <div className="rounded-lg border bg-card p-10 text-center text-sm text-muted-foreground">
@@ -61,6 +65,10 @@ export default function FinancieroSapApp() {
         <Route path="balance" element={<Solo si={(p) => p.veBalance}><Balance /></Solo>} />
         <Route path="ifrs" element={<Solo si={(p) => p.veBalance}><Ifrs /></Solo>} />
         <Route path="clasificacion-ifrs" element={<Solo si={(p) => p.veBalance}><ClasificacionIfrs /></Solo>} />
+        {/* Rendiciones de Rindegastos (fase 1): bandeja, detalle con el asiento propuesto y tabla de cuentas */}
+        <Route path="rendiciones" element={<Solo si={(p) => p.rendiciones}><Rendiciones /></Solo>} />
+        <Route path="rendiciones/cuentas" element={<Solo si={(p) => p.rendiciones}><CuentasRendiciones /></Solo>} />
+        <Route path="rendiciones/:id" element={<Solo si={(p) => p.rendiciones}><Rendicion /></Solo>} />
         <Route path="*" element={<Navigate to={RUTA.inicio} replace />} />
       </Route>
     </Routes>

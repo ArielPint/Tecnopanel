@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ArrowLeft, BarChart3, FileSpreadsheet, KeyRound, Landmark, ListTree, LogOut, Menu, Moon, Percent, Receipt, Scale, Sun, Tags } from 'lucide-react'
+import { ArrowLeft, BarChart3, FileSpreadsheet, KeyRound, Landmark, ListTree, LogOut, ReceiptText, Menu, Moon, Percent, Receipt, Scale, Sun, Tags } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useThemeStore } from '@/store/themeStore'
 import { useOtrosPortales } from '@/hooks/useOtrosPortales'
@@ -17,7 +17,7 @@ import { FiltrosProvider } from './Filtros'
 // los tokens del hub para que el modo claro y el oscuro funcionen igual.
 
 function Menu_({ onNavigate }: { onNavigate?: () => void }) {
-  const { veEerr, veVentas, veBalance, configurar } = usePermisosFin()
+  const { veEerr, veVentas, veBalance, configurar, rendiciones } = usePermisosFin()
   const { conHub, portales } = useOtrosPortales({ tipo: 'financiero' })
   const items = [
     ...(veEerr ? [{ to: RUTA.inicio, label: 'Estado de resultados', icon: FileSpreadsheet, end: true }] : []),
@@ -26,6 +26,7 @@ function Menu_({ onNavigate }: { onNavigate?: () => void }) {
     ...(veBalance ? [{ to: RUTA.balance, label: 'Balance general', icon: Scale, end: true }] : []),
     ...(veBalance ? [{ to: RUTA.ifrs, label: 'Situación financiera IFRS', icon: ListTree, end: true }] : []),
     ...(veBalance ? [{ to: RUTA.clasificacion, label: 'Clasificación IFRS', icon: Tags, end: true }] : []),
+    ...(rendiciones ? [{ to: RUTA.rendiciones, label: 'Rendiciones', icon: ReceiptText, end: false }] : []),
     ...(veEerr || configurar ? [{ to: RUTA.prorrateo, label: 'Prorrateo de administración', icon: Percent, end: true }] : []),
   ]
 
@@ -103,6 +104,8 @@ const TITULOS: Record<string, string> = {
   [RUTA.balance]: 'Balance general',
   [RUTA.ifrs]: 'Estado de situación financiera IFRS',
   [RUTA.clasificacion]: 'Clasificación IFRS',
+  [RUTA.rendiciones]: 'Rendiciones',
+  [RUTA.rendicionesCuentas]: 'Rendiciones · Tabla de cuentas',
 }
 
 export default function PortalLayout() {
@@ -114,7 +117,8 @@ export default function PortalLayout() {
   const [cambiarClave, setCambiarClave] = useState(false)
   const isDark = mode === 'dark'
 
-  const titulo = TITULOS[location.pathname.replace(/\/$/, '')] ?? ''
+  const ruta = location.pathname.replace(/\/$/, '')
+  const titulo = TITULOS[ruta] ?? (ruta.startsWith(`${RUTA.rendiciones}/`) ? 'Rendiciones · Detalle' : '')
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">

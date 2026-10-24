@@ -22,6 +22,21 @@ export const INFORMES_FIN: { key: InformeFin; label: string; detalle: string }[]
 /** Permiso sin sucursal: modulo_key 'fin:configurar'. Edita los % de prorrateo de la administración. */
 export const PERMISO_CONFIGURAR = 'configurar'
 
+/** Rendiciones de Rindegastos, sin sucursal: modulo_key 'fin:rendiciones' (ver) y 'fin:rendiciones_aprobar'
+ *  (corregir, aprobar y editar la tabla de cuentas). Ver 20261112120000_financiero_rindegastos.sql. */
+export const PERMISOS_RENDICIONES: { key: string; label: string; detalle: string }[] = [
+  {
+    key: 'rendiciones',
+    label: 'Ver rendiciones',
+    detalle: 'Rendiciones de Rindegastos aprobadas y su asiento propuesto, sin poder cambiarlas.',
+  },
+  {
+    key: 'rendiciones_aprobar',
+    label: 'Aprobar rendiciones',
+    detalle: 'Además corrige cuenta, CECO o proyecto de cada gasto, aprueba u observa el asiento y edita la tabla de cuentas.',
+  },
+]
+
 /** Grupos del plan de cuentas de resultado (OACT.GroupMask). */
 export const GRUPOS: { grupo: number; nombre: string }[] = [
   { grupo: 4, nombre: 'Ingresos operacionales' },

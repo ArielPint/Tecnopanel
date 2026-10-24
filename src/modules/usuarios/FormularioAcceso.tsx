@@ -16,7 +16,7 @@ import { SSO_MODULOS, claveAcceso, normalizarAccionesSso } from '@/modules/sso/l
 import { ROLES_INGRESO } from '@/modules/personal/lib/catalogos'
 import { ROLES_CONTRATISTAS } from '@/modules/control_contratistas/lib/catalogos'
 import { ROLES_ADQ } from '@/modules/adquisiciones/lib/catalogos'
-import { INFORMES_FIN, PERMISO_CONFIGURAR } from '@/modules/financiero_sap/lib/catalogos'
+import { INFORMES_FIN, PERMISO_CONFIGURAR, PERMISOS_RENDICIONES } from '@/modules/financiero_sap/lib/catalogos'
 import { NOTIF_CORREO_GRUPOS } from './notificaciones'
 import { proyectoAccesoVacio, type Acceso, type AccesoInput, type ProyectoAcceso, type ProyectoObra } from './useAccesos'
 
@@ -857,6 +857,27 @@ export default function FormularioAcceso({ acceso, proyectosObra, trigger, onGua
                   </span>
                 </span>
               </label>
+              {PERMISOS_RENDICIONES.map((pr) => (
+                // en la base: modulo_key 'fin:rendiciones' / 'fin:rendiciones_aprobar' (sin sucursal)
+                <label key={pr.key} className="flex items-start gap-3 rounded-md border p-3 text-sm">
+                  <Checkbox
+                    className="mt-0.5"
+                    checked={form.financieroPermisos.includes(pr.key)}
+                    onCheckedChange={(v) =>
+                      setForm((f) => ({
+                        ...f,
+                        financieroPermisos: v
+                          ? [...f.financieroPermisos.filter((x) => x !== pr.key), pr.key]
+                          : f.financieroPermisos.filter((x) => x !== pr.key),
+                      }))
+                    }
+                  />
+                  <span>
+                    <span className="font-medium">{pr.label}</span>
+                    <span className="block text-xs text-muted-foreground">{pr.detalle}</span>
+                  </span>
+                </label>
+              ))}
             </TabsContent>
 
             <TabsContent value="notificaciones" className="flex data-[state=inactive]:hidden min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 pt-2">
