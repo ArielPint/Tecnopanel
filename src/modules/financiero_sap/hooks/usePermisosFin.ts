@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { misAccesos, SinPortalError, type MisAccesos } from '../lib/api'
 
-const SIN_NADA: MisAccesos = { admin: false, configurar: false, eerr: [], balance: [], ventas: [] }
+const SIN_NADA: MisAccesos = { admin: false, configurar: false, eerr: [], balance: [], ventas: [], rendiciones: false, rendiciones_aprobar: false }
 
 // Una consulta por sesión: todas las pantallas del portal comparten la misma respuesta.
 let cache: { userId: string; promesa: Promise<MisAccesos> } | null = null

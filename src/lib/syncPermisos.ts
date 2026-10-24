@@ -135,7 +135,7 @@ export async function syncPermisosAdquisiciones(userId: string, roles: string[])
 
 /**
  * Portal Financiero: transversal, sobre su propio ancla (FIN_ANCLA_ID). Un permiso por fila:
- * modulo_key 'fin:<informe>:<sucursal>' (informe: eerr, ventas, balance) o 'fin:configurar', con accion 'ver'.
+ * modulo_key 'fin:<informe>:<sucursal>' (informe: eerr, ventas, balance), 'fin:configurar' o 'fin:rendiciones[_aprobar]', con accion 'ver'.
  */
 /** permisos: '<informe>:<sucursal>' o 'configurar', p. ej. 'eerr:Santiago'. */
 export async function syncPermisosFinanciero(userId: string, permisos: string[]) {

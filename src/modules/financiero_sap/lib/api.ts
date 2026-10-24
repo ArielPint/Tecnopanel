@@ -85,6 +85,9 @@ export interface MisAccesos {
   eerr: string[]
   balance: string[]
   ventas: string[]
+  /** Rendiciones de Rindegastos: ver la bandeja / además corregir, aprobar y editar la tabla de cuentas */
+  rendiciones: boolean
+  rendiciones_aprobar: boolean
 }
 
 /** El portal no está instalado en esta base (Supabase): PostgREST no conoce la tabla o la función. */
@@ -94,7 +97,7 @@ export class SinPortalError extends Error {
   }
 }
 
-function lanzar(error: { code?: string; message: string }): never {
+export function lanzar(error: { code?: string; message: string }): never {
   if (error.code === 'PGRST205' || error.code === 'PGRST202' || error.code === '42P01' || error.code === '42883') throw new SinPortalError()
   throw new Error(error.message)
 }
@@ -102,7 +105,7 @@ function lanzar(error: { code?: string; message: string }): never {
 const PAGINA = 1000
 
 // PostgREST corta en max-rows (Supabase: 1000): se pide por páginas hasta que una vuelva incompleta.
-async function paginado<T>(pedir: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: { code?: string; message: string } | null }>) {
+export async function paginado<T>(pedir: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: { code?: string; message: string } | null }>) {
   const filas: T[] = []
   for (let desde = 0; ; desde += PAGINA) {
     const { data, error } = await pedir(desde, desde + PAGINA - 1)
